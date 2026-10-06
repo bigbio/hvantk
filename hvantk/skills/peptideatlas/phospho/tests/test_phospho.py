@@ -326,6 +326,11 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
         # Non-S/T/Y residue — should NOT be phospho
         ("A[167]R", []),
         ("DVA[Phospho]TPLNQR", []),
+        # Non-phospho modification on S/T/Y — should NOT be phospho (build 606
+        # has none, so the fixture cannot carry one; these unit cases can)
+        ("AS[Oxidation]K", []),
+        ("AAS[Acetyl]AAT[Phospho]K", [(5, "T")]),
+        ("AAS[129]AA", []),
         # Multiple modifications on same peptide
         ("AS[Phospho]AT[Phospho]Y", [(1, "S"), (3, "T")]),
         ("S[Phospho]T[Phospho]Y[Phospho]", [(0, "S"), (1, "T"), (2, "Y")]),

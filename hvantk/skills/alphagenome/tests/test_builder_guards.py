@@ -113,6 +113,32 @@ def test_same_scores_twice_fail(build):
         build(df, df)
 
 
+def test_rows_differing_only_in_strand_or_junction_are_distinct(build):
+    """``ROW_KEY`` includes the strand and junction columns, so these rows build."""
+    from hvantk.skills.alphagenome.builder import ROW_KEY
+
+    df = _base()
+    key = list(ROW_KEY)
+    existing = set(df[key].astype(str).itertuples(index=False, name=None))
+
+    def copy_with_new_key(mask, column, change):
+        for index in df.index[mask]:
+            copy = df.loc[[index]].copy()
+            copy[column] = change(copy[column].iloc[0])
+            if tuple(copy[key].astype(str).iloc[0]) not in existing:
+                return copy
+        raise AssertionError(f"no row whose changed {column} gives a new key")
+
+    other_strand = copy_with_new_key(
+        df.output_type == "DNASE", "track_strand", lambda s: "-" if s == "+" else "+"
+    )
+    other_junction = copy_with_new_key(
+        df.output_type == "SPLICE_JUNCTIONS", "junction_End", lambda end: end + 1
+    )
+    both = pd.concat([df, other_strand, other_junction])
+    assert _total_rows(_rows(build(both))) == len(both)
+
+
 def test_filters_that_leave_nothing_fail(build):
     with pytest.raises(ValueError, match="No AlphaGenome rows left to aggregate"):
         build(_base(), ontology_curies=["UBERON:9999999"])
@@ -127,12 +153,20 @@ def test_missing_scores_keep_what_they_have(build, caplog):
     df.loc[donor, "quantile_score"] = float("nan")
     # chrX: no SPLICE_SITES row has a quantile score.
     df.loc[splice & (df.variant_id == CHRX), "quantile_score"] = float("nan")
-    # chr3: one row with neither score is dropped.
-    dropped = df.index[df.variant_id == CHR3][0]
+    # chr3: the donor row (the top |quantile|) has no raw score, and one row of
+    # another scorer has neither score, so it is dropped.
+    chr3_splice = splice & (df.variant_id == CHR3)
+    df.loc[chr3_splice & (df.track_name == "donor"), "raw_score"] = float("nan")
+    acceptor_raw = abs(df.loc[chr3_splice & (df.track_name == "acceptor"), "raw_score"])
+    dropped = df.index[(df.variant_id == CHR3) & ~splice][0]
     df.loc[dropped, ["raw_score", "quantile_score"]] = float("nan")
 
     rows = _rows(build(df))
 
+    chr3 = rows[CHR3].splice_sites
+    assert chr3.n_rows == 2  # the donor row still counts
+    assert chr3.top_track == "donor" and chr3.top_raw is None  # still the top pick
+    assert chr3.max_abs_raw == pytest.approx(float(acceptor_raw.iloc[0]), rel=1e-6)
     chr6 = rows[CHR6].splice_sites
     assert chr6.max_abs_raw == pytest.approx(0.9982147, rel=1e-6)  # donor still counts
     assert chr6.n_rows == 2
@@ -144,6 +178,7 @@ def test_missing_scores_keep_what_they_have(build, caplog):
     assert _total_rows(rows) == len(df) - 1
     assert "dropped 1 of 150 row(s) that have neither" in caplog.text
     assert "have a raw score but no quantile score" in caplog.text
+    assert "have a quantile score but no raw score" in caplog.text
 
 
 def test_files_with_different_float_types_combine(build):

@@ -159,14 +159,34 @@ def _read_scores(paths: list[str], need_ontology: bool):
     return reduce(lambda a, b: a.unionByName(b), frames)
 
 
+def _check_unique_rows(sdf) -> None:
+    """Fail when a ``ROW_KEY`` occurs more than once (see the module docstring)."""
+    from pyspark.sql import functions as F
+
+    duplicated = sdf.groupBy(*ROW_KEY).count().filter(F.col("count") > 1)
+    example = duplicated.limit(1).collect()
+    if example:
+        row = example[0]
+        raise ValueError(
+            f"{duplicated.count():,} AlphaGenome score row(s) occur more than once "
+            f"with the same {', '.join(ROW_KEY)}; for example "
+            f"{row['variant_id']} / {row['variant_scorer']} / track "
+            f"{row['track_name']!r} occurs {row['count']} times. The input holds "
+            "the same scores twice: a file given twice, two scoring runs mixed, or "
+            "the same variant scored twice in one run. The summaries would count "
+            "them twice, so keep one copy of each. A parquet without "
+            "junction_Start/junction_End also collides on its SPLICE_JUNCTIONS rows."
+        )
+
+
 def _checked_rows(sdf, output_types, ontology_curies):
     """Check the rows on the Spark side, then keep the ones to aggregate.
 
     Two Spark passes before anything reaches Hail, so a bad input fails before
     the shuffle: one validates the rows and counts each filter step, the other
-    looks for a ``ROW_KEY`` that occurs twice. Rows dropped for lacking both
-    scores are reported in a warning; filters that leave nothing raise, naming
-    the step that removed everything.
+    (``_check_unique_rows``) looks for a ``ROW_KEY`` that occurs twice. Rows
+    dropped for lacking both scores are reported in a warning; filters that
+    leave nothing raise, naming the step that removed everything.
     """
     from pyspark.sql import functions as F
 
@@ -228,20 +248,7 @@ def _checked_rows(sdf, output_types, ontology_curies):
             "form (e.g. chr3:39408741:T>C)"
         )
 
-    duplicated = sdf.groupBy(*ROW_KEY).count().filter(F.col("count") > 1)
-    example = duplicated.limit(1).collect()
-    if example:
-        row = example[0]
-        raise ValueError(
-            f"{duplicated.count():,} AlphaGenome score row(s) occur more than once "
-            f"with the same {', '.join(ROW_KEY)}; for example "
-            f"{row['variant_id']} / {row['variant_scorer']} / track "
-            f"{row['track_name']!r} occurs {row['count']} times. The input holds "
-            "the same scores twice (a file given twice, or two scoring runs "
-            "mixed), and the summaries would count them twice. Keep one copy of "
-            "each scoring run. A parquet without junction_Start/junction_End also "
-            "collides on its SPLICE_JUNCTIONS rows."
-        )
+    _check_unique_rows(sdf)
 
     counts = [("rows", stats["rows"])]
     counts += [(label, stats[f"step{i}"]) for i, (label, _) in enumerate(steps)]
