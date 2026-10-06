@@ -306,7 +306,7 @@ Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `te
 - `drift_fingerprint` — `tests/drift_fingerprint.json` (the expected fingerprint; see § 12).
 - `command` — the pytest invocation (append `-m hail` only when the test is Hail-marked).
 
-**Fixture provenance.** A fixture holding real third-party data must have an entry in `THIRD_PARTY_DATA.md` at the repository root (source, version, licence, attribution, and any modifications made). A licence that forbids redistributing rows limits what a fixture may contain, never whether one exists — in that case, ship a synthetic, format-faithful fixture (fabricated values in the real file's header, delimiters and value conventions), named with the pattern `*-synthetic.*`, and record the recipe and source file (with date checked) in a `README.md` beside it.
+**Fixture provenance.** A fixture holding real third-party data must have an entry in `THIRD_PARTY_DATA.md` at the repository root (source, version — or retrieval date when the source has none — licence, attribution, and any modifications made). A licence that forbids redistributing rows limits what a fixture may contain, never whether one exists — in that case, ship a synthetic, format-faithful fixture (fabricated values in the real file's header, delimiters and value conventions), with each synthetic file named `*-synthetic.*`, and record the recipe and source file (with date checked) in a `README.md` beside it.
 
 ## 10. Hard guardrails
 
