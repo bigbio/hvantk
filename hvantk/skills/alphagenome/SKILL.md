@@ -1,6 +1,6 @@
 ---
 name: hvantk:resource-alphagenome
-description: AlphaGenome per-variant deep-learning effect predictions (expression, chromatin, other molecular phenotypes), fetched live from a credentialed API and built into a Hail Table.
+description: AlphaGenome variant-effect scores, ingested from the SDK's tidy_scores() parquet (produced by the user through the API or local weights) and summarised into one Hail Table row per variant.
 status: provisional
 backend: hail
 domain: genomics
@@ -12,82 +12,143 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-Provisional. Covers the `alphagenome:predictions` builder, which drives the AlphaGenome deep-learning API (Google DeepMind) for a given set of input variants and produces a Hail Table of per-variant effect predictions keyed by `(locus, alleles)`.
+Provisional. Covers the `alphagenome:predictions` builder, which **only ingests** AlphaGenome scores the user has already produced: a directory of parquet files written from the AlphaGenome SDK's `variant_scorers.tidy_scores()` long format. hvantk makes **no AlphaGenome API calls** and needs no credentials; it does not import the AlphaGenome SDK at all.
 
-Out of scope for this skill (per `_conventions` § 11):
-- Provisioning API credentials. Resolved by `load_config` in `hvantk/skills/alphagenome/pipelines.py` (config `api.key` > `ALPHAGENOME_API_KEY` env var > error).
-- Downloading/acquiring the raw AlphaGenome SDK. There is no `lifecycle.download` in `plugin.yaml` — this is a credentialed live prediction service, not a static file.
-- Per-modality Hail Table assembly of the raw prediction structure. `AlphaGenomePipeline._assemble_outputs` (`hvantk/skills/alphagenome/pipelines.py`) currently merges checkpointed batches into a consolidated `predictions.json`; deferred until the SDK response structure is validated (see module docstring in `pipelines.py`).
+The builder summarises the long format into one row per variant, keyed by `(locus, alleles)`, with one struct per known variant scorer (§ 5).
+
+Out of scope:
+- Producing the scores. That is the user's step, with the SDK (§ 2), under the AlphaGenome Output Terms. The manifest declares `acquisition: {mode: byo, reason: credentialed}`, so there is no `lifecycle.download`.
+- Track-level output. Only the per-variant, per-scorer summary is kept; the per-track rows stay in the user's parquet.
+- Interval scorers (`tidy_scores()` output with an `interval_scorer` column and no `variant_id`).
 
 ## 2. Source identity
 
-AlphaGenome is a deep learning model from Google DeepMind that predicts the functional effects of genetic variants on gene expression, chromatin accessibility, and other molecular phenotypes at nucleotide resolution, served through a credentialed prediction API (`hvantk/skills/alphagenome/pipelines.py` module docstring).
+AlphaGenome is a DNA sequence model from Google DeepMind that predicts variant effects on gene expression, splicing, chromatin and contact maps. Its SDK is the `alphagenome` package on PyPI (docs: https://www.alphagenomedocs.com). `source.catalog_ref: alphagenome` is declared in `plugin.yaml`.
 
-There is no static upstream file: predictions are generated on demand per variant, per interval, against a live model. `source.catalog_ref: alphagenome` is declared in `plugin.yaml`, but this skill does not restate catalog content (per `_conventions` § 2) — query it via `hvantk catalog show alphagenome`.
+**Licence: non-commercial.** AlphaGenome outputs are subject to the AlphaGenome Output Terms of Use (https://deepmind.google.com/science/alphagenome/output-terms): non-commercial use only, never used to train machine-learning models, and redistributed only with a conspicuous notice. The committed fixture carries that notice in `tests/testdata/raw/alphagenome/NOTICE.md`; keep it beside the parquet. Scores a user builds into a Table stay under the same terms.
 
-The AlphaGenome Python SDK (the client this builder imports — `from alphagenome.data import genome`, `from alphagenome.models import dna_client`, `pipelines.py` `_import_alphagenome`) is published openly on PyPI and is what the drift probe fingerprints (see § 3).
+**What produces the input.** The SDK's `score_variant()` returns one AnnData per scorer; `variant_scorers.tidy_scores()` turns them into the long DataFrame hvantk reads. The model can be the hosted API (`dna_client.create(api_key)`) or local weights (`alphagenome_research.model.dna_model.create_from_kaggle("all_folds")`); both expose the same `score_variant`, so the rest is identical. The calls below are taken from the SDK documentation's batch-scoring notebook and match the run that produced the fixture's source shard:
+
+```python
+import pandas as pd
+from alphagenome.data import genome
+from alphagenome.models import dna_client, variant_scorers
+
+model = dna_client.create(api_key)
+scorers = list(variant_scorers.RECOMMENDED_VARIANT_SCORERS.values())  # the 19 hvantk maps
+cap = dna_client.MAX_VARIANT_SCORERS_PER_REQUEST
+
+frames = []
+for variant in variants:  # e.g. genome.Variant(chromosome="chr3", position=39408741,
+    #                                           reference_bases="T", alternate_bases="C")
+    interval = variant.reference_interval.resize(dna_client.SEQUENCE_LENGTH_1MB)
+    scores = []
+    for i in range(0, len(scorers), cap):
+        scores.extend(
+            model.score_variant(
+                interval=interval,
+                variant=variant,
+                variant_scorers=scorers[i : i + cap],
+                organism=dna_client.Organism.HOMO_SAPIENS,
+            )
+        )
+    frames.append(variant_scorers.tidy_scores(scores))
+
+df = pd.concat(frames, ignore_index=True)
+# tidy_scores() stores the genome.Variant / genome.Interval objects themselves;
+# parquet needs strings. str(Variant) is "chr3:39408741:T>C".
+for column in ("variant_id", "scored_interval"):
+    df[column] = df[column].astype(str)
+df.to_parquet("scores.parquet", index=False)
+```
 
 ## 3. Backend choice + reasoning
 
-`hail`, per `plugin.yaml` (`backend: hail`). The builder produces a Hail Table keyed by `(locus, alleles)` (`_conventions` § 3 variant-domain convention), consistent with every other variant-level annotation source in the toolkit, even though the underlying data originates from per-variant API calls rather than a bulk file import.
+`hail` (`plugin.yaml`: `backend: hail`). The output is a variant-level annotation keyed by `(locus, alleles)` (`_conventions` § 3), joinable to every other variant table in the toolkit. The input is large: the real shard behind the fixture holds 16,642,316 rows for 411 variants (about 40,000 rows per variant), so the aggregation runs in Hail/Spark rather than pandas. On 8 cores that shard builds in about 20 seconds.
+
+The parquet is read with Spark (`SparkSession.builder.getOrCreate()` → `spark.read.parquet(...)` → `hl.Table.from_spark`), the same bridge `gtex_eqtl` uses. The builder calls `init_hail()` first, so the Spark session is Hail's. Spark also checks and filters the rows in one pass before the conversion, so a bad input fails before Hail's shuffle; Hail only aggregates.
 
 ## 4. Raw format & gotchas
 
-- `parsed_input` (the builder's first positional argument) must be either a Hail Table path ending in `.ht`, or a TSV with `chrom`/`pos`/`ref`/`alt` columns — both handled in `_run_alphagenome_pipeline` (`hvantk/skills/alphagenome/builder.py`). A `.ht` input must already contain `locus` and `alleles` fields, or the builder raises `ValueError`. A TSV missing any of `chrom`/`pos`/`ref`/`alt` also raises `ValueError` naming the missing columns.
-- `config_path` is a **required** `**params` kwarg — no default. It must point at an AlphaGenome YAML config with two required top-level sections, `api` and `ontology` (`pipelines.py` `_REQUIRED_SECTIONS`). The fixture shape is `hvantk/skills/alphagenome/tests/testdata/alphagenome_config.yaml`: `api.key`/`api.max_retries`/`api.retry_backoff`/`api.request_timeout`, `ontology.terms` (UBERON ontology terms), `ontology.output_types` (e.g. `RNA_SEQ`, `CHROMATIN` — validated at stream time against `alphagenome.models.dna_client.OutputType`, `pipelines.py` `stream()`), and an optional `intervals` block (`default_size`, `adaptive`, `adaptive_max_size`, `density_window`), defaulted from `ALPHAGENOME_DEFAULT_INTERVAL_SIZE` (1,048,576 = 1 Mbp) and `ALPHAGENOME_DEFAULT_DENSITY_WINDOW` (50,000 = 50 kb) in `hvantk/skills/alphagenome/shared/constants.py` if omitted.
-- `no_resume` (bool, default `False`) is the only other supported `**params` key; `output_path`/`overwrite` are explicitly stripped from `params` before being forwarded to the pipeline (`build_alphagenome_predictions`, `builder.py`) since output handling belongs to the orchestrator, not the builder.
-- Adaptive interval grouping (`compute_intervals` / `_compute_adaptive_intervals`, `pipelines.py`): nearby variants on the same chromosome within `density_window` are batched into one API call to reduce request count; variants beyond `adaptive_max_size` apart are split into sub-groups. Disable via `intervals.adaptive: false` in the config to get one interval per variant instead.
-- `RateLimitedCaller` (`pipelines.py`) retries transient errors (429/5xx/timeout/connection) with exponential backoff and jitter, and enters a 60-second cooldown after 3 consecutive rate-limit hits (`_COOLDOWN_THRESHOLD`, `_COOLDOWN_SECONDS`). Failed variants (after retries exhausted) are recorded via `CheckpointManager.record_failed_variant` rather than aborting the whole run.
-- `CheckpointManager` (`pipelines.py`) writes per-batch JSON files under `<output_dir>/_checkpoints/` and a `state.json` tracking completed intervals, enabling resumption; `no_resume=True` clears this state before starting.
-- Loading a `.ht` input caps at `_MAX_VARIANTS_COLLECT = 100_000` rows (`AlphaGenomePipeline._load_variants_from_hail_table`) — it calls `.collect()`, materializing all rows on the driver, and raises `ValueError` above that cap.
-- Currently only single-nucleotide/simple ref/alt pairs are exercised; the builder does no allele normalization of its own.
+- **Long format.** One row per variant × scorer × track, and × gene (gene-level scorers) or × junction (`SpliceJunctionScorer()`). The builder reads `variant_id`, `output_type`, `variant_scorer`, `track_name`, `gene_id`, `raw_score`, `quantile_score` (all required in every file; the SDK always writes `gene_id`) and `ontology_curie` (only for the `ontology_curies` filter). Every other column is ignored, including `Assay title` (with a space), `scored_interval`, `gtex_tissue`, `junction_Start`/`junction_End`, and an `input_variant_id` column some producers add (identical to `variant_id` in the fixture's source). A required column missing from any input file raises `ValueError` naming the file and the columns.
+- **Only `*.parquet` files directly in `--raw-dir` are read**, so `NOTICE.md` or a script beside them is ignored. Every one of them must be a tidy-scores file: a derived parquet left in the same folder (say, a per-variant summary written next to the shards) fails the build with that `ValueError`. Spark gets absolute paths, as it requires.
+- **Each file is read with its own schema**, checked, and cast to strings and float64 scores before the files are combined with `unionByName`. Spark reading several files at once applies one file's schema to all of them, which fails on a column typed differently in another file (parquet `null` vs string `gene_id`, float32 vs float64 scores) and reads a column the schema-giving file lacks as null everywhere. The price is one read per file, so many small files are slow: concatenate them into a few large ones first.
+- **`variant_id` is `chrom:pos:ref>alt`**, e.g. `chr3:39408741:T>C`: the SDK's `str(genome.Variant)`, **1-based** (checked against hg38), on GRCh38 contigs with the `chr` prefix. The builder splits it into `locus` and `alleles` without renaming contigs. Any other form (e.g. `chr3:39408741:T:C`, bases outside ACGTN, a null) raises `ValueError` naming an example; the check mirrors the SDK's own default format, where an allele may be empty.
+- **`output_type` is always read from its column, never parsed from `variant_scorer`.** Three scorer strings name no output type: `PolyadenylationScorer()` (RNA_SEQ), `ContactMapScorer()` (CONTACT_MAPS) and `SpliceJunctionScorer()` (SPLICE_JUNCTIONS). The `output_types` parameter filters on this column and only accepts the 11 values in `OUTPUT_TYPES`.
+- **19 scorers, matched by exact string.** `variant_scorer` holds `str(scorer)`, e.g. `CenterMaskScorer(requested_output=ATAC, width=501, aggregation_type=ACTIVE_SUM)`. `SCORER_FIELDS` in `shared/constants.py` maps the 19 strings of the SDK's `RECOMMENDED_VARIANT_SCORERS` to output fields. An unknown string raises `ValueError` naming it instead of being dropped or guessed: a new SDK can add scorers or change their parameters (and so their strings). The check covers the whole input, before any filter, so a filtered build fails on it too.
+- **Scores are float32** in the parquet. They are cast to float64, which is exact, so `max_abs_raw` equals a float32 maximum computed elsewhere bit for bit. The real shard has no null or NaN score, but the builder drops a row whose `raw_score` or `quantile_score` is missing or NaN before aggregating; NaN is a value, not a null, so it is tested separately.
+- **`gene_id` is null on the 13 track-level scorers** (the 12 `CenterMaskScorer` variants and `ContactMapScorer()`) and set on the 6 gene-level ones, already stripped of its Ensembl version by `tidy_scores()`. So `top_gene_id` is always missing on track-level fields. A file with only track-level scorers stores `gene_id` with parquet type `null`; the per-file cast turns it into null strings.
+- **`junction_Start`/`junction_End`** are set only on SPLICE_JUNCTIONS rows (int64, nullable).
+- **Rows per variant.** Track-level counts are fixed per output type (both aggregations together): ATAC 334, CAGE 1,092, CHIP_HISTONE 2,232, CHIP_TF 3,234, CONTACT_MAPS 28, DNASE 610, PROCAP 24. Gene-level counts follow gene density: RNA_SEQ 3,564–110,880, SPLICE_JUNCTIONS 367–19,818, SPLICE_SITE_USAGE 367–1,101, SPLICE_SITES 2–6. `PolyadenylationScorer()` scored only 307 of the 411 variants, so `rna_seq_polyadenylation` is often missing.
+- **Ties at the top |quantile_score| are common**, because quantiles saturate near ±1 (0.99999994). In the real shard 862 of 7,705 (variant, scorer) groups have two or more rows at the maximum, always with different tracks or values. `(track_name, gene_id)` does not identify a row either: it repeats within the CAGE, PROCAP, RNA_SEQ and SPLICE_JUNCTIONS scorers. The builder therefore orders by |quantile_score| descending, then `track_name`, `gene_id` (missing last), `quantile_score` and `raw_score` ascending. Rows that tie on all five print identically, so the result is deterministic.
+- **`gtex_tissue` is the empty string on non-GTEx tracks, not missing data.** 85% of SPLICE_SITE_USAGE rows have it empty; all of them are ENCODE tracks (`data_source == "encode"`), the rest are GTEx.
+- **Filtering on the two heart curies is not a GTEx-only "Heart" filter.** UBERON:0006631 also tags an ENCODE SPLICE_SITE_USAGE track, `usage_UBERON:0006631 total RNA-seq` (right atrium auricular region). So `ontology_curies=["UBERON:0006566", "UBERON:0006631"]` selects three tracks: the GTEx `Heart_Left_Ventricle` and `Heart_Atrial_Appendage` tracks and that ENCODE one. A GTEx-only feature, such as `ag_heart_ssu` in an independent per-variant ClinVar benchmark computed by the maintainer (`gtex_tissue` containing "Heart"), needs a filter on `gtex_tissue`, which the builder does not expose. The two differ for 319 of 339 ClinVar variants in the real shard, where the heart build's `splice_site_usage.max_abs_raw` is larger; it is never smaller.
+- **An ontology filter also drops every track with no ontology term.** SPLICE_SITES tracks (`donor`, `acceptor`) carry none, so `splice_sites` is always missing from an `ontology_curies` build; on the real shard the heart build keeps 11 of the 19 fields.
+- **`--plugin-arg` lists.** `--plugin-arg ontology_curies=UBERON:0006566,UBERON:0006631` arrives as a list; a single value arrives as a plain string, which the builder wraps.
+- **Filters that leave nothing fail.** If no row survives (no numeric score, or `output_types` / `ontology_curies` match nothing), the builder raises `ValueError` listing the row count after each filter, e.g. `2 rows, 2 with numeric scores, 0 with output_types ['DNASE']`, instead of writing an empty table.
 
 ## 5. Output contract
 
-Hail Table keyed by `(locus, alleles)`, per `_conventions` § 3 variant convention. Builder returns an `AnnotationTable` (`hvantk.core.models.AnnotationTable`) via `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="alphagenome-v1"))` (`build_alphagenome_predictions`, `builder.py`).
+- **Object:** an `AnnotationTable` wrapping a Hail Table, from `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="alphagenome-v2"))`. `hvantk reprocess` writes it to `--output` with its provenance sidecar.
+- **Key:** `locus: locus<GRCh38>`, `alleles: array<str>`. One row per distinct `variant_id`.
+- **`variant_id: str`**, as in the input.
+- **19 summary fields, one per scorer**, each `struct{top_raw: float64, top_quantile: float64, top_track: str, top_gene_id: str, max_abs_raw: float64, n_rows: int64}`:
+  - `top_raw`, `top_quantile`, `top_track`, `top_gene_id`: the row with the largest |quantile_score|, sign kept, ties broken as in § 4;
+  - `max_abs_raw`: the largest |raw_score| over the same rows;
+  - `n_rows`: the rows aggregated, after the filters.
+  - The struct is missing when the variant has no row for that scorer, or none survived the filters.
+- **Field names** (`SCORER_FIELDS` in `shared/constants.py` holds the exact scorer strings):
 
-Row-level schema is not fixed: prediction output fields depend on the AlphaGenome config (`ontology.output_types`) and the model/SDK version in use at build time, so this skill does not enumerate columns (see § 9 for why no schema snapshot exists). The current builder emits a minimal locus/alleles-keyed table from the input variants and checkpoints the raw prediction JSON alongside it (`_run_alphagenome_pipeline`, `builder.py`); full per-modality field assembly into the Hail Table is deferred (see § 1).
+  | Output type | Fields |
+  | --- | --- |
+  | ATAC, CAGE, CHIP_HISTONE, CHIP_TF, DNASE, PROCAP (`CenterMaskScorer`) | `<type>_active_sum`, `<type>_diff_log2_sum`, e.g. `atac_active_sum`, `chip_histone_diff_log2_sum` |
+  | CONTACT_MAPS (`ContactMapScorer()`) | `contact_maps` |
+  | RNA_SEQ (`GeneMaskActiveScorer`, `GeneMaskLFCScorer`, `PolyadenylationScorer()`) | `rna_seq_active`, `rna_seq_lfc`, `rna_seq_polyadenylation` |
+  | SPLICE_JUNCTIONS (`SpliceJunctionScorer()`) | `splice_junctions` |
+  | SPLICE_SITE_USAGE, SPLICE_SITES (`GeneMaskSplicingScorer`) | `splice_site_usage`, `splice_sites` |
+
+- **Parameters** (`--plugin-arg`): `reference_genome` (default `GRCh38`), `output_types` (keep only rows of these `output_type` values; default all) and `ontology_curies` (keep only rows of tracks with these `ontology_curie` values, before aggregating; default all). `ontology_curies` matches the curie alone, so it cannot keep GTEx tracks of a tissue while dropping ENCODE ones; the two heart curies select an ENCODE track too (§ 4).
+- **Schema snapshot:** `tests/snapshots/schema.json`. `schema_id` `alphagenome-v2` replaced `alphagenome-v1`, whose builder returned only the input variants.
 
 ## 6. hvantk integration points
 
-- Plugin manifest: `hvantk/skills/alphagenome/plugin.yaml` (`api_version: 2`, dataset `predictions`, `artifact_type: AnnotationTable`, `schema_id: alphagenome-v1`). The loader resolves it via `get_registry().get_dataset("alphagenome:predictions")`.
-- Builder: `build_alphagenome_predictions` in `hvantk/skills/alphagenome/builder.py`. Signature: `(parsed_input, ctx, **params) -> AnnotationTable`.
-- Pipeline: `AlphaGenomePipeline` in `hvantk/skills/alphagenome/pipelines.py`, driven internally by `_run_alphagenome_pipeline` (`builder.py`) via `pipeline.setup()` → iterate `pipeline.stream()` → `pipeline.teardown()`.
-- Constants: `ALPHAGENOME_DEFAULT_INTERVAL_SIZE`, `ALPHAGENOME_DEFAULT_DENSITY_WINDOW`, `ALPHAGENOME_DEFAULT_RETRY_BACKOFF`, `ALPHAGENOME_DEFAULT_MAX_RETRIES`, `ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT` in `hvantk/skills/alphagenome/shared/constants.py`.
-- Drift probe: `fetch_fingerprint` in `hvantk/skills/alphagenome/drift_probe.py`, wired via `plugin.yaml`'s `drift_probe:` block; drives `hvantk drift alphagenome:predictions`.
-- No CLI `lifecycle.download`/`lifecycle.parse` blocks and no `cli:` block are declared in `plugin.yaml` — there is no built-in downloader.
-- Existing tests: `hvantk/skills/alphagenome/tests/test_alphagenome.py` (registration-only + skipped round-trip), `test_pipelines.py` (unit tests for `load_config`, interval computation, etc. — mocked, no live API), `test_drift_probe.py` (offline via `requests_mock`).
+- Plugin manifest: `hvantk/skills/alphagenome/plugin.yaml` (dataset `predictions`, `artifact_type: AnnotationTable`, `schema_id: alphagenome-v2`), resolved by `get_registry().get_dataset("alphagenome:predictions")`.
+- Builder: `build_alphagenome_predictions(parsed_input, ctx, *, reference_genome="GRCh38", output_types=None, ontology_curies=None)` in `hvantk/skills/alphagenome/builder.py`; its module docstring states the input contract.
+- Constants: `SCORER_FIELDS` and `OUTPUT_TYPES` in `hvantk/skills/alphagenome/shared/constants.py`.
+- Drift probe: `fetch_fingerprint` in `hvantk/skills/alphagenome/drift_probe.py`, run by `hvantk drift alphagenome:predictions`. It fingerprints the SDK's PyPI release stream, the event that can change the `tidy_scores()` columns or the scorer strings.
+- Tests: `hvantk/skills/alphagenome/tests/` -- `test_builder.py` (round trip on the real-subset fixture, `hail`-marked), `test_alphagenome.py` (registration), `test_drift_probe.py` (offline, `requests_mock`). Run with the `command` in § 9.
+- Build with: `python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>`. No `lifecycle` or `cli:` block is declared.
 
 ## 7. Workflow steps
 
-When invoked to build or refresh an AlphaGenome predictions table:
+1. **Produce the scores** with the AlphaGenome SDK (§ 2), through the API or local weights, and write `tidy_scores()` output to parquet with `variant_id` and `scored_interval` as strings. Several files are fine: one per batch or shard.
+2. **Put only those parquet files in one directory.** Derived parquet files must live elsewhere (§ 4).
+3. **Choose filters, if any.** `--plugin-arg output_types=SPLICE_SITES,SPLICE_SITE_USAGE` keeps only those output types; `--plugin-arg ontology_curies=UBERON:0006566,UBERON:0006631` keeps the tracks tagged with the two heart curies, GTEx and ENCODE alike. That is not a GTEx-only heart feature: the builder has no `gtex_tissue` filter (§ 4).
+4. **Build.** `--skip-download` is not needed: the manifest declares `acquisition.mode: byo`.
 
-1. **Confirm API credentials are available.** Either `api.key` in the config YAML or the `ALPHAGENOME_API_KEY` environment variable must resolve (`load_config`, `pipelines.py`); this workflow does not provision credentials (§ 1).
-2. **Confirm `parsed_input` shape.** A `.ht` with `locus`/`alleles`, or a TSV with `chrom`/`pos`/`ref`/`alt` columns (§ 4). Row count matters if using a `.ht`: `_MAX_VARIANTS_COLLECT = 100_000`.
-3. **Confirm the config YAML** has `api` and `ontology` sections and valid `ontology.output_types` (validated against `alphagenome.models.dna_client.OutputType` at stream time — an invalid value raises before any API calls are made).
-4. **Build** via `hvantk reprocess alphagenome:predictions --raw-dir <path/to/variants.ht> --output <out.ht> --plugin-arg config_path=<path/to/config.yaml> [--plugin-arg no_resume=true]`.
-   One non-obvious part, forced by this plugin declaring no `lifecycle.parse`: with no parse stage the runner forwards `--raw-dir` straight to the builder as the input path. `--raw-dir` is `click.Path(file_okay=False)`, so it **must be a directory** — a plain `.tsv` is rejected at parse time with `Invalid value for '--raw-dir': Directory '...' is a file.` A Hail Table works because a `.ht` *is* a directory; to build from a TSV, convert it to a `.ht` first.
-   `--skip-download` is **not** needed: the manifest declares `acquisition.mode: byo`, which makes skipping implicit (#118). Passing it stays legal.
-5. **Expect API cost and latency, and expect a killed run to be lost.** Each interval issues live API calls with retry/backoff. `CheckpointManager` checkpoints *within* a run, but **there is currently no way to resume across runs**: `build_alphagenome_predictions` wraps the pipeline in a `tempfile.TemporaryDirectory()` and strips `output_path` out of `**params`, so the checkpoint directory is created fresh per call and deleted when that call returns. A retry therefore repeats the paid API work from scratch. Budget accordingly, and prefer splitting a large variant set into separately-built chunks.
-6. **Sanity-check the output.** Confirm the table is keyed by `(locus, alleles)` and that row count equals the **full** input variant count. The builder rebuilds the returned table from `input_path` after streaming and never filters it: `record_failed_variant` only appends to an in-memory list serialised into the checkpoint state, so a variant whose API call exhausted its retries still appears in the output. Do **not** expect `rows == inputs - failures`; and per step 5 the checkpoint state does not outlive the call, so there is nothing to cross-reference afterwards.
+```bash
+python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>
+```
 
 ## 8. Update playbook
 
-Triggered when the AlphaGenome SDK publishes a new release (per the drift probe, § 3) or when the model/API behavior is suspected to have changed server-side.
+Triggered by a new AlphaGenome SDK release, which the drift probe detects (`hvantk drift alphagenome:predictions`, or the fortnightly drift workflow).
 
-1. Run `hvantk drift alphagenome:predictions` (or wait for the fortnightly automated drift workflow) to check whether the PyPI SDK release stream has moved since the committed `tests/drift_fingerprint.json`.
-2. On a schema-risk signal (SDK version bump), re-read the drift probe's module docstring (`drift_probe.py`): it explicitly documents that this probe detects a new SDK release but **cannot** detect a server-side model update shipped without an SDK release — that gap is a property of the service, not a probe bug.
-3. If the new SDK release changes the `alphagenome.data.genome` / `alphagenome.models.dna_client` response shape, update `_serialize_value`/`_serialize_prediction` (`pipelines.py`) accordingly and re-validate with a manual smoke test (no fixture exists to automate this — § 9).
-4. Regenerate the fingerprint with `hvantk drift --regenerate alphagenome:predictions` once the change is validated; do not regenerate in the same PR as a behavioral change (`_conventions` § 12).
+1. **Re-check the `tidy_scores()` columns** in the new SDK against `REQUIRED_COLUMNS` in `builder.py`, and against `ontology_curie` for the filter. A renamed column fails the build with `ValueError`; fix the builder, not the data.
+2. **Re-check the scorer list**: compare `str(s)` for every `s` in `variant_scorers.RECOMMENDED_VARIANT_SCORERS.values()` against the keys of `SCORER_FIELDS`. A new or reprinted scorer fails the build with `ValueError` naming it. Map it to a field and bump `schema_id` (`alphagenome-v3`) and the manifest `version`.
+3. **Regenerate the fixture and snapshots** when the format changes: rerun `tests/testdata/raw/alphagenome/make_fixture.py` on a shard written by the new SDK (it takes the source shard as its argument; its docstring records the selection and the AlphaGenome licence constraints), update `NOTICE.md`, then rerun the round trip with `--regenerate-snapshots` and read the diff.
+4. **Regenerate the drift fingerprint** with `hvantk drift --regenerate alphagenome:predictions` once the change is handled, not in the same PR as a behaviour change (`_conventions` § 12).
+
+What the probe cannot see: a server-side model update shipped without an SDK release. No unauthenticated probe can detect it; record the SDK version and model used when producing scores.
 
 ## 9. Validation contract
 
-Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hvantk/skills/alphagenome/`):
+Declared in `plugin.yaml`'s `tests:` block (paths relative to `hvantk/skills/alphagenome/`):
 
-- `fixture`: `tests/testdata/raw/alphagenome`
+- `fixture`: `tests/testdata/raw/alphagenome` -- `clinvar-subset.parquet`, 150 real rows of the 16.6M-row shard for 3 ClinVar variants (`chr3:39408741:T>C`, `chr6:112216367:C>A`, `chrX:153694448:T>G`), all 19 scorers each. Per (variant, scorer) it keeps the top-|quantile_score| row under the builder's tie-break, the top-|raw_score| row and one random row, so every `top_*` and `max_abs_raw` equals its full-shard value; plus every heart SPLICE_SITE_USAGE row. `make_fixture.py` records the cut. Non-commercial data under the AlphaGenome Output Terms: `NOTICE.md` must stay beside it.
 - `schema_snapshot`: `tests/snapshots/schema.json`
-- `row_snapshot`: `tests/snapshots/sample_rows.json`
+- `row_snapshot`: `tests/snapshots/sample_rows.json` -- all three variants (one row each, so the keys are inlined in `test_builder.py`).
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `command`: `pytest hvantk/skills/alphagenome/tests`
+- `command`: `pytest hvantk/skills/alphagenome/tests -m hail`
 
-**Snapshot status:** `alphagenome:predictions` is on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py`, missing `fixture`, `schema_snapshot`, and `row_snapshot`. Per that file's comment block, AlphaGenome is cause (1) of the two the ledger now records: "a credentialed live prediction API" with "no static upstream artifact" that "cannot be snapshotted" — there is no raw file to commit as a fixture, and the row-level schema depends on the live model/config at build time (§ 5), so no fixed schema or row snapshot can exist either. `tests/test_alphagenome.py::test_alphagenome_predictions_round_trip` is `@pytest.mark.skip`'d for this reason ("No fixture available for alphagenome (requires AlphaGenome API access); manual smoke-test only"). Only `drift_fingerprint` is populated (from a live probe run against PyPI) — see § 3 and § 8. `tests/testdata/alphagenome_config.yaml` is a checked-in config fixture used by `test_pipelines.py`'s `TestLoadConfig` unit tests, distinct from the `fixture` path in the `tests:` block (which remains unpopulated).
+`test_builder.py::test_alphagenome_round_trip` builds the fixture with default parameters, compares the schema and sample rows to the snapshots, and checks an independent oracle: `splice_sites.max_abs_raw` equals `ag_splice_sites` (max |raw_score| over SPLICE_SITES rows, from an independent per-variant ClinVar benchmark computed by the maintainer) for each fixture variant. On the full shard the builder reproduces it for all 339 variants that have it. A second build with `ontology_curies=["UBERON:0006566", "UBERON:0006631"]` pins `splice_site_usage.max_abs_raw` to its curie-defined values, cross-checked pandas against Hail on the full shard. They differ by design from that benchmark's GTEx-only `ag_heart_ssu` for 2 of the 3 variants, because the ENCODE heart track scores higher there (§ 4).

@@ -1,0 +1,494 @@
+[
+  {
+    "key": {
+      "alleles": [
+        "T",
+        "C"
+      ],
+      "locus": "chr3:39408741"
+    },
+    "row": {
+      "atac_active_sum": {
+        "max_abs_raw": 145.5630645751953,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9883230328559875,
+        "top_raw": 145.5630645751953,
+        "top_track": "EFO:0002067 ATAC-seq"
+      },
+      "atac_diff_log2_sum": {
+        "max_abs_raw": 0.04575490951538086,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.823915958404541,
+        "top_raw": 0.04575490951538086,
+        "top_track": "UBERON:0002046 ATAC-seq"
+      },
+      "cage_active_sum": {
+        "max_abs_raw": 51.58055114746094,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.994960606098175,
+        "top_raw": 48.20709228515625,
+        "top_track": "hCAGE EFO:0002793"
+      },
+      "cage_diff_log2_sum": {
+        "max_abs_raw": 0.0490872859954834,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.97145676612854,
+        "top_raw": 0.04414045810699463,
+        "top_track": "hCAGE CL:0002575"
+      },
+      "chip_histone_active_sum": {
+        "max_abs_raw": 115312.0,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9999495148658752,
+        "top_raw": 9660.0,
+        "top_track": "EFO:0002234 Histone ChIP-seq H3K36me3"
+      },
+      "chip_histone_diff_log2_sum": {
+        "max_abs_raw": 0.02685546875,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": -0.9529963731765747,
+        "top_raw": -0.009534835815429688,
+        "top_track": "UBERON:0002369 Histone ChIP-seq H3K36me3"
+      },
+      "chip_tf_active_sum": {
+        "max_abs_raw": 8760.0,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9994770288467407,
+        "top_raw": 1674.0,
+        "top_track": "EFO:0003042 TF ChIP-seq ATF2"
+      },
+      "chip_tf_diff_log2_sum": {
+        "max_abs_raw": 0.0287933349609375,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.8009039163589478,
+        "top_raw": 0.013872146606445312,
+        "top_track": "EFO:0009747 TF ChIP-seq CTCF"
+      },
+      "contact_maps": {
+        "max_abs_raw": 0.0012425780296325684,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.8733832240104675,
+        "top_raw": 0.0011133253574371338,
+        "top_track": "4dn:4DNFI82R42AD"
+      },
+      "dnase_active_sum": {
+        "max_abs_raw": 175.10968017578125,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9887076616287231,
+        "top_raw": 175.10968017578125,
+        "top_track": "EFO:0003037 DNase-seq"
+      },
+      "dnase_diff_log2_sum": {
+        "max_abs_raw": 0.04664468765258789,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.7467664480209351,
+        "top_raw": 0.02451944351196289,
+        "top_track": "EFO:0002788 DNase-seq"
+      },
+      "procap_active_sum": {
+        "max_abs_raw": 185.26531982421875,
+        "n_rows": 1,
+        "top_gene_id": null,
+        "top_quantile": 0.9951276779174805,
+        "top_raw": 185.26531982421875,
+        "top_track": "ENCSR740IPL"
+      },
+      "procap_diff_log2_sum": {
+        "max_abs_raw": 0.04483485221862793,
+        "n_rows": 1,
+        "top_gene_id": null,
+        "top_quantile": 0.9302390813827515,
+        "top_raw": 0.04483485221862793,
+        "top_track": "ENCSR860TYZ"
+      },
+      "rna_seq_active": {
+        "max_abs_raw": 19.92258644104004,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000168334",
+        "top_quantile": 0.9987389445304871,
+        "top_raw": 16.930089950561523,
+        "top_track": "UBERON:0002084 total RNA-seq"
+      },
+      "rna_seq_lfc": {
+        "max_abs_raw": 0.05286896228790283,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000206760",
+        "top_quantile": 0.9999055862426758,
+        "top_raw": 0.03916049003601074,
+        "top_track": "UBERON:0002331 total RNA-seq"
+      },
+      "rna_seq_polyadenylation": {
+        "max_abs_raw": 0.007020445074886084,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000168028",
+        "top_quantile": 0.9146406054496765,
+        "top_raw": 0.0069999657571315765,
+        "top_track": "UBERON:0000473 polyA plus RNA-seq"
+      },
+      "splice_junctions": {
+        "max_abs_raw": 2.146484375,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000168028",
+        "top_quantile": 0.9999663829803467,
+        "top_raw": 2.146484375,
+        "top_track": "junction_EFO:0000572 gtex Cells_EBV-transformed_lymphocytes polyA plus RNA-seq"
+      },
+      "splice_site_usage": {
+        "max_abs_raw": 0.029234886169433594,
+        "n_rows": 5,
+        "top_gene_id": "ENSG00000168028",
+        "top_quantile": 0.9938316345214844,
+        "top_raw": 0.029234886169433594,
+        "top_track": "usage_UBERON:0009834 total RNA-seq"
+      },
+      "splice_sites": {
+        "max_abs_raw": 0.7182388305664062,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000168028",
+        "top_quantile": 0.9998650550842285,
+        "top_raw": 0.7182388305664062,
+        "top_track": "donor"
+      },
+      "variant_id": "chr3:39408741:T>C"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "A"
+      ],
+      "locus": "chr6:112216367"
+    },
+    "row": {
+      "atac_active_sum": {
+        "max_abs_raw": 40.21824645996094,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9639608263969421,
+        "top_raw": 40.21824645996094,
+        "top_track": "UBERON:0000995 ATAC-seq"
+      },
+      "atac_diff_log2_sum": {
+        "max_abs_raw": 0.24225568771362305,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9935001134872437,
+        "top_raw": 0.2010354995727539,
+        "top_track": "EFO:0002713 ATAC-seq"
+      },
+      "cage_active_sum": {
+        "max_abs_raw": 101.22409057617188,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9972551465034485,
+        "top_raw": 101.22409057617188,
+        "top_track": "hCAGE CL:0002138"
+      },
+      "cage_diff_log2_sum": {
+        "max_abs_raw": 3.8564693927764893,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": -0.999998927116394,
+        "top_raw": -3.7998204231262207,
+        "top_track": "hCAGE CL:0002616"
+      },
+      "chip_histone_active_sum": {
+        "max_abs_raw": 31792.0,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9999291300773621,
+        "top_raw": 19340.0,
+        "top_track": "CL:0002618 Histone ChIP-seq H3K4me1"
+      },
+      "chip_histone_diff_log2_sum": {
+        "max_abs_raw": 0.7652530670166016,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": -0.999998927116394,
+        "top_raw": -0.7652530670166016,
+        "top_track": "UBERON:0004550 Histone ChIP-seq H3K36me3"
+      },
+      "chip_tf_active_sum": {
+        "max_abs_raw": 1462.0,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9974344968795776,
+        "top_raw": 603.0,
+        "top_track": "EFO:0005907 TF ChIP-seq EZH2"
+      },
+      "chip_tf_diff_log2_sum": {
+        "max_abs_raw": 0.18390560150146484,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9888489246368408,
+        "top_raw": 0.17131328582763672,
+        "top_track": "EFO:0001182 TF ChIP-seq ZBTB17 genetically modified (insertion) using site-specific recombination targeting H. sapiens ZBTB17"
+      },
+      "contact_maps": {
+        "max_abs_raw": 0.005475029349327087,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9972551465034485,
+        "top_raw": 0.0028242580592632294,
+        "top_track": "4dn:4DNFIK3NF6R2"
+      },
+      "dnase_active_sum": {
+        "max_abs_raw": 107.235595703125,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9852437973022461,
+        "top_raw": 107.235595703125,
+        "top_track": "CL:0002618 DNase-seq"
+      },
+      "dnase_diff_log2_sum": {
+        "max_abs_raw": 0.30606508255004883,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9928072094917297,
+        "top_raw": 0.30606508255004883,
+        "top_track": "UBERON:0000948 DNase-seq"
+      },
+      "procap_active_sum": {
+        "max_abs_raw": 21.776649475097656,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9831382632255554,
+        "top_raw": 21.776649475097656,
+        "top_track": "ENCSR801ECP"
+      },
+      "procap_diff_log2_sum": {
+        "max_abs_raw": 0.4878513813018799,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9952043890953064,
+        "top_raw": 0.4878513813018799,
+        "top_track": "ENCSR072YCM"
+      },
+      "rna_seq_active": {
+        "max_abs_raw": 4.454890727996826,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000112769",
+        "top_quantile": 0.9936203956604004,
+        "top_raw": 3.549515962600708,
+        "top_track": "CL:0002591 total RNA-seq"
+      },
+      "rna_seq_lfc": {
+        "max_abs_raw": 1.1177105903625488,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000270661",
+        "top_quantile": 0.9999997615814209,
+        "top_raw": 1.0534577369689941,
+        "top_track": "UBERON:0001499 polyA plus RNA-seq"
+      },
+      "rna_seq_polyadenylation": {
+        "max_abs_raw": 0.029702922329306602,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000112769",
+        "top_quantile": 0.9875146150588989,
+        "top_raw": 0.029702922329306602,
+        "top_track": "EFO:0001193 total RNA-seq"
+      },
+      "splice_junctions": {
+        "max_abs_raw": 8.671875,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000112769",
+        "top_quantile": 0.9999999403953552,
+        "top_raw": 7.72265625,
+        "top_track": "junction_CL:0000100 total RNA-seq"
+      },
+      "splice_site_usage": {
+        "max_abs_raw": 0.9834632873535156,
+        "n_rows": 6,
+        "top_gene_id": "ENSG00000112769",
+        "top_quantile": 0.9999999403953552,
+        "top_raw": 0.9718513488769531,
+        "top_track": "usage_CL:0000346 total RNA-seq"
+      },
+      "splice_sites": {
+        "max_abs_raw": 0.9982147216796875,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000112769",
+        "top_quantile": 0.9999997019767761,
+        "top_raw": 0.9982147216796875,
+        "top_track": "donor"
+      },
+      "variant_id": "chr6:112216367:C>A"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "T",
+        "G"
+      ],
+      "locus": "chrX:153694448"
+    },
+    "row": {
+      "atac_active_sum": {
+        "max_abs_raw": 99.41239929199219,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9836908578872681,
+        "top_raw": 67.78466033935547,
+        "top_track": "UBERON:0002099 ATAC-seq"
+      },
+      "atac_diff_log2_sum": {
+        "max_abs_raw": 0.09237480163574219,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9574425220489502,
+        "top_raw": 0.09237480163574219,
+        "top_track": "NTR:0000494 ATAC-seq"
+      },
+      "cage_active_sum": {
+        "max_abs_raw": 152.41064453125,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9976021647453308,
+        "top_raw": 152.41064453125,
+        "top_track": "hCAGE UBERON:0001637"
+      },
+      "cage_diff_log2_sum": {
+        "max_abs_raw": 0.18350696563720703,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": -0.9943215847015381,
+        "top_raw": -0.16477251052856445,
+        "top_track": "hCAGE CL:0002603"
+      },
+      "chip_histone_active_sum": {
+        "max_abs_raw": 25092.0,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9967500567436218,
+        "top_raw": 25092.0,
+        "top_track": "UBERON:0002240 Histone ChIP-seq H3K36me3"
+      },
+      "chip_histone_diff_log2_sum": {
+        "max_abs_raw": 0.13579082489013672,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": -0.9989179968833923,
+        "top_raw": -0.07970905303955078,
+        "top_track": "UBERON:0002171 Histone ChIP-seq H3K36me3"
+      },
+      "chip_tf_active_sum": {
+        "max_abs_raw": 18800.0,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.9997059106826782,
+        "top_raw": 8240.0,
+        "top_track": "EFO:0002067 TF ChIP-seq POLR2AphosphoS2"
+      },
+      "chip_tf_diff_log2_sum": {
+        "max_abs_raw": 0.2879800796508789,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9952043890953064,
+        "top_raw": 0.2879800796508789,
+        "top_track": "EFO:0002067 TF ChIP-seq NR2F1"
+      },
+      "contact_maps": {
+        "max_abs_raw": 0.0021488498896360397,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9852437973022461,
+        "top_raw": 0.0021488498896360397,
+        "top_track": "4dn:4DNFIMDOXUT8"
+      },
+      "dnase_active_sum": {
+        "max_abs_raw": 113.262939453125,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9813678860664368,
+        "top_raw": 113.262939453125,
+        "top_track": "UBERON:0002113 DNase-seq"
+      },
+      "dnase_diff_log2_sum": {
+        "max_abs_raw": 0.16259431838989258,
+        "n_rows": 2,
+        "top_gene_id": null,
+        "top_quantile": 0.9627357721328735,
+        "top_raw": 0.16259431838989258,
+        "top_track": "UBERON:0002048 DNase-seq"
+      },
+      "procap_active_sum": {
+        "max_abs_raw": 35.623497009277344,
+        "n_rows": 3,
+        "top_gene_id": null,
+        "top_quantile": 0.98572838306427,
+        "top_raw": 19.500648498535156,
+        "top_track": "ENCSR860TYZ"
+      },
+      "procap_diff_log2_sum": {
+        "max_abs_raw": 0.0986781120300293,
+        "n_rows": 1,
+        "top_gene_id": null,
+        "top_quantile": 0.9651346802711487,
+        "top_raw": 0.0986781120300293,
+        "top_track": "ENCSR740IPL"
+      },
+      "rna_seq_active": {
+        "max_abs_raw": 25.281818389892578,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000182492",
+        "top_quantile": 0.9993591904640198,
+        "top_raw": 25.038480758666992,
+        "top_track": "CL:0011022 polyA plus RNA-seq"
+      },
+      "rna_seq_lfc": {
+        "max_abs_raw": 0.07654309272766113,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000130821",
+        "top_quantile": -0.9999087452888489,
+        "top_raw": -0.07654309272766113,
+        "top_track": "EFO:0001196 total RNA-seq"
+      },
+      "rna_seq_polyadenylation": {
+        "max_abs_raw": 0.025191228836774826,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000130821",
+        "top_quantile": 0.9894396662712097,
+        "top_raw": 0.024051563814282417,
+        "top_track": "EFO:0000572 gtex Cells_EBV-transformed_lymphocytes polyA plus RNA-seq"
+      },
+      "splice_junctions": {
+        "max_abs_raw": 8.625,
+        "n_rows": 3,
+        "top_gene_id": "ENSG00000130821",
+        "top_quantile": 0.9999999403953552,
+        "top_raw": 6.484375,
+        "top_track": "junction_EFO:0002824 polyA plus RNA-seq"
+      },
+      "splice_site_usage": {
+        "max_abs_raw": 0.9530501365661621,
+        "n_rows": 6,
+        "top_gene_id": "ENSG00000130821",
+        "top_quantile": 0.9999986886978149,
+        "top_raw": 0.9374151229858398,
+        "top_track": "usage_UBERON:0001870 gtex Brain_Cortex polyA plus RNA-seq"
+      },
+      "splice_sites": {
+        "max_abs_raw": 0.9948883056640625,
+        "n_rows": 2,
+        "top_gene_id": "ENSG00000130821",
+        "top_quantile": 0.9999971389770508,
+        "top_raw": 0.9948883056640625,
+        "top_track": "donor"
+      },
+      "variant_id": "chrX:153694448:T>G"
+    }
+  }
+]
