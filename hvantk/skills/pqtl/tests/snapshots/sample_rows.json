@@ -1,0 +1,59 @@
+[
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "G"
+      ],
+      "gene_id": "ENSG00000012048",
+      "locus": "chr17:43094687"
+    },
+    "row": {
+      "beta": 0.2451,
+      "gene_symbol": "BRCA1",
+      "is_cis": true,
+      "p_value": 0.00012,
+      "se": 0.06333333333333334,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "G",
+        "C"
+      ],
+      "gene_id": "ENSG00000139618",
+      "locus": "chr13:32340073"
+    },
+    "row": {
+      "beta": -0.3198,
+      "gene_symbol": "BRCA2",
+      "is_cis": true,
+      "p_value": 6.2e-06,
+      "se": 0.07075221238938054,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "T"
+      ],
+      "gene_id": "SYNTHGENE1",
+      "locus": "chr5:100000"
+    },
+    "row": {
+      "beta": -0.182,
+      "gene_symbol": "SYNTHGENE1",
+      "is_cis": true,
+      "p_value": 0.0059,
+      "se": 0.06618181818181817,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  }
+]

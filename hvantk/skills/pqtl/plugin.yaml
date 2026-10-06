@@ -25,7 +25,7 @@ datasets:
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/pqtl/tests
+      command: pytest hvantk/skills/pqtl/tests -m hail
       fixture: tests/testdata/raw/pqtl
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
