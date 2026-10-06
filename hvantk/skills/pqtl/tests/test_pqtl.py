@@ -1,8 +1,6 @@
-"""Skipped: no fixture for pqtl; loader-only test."""
+"""Plugin registration test. The round-trip test lives in test_builder.py."""
 
 from __future__ import annotations
-
-import pytest
 
 from hvantk.core.models import AnnotationTable
 from hvantk.core.plugin import loader as plugin_loader
@@ -14,8 +12,3 @@ def test_pqtl_metrics_registered():
     spec = reg.get_dataset("pqtl:metrics")
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "pqtl-v1"
-
-
-@pytest.mark.skip(reason="No fixture available for pqtl; manual smoke-test only")
-def test_pqtl_metrics_round_trip():
-    pass

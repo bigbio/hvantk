@@ -34,9 +34,9 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 # Datasets that do NOT yet ship every declared artifact, with the fields still missing.
 # Shrink this as snapshots land; never grow it for a new provider without a reason here.
 #
-# One cause remains: there is no artifact that CAN be committed at all, so these entries
-# are permanent rather than pending -- alphagenome is a credentialed live prediction API,
-# pqtl is publication-only supplementary data.
+# One cause remains: there is no artifact that CAN be committed at all, so the entry
+# below is permanent rather than pending -- alphagenome is a credentialed live prediction
+# API.
 #
 # A licence that forbids redistributing real rows is NOT this kind of cause, and is no
 # longer accepted as one: it limits what a fixture may contain, never whether one exists.
@@ -71,15 +71,15 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 #     build; every row fabricated), so the round-trip test grades parse_raw_dir
 #     together with the builder, not just the builder (#341; the raw-zip fixture
 #     replaced an earlier parsed-intermediate one).
+#   pqtl -- synthetic fixture (the Fang et al. preprint is cc_no); format checked
+#     against the real allpairs files.
 #   cosmic-cgc -- synthetic fixture (the COSMIC licence forbids real rows); header and
 #     conventions checked against a licensed v103 export.
 #
-# The two entries below are NOT the datasets without a drift probe: every dataset in
-# the tree ships a live one. They are the datasets that cannot ship a *fixture* or
-# *snapshot* at all.
+# The entry below is NOT a dataset without a drift probe: every dataset in the tree ships
+# a live one. It is the dataset that cannot ship a *fixture* or *snapshot* at all.
 KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
     "alphagenome:predictions": ("fixture", "schema_snapshot", "row_snapshot"),
-    "pqtl:metrics": ("fixture", "schema_snapshot", "row_snapshot"),
 }
 
 # Why each remaining entry can never be completed. Every KNOWN_INCOMPLETE key must appear
@@ -91,10 +91,6 @@ PERMANENTLY_UNGRADABLE: dict[str, str] = {
     "alphagenome:predictions": (
         "credentialed live prediction API; there is no upstream file to truncate, and "
         "recorded predictions would pin a model version rather than a data release"
-    ),
-    "pqtl:metrics": (
-        "publication-only supplementary data (Fang et al.); no redistributable URL and "
-        "no stable artifact to truncate"
     ),
 }
 
