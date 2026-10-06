@@ -1,6 +1,6 @@
 # Third-Party Data Attribution
 
-This document lists third-party datasets committed to this repository as test fixtures. These are real excerpts from public data sources, retained in the git history to support reproducible testing. Synthetic fixtures (fabricated values for testing purposes) are not listed here. Test data is excluded from built packages via the `exclude` list in `pyproject.toml`, so this document concerns the git repository only.
+This document lists third-party datasets committed to this repository as test fixtures. These are real excerpts from public data sources, committed to support reproducible testing. Synthetic fixtures (fabricated values for testing purposes) are not listed here. Test data is excluded from built packages via the `exclude` list in `pyproject.toml`, so this document concerns the git repository only. A pull request that commits a real excerpt as a fixture adds its entry here.
 
 ## Expression Atlas
 
