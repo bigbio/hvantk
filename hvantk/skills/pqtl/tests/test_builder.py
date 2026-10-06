@@ -60,9 +60,9 @@ class _StubGeneCatalog:
 def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build pQTL metrics from the synthetic Liver fixture; assert schema/row stability.
 
-    Also pins two behaviors that have no dedicated test elsewhere (folded in here
-    per the project's test-minimization policy rather than added as separate test
-    functions):
+    Also pins two behaviors that have no dedicated test elsewhere, folded into this
+    test rather than split into separate ones so they reuse this test's single Hail
+    build instead of each paying for their own:
       - the fixture's STAT == 0 row (gene_name=BRCA1, chr17:43095211) is dropped,
         since SE is undefined for it;
       - every surviving row's derived SE (= |beta / stat|) is strictly positive.
@@ -100,6 +100,10 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots):
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
     assert actual_rows == expected_rows, "pQTL sample rows drifted from snapshot"
+
+    # The fixture has 8 rows and exactly one (STAT == 0) must be dropped; catches a
+    # row silently dropped or duplicated among rows the snapshot does not sample.
+    assert ht.count() == 7, "expected 8 fixture rows minus 1 dropped STAT==0 row"
 
     # The fixture's STAT == 0 row (BRCA1 @ chr17:43095211) must be dropped by the
     # builder before SE derivation (|beta / stat|  is undefined at stat == 0).
