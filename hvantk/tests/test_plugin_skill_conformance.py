@@ -495,8 +495,7 @@ def test_spec_declares_the_test_artifact_paths_its_manifest_does():
 
 #: Phrases a spec uses to say an artifact has not been produced yet. Matched only when
 #: every declared artifact IS on disk, so a genuinely ungradable dataset can still say
-#: so -- `alphagenome`, `cosmic_cgc` and `pqtl` ship no fixture and must keep explaining
-#: why.
+#: so -- `alphagenome` and `pqtl` ship no fixture and must keep explaining why.
 #: Phrasings that claim an artifact does not exist. Matched case-insensitively, so
 #: `NOT yet been seeded` needs no separate entry -- it was one, strictly subsumed by the
 #: first pattern, and produced a duplicate problem line whenever it fired.

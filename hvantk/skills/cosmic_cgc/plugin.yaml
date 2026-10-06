@@ -25,7 +25,7 @@ datasets:
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/cosmic_cgc/tests
+      command: pytest hvantk/skills/cosmic_cgc/tests -m hail
       fixture: tests/testdata/raw/cosmic-cgc
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json

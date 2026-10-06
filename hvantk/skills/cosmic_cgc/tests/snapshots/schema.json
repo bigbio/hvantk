@@ -1,0 +1,30 @@
+{
+  "key": [
+    "hgnc_id"
+  ],
+  "row": {
+    "cancer_syndrome": "str",
+    "chr_band": "str",
+    "chromosome": "str",
+    "classification": "str",
+    "classification_level": "int32",
+    "cosmic_gene_id": "str",
+    "gene_name": "str",
+    "gene_symbol": "str",
+    "genome_start": "int32",
+    "genome_stop": "int32",
+    "germline": "bool",
+    "hgnc_id": "str",
+    "molecular_genetics": "str",
+    "mutation_types": "array<str>",
+    "other_germline_mut": "str",
+    "other_syndrome": "str",
+    "role_in_cancer": "array<str>",
+    "somatic": "bool",
+    "synonyms": "str",
+    "tissue_type": "str",
+    "translocation_partner": "str",
+    "tumour_types_germline": "array<str>",
+    "tumour_types_somatic": "array<str>"
+  }
+}
