@@ -47,3 +47,26 @@ This document lists third-party datasets committed to this repository as test fi
 **Modifications**:
 - Rows only: 3 of the 411 variants (`chr3:39408741:T>C`, `chr6:112216367:C>A`, `chrX:153694448:T>G`) and 150 of the 16,642,316 rows, selected by `make_fixture.py` with seed 20261006 and written in reverse source order. For each variant and scorer it keeps the row with the largest |quantile_score|, the row with the largest |raw_score| and one random row, plus every heart SPLICE_SITE_USAGE row
 - Columns: unchanged
+
+## dbNSFP
+
+### Fixture: `hvantk/tests/testdata/raw/dbnsfp/`
+
+**Source**: dbNSFP, academic branch, release v4.9a: functional predictions and annotations for all potential human non-synonymous and splice-site SNVs, distributed through https://www.dbnsfp.org after academic registration.
+
+**Version**: v4.9a (academic). Committed to this repository in efd6c3bd (2025-08-21).
+
+**Files**:
+- `dbNSFP4_v49a_example_variants.bgz`: rows of the dbNSFP variant table in its distributed tab-separated layout, BGZF-compressed
+- `NOTICE.md`: the licence notice that stays with the data
+
+**Other copies of these data** (same source and terms):
+- `hvantk/skills/dbnsfp/tests/snapshots/sample_rows.json`: six fixture rows as the dbNSFP builder outputs them, with the values parsed into typed fields; its notice is `tests/snapshots/NOTICE.md` beside it. `schema.json` there holds only field names and types.
+
+**Licence**: CC BY-NC-ND 4.0 (https://creativecommons.org/licenses/by-nc-nd/4.0/), the licence of the dbNSFP academic branch (https://www.dbnsfp.org/license/): non-commercial use only, with attribution, and no sharing of modified versions. Commercial use requires dbNSFP's paid commercial licence, and the CADD, VEST, M-CAP, MutScore, PolyPhen-2, PrimateAI and RGC Million Exome scores in the academic branch also need commercial licences from their authors. Not covered by this repository's MIT licence; the notice is `NOTICE.md` in the fixture directory, with a second one beside the snapshot.
+
+**Attribution**: dbNSFP, © 2024–2026 Genos Bioinformatics LLC — https://www.dbnsfp.org. Citation: Liu X, Li C, Mou C, Dong Y, Tu Y. "dbNSFP v4: a comprehensive database of transcript-specific functional predictions and annotations for human nonsynonymous and splice-site SNVs." *Genome Medicine* 12, 103 (2020), https://doi.org/10.1186/s13073-020-00803-9.
+
+**Modifications**:
+- None to the content: the header (all 458 columns) and the first 4,999 variants on chromosome 10 of the v4.9a variant table, byte-identical to the release once decompressed, stored BGZF-compressed
+- To regenerate it, extract whole lines unedited: trimming columns or editing values would make a modified version, which the licence does not allow sharing

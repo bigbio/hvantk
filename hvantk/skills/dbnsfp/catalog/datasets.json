@@ -10,7 +10,7 @@
     "organism": "Homo sapiens",
     "tissue_type": "all",
     "sample_count": 84000000,
-    "license": "Academic use",
+    "license": "CC BY-NC-ND 4.0 (academic branch); commercial use requires a paid licence",
     "doi": "10.1002/humu.21517",
     "genome_build": "GRCh38",
     "variant_types": [
