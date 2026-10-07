@@ -3,8 +3,14 @@
 Every artifact on disk or in memory carries a Provenance so drift detection,
 caching, and reproducibility can work end-to-end. Use Provenance.unknown(reason)
 only for tests, the legacy-file shim, or scripts that legitimately have no
-upstream lineage; production code must plumb real provenance. ``build_parameters``
-records builder filters or other options that affect the artifact's contents.
+upstream lineage; production code must plumb real provenance.
+
+``build_parameters`` is optional: a builder may use it to record the options that
+shaped the artifact's contents (AlphaGenome records its ``output_types`` and
+``ontology_curies`` filters). Most builders record nothing, so an empty dict does
+not mean the build took no options. The value must be JSON-serialisable
+(``BuildContext.provenance`` stores a JSON copy and rejects anything else), and it
+is empty in sidecars written before the field existed.
 """
 
 from __future__ import annotations
@@ -23,7 +29,8 @@ class Provenance:
     build_timestamp: datetime
     builder_commit: str | None
     parents: tuple["Provenance", ...] = field(default_factory=tuple)
-    build_parameters: dict[str, object] = field(default_factory=dict)
+    # A dict is unhashable, so it stays out of __hash__; __eq__ still compares it.
+    build_parameters: dict[str, object] = field(default_factory=dict, hash=False)
 
     @classmethod
     def unknown(cls, *, reason: str) -> "Provenance":

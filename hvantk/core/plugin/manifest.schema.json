@@ -123,7 +123,7 @@
           },
           "schema_id": {
             "type": "string",
-            "description": "The schema identifier stamped onto the artifact's Provenance."
+            "description": "The default schema identifier for the artifact's Provenance: the builder stamps it or one of 'schema_ids'."
           },
           "schema_ids": {
             "type": "array",
@@ -132,7 +132,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Additional schema identifiers accepted when a builder supports multiple input schema generations."
+            "description": "Other output schema identifiers the builder may stamp instead of 'schema_id', for a dataset whose output schema depends on its input (e.g. cosmic-cgc stamps cosmic-cgc-legacy-v1 for a legacy-header export). run_builder_for_spec rejects an identifier that is neither 'schema_id' nor listed here."
           },
           "skill": {
             "type": "string",

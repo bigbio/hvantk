@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 import pytest
 
 from hvantk.core.models.build_context import BuildContext
@@ -75,6 +78,34 @@ def test_provenance_manifest_without_build_parameters_remains_readable():
     payload.pop("build_parameters")
 
     assert _from_dict(payload).build_parameters == {}
+
+
+def test_build_parameters_are_stamped_as_a_json_copy(tmp_path):
+    """A non-JSON value fails at stamping, before save() can write data with no sidecar.
+
+    What is stored is a JSON copy: a later change to the caller's dict does not reach
+    it, a tuple is stored as the list the sidecar reloads, and the provenance stays
+    hashable while build_parameters still takes part in equality.
+    """
+    from hvantk.core.io._manifest import read_manifest, write_manifest
+
+    ctx = BuildContext(
+        plugin="x",
+        dataset="x:y",
+        plugin_version="0",
+        source_fingerprint="sha256:x",
+        builder_commit=None,
+    )
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        ctx.provenance(schema_id="x-y-v1", build_parameters={"input": Path("in.tsv")})
+
+    params = {"curies": ("UBERON:0006566",)}
+    provenance = ctx.provenance(schema_id="x-y-v1", build_parameters=params)
+    params["curies"] = ()
+    write_manifest(provenance, tmp_path / "rows.parquet")
+    assert read_manifest(tmp_path / "rows.parquet") == provenance
+    assert hash(provenance) == hash(replace(provenance))
+    assert provenance != replace(provenance, build_parameters={})
 
 
 def test_dataset_spec_accepts_new_fields():

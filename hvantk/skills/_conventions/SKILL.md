@@ -203,6 +203,7 @@ NEVER paste these helpers' source into a skill. Reference them by path.
   return type is one of `AnnotationTable` / `ExpressionMatrix` / `VariantMatrix` /
   `GeneSet`. `parsed_input` is whatever `lifecycle.parse` returned (often a raw path or directory); `ctx` is the platform-supplied `BuildContext`. Common `params`: `reference_genome: str`, plus dataset-specific flags forwarded from `--plugin-arg`.
 - The builder returns the concrete artifact its manifest declares via `artifact_type` (from `hvantk/core/models/`), stamping provenance via `ctx.provenance(schema_id=...)`. The builder does NOT take an `output_path` / `overwrite` kwarg and does NOT checkpoint itself — `run_builder_for_spec` saves the returned artifact.
+- Options that change the artifact's contents (a filter, a threshold) can be recorded with `ctx.provenance(schema_id=..., build_parameters={...})`, so that a filtered and an unfiltered build differ in more than their timestamp. AlphaGenome records its `output_types` and `ontology_curies` this way. The dict is optional and must be JSON-serialisable: a JSON copy is stored, so a tuple is recorded as a list, and a non-JSON value (a `Path`, NaN) raises when stamped. Most builders record nothing, so an empty `build_parameters` does not mean the build took no options.
 - Location: `hvantk/skills/<provider>/builder.py` for single-dataset providers, `hvantk/skills/<provider>/<dataset>/builder.py` for multi-dataset providers.
 
 ## 6. Registry registration via plugin.yaml
@@ -225,6 +226,18 @@ datasets:
 ```
 
 `get_registry().get_dataset("hgnc:lookup")` returns the executable `DatasetSpec` (callables resolved lazily); top-level builds run through `run_builder_for_spec`. No `registry.py` edit and no `_apply_plugin_registrations` step is involved.
+
+### Optional: `schema_ids:` — a builder that stamps more than one schema
+
+`schema_id` is the default output schema. A builder whose output schema depends on its input lists the other IDs it may stamp under `schema_ids`. `cosmic-cgc` stamps `cosmic-cgc-legacy-v1` when the export uses the legacy header and `cosmic-cgc-v2` otherwise:
+
+```yaml
+    schema_id: cosmic-cgc-v2
+    schema_ids:
+      - cosmic-cgc-legacy-v1
+```
+
+`run_builder_for_spec` rejects a stamped ID that is neither `schema_id` nor listed in `schema_ids`.
 
 ### Optional: `scores:` — per-predictor training provenance
 
@@ -291,8 +304,9 @@ This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycl
 ## 8. Test pattern
 
 - Tests live next to the code: `hvantk/skills/<provider>/tests/` (single-dataset) or `hvantk/skills/<provider>/<dataset>/tests/` (multi-dataset).
-- Round-trip test file: `test_builder.py` (Hail-backed providers) or `test_<dataset>.py` (anndata providers).
+- Round-trip test file: `test_builder.py` (Hail-backed providers) or `test_<dataset>.py` (anndata providers). Name the round-trip function `test_*round_trip*` (e.g. `test_msigdb_round_trip`).
 - Mark with `@pytest.mark.hail` if Hail is required. Use the `hail_session` fixture.
+- `hvantk/tests/test_plugin_contract_artifacts.py` checks three things for each dataset: the files its `tests.command` points pytest at define a module-level `test_*round_trip*` function; none of those functions carries a `skip` or `skipif` marker, as a decorator or through a module-level `pytestmark`; and, when the dataset's `backend` is `hail`, at least one of them is marked `hail`, so a `-m hail` run selects it. The check is static: it parses the test files without running them, so it does not catch a `pytest.skip()` call in the test body, `pytest.importorskip`, or a marker not written as `pytest.mark.<name>`. A follow-up will add a run-time check.
 - Fixtures: `tests/testdata/raw/<dataset>/`. Snapshots: `tests/snapshots/`.
 - Assert against snapshots with `hvantk.tests._snapshot_utils`. The `--regenerate-snapshots` flag rewrites snapshots in place.
 

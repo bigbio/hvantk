@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   # Runs in seconds and needs no environment, so it sits in the workflow that triggers on
-  # every push rather than only on main-targeted PRs. Its absence is why poetry.lock drifted
-  # out of sync with pyproject.toml across ~28 commits without CI noticing: nothing in the
-  # pipeline installed via poetry or validated the lock, so the two could disagree forever
-  # while every job stayed green.
+  # every push and every pull request rather than only on main-targeted PRs. Its absence is
+  # why poetry.lock drifted out of sync with pyproject.toml across ~28 commits without CI
+  # noticing: nothing in the pipeline installed via poetry or validated the lock, so the two
+  # could disagree forever while every job stayed green.
   lockfile:
     name: poetry.lock in sync
     runs-on: ubuntu-latest
@@ -135,7 +135,10 @@ jobs:
   # provider list drifted 8 providers behind the tree, and how three builder/streamer
   # bugs stayed green. Scoped to the contract tests (~2 min) rather than the whole `hail`
   # suite (~31 min, dominated by unrelated HGC/ancestry integration work) so it is cheap
-  # enough to run on every push.
+  # enough to run on every push and every pull request. The `pull_request` trigger is what
+  # covers a pull request from a fork: pushes to a fork run workflows in the fork, if
+  # anywhere, never here, so until #428 such a PR got no Hail run at all (#427) -- not
+  # from this job, nor from hgc-hail below.
   plugin-contract:
     name: Plugin contract (hail)
     runs-on: ubuntu-latest

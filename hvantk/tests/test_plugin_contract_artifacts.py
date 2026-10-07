@@ -205,7 +205,15 @@ def test_every_known_gap_is_classified_permanent():
 
 
 def test_dataset_round_trips_exist_and_are_not_marked_skipped():
-    """Declared artifacts are insufficient unless their round-trip test can run."""
+    """Each dataset's test command must reach a round-trip test not marked to skip.
+
+    The files a dataset's ``tests.command`` points pytest at must define a module-level
+    ``test_*round_trip*`` function; none may carry a ``skip``/``skipif`` marker (as a
+    decorator or through a module-level ``pytestmark``); and a hail-backed dataset needs
+    one marked ``hail``. This is a static check of the source, not proof the test runs: a
+    ``pytest.skip()`` call in the body, ``pytest.importorskip`` or a failing import
+    still passes it. A run-time check is a planned follow-up.
+    """
     problems = []
     for manifest_path in sorted(SKILLS_DIR.glob("*/plugin.yaml")):
         manifest = yaml.safe_load(manifest_path.read_text())
@@ -266,6 +274,7 @@ def test_dataset_round_trips_exist_and_are_not_marked_skipped():
                 )
 
     assert not problems, (
-        "Every dataset must declare an executable, non-skipped round-trip test:\n"
+        "Every dataset's tests.command must reach a test_*round_trip* function with no "
+        "skip/skipif marker, and a hail-marked one for a hail backend:\n"
         + "\n".join(f"  {problem}" for problem in problems)
     )
