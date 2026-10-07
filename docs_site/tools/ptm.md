@@ -240,7 +240,7 @@ Curated post-translational modification sites from UniProt (human, reviewed/Swis
 
 ### PeptideAtlas and CPTAC Phosphosites
 
-Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` writes `peptideatlas-phospho-<build_date>-<build_id>.tsv`, which `build` takes with `--peptideatlas-tsv`. `hvantk download cptac-phospho` requires the `ptm` extra (`cptac`) and needs `--cancer-type` or `--all`; pass its site table, `cptac-phospho-<cancer_type>.tsv` (or `cptac-phospho-pancancer.tsv` with `--all`), with `--cptac-tsv`, not the `-tumor`/`-normal` TSVs or the matrix and metadata CSVs it also writes. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
+Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` writes `peptideatlas-phospho-<build_date>-<build_id>.tsv`, which `build` takes with `--peptideatlas-tsv`. A TSV written before the #425 fix (plugin version 0.1.0) carries inflated `n_observations`, and `download` returns an existing file unchanged, so delete it (or pass `--overwrite`) and download again. `hvantk download cptac-phospho` requires the `ptm` extra (`cptac`) and needs `--cancer-type` or `--all`; pass its site table, `cptac-phospho-<cancer_type>.tsv` (or `cptac-phospho-pancancer.tsv` with `--all`), with `--cptac-tsv`, not the `-tumor`/`-normal` TSVs or the matrix and metadata CSVs it also writes. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
 
 ### Ensembl GTF
 
