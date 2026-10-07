@@ -143,7 +143,10 @@ def run_builder_for_spec(
             f"expected {spec.artifact_type.__name__}"
         )
 
-    accepted_schema_ids = {spec.schema_id, *spec.schema_ids} - {None}
+    schema_ids = getattr(spec, "schema_ids", ())
+    if not isinstance(schema_ids, (tuple, list, set, frozenset)):
+        schema_ids = ()
+    accepted_schema_ids = {spec.schema_id, *schema_ids} - {None}
     if accepted_schema_ids and artifact.provenance.schema_id not in accepted_schema_ids:
         raise BuilderContractError(
             f"{spec.name}: build_fn stamped schema_id "
