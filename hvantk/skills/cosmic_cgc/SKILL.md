@@ -91,7 +91,7 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 
 ## 5. Output contract
 
-`AnnotationTable` (`schema_id="cosmic-cgc-v1"`), one row per gene, keyed by `hgnc_id` (if a `gene_catalog` was supplied) or `gene_symbol` (default). Field list below is the committed `tests/snapshots/schema.json` (§ 9), built from the current (v103+) header via the synthetic fixture with a `gene_catalog` supplied (hence `hgnc_id` present and keyed):
+`AnnotationTable` (`schema_id="cosmic-cgc-v2"` for v103+ headers, or `cosmic-cgc-legacy-v1` for legacy headers), one row per gene, keyed by `hgnc_id` (if a `gene_catalog` was supplied) or `gene_symbol` (default). Field list below is the committed `tests/snapshots/schema.json` (§ 9), built from the current (v103+) header via the synthetic fixture with a `gene_catalog` supplied (hence `hgnc_id` present and keyed):
 
 `gene_symbol` (str), `gene_name` (str), `cosmic_gene_id` (str), `chromosome` (str), `genome_start` (int32), `genome_stop` (int32), `chr_band` (str), `somatic` (bool), `germline` (bool), `tumour_types_somatic` (`array<str>`), `tumour_types_germline` (`array<str>`), `cancer_syndrome` (str), `tissue_type` (str), `molecular_genetics` (str), `role_in_cancer` (`array<str>`), `mutation_types` (`array<str>`), `translocation_partner` (str), `other_germline_mut` (str), `other_syndrome` (str), `classification` (str, `"Tier 1"`/`"Tier 2"`), `synonyms` (str), `classification_level` (int32), `hgnc_id` (str, only when a `gene_catalog` was supplied).
 
@@ -99,7 +99,7 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 
 ## 6. hvantk integration points
 
-- Manifest: `hvantk/skills/cosmic_cgc/plugin.yaml` — dataset `cosmic-cgc:submissions`, `artifact_type: AnnotationTable`, `schema_id: cosmic-cgc-v1`. No `lifecycle:` or `cli:` block declared.
+- Manifest: `hvantk/skills/cosmic_cgc/plugin.yaml` — dataset `cosmic-cgc:submissions`, `artifact_type: AnnotationTable`, with current and legacy schema IDs. No `lifecycle:` or `cli:` block declared.
 - Builder: `build_cosmic_cgc_submissions` in `hvantk/skills/cosmic_cgc/builder.py`. Signature `(parsed_input, ctx, **params) -> AnnotationTable`. Recognised `params`: `mutation_context` (`"both"` default, `"somatic"`, or `"germline"`), `min_classification` (one of `COSMIC_CGC_CLASSIFICATION_LEVELS`), `gene_catalog` (a `GeneCatalogStreamer`), `fields`.
 - Constants: `COSMIC_CGC_FIELDS`, `COSMIC_CGC_CLASSIFICATION_LEVELS`, `COSMIC_TISSUE_TYPES`, `COSMIC_MUTATION_CONTEXTS` in `hvantk/skills/cosmic_cgc/shared/constants.py`.
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/cosmic_cgc/drift_probe.py` (`PROBE_VERSION = 2`). Probes the public release-notes page only — the gated Census data is never fetched — and anchors on `id="v<N>"` HTML attributes, never on prose (a prior prose-matching approach picked up unrelated `Actionability`-product version mentions). Fails closed if the response redirected (the host 302s the trailing-slash variant to a login form) or if no anchors are found.
@@ -165,7 +165,7 @@ asserts: the built schema matches `schema_snapshot`; three sampled rows (keyed b
 `CHROMOSOME`/`GENOME_START`/`GENOME_STOP` column names leak into the built schema.
 `hvantk/skills/cosmic_cgc/tests/test_cosmic_cgc.py::test_cosmic_cgc_submissions_registered`
 is loader-only (confirms the manifest resolves `cosmic-cgc:submissions` to
-`AnnotationTable` / `cosmic-cgc-v1`). `hvantk/skills/cosmic_cgc/tests/test_drift_probe.py`
+`AnnotationTable` / the header-specific COSMIC CGC schema ID). `hvantk/skills/cosmic_cgc/tests/test_drift_probe.py`
 runs 7 offline (`requests_mock`) tests of the release-index probe: anchor-only matching
 excludes unrelated `Actionability`-product prose versions, editorial prose edits don't
 move the signal, forward-looking prose can't bump `source_version`, numeric sort,

@@ -1,8 +1,7 @@
 """BuildContext: the platform's gift to a skill's build_fn.
 
-Skill authors only ever supply schema_id when calling ctx.provenance(...).
-Everything else (plugin name, version, source fingerprint, builder commit)
-is platform-computed and plumbed through this dataclass.
+The platform supplies plugin name, version, source fingerprint and builder
+commit; builders may also record content-affecting parameters with provenance.
 """
 
 from __future__ import annotations
@@ -21,7 +20,9 @@ class BuildContext:
     source_fingerprint: str
     builder_commit: str | None
 
-    def provenance(self, *, schema_id: str) -> Provenance:
+    def provenance(
+        self, *, schema_id: str, build_parameters: dict[str, object] | None = None
+    ) -> Provenance:
         return Provenance(
             plugin=self.plugin,
             dataset=self.dataset,
@@ -30,4 +31,5 @@ class BuildContext:
             schema_id=schema_id,
             build_timestamp=datetime.now(timezone.utc),
             builder_commit=self.builder_commit,
+            build_parameters=build_parameters or {},
         )

@@ -52,6 +52,8 @@ _PHOSPHO_BRACKET_MASS_BY_AA = {
     "Y": 243.0,
 }
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
+_PHOSPHO_MOD_MASS = 79.966
+_PHOSPHO_MOD_MASS_TOLERANCE = 0.01
 
 # Output TSV column order for intermediate file
 _TSV_COLUMNS = [
@@ -88,7 +90,7 @@ def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
     return None
 
 
-def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
+def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str, required_columns=()):
     """Iterate over rows of a TSV table inside a zip without loading all into memory."""
     member = _find_table_in_zip(zf, table_name)
     if member is None:
@@ -98,15 +100,23 @@ def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
     with zf.open(member) as f:
         text = io.TextIOWrapper(f, encoding="utf-8")
         reader = csv.DictReader(text, delimiter="\t")
-        yield from reader
+        missing = set(required_columns) - set(reader.fieldnames or ())
+        if missing:
+            raise ValueError(
+                f"Table {member} is missing required column(s): "
+                f"{', '.join(sorted(missing))}"
+            )
+        for row in reader:
+            yield {key: "" if value == r"\N" else value for key, value in row.items()}
 
 
 def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
     """Extract 0-based offsets and amino acids of phosphorylated S/T/Y.
 
-    PeptideAtlas uses two notations for modifications:
+    PeptideAtlas uses several notations for modifications:
       - Text: ``S[Phospho]``, ``T[Phospho]``, ``Y[Phospho]``
       - Numeric mass: ``S[167]``, ``T[181]``, ``Y[243]``
+      - ProForma: ``S[+79.966]`` or ``T[UNIMOD:21]``
 
     N-terminal labels like ``[TMT6plex]-`` are skipped (no preceding residue).
 
@@ -125,8 +135,10 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
             except ValueError:
                 break  # Malformed — unclosed bracket
             bracket_content = seq[i + 1 : end]
-            is_phospho = bracket_content == "Phospho" or bracket_content.startswith(
-                "Phospho:"
+            is_phospho = (
+                bracket_content == "Phospho"
+                or bracket_content.startswith("Phospho:")
+                or bracket_content.upper() == "UNIMOD:21"
             )
             # Also handle numeric mass notation for S/T/Y.
             if not is_phospho:
@@ -136,6 +148,11 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
                     if (
                         expected_mass is not None
                         and abs(mass - expected_mass) <= _PHOSPHO_BRACKET_TOLERANCE
+                    ):
+                        is_phospho = True
+                    elif (
+                        last_aa in _PHOSPHO_AA_DESC
+                        and abs(mass - _PHOSPHO_MOD_MASS) <= _PHOSPHO_MOD_MASS_TOLERANCE
                     ):
                         is_phospho = True
                 except ValueError:
@@ -202,9 +219,26 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         # presence_level_id=1 is "canonical" in PeptideAtlas
         logger.info("Indexing canonical proteins...")
         canonical_bs_ids: set = set()
-        for row in _iter_tsv_from_zip(zf, "protein_identification.tsv"):
-            if row.get("presence_level_id") == "1":
-                canonical_bs_ids.add(row["biosequence_id"])
+        has_canonical_table = (
+            _find_table_in_zip(zf, "protein_identification.tsv") is not None
+        )
+        if has_canonical_table:
+            for row in _iter_tsv_from_zip(
+                zf,
+                "protein_identification.tsv",
+                ("biosequence_id", "presence_level_id"),
+            ):
+                if row.get("presence_level_id") == "1":
+                    canonical_bs_ids.add(row["biosequence_id"])
+            if not canonical_bs_ids:
+                raise ValueError(
+                    "protein_identification.tsv contains no canonical proteins "
+                    "(presence_level_id == '1')"
+                )
+        else:
+            logger.warning(
+                "protein_identification.tsv not found; parsing without canonical filtering"
+            )
         logger.info("Found %d canonical proteins", len(canonical_bs_ids))
 
         # Step 1: Index biosequences — only keep canonical, non-DECOY proteins
@@ -212,13 +246,22 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         logger.info("Indexing biosequences...")
         bioseq_by_id: Dict[str, tuple] = {}
         n_bio = 0
-        for row in _iter_tsv_from_zip(zf, "biosequence.tsv"):
+        for row in _iter_tsv_from_zip(
+            zf,
+            "biosequence.tsv",
+            (
+                "biosequence_id",
+                "biosequence_accession",
+                "biosequence_gene_name",
+                "biosequence_seq",
+            ),
+        ):
             n_bio += 1
             bs_id = row["biosequence_id"]
             acc = row.get("biosequence_accession", "")
             if acc.startswith("DECOY_") or acc.startswith("CONTAM_"):
                 continue
-            if canonical_bs_ids and bs_id not in canonical_bs_ids:
+            if has_canonical_table and bs_id not in canonical_bs_ids:
                 continue
             bioseq_by_id[bs_id] = (
                 acc,
@@ -232,7 +275,9 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         logger.info("Indexing peptide instances...")
         pi_ids: set = {
             row["peptide_instance_id"]
-            for row in _iter_tsv_from_zip(zf, "peptide_instance.tsv")
+            for row in _iter_tsv_from_zip(
+                zf, "peptide_instance.tsv", ("peptide_instance_id",)
+            )
         }
         logger.info("Indexed %d peptide instances", len(pi_ids))
 
@@ -241,7 +286,15 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         logger.info("Streaming peptide mappings...")
         mapping_by_pi: Dict[str, List[tuple]] = defaultdict(list)
         n_mappings = 0
-        for row in _iter_tsv_from_zip(zf, "peptide_mapping.tsv"):
+        for row in _iter_tsv_from_zip(
+            zf,
+            "peptide_mapping.tsv",
+            (
+                "peptide_instance_id",
+                "matched_biosequence_id",
+                "start_in_biosequence",
+            ),
+        ):
             n_mappings += 1
             pi_id = row["peptide_instance_id"]
             bs_id = row.get("matched_biosequence_id", "")
@@ -265,7 +318,11 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         n_mpi = 0
         n_with_phospho = 0
 
-        for mp in _iter_tsv_from_zip(zf, "modified_peptide_instance.tsv"):
+        for mp in _iter_tsv_from_zip(
+            zf,
+            "modified_peptide_instance.tsv",
+            ("peptide_instance_id", "modified_peptide_sequence"),
+        ):
             n_mpi += 1
             pi_id = mp["peptide_instance_id"]
             if pi_id not in pi_ids:
@@ -335,6 +392,8 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         n_mpi,
         n_with_phospho,
     )
+    if not sites:
+        raise ValueError("No phospho sites found in PeptideAtlas archive")
     return sites
 
 

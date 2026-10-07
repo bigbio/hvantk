@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -128,3 +129,29 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots):
     # Every surviving row's derived SE must be strictly positive.
     min_se = ht.aggregate(hl.agg.min(ht.se))
     assert min_se is not None and min_se > 0, f"expected every se > 0, min was {min_se}"
+
+    # The duplicated Heart file exercises excluding non-selected tissues, while
+    # the significant build exercises the p-value threshold on real fixture rows.
+    multi_tissue_dir = tmp_path / "multi-tissue"
+    multi_tissue_dir.mkdir()
+    liver_fixture = next(Path(FIXTURE_DIR).glob("*.txt.gz"))
+    shutil.copy(liver_fixture, multi_tissue_dir / liver_fixture.name)
+    shutil.copy(liver_fixture, multi_tissue_dir / "Heart.allpairs_nobsGE72.txt.gz")
+
+    tissue_path = str(tmp_path / "pqtl_liver_only.ht")
+    builder(
+        input_path=str(multi_tissue_dir),
+        output_path=tissue_path,
+        **builder_kwargs,
+    )
+    assert hl.read_table(tissue_path).count() == 7
+
+    threshold_path = str(tmp_path / "pqtl_significant.ht")
+    builder(
+        input_path=FIXTURE_DIR,
+        output_path=threshold_path,
+        tissue="Liver",
+        gene_catalog=_StubGeneCatalog(),
+        p_threshold=1e-5,
+    )
+    assert hl.read_table(threshold_path).count() == 2

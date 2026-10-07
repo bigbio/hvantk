@@ -39,6 +39,44 @@ def test_build_context_requires_schema_id_on_provenance():
         ctx.provenance()  # schema_id is required
 
 
+def test_build_context_records_and_round_trips_build_parameters():
+    from hvantk.core.io._manifest import _from_dict, _to_dict
+
+    ctx = BuildContext(
+        plugin="alphagenome",
+        dataset="alphagenome:predictions",
+        plugin_version="0.2.0",
+        source_fingerprint="sha256:test",
+        builder_commit=None,
+    )
+    provenance = ctx.provenance(
+        schema_id="alphagenome-v2",
+        build_parameters={
+            "output_types": ["RNA_SEQ"],
+            "ontology_curies": ["UBERON:0006566"],
+        },
+    )
+
+    assert _from_dict(_to_dict(provenance)) == provenance
+    assert provenance.build_parameters["output_types"] == ["RNA_SEQ"]
+
+
+def test_provenance_manifest_without_build_parameters_remains_readable():
+    from hvantk.core.io._manifest import _from_dict, _to_dict
+
+    provenance = BuildContext(
+        plugin="legacy",
+        dataset="legacy:data",
+        plugin_version="0.1.0",
+        source_fingerprint="sha256:legacy",
+        builder_commit=None,
+    ).provenance(schema_id="legacy-v1")
+    payload = _to_dict(provenance)
+    payload.pop("build_parameters")
+
+    assert _from_dict(payload).build_parameters == {}
+
+
 def test_dataset_spec_accepts_new_fields():
     """DatasetSpec gains artifact_type and schema_id (both Optional, default None)."""
     from hvantk.core.models.annotation_table import AnnotationTable

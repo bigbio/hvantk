@@ -102,6 +102,7 @@ def build_cosmic_cgc_submissions(
     logger.info("Renaming COSMIC CGC fields to standardized names")
     rename_map = build_rename_map(COSMIC_CGC_FIELDS, get_row_fields(ht))
     ht = ht.rename(rename_map)
+    is_legacy_header = "genome_location" in get_row_fields(ht)
 
     # Normalize Tier: raw "1"/"2" -> "Tier 1"/"Tier 2"
     logger.info("Normalizing tier classification values")
@@ -128,7 +129,22 @@ def build_cosmic_cgc_submissions(
     # licensed v103 export leave these fields empty).
     for coord_field in ("genome_start", "genome_stop"):
         if coord_field in get_row_fields(ht):
-            ht = ht.annotate(**{coord_field: hl.parse_int32(ht[coord_field])})
+            raw_coordinate = ht[coord_field]
+            parsed_coordinate = hl.parse_int32(raw_coordinate)
+            invalid_count = ht.aggregate(
+                hl.agg.count_where(
+                    hl.is_defined(raw_coordinate)
+                    & (raw_coordinate != "")
+                    & hl.is_missing(parsed_coordinate)
+                )
+            )
+            if invalid_count:
+                logger.warning(
+                    "COSMIC CGC: %d non-empty %s value(s) could not be parsed as int32",
+                    invalid_count,
+                    coord_field,
+                )
+            ht = ht.annotate(**{coord_field: parsed_coordinate})
 
     # Parse comma-separated multi-value fields into arrays
     multi_value_fields = [
@@ -174,7 +190,8 @@ def build_cosmic_cgc_submissions(
         mapping = gene_catalog.map_ids(
             list(symbols), source_type="gene_symbol", target_type="hgnc_id"
         )
-        mapping_literal = hl.literal(mapping)
+        mapping = {symbol: hgnc_id for symbol, hgnc_id in mapping.items() if hgnc_id}
+        mapping_literal = hl.literal(mapping, hl.tdict(hl.tstr, hl.tstr))
         ht = ht.annotate(hgnc_id=mapping_literal.get(ht.gene_symbol))
         ht = ht.annotate(
             hgnc_id=hl.if_else(
@@ -198,6 +215,5 @@ def build_cosmic_cgc_submissions(
         ht = ht.select(*fields)
 
     # 4. Wrap with provenance
-    return AnnotationTable.from_hail(
-        ht, provenance=ctx.provenance(schema_id="cosmic-cgc-v1")
-    )
+    schema_id = "cosmic-cgc-legacy-v1" if is_legacy_header else "cosmic-cgc-v2"
+    return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id=schema_id))

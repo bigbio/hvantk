@@ -92,7 +92,7 @@ def run_builder_for_spec(
 
     Raises:
         BuilderContractError: if the builder returns a non-Artifact, the wrong
-            Artifact subclass, or stamps a schema_id different from the manifest.
+            Artifact subclass, or stamps a schema_id not accepted by the manifest.
     """
     if spec.artifact_type is None:
         raise BuilderContractError(
@@ -143,10 +143,15 @@ def run_builder_for_spec(
             f"expected {spec.artifact_type.__name__}"
         )
 
-    if spec.schema_id and artifact.provenance.schema_id != spec.schema_id:
+    schema_ids = getattr(spec, "schema_ids", ())
+    if not isinstance(schema_ids, (tuple, list, set, frozenset)):
+        schema_ids = ()
+    accepted_schema_ids = {spec.schema_id, *schema_ids} - {None}
+    if accepted_schema_ids and artifact.provenance.schema_id not in accepted_schema_ids:
         raise BuilderContractError(
             f"{spec.name}: build_fn stamped schema_id "
-            f"{artifact.provenance.schema_id!r}, manifest declares {spec.schema_id!r}"
+            f"{artifact.provenance.schema_id!r}, manifest accepts "
+            f"{sorted(accepted_schema_ids)!r}"
         )
 
     artifact.save(output_path)

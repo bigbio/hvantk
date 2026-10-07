@@ -407,6 +407,7 @@ class PluginRegistry:
             plugin_version=plugin_version,
             artifact_type_name=ds_manifest.get("artifact_type"),
             schema_id=ds_manifest.get("schema_id"),
+            schema_ids=tuple(ds_manifest.get("schema_ids", ())),
             builder_ref=(
                 ds_manifest["builder"]["module"],
                 ds_manifest["builder"]["function"],
@@ -475,6 +476,7 @@ class PluginRegistry:
             plugin_version=dm.plugin_version,
             artifact_type=artifact_type,
             schema_id=dm.schema_id,
+            schema_ids=dm.schema_ids,
             acquisition=dm.acquisition,
         )
 

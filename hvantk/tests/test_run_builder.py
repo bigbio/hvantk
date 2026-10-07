@@ -99,6 +99,24 @@ def test_run_builder_validates_schema_id_matches_manifest(tmp_path):
         )
 
 
+def test_run_builder_accepts_manifest_schema_generation(tmp_path):
+    def build_legacy(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="legacy-v1")
+        )
+
+    spec = _make_spec(build_legacy)
+    object.__setattr__(spec, "schema_ids", ("legacy-v1",))
+    provenance = run_builder_for_spec(
+        spec,
+        parsed_input=None,
+        output_path=tmp_path / "legacy.parquet",
+        plugin_version="0.1.0",
+    )
+    assert provenance.schema_id == "legacy-v1"
+
+
 def test_run_builder_requires_artifact_type_on_spec(tmp_path):
     """If the manifest hasn't been migrated (artifact_type is None), raise clearly."""
 
