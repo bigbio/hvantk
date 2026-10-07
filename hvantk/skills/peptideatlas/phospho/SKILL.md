@@ -32,7 +32,7 @@ The raw upstream artefact is a single TSV zip (e.g. `atlas_build_606.tsv.zip`, m
 
 - `biosequence.tsv` — proteins (`biosequence_id`, accession, gene name, sequence).
 - `protein_identification.tsv` — protein confidence; `presence_level_id == 1` means *canonical*. The parser filters by this and drops `DECOY_` / `CONTAM_` prefixed accessions in `biosequence.tsv`. This table is **optional** to the parser — it is not in `parse_peptideatlas_zip`'s `required_tables`. Three cases:
-  1. Missing or misnamed: `canonical_bs_ids` stays empty and the canonical filter silently turns off (only a `logger.warning` fires), letting non-canonical isoforms pass through (tracked in #416). Real builds ship it.
+  1. Missing or misnamed: the parse runs without the canonical filter, so non-canonical isoforms pass through. The only sign is a `logger.warning` (tracked in #416). Real builds ship the table.
   2. Present but with no row where `presence_level_id == "1"`: `parse_peptideatlas_zip` raises `ValueError` instead of silently returning an unfiltered or empty table.
   3. Present and populated: only its canonical `biosequence_id`s pass the filter.
 - `peptide_instance.tsv` — distinct peptides + `n_observations` (sum of PSMs across experiments, over every form of the peptide, unmodified included).
