@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-07
+
+Every shipped dataset now runs an executable contract, and builders that could finish
+with wrong or empty output now fail instead. `hvantk rerank` gains the controls a result
+needs before it can be read: a multiplicity-corrected null, paralogue-blocked
+cross-validation and a multi-seed evaluation. `alphagenome:predictions` now ingests the
+AlphaGenome SDK's `tidy_scores` parquet instead of calling the API.
+
+**Upgrade notes.**
+- Rebuild any `peptideatlas:phospho` table built before this release, because its
+  per-site counts were inflated (#425, #430).
+- `alphagenome:predictions` reads a `tidy_scores` parquet and no longer calls the
+  AlphaGenome API (#421).
+- COSMIC CGC builds are stamped `cosmic-cgc-v2` or `cosmic-cgc-legacy-v1` instead of
+  `cosmic-cgc-v1`, and a header that matches neither generation raises (#428, #433).
+- `hvantk ptm atlas` is removed; use `hvantk ptm build`. `generate_phase2_report` takes
+  `build_result=` instead of `atlas_result=`.
+- `hvantk plugins errors` and `hvantk tools errors` exit 1 when they list anything.
 
 ### Added
 
