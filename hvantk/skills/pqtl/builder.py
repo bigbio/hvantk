@@ -11,6 +11,7 @@ Shared GTEx variant-ID parsing helpers live in
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import hail as hl
@@ -26,45 +27,137 @@ from hvantk.core.utils.qtl_helpers import (
 logger = logging.getLogger(__name__)
 
 
-def _map_gene_symbols(gene_catalog, symbols):
-    """Map approved symbols and aliases to Ensembl IDs; report unresolved symbols."""
-    mapping = gene_catalog.map_ids(
-        list(symbols), source_type="gene_symbol", target_type="ensembl_gene_id"
+# HGNC symbol lists searched, in this order, for a symbol that is not an approved
+# symbol: a previous symbol was once the gene's approved symbol, while an alias is an
+# informal name that unrelated genes can share.
+_SYMBOL_LISTS = ("prev_symbols", "alias_symbols")
+
+
+def _resolve_by_symbol_lists(gene_catalog, symbols):
+    """Resolve symbols through previous symbols, then aliases, to Ensembl gene IDs.
+
+    A symbol is looked up among aliases only when no gene has it as a previous
+    symbol, and it resolves only when exactly one gene lists it there.
+
+    Returns ``(resolved, ambiguous)``: ``resolved`` maps each resolved symbol to
+    ``(list it was found in, Ensembl gene ID)``, and ``ambiguous`` holds the symbols
+    that more than one gene lists. A symbol whose one gene has no Ensembl ID is in
+    neither.
+    """
+    matched, ambiguous = {}, set()
+    pending = sorted(symbols)
+    for field in _SYMBOL_LISTS:
+        genes = (
+            gene_catalog.get_genes_listing_symbols(pending, field) if pending else {}
+        )
+        unmatched = []
+        for symbol in pending:
+            hgnc_ids = genes.get(symbol, ())
+            if len(hgnc_ids) == 1:
+                matched[symbol] = (field, next(iter(hgnc_ids)))
+            elif hgnc_ids:
+                ambiguous.add(symbol)
+            else:
+                unmatched.append(symbol)
+        pending = unmatched
+    if not matched:
+        return {}, ambiguous
+
+    to_ensembl = gene_catalog.map_ids(
+        sorted({hgnc_id for _, hgnc_id in matched.values()}),
+        source_type="hgnc_id",
+        target_type="ensembl_gene_id",
     )
-    mapping = {symbol: value for symbol, value in mapping.items() if value}
-
-    resolve_alias = getattr(gene_catalog, "resolve_alias", None)
-    aliases = {
-        symbol: canonical
-        for symbol in symbols
-        if symbol not in mapping
-        and resolve_alias is not None
-        and (canonical := resolve_alias(symbol)) is not None
+    resolved = {
+        symbol: (field, to_ensembl[hgnc_id])
+        for symbol, (field, hgnc_id) in matched.items()
+        if to_ensembl.get(hgnc_id)
     }
-    if aliases:
-        canonical_mapping = gene_catalog.map_ids(
-            sorted(set(aliases.values())),
-            source_type="gene_symbol",
-            target_type="ensembl_gene_id",
-        )
-        mapping.update(
-            {
-                alias: canonical_mapping[canonical]
-                for alias, canonical in aliases.items()
-                if canonical_mapping.get(canonical)
-            }
-        )
+    return resolved, ambiguous
 
-    unmapped = sorted(symbol for symbol in symbols if symbol not in mapping)
+
+def _map_gene_symbols(gene_catalog, symbols):
+    """Map pQTL gene symbols to Ensembl gene IDs and log how they resolved.
+
+    Approved symbols are mapped first, with ``map_ids``. If the catalog can list the
+    genes behind a symbol (``get_genes_listing_symbols``, as the HGNC catalog can),
+    each remaining symbol that is not an approved symbol is looked up among previous
+    symbols and, only when no gene lists it there, among aliases. A match counts only
+    when exactly one gene lists the symbol in that list: a symbol that several genes
+    list there is ambiguous and stays unmapped, so two source proteins cannot share a
+    ``gene_id``.
+
+    Returns the symbol -> Ensembl ID mapping. Unmapped and ambiguous symbols are left
+    out of it, so they keep their source symbol as ``gene_id``. Raises ``ValueError``
+    when no symbol maps.
+    """
+    # A missing gene_name arrives as None; it cannot be mapped, sorted or printed.
+    named = {symbol for symbol in symbols if symbol is not None}
+    if len(named) < len(symbols):
+        logger.warning("Some pQTL rows have no gene name; their gene_id stays missing")
+
+    mapping = {
+        symbol: gene_id
+        for symbol, gene_id in gene_catalog.map_ids(
+            sorted(named), source_type="gene_symbol", target_type="ensembl_gene_id"
+        ).items()
+        if gene_id
+    }
+    n_approved = len(mapping)
+
+    resolved, ambiguous = {}, set()
+    if not hasattr(gene_catalog, "get_genes_listing_symbols"):
+        logger.warning(
+            "The gene catalog cannot look up previous symbols or aliases; "
+            "only approved gene symbols are mapped"
+        )
+    else:
+        # An approved symbol whose gene has no Ensembl ID still names that gene, so
+        # it is not handed to another gene that once had, or shares, the name.
+        resolved, ambiguous = _resolve_by_symbol_lists(
+            gene_catalog,
+            [s for s in named if s not in mapping and not gene_catalog.is_canonical(s)],
+        )
+    mapping.update({symbol: gene_id for symbol, (_, gene_id) in resolved.items()})
+    via = Counter(field for field, _ in resolved.values())
+
+    unmapped = sorted(named - mapping.keys() - ambiguous)
+    logger.log(
+        logging.WARNING if ambiguous or unmapped else logging.INFO,
+        "Mapped %d of %d pQTL gene symbol(s) to Ensembl gene IDs: %d approved, "
+        "%d via a previous symbol, %d via an alias; %d ambiguous, %d unmapped",
+        len(mapping),
+        len(named),
+        n_approved,
+        via["prev_symbols"],
+        via["alias_symbols"],
+        len(ambiguous),
+        len(unmapped),
+    )
+    if ambiguous:
+        logger.warning(
+            "%d pQTL gene symbol(s) match more than one gene and stay unmapped, "
+            "keeping their source symbol as gene_id. Examples: %s",
+            len(ambiguous),
+            ", ".join(sorted(ambiguous)[:10]),
+        )
     if unmapped:
         logger.warning(
-            "Could not map %d of %d pQTL gene symbol(s) to Ensembl IDs; "
-            "using their source symbols as gene_id. Examples: %s",
+            "Could not map %d pQTL gene symbol(s) to Ensembl gene IDs; they keep "
+            "their source symbol as gene_id. Examples: %s",
             len(unmapped),
-            len(symbols),
             ", ".join(unmapped[:10]),
         )
-    return mapping, unmapped
+    if named and not mapping:
+        raise ValueError(
+            f"None of the {len(named)} pQTL gene symbols mapped to an Ensembl gene "
+            "ID, so the table could not join eQTL tables in cascade analysis. Check "
+            "that the gene catalog is the HGNC lookup table built by 'hvantk "
+            "reprocess hgnc:lookup' and has ensembl_gene_id values. For a "
+            "symbol-keyed table, build without the catalog and pass "
+            "--plugin-arg no_gene_map=true."
+        )
+    return mapping
 
 
 def _import_gtex_fang(input_path, tissue):
@@ -126,10 +219,14 @@ def build_pqtl_metrics(
     (space-delimited gzip, TMT mass spectrometry, 5 tissues). SE is derived as
     ``|BETA / STAT|`` (Fang files lack an SE column).
 
-    Gene symbols are mapped to Ensembl gene IDs via the HGNC table and
-    :class:`~hvantk.core.utils.gene_mapper.GeneMapper`. This is **required**
-    because the cascade join uses ``(locus, alleles, gene_id)`` with Ensembl
-    IDs on the eQTL side; raw gene symbols would produce zero matches.
+    Gene symbols are mapped to Ensembl gene IDs through ``gene_catalog``, normally
+    the HGNC lookup table: approved symbols first, then previous symbols, then
+    aliases, accepting a previous symbol or alias only when exactly one gene lists
+    it in that list (``_map_gene_symbols``). Unmapped and ambiguous symbols keep their source
+    symbol as ``gene_id`` and are counted in the log; if no symbol maps, the build
+    raises ``ValueError``. Mapping is **required** because the cascade join uses
+    ``(locus, alleles, gene_id)`` with Ensembl IDs on the eQTL side; raw gene
+    symbols would produce zero matches.
 
     Pass ``no_gene_map=True`` to opt out of mapping for non-cascade use cases
     (the table will be keyed by raw gene symbol and will NOT join with eQTL
@@ -165,7 +262,8 @@ def build_pqtl_metrics(
     if gene_catalog is not None:
         logger.info("Mapping gene symbols → Ensembl IDs via gene catalog")
         symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        ensembl_mapping, _ = _map_gene_symbols(gene_catalog, symbols)
+        ensembl_mapping = _map_gene_symbols(gene_catalog, symbols)
+        # Typed, because Hail cannot impute the type of an empty mapping (no rows).
         mapping_literal = hl.literal(ensembl_mapping, hl.tdict(hl.tstr, hl.tstr))
         ht = ht.annotate(
             gene_id=hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)

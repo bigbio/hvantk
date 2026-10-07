@@ -1,6 +1,6 @@
 api_version: 2
 name: pqtl
-version: 0.1.0
+version: 0.1.1
 status: provisional
 description: Protein quantitative trait loci (pQTL) association metrics - Hail Table
 

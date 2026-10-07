@@ -44,9 +44,11 @@ SAMPLE_KEYS = [
 class _StubGeneCatalog:
     """Minimal gene_catalog double: maps only the symbols this fixture knows.
 
-    Mirrors the ``GeneCatalogStreamer.map_ids`` contract via duck typing -- the
-    builder only ever calls ``.map_ids``, and ``GeneCatalogStreamer`` is imported
-    solely under ``TYPE_CHECKING`` in builder.py, so no subclassing is required.
+    Mirrors the ``GeneCatalogStreamer.map_ids`` contract via duck typing. It has no
+    ``get_genes_listing_symbols``, so the builder maps approved symbols only and calls
+    nothing but ``.map_ids`` (the previous-symbol and alias lookups are covered in
+    test_pqtl.py); ``GeneCatalogStreamer`` is imported solely under
+    ``TYPE_CHECKING`` in builder.py, so no subclassing is required.
     Per that contract (``hvantk/core/streamers/gene_catalog.py``), the returned
     dict has the *same keys as the input* -- an unmapped symbol (``SYNTHGENE1``)
     maps to ``None`` rather than being omitted. This does not change which
@@ -69,15 +71,16 @@ class _StubGeneCatalog:
 
 
 @pytest.mark.hail
-def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots):
+def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, caplog):
     """Build pQTL metrics from the synthetic Liver fixture; assert schema/row stability.
 
-    Also pins two behaviors that have no dedicated test elsewhere, folded into this
+    Also pins behaviors that have no dedicated test elsewhere, folded into this
     test rather than split into separate ones so they reuse this test's single Hail
     build instead of each paying for their own:
       - the fixture's STAT == 0 row (gene_name=BRCA1, chr17:43095211) is dropped,
         since SE is undefined for it;
-      - every surviving row's derived SE (= |beta / stat|) is strictly positive.
+      - every surviving row's derived SE (= |beta / stat|) is strictly positive;
+      - the build logs the gene-mapping counts, with the unmapped SYNTHGENE1.
     """
     import hail as hl
     from hvantk.skills.pqtl.builder import build_pqtl_metrics
@@ -104,6 +107,14 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots):
     output_path = str(tmp_path / "pqtl_metrics.ht")
     builder(input_path=FIXTURE_DIR, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
+
+    # The symbols must go through the builder's mapping helper, which reports what
+    # it could not map; a bare map_ids call would key SYNTHGENE1 by symbol silently.
+    assert (
+        "Mapped 3 of 4 pQTL gene symbol(s) to Ensembl gene IDs: 3 approved, "
+        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 1 unmapped"
+    ) in caplog.text
+    assert "Examples: SYNTHGENE1" in caplog.text
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
     actual_schema = hail_schema_to_dict(ht)

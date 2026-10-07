@@ -8,7 +8,7 @@ logic previously in ``core/utils/gene_mapper.py`` and
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Literal, Optional
+from typing import Dict, Iterable, List, Literal, Optional
 
 import hail as hl
 
@@ -620,6 +620,45 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
             hl.any(lambda g: g == gene_group, self._ht.gene_group)
         ).collect()
         return [row.hgnc_id for row in data]
+
+    def get_genes_listing_symbols(
+        self,
+        symbols: Iterable[str],
+        field: Literal["prev_symbols", "alias_symbols"],
+    ) -> Dict[str, set[str]]:
+        """Get the HGNC IDs of every gene whose ``field`` lists each symbol.
+
+        Unlike :meth:`resolve_alias`, which merges previous symbols with aliases and
+        keeps only the first gene that lists a symbol, this reads one list at a time
+        and returns every gene, so a caller can rank previous symbols above aliases
+        and reject a symbol that several genes share.
+
+        Parameters
+        ----------
+        symbols : iterable of str
+            Gene symbols to look up.
+        field : str
+            The list to search: ``"prev_symbols"`` or ``"alias_symbols"``.
+
+        Returns
+        -------
+        dict
+            Mapping from each listed symbol to the set of HGNC IDs listing it.
+            Symbols that no gene lists are left out.
+        """
+        if field not in ("prev_symbols", "alias_symbols"):
+            raise ValueError(
+                f"field must be 'prev_symbols' or 'alias_symbols', got {field!r}"
+            )
+        wanted = set(symbols)
+        if not wanted or field not in set(self._ht.row):
+            return {}
+        genes: Dict[str, set[str]] = {}
+        for row in self._ht.select(field).collect():
+            for symbol in getattr(row, field) or ():
+                if symbol in wanted:
+                    genes.setdefault(symbol, set()).add(row.hgnc_id)
+        return genes
 
     def validate_ids(self, ids: List[str], id_type: ID_TYPE) -> Dict[str, bool]:
         """Check which IDs are valid (exist in HGNC).
