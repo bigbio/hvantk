@@ -18,11 +18,16 @@ already-parsed intermediate TSV the builder itself consumes.
   head -3` on the cluster login node. The phospho modification notation
   (`<residue>[Phospho]`) and a non-phospho example
   (`<residue>[Carbamidomethyl]`) are the real notations seen in
-  `modified_peptide_sequence` in that build — confirmed as the *only* bracket
-  shapes across a 1.55M-row / 300MB sample (zero numeric-mass notation such
-  as `[167]`/`[181]`/`[243]`). The `\N` NULL sentinel and the trailing extra
-  tab at the end of every header and data row are also real. See the
-  plugin's `SKILL.md` s 4 for the full list of format facts.
+  `modified_peptide_sequence` in that build. A full-table scan of
+  `modified_peptide_instance.tsv` across all 3,097,865 rows of the real
+  build 606 archive (run as an HPC batch job, not on a login node) found
+  exactly three `[STY]\[...\]` bracket shapes — `S[Phospho]` (2,420,951),
+  `T[Phospho]` (558,273), `Y[Phospho]` (111,329) — and zero non-phospho
+  modification or numeric-mass notation (such as `[167]`/`[181]`/`[243]`) on
+  any S, T, or Y residue anywhere in the real build. The `\N` NULL sentinel
+  and the trailing extra tab at the end of every header and data row are
+  also real. See the plugin's `SKILL.md` s 4 for the full list of format
+  facts.
 - **Fabricated:** every accession (except the reused placeholder `P04637`,
   as the pre-existing `test_phospho.py` mocks already did), every sequence,
   every count, every ID. No value in this fixture was copied from a real
@@ -37,8 +42,8 @@ already-parsed intermediate TSV the builder itself consumes.
 | `P04637`, `peptide_instance` 204 -> `modified_peptide_instance` 304 (`AAC[Carbamidomethyl]AAAA`) | a non-phospho modification; must contribute zero output rows |
 | `P04637` + `P99999`, `peptide_instance` 205 -> `modified_peptide_instance` 305, two `peptide_mapping` rows (`matched_biosequence_id` 100 and 101) | one peptide mapping to two proteins — multi-mapping |
 | `Q99999` (`biosequence_id` 102), `protein_identification.presence_level_id` = `3`, `peptide_instance` 206 -> `modified_peptide_instance` 306 | non-canonical isoform — excluded by the canonical filter |
-| `DECOY_FAKE1` (`biosequence_id` 103), `peptide_instance` 207 -> `modified_peptide_instance` 307 | dropped by the `DECOY_` accession-prefix filter |
-| `CONTAM_FAKE1` (`biosequence_id` 104), `peptide_instance` 208 -> `modified_peptide_instance` 308 | dropped by the `CONTAM_` accession-prefix filter |
+| `DECOY_FAKE1` (`biosequence_id` 103, `protein_identification.presence_level_id` = `1` — canonical), `peptide_instance` 207 -> `modified_peptide_instance` 307 | dropped by the `DECOY_` accession-prefix filter ONLY. The canonical `presence_level_id` means the canonical-ID check alone would NOT remove this row, so a mutation that deletes the prefix filter now surfaces this site and fails the test |
+| `CONTAM_FAKE1` (`biosequence_id` 104, `protein_identification.presence_level_id` = `1` — canonical), `peptide_instance` 208 -> `modified_peptide_instance` 308 | dropped by the `CONTAM_` accession-prefix filter ONLY, for the same reason as `DECOY_FAKE1` above |
 
 Together `P04637` ends up with phospho sites on S, T, *and* Y residues,
 covering all three phosphorylatable amino acids on one canonical protein.
@@ -56,6 +61,14 @@ covering all three phosphorylatable amino acids on one canonical protein.
 `DECOY_FAKE1`, `CONTAM_FAKE1`, `Q99999` and the `Carbamidomethyl`-only
 peptide contribute zero rows.
 
+## Not covered: non-phospho modifications on S, T or Y
+
+A bug that counted any bracketed modification on S, T or Y as phospho would pass these
+tests: the only non-phospho modification here is `C[Carbamidomethyl]`. The full scan
+above is why: real build 606 carries no non-phospho modification on any S, T or Y
+residue, so a row testing it would have to invent a notation, and data from this build
+cannot trigger the bug.
+
 ## Recipe
 
 Built by a one-off local script (not committed — the row design above and
@@ -64,4 +77,8 @@ regenerating it): write the five TSVs in memory using the real headers from
 this file's "What's real" section, with every row (header and data) ending
 in the extra trailing tab the real dump also carries, then
 `zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED).writestr(table_name,
-content)` once per table, named `atlas_build_606-synthetic.tsv.zip`.
+content)` once per table, named `atlas_build_606-synthetic.tsv.zip`. Every
+`biosequence_id` referenced by a peptide mapping — including the `DECOY_`/
+`CONTAM_` rows — must also get a `protein_identification` row (see the
+row-purpose table above): leaving one out lets the canonical-ID check drop
+it, masking whichever other filter the row is meant to test.

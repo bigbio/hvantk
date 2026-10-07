@@ -345,12 +345,19 @@ URL: https://cancer.sanger.ac.uk/census
 **Build**:
 
 ```bash
-# Place cancer_gene_census.tsv in data/cosmic_cgc/ then:
+# Place the downloaded export (e.g. cancer_gene_census.tsv.gz) in data/cosmic_cgc/ then:
 hvantk reprocess cosmic-cgc:submissions \
   --raw-dir data/cosmic_cgc/ \
-  --output cosmic_cgc.ht \
-  --skip-download
+  --intermediate data/cosmic_cgc/cancer_gene_census.tsv.gz \
+  --skip-parse \
+  --skip-download \
+  --output cosmic_cgc.ht
 ```
+
+> **Note:** `--intermediate <file> --skip-parse` is required, not optional, even though
+> this dataset declares no `lifecycle.parse` — the builder needs the exact file path, and
+> `--raw-dir` can only be a directory. `--skip-download` is optional, since acquisition is
+> bring-your-own. See `hvantk/skills/cosmic_cgc/SKILL.md` §7.
 
 ### AlphaGenome variant-effect scores
 

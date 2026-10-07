@@ -126,14 +126,18 @@
   checks `output_ht` (`hvantk.tools.ptm.pipeline.config_errors`) and resolves the
   `uniprot-ptm:sites` plugin before it downloads anything.
 - **`alphagenome:predictions` ingests the AlphaGenome SDK's `tidy_scores` parquet instead
-  of calling the AlphaGenome API (#421).** It builds one row per variant, with a summary
-  struct per (output type, scorer); an unknown scorer, a missing column or a malformed
-  variant id fails the build instead of being dropped. `schema_id` is now
-  `alphagenome-v2` and the plugin 0.2.0. The old builder called the API, discarded the
-  predictions and returned only its input variants. Score variants with the
-  AlphaGenome SDK (`score_variant` → `variant_scorers.tidy_scores()`), save the result
-  as parquet, then run `python -m hvantk reprocess alphagenome:predictions --raw-dir
-  <dir-with-parquet> --output <out.ht>`.
+  of calling the AlphaGenome API (#421, #424).** It builds one row per variant, with a
+  summary struct per (output type, scorer). A missing column, a missing or unknown
+  scorer, a malformed variant id, or the same scores given twice (a file passed twice,
+  or two scoring runs mixed) fails the build instead of being dropped or counted twice.
+  A missing or NaN score leaves out only the statistic it feeds, and dropped rows are
+  counted in a warning. `schema_id` is now `alphagenome-v2` and the plugin 0.2.0. The
+  old builder called the API, discarded the predictions and returned only its input
+  variants. Score variants with the AlphaGenome SDK (`score_variant` →
+  `variant_scorers.tidy_scores()`), save the full result as parquet (the builder needs
+  `track_strand` and, for splice junctions, `junction_Start`/`junction_End`), then run
+  `python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet>
+  --output <out.ht>`.
 
 ### Removed
 
@@ -283,6 +287,11 @@
   it shipped without the attribution or non-commercial notice that licence requires. It
   now has a `THIRD_PARTY_DATA.md` entry and a `NOTICE.md` beside the fixture and the
   snapshot, and the catalog entry names the licence.
+- **The documented COSMIC CGC build command crashed (#424).** `hvantk reprocess
+  cosmic-cgc:submissions --raw-dir <dir>` handed the directory to a builder that reads
+  one file, and failed with `IsADirectoryError`. The skill page and the data-sources
+  guide now give the form that works, `--raw-dir <dir> --intermediate <dir>/<file>
+  --skip-parse --skip-download`, as for `gwas-catalog:associations`.
 
 ## 0.3.1 — 2026-08-30
 

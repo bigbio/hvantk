@@ -109,8 +109,17 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 ## 7. Workflow steps
 
 1. Obtain the raw COSMIC CGC export manually — requires a COSMIC account/login at `cancer.sanger.ac.uk/census`. No in-repo downloader exists.
-2. Build: `hvantk reprocess cosmic-cgc:submissions --raw-dir <dir> --output <out.ht>`, optionally with `--plugin-arg mutation_context=somatic|germline|both`, `--plugin-arg min_classification=<level>`, `--plugin-arg fields=<comma-list>`.
-3. To resolve `hgnc_id`, pass a `gene_catalog` (an `HGNCGeneCatalogStreamer`) build param via the Python API — `--plugin-arg` values are strings, so a streamer object cannot be passed that way; call `build_cosmic_cgc_submissions(...)` directly for that path.
+2. Build: `hvantk reprocess cosmic-cgc:submissions --raw-dir <dir> --intermediate <dir>/<file>.tsv.gz --skip-parse --skip-download --output <out.ht>`, optionally with `--plugin-arg mutation_context=somatic|germline|both`, `--plugin-arg min_classification=<level>`, `--plugin-arg fields=<comma-list>`, `--plugin-arg hgnc_ht=<hgnc-lookup.ht>` (see step 3).
+   `--intermediate <file> --skip-parse` is required: the dataset declares no
+   `lifecycle.parse`, so without it `hvantk reprocess` hands the `--raw-dir` directory
+   to the builder, which needs the file itself and fails with `IsADirectoryError`.
+   `gwas-catalog:associations` documents the same pattern
+   (`hvantk/skills/gwas_catalog/SKILL.md` § 6). On the committed synthetic fixture this
+   builds a 5-row table keyed by `gene_symbol`.
+3. To resolve `hgnc_id`, add `--plugin-arg hgnc_ht=<path-to-hgnc-lookup.ht>` (or
+   `hgnc_path=<path>`): `hvantk reprocess` builds an `HGNCGeneCatalogStreamer` from it
+   and passes it to the builder as `gene_catalog`, as for `pqtl`. From Python, pass any
+   `GeneCatalogStreamer` as `gene_catalog` to `build_cosmic_cgc_submissions(...)`.
 4. Sanity-check the output: `classification` values are `"Tier 1"`/`"Tier 2"`, `somatic`/`germline`/`hallmark` are true booleans (not strings), and the multi-value fields are arrays.
 5. Run the test suite (§ 9): a loader-registration test plus a round-trip test that builds from the committed synthetic fixture and asserts schema and sample rows against committed snapshots.
 
@@ -132,6 +141,12 @@ Declared in `plugin.yaml`'s `tests:` block (`hvantk/skills/cosmic_cgc/plugin.yam
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/cosmic_cgc/tests -m hail`
+
+`-m hail` selects only the one `@pytest.mark.hail`-marked round-trip test
+(`test_builder.py::test_cosmic_cgc_submissions_round_trip`) — 1 of the 9 tests collected
+under `hvantk/skills/cosmic_cgc/tests`. The other 8 (the `test_cosmic_cgc.py`
+registration check plus 7 offline `test_drift_probe.py` cases) carry no `hail` marker and
+run under the default (non-`-m hail`) pytest selection instead.
 
 The COSMIC CGC licence forbids redistributing rows, so `fixture` is a **synthetic,
 format-faithful** TSV (`tests/testdata/raw/cosmic-cgc/cosmic-cgc-synthetic.tsv.gz`, with
