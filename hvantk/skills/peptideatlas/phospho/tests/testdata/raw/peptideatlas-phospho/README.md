@@ -44,17 +44,19 @@ already-parsed intermediate TSV the builder itself consumes.
 | `Q99999` (`biosequence_id` 102), `protein_identification.presence_level_id` = `3`, `peptide_instance` 206 -> `modified_peptide_instance` 306 | non-canonical isoform — excluded by the canonical filter |
 | `DECOY_FAKE1` (`biosequence_id` 103, `protein_identification.presence_level_id` = `1` — canonical), `peptide_instance` 207 -> `modified_peptide_instance` 307 | dropped by the `DECOY_` accession-prefix filter ONLY. The canonical `presence_level_id` means the canonical-ID check alone would NOT remove this row, so a mutation that deletes the prefix filter now surfaces this site and fails the test |
 | `CONTAM_FAKE1` (`biosequence_id` 104, `protein_identification.presence_level_id` = `1` — canonical), `peptide_instance` 208 -> `modified_peptide_instance` 308 | dropped by the `CONTAM_` accession-prefix filter ONLY, for the same reason as `DECOY_FAKE1` above |
+| `P04637`, `peptide_instance` 209 (`n_observations` 100) -> `modified_peptide_instance` 309 + 310, the same `AAS[Phospho]AAAA` at charge 2 (12 observations) and charge 3 (8), mapped at `start_in_biosequence` 40 | one peptide in two phospho forms; the site counts each form's own observations, 12 + 8 = 20, not the peptide's 100 once per form (#425) |
 
 Together `P04637` ends up with phospho sites on S, T, *and* Y residues,
 covering all three phosphorylatable amino acids on one canonical protein.
 
-## Expected `parse_peptideatlas_zip` output (5 rows)
+## Expected `parse_peptideatlas_zip` output (6 rows)
 
 | accession | position | amino_acid | n_observations |
 |---|---|---|---|
 | P04637 | 14 | T | 59 |
 | P04637 | 32 | S | 30 |
 | P04637 | 35 | Y | 30 |
+| P04637 | 42 | S | 20 |
 | P04637 | 53 | S | 8 |
 | P99999 | 23 | S | 8 |
 
@@ -82,3 +84,7 @@ content)` once per table, named `atlas_build_606-synthetic.tsv.zip`. Every
 `CONTAM_` rows — must also get a `protein_identification` row (see the
 row-purpose table above): leaving one out lets the canonical-ID check drop
 it, masking whichever other filter the row is meant to test.
+
+The `peptide_instance` 209 rows (#425) were appended to the committed zip by copying an
+existing row of each table and changing only the fields the row-purpose table names;
+member order, compression and timestamps were kept.

@@ -155,6 +155,7 @@ def mock_pa_zip(tmp_path):
             "peptide_instance_id",
             "modified_peptide_sequence",
             "modification_mass",
+            "n_observations",
         ],
         [
             {
@@ -162,24 +163,28 @@ def mock_pa_zip(tmp_path):
                 "peptide_instance_id": "1",
                 "modified_peptide_sequence": "AAAAAS[167]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "50",
             },
             {
                 "modified_peptide_instance_id": "1002",
                 "peptide_instance_id": "2",
                 "modified_peptide_sequence": "AAS[167]AAAAAAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "30",
             },
             {
                 "modified_peptide_instance_id": "1003",
                 "peptide_instance_id": "3",
                 "modified_peptide_sequence": "AAAAAS[167]AAAAAAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "10",
             },
             {
                 "modified_peptide_instance_id": "1004",
                 "peptide_instance_id": "4",
                 "modified_peptide_sequence": "AAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "15",
             },
         ],
     )
@@ -215,6 +220,83 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     assert by_pos[315]["gene_symbol"] == "TP53"
 
     assert by_pos[6]["n_observations"] == 10
+
+
+def _two_form_zip(tmp_path, form_counts):
+    """One peptide, seen 100 times in total, with a phospho form per count."""
+    tables = tmp_path / "two_forms"
+    tables.mkdir()
+    _write_tsv(
+        tables / "biosequence.tsv",
+        ["biosequence_id", "biosequence_accession", "biosequence_seq"],
+        [
+            {
+                "biosequence_id": "100",
+                "biosequence_accession": "P04637",
+                "biosequence_seq": "M" * 393,
+            }
+        ],
+    )
+    _write_tsv(
+        tables / "peptide_instance.tsv",
+        ["peptide_instance_id", "n_observations"],
+        [{"peptide_instance_id": "1", "n_observations": "100"}],
+    )
+    _write_tsv(
+        tables / "peptide_mapping.tsv",
+        ["peptide_instance_id", "matched_biosequence_id", "start_in_biosequence"],
+        [
+            {
+                "peptide_instance_id": "1",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "310",
+            }
+        ],
+    )
+    _write_tsv(
+        tables / "modified_peptide_instance.tsv",
+        [
+            "modified_peptide_instance_id",
+            "peptide_instance_id",
+            "modified_peptide_sequence",
+            "peptide_charge",
+            "n_observations",
+        ],
+        [
+            {
+                "modified_peptide_instance_id": str(1000 + charge),
+                "peptide_instance_id": "1",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
+                "peptide_charge": str(charge),
+                "n_observations": count,
+            }
+            for charge, count in enumerate(form_counts, start=2)
+        ],
+    )
+    zip_path = tmp_path / "two_forms.tsv.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        for tsv_file in tables.glob("*.tsv"):
+            zf.write(tsv_file, tsv_file.name)
+    return str(zip_path)
+
+
+def test_site_counts_sum_each_forms_own_observations(tmp_path):
+    """#425: forms seen 12 and 8 times give the site 20, not 100 per form."""
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    sites = parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "8"]))
+    assert [(s["position"], s["n_observations"]) for s in sites] == [(315, 20)]
+
+
+def test_form_without_a_count_fails(tmp_path):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    with pytest.raises(ValueError, match="has no integer n_observations"):
+        parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "\\N"]))
 
 
 # ---------- Test 2: DECOY filtering ----------
@@ -515,6 +597,7 @@ def test_canonical_protein_filtering(tmp_path):
             "peptide_instance_id",
             "modified_peptide_sequence",
             "modification_mass",
+            "n_observations",
         ],
         [
             {
@@ -522,6 +605,7 @@ def test_canonical_protein_filtering(tmp_path):
                 "peptide_instance_id": "1",
                 "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "50",
             },
         ],
     )
