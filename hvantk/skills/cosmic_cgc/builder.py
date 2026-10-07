@@ -15,6 +15,7 @@ import hail as hl
 from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_CGC_FIELDS,
     COSMIC_CGC_CLASSIFICATION_LEVELS,
+    COSMIC_CGC_HEADER_GENERATIONS,
     COSMIC_MUTATION_CONTEXTS,
 )
 from hvantk.core.utils.table_utils import (
@@ -30,6 +31,40 @@ if TYPE_CHECKING:
     from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 logger = logging.getLogger(__name__)
+
+
+def _header_generation(row_fields: set[str]) -> str:
+    """Return the schema ID of the header generation a renamed table carries.
+
+    Picks the generation in ``COSMIC_CGC_HEADER_GENERATIONS`` with the fewest
+    missing columns, then the fewest columns it does not define. Raises
+    ValueError if that generation still lacks a column, so a partly renamed
+    header is never stamped with a schema ID whose fields it does not have.
+    """
+
+    def distance(schema_id: str) -> tuple[int, int]:
+        fields = set(COSMIC_CGC_HEADER_GENERATIONS[schema_id].values())
+        return len(fields - row_fields), len(row_fields - fields)
+
+    schema_id = min(COSMIC_CGC_HEADER_GENERATIONS, key=distance)
+    field_map = COSMIC_CGC_HEADER_GENERATIONS[schema_id]
+    missing = [raw for raw, field in field_map.items() if field not in row_fields]
+    extra = sorted(row_fields - set(field_map.values()))
+    if missing:
+        raise ValueError(
+            f"COSMIC CGC: the header is closest to the {schema_id} generation but "
+            f"lacks {', '.join(missing)} (columns it does not define: "
+            f"{', '.join(extra) or 'none'}). A renamed column or a new header "
+            "generation needs its own column map; see "
+            "hvantk/skills/cosmic_cgc/SKILL.md s8."
+        )
+    if extra:
+        logger.warning(
+            "COSMIC CGC: keeping column(s) the %s header does not define: %s",
+            schema_id,
+            ", ".join(extra),
+        )
+    return schema_id
 
 
 def build_cosmic_cgc_submissions(
@@ -52,6 +87,12 @@ def build_cosmic_cgc_submissions(
     **params
         Optional: mutation_context (str, default "both"), min_classification (str),
                   gene_catalog (GeneCatalogStreamer), fields (list of str).
+
+    Raises
+    ------
+    ValueError
+        If the header lacks a column of the generation it is closest to, or if
+        gene_catalog resolves none of the table's gene symbols.
     """
     from hvantk.core.models import AnnotationTable
 
@@ -102,7 +143,7 @@ def build_cosmic_cgc_submissions(
     logger.info("Renaming COSMIC CGC fields to standardized names")
     rename_map = build_rename_map(COSMIC_CGC_FIELDS, get_row_fields(ht))
     ht = ht.rename(rename_map)
-    is_legacy_header = "genome_location" in get_row_fields(ht)
+    schema_id = _header_generation(get_row_fields(ht))
 
     # Normalize Tier: raw "1"/"2" -> "Tier 1"/"Tier 2"
     logger.info("Normalizing tier classification values")
@@ -122,8 +163,9 @@ def build_cosmic_cgc_submissions(
         if bool_field in get_row_fields(ht):
             ht = ht.annotate(**{bool_field: str_to_bool(ht[bool_field])})
 
-    # Cast genome coordinate fields (v103+ exports only; absent from legacy
-    # exports, hence the same existence guard used for `hallmark` above).
+    # Cast genome coordinate fields. Only the current (v103+) header has them,
+    # and _header_generation() requires both there, so for a current export
+    # the cast and the count of non-integer values always run.
     # hl.parse_int32 is missing-tolerant: an empty or non-numeric value
     # becomes missing rather than raising (confirmed: 6/763 rows in a
     # licensed v103 export leave these fields empty).
@@ -186,11 +228,32 @@ def build_cosmic_cgc_submissions(
     # Resolve gene_symbol -> hgnc_id if a gene catalog is available
     if gene_catalog is not None:
         logger.info("Resolving gene symbols to HGNC IDs via gene catalog")
-        symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
+        # collect_as_set keeps missing and empty values; neither is a symbol.
+        symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol))) - {None, ""}
         mapping = gene_catalog.map_ids(
             list(symbols), source_type="gene_symbol", target_type="hgnc_id"
         )
         mapping = {symbol: hgnc_id for symbol, hgnc_id in mapping.items() if hgnc_id}
+        unresolved = sorted(symbols - mapping.keys())
+        if symbols and len(unresolved) == len(symbols):
+            raise ValueError(
+                f"COSMIC CGC: the gene catalog resolved none of the {len(symbols)} "
+                f"gene symbols to an HGNC ID (e.g. {', '.join(unresolved[:5])}); "
+                "check that it is an HGNC lookup table"
+            )
+        if unresolved:
+            logger.warning(
+                "COSMIC CGC: resolved %d of %d gene symbols to HGNC IDs; dropping "
+                "the rows of %d unresolved symbol(s), e.g. %s",
+                len(symbols) - len(unresolved),
+                len(symbols),
+                len(unresolved),
+                ", ".join(unresolved[:10]),
+            )
+        else:
+            logger.info(
+                "COSMIC CGC: resolved all %d gene symbols to HGNC IDs", len(symbols)
+            )
         mapping_literal = hl.literal(mapping, hl.tdict(hl.tstr, hl.tstr))
         ht = ht.annotate(hgnc_id=mapping_literal.get(ht.gene_symbol))
         ht = ht.annotate(
@@ -214,6 +277,5 @@ def build_cosmic_cgc_submissions(
         logger.info("Selecting fields: %s", fields)
         ht = ht.select(*fields)
 
-    # 4. Wrap with provenance
-    schema_id = "cosmic-cgc-legacy-v1" if is_legacy_header else "cosmic-cgc-v2"
+    # 4. Wrap with provenance (schema ID of the detected header generation)
     return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id=schema_id))

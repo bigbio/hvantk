@@ -5,35 +5,50 @@ Moved from hvantk/core/constants.py per issue #120 (clean-core principle).
 
 COSMIC_CGC_FILE_PREFIX = "cosmic-cgc"
 
-# Field-rename map: source CSV column -> snake_case
+# Field-rename maps, one per export header generation: source column ->
+# snake_case. Each map lists its generation's whole header: the builder renames
+# with both (`COSMIC_CGC_FIELDS`), then requires every column of the generation
+# the header is closest to and stamps that generation's schema ID
+# (`COSMIC_CGC_HEADER_GENERATIONS`; see SKILL.md s4). `build_rename_map()`
+# matches case- and separator-insensitively, so "Chr Band" and "CHR_BAND" both
+# match either spelling.
 #
-# Covers two header generations. `build_rename_map()` matches case- and
-# separator-insensitively, so e.g. both "Chr Band" (legacy) and "CHR_BAND"
-# (current) normalize to the same key and need only one entry below.
-#
-# Current (v103+) exports additionally carry COSMIC_GENE_ID, CHROMOSOME,
-# GENOME_START, GENOME_STOP, which have no legacy-header equivalent (the
-# legacy export instead carried a single combined "Genome Location" string
-# and a separate "Entrez GeneId" -- neither of which the current export
-# includes). Both generations' entries are kept so either header maps
-# correctly; confirmed against a licensed Cosmic_CancerGeneCensus_v103_GRCh38
-# export (see SKILL.md s4).
-COSMIC_CGC_FIELDS = {
-    "Gene Symbol": "gene_symbol",
-    "Name": "gene_name",
+# Current (v103+) header, in export order; confirmed against a licensed
+# Cosmic_CancerGeneCensus_v103_GRCh38 export (see SKILL.md s4).
+COSMIC_CGC_CURRENT_FIELDS = {
+    "GENE_SYMBOL": "gene_symbol",
+    "NAME": "gene_name",
     "COSMIC_GENE_ID": "cosmic_gene_id",
     "CHROMOSOME": "chromosome",
     "GENOME_START": "genome_start",
     "GENOME_STOP": "genome_stop",
-    # Legacy-export-only fields below this line (absent from v103+; see
-    # SKILL.md s4/s5) -- EXCEPT "Tier" onward, which are shared by both
-    # header generations (normalized matching handles the case/punctuation
-    # difference, e.g. "Chr Band" vs "CHR_BAND").
+    "CHR_BAND": "chr_band",
+    "SOMATIC": "somatic",
+    "GERMLINE": "germline",
+    "TUMOUR_TYPES_SOMATIC": "tumour_types_somatic",
+    "TUMOUR_TYPES_GERMLINE": "tumour_types_germline",
+    "CANCER_SYNDROME": "cancer_syndrome",
+    "TISSUE_TYPE": "tissue_type",
+    "MOLECULAR_GENETICS": "molecular_genetics",
+    "ROLE_IN_CANCER": "role_in_cancer",
+    "MUTATION_TYPES": "mutation_types",
+    "TRANSLOCATION_PARTNER": "translocation_partner",
+    "OTHER_GERMLINE_MUT": "other_germline_mut",
+    "OTHER_SYNDROME": "other_syndrome",
+    "TIER": "classification",
+    "SYNONYMS": "synonyms",
+}
+
+# Legacy header: Title-Case names, with an Entrez ID, a combined
+# "Genome Location" string and a Hallmark flag where the current header has a
+# COSMIC gene ID and split coordinates.
+COSMIC_CGC_LEGACY_FIELDS = {
+    "Gene Symbol": "gene_symbol",
+    "Name": "gene_name",
     "Entrez GeneId": "entrez_id",
     "Genome Location": "genome_location",
-    "Hallmark": "hallmark",
-    # Shared by both header generations from here on.
     "Tier": "classification",
+    "Hallmark": "hallmark",
     "Chr Band": "chr_band",
     "Somatic": "somatic",
     "Germline": "germline",
@@ -48,6 +63,21 @@ COSMIC_CGC_FIELDS = {
     "Other Germline Mut": "other_germline_mut",
     "Other Syndrome": "other_syndrome",
     "Synonyms": "synonyms",
+}
+
+# Schema ID stamped for each header generation. plugin.yaml must accept every
+# key here (its schema_id plus schema_ids).
+COSMIC_CGC_HEADER_GENERATIONS = {
+    "cosmic-cgc-v2": COSMIC_CGC_CURRENT_FIELDS,
+    "cosmic-cgc-legacy-v1": COSMIC_CGC_LEGACY_FIELDS,
+}
+
+# Every known column, for renaming before the generation is known. Built from the
+# registry, so a newly registered generation's columns are renamed too.
+COSMIC_CGC_FIELDS = {
+    raw: field
+    for fields in COSMIC_CGC_HEADER_GENERATIONS.values()
+    for raw, field in fields.items()
 }
 
 COSMIC_CGC_CLASSIFICATION_LEVELS = [

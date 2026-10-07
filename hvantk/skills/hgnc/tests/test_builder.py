@@ -128,3 +128,66 @@ def test_quoted_multivalue_fields_are_unquoted_before_splitting(hail_session, tm
     assert list(r.alias_symbols) == ["H1.4", "H1e"], list(r.alias_symbols)
     assert list(r.uniprot_ids) == ["P10412", "Q4VB24"], list(r.uniprot_ids)
     assert list(r.gene_group) == ["grp1", "grp2"], list(r.gene_group)
+
+
+@pytest.mark.hail
+def test_genes_listing_symbols_reads_one_list_and_keeps_every_gene(
+    hail_session, tmp_path
+):
+    """``get_genes_listing_symbols`` must read one list at a time and return every gene.
+
+    ``resolve_alias`` merges previous symbols with aliases and keeps the first gene, so
+    the pQTL builder relies on this method to rank previous symbols above aliases and
+    to reject a symbol that several genes share. Here SHARED is GENEA's alias and
+    GENEB's previous symbol, and BOTH is an alias of both genes.
+    """
+    from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
+    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
+    columns = (
+        "hgnc_id symbol name locus_group locus_type status location alias_symbol "
+        "alias_name prev_symbol prev_name gene_group gene_group_id "
+        "date_approved_reserved date_symbol_changed date_name_changed date_modified "
+        "entrez_id ensembl_gene_id vega_id ucsc_id ena refseq_accession ccds_id "
+        "uniprot_ids"
+    ).split()
+    genes = [
+        {
+            "hgnc_id": "HGNC:1",
+            "symbol": "GENEA",
+            "status": "Approved",
+            "alias_symbol": "SHARED|BOTH",
+            "ensembl_gene_id": "ENSG00000000001",
+        },
+        {
+            "hgnc_id": "HGNC:2",
+            "symbol": "GENEB",
+            "status": "Approved",
+            "alias_symbol": "BOTH",
+            "prev_symbol": "SHARED",
+            "ensembl_gene_id": "ENSG00000000002",
+        },
+    ]
+    src = tmp_path / "hgnc_shared_symbols.tsv"
+    src.write_text(
+        "\t".join(columns)
+        + "\n"
+        + "".join(
+            "\t".join(gene.get(column, "") for column in columns) + "\n"
+            for gene in genes
+        )
+    )
+
+    builder = phase_b_snapshot_adapter(build_hgnc_gene_lookup, "hgnc:lookup")
+    out = str(tmp_path / "hgnc.ht")
+    builder(input_path=Path(src).resolve().as_uri(), output_path=out)
+    streamer = HGNCGeneCatalogStreamer.from_path(out)
+
+    symbols = {"SHARED", "BOTH", "UNLISTED"}
+    assert streamer.get_genes_listing_symbols(symbols, "prev_symbols") == {
+        "SHARED": {"HGNC:2"}
+    }
+    assert streamer.get_genes_listing_symbols(symbols, "alias_symbols") == {
+        "SHARED": {"HGNC:1"},
+        "BOTH": {"HGNC:1", "HGNC:2"},
+    }

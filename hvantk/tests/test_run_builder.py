@@ -117,6 +117,26 @@ def test_run_builder_accepts_manifest_schema_generation(tmp_path):
     assert provenance.schema_id == "legacy-v1"
 
 
+def test_run_builder_rejects_schema_id_outside_manifest_schema_ids(tmp_path):
+    """A non-empty schema_ids widens the accepted set; it does not switch the check off."""
+
+    def build_other(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="other-v1")
+        )
+
+    spec = _make_spec(build_other)
+    object.__setattr__(spec, "schema_ids", ("legacy-v1",))
+    with pytest.raises(BuilderContractError, match="schema_id"):
+        run_builder_for_spec(
+            spec,
+            parsed_input=None,
+            output_path=tmp_path / "r.parquet",
+            plugin_version="0.1.0",
+        )
+
+
 def test_run_builder_requires_artifact_type_on_spec(tmp_path):
     """If the manifest hasn't been migrated (artifact_type is None), raise clearly."""
 

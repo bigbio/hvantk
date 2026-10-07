@@ -82,6 +82,7 @@ def test_cosmic_cgc_submissions_round_trip(
 ):
     """Build COSMIC CGC from the synthetic fixture; assert schema and sample-row stability."""
     import hail as hl
+    from hvantk.core import io as core_io
     from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
 
     builder = phase_b_snapshot_adapter(
@@ -107,6 +108,9 @@ def test_cosmic_cgc_submissions_round_trip(
     output_path = str(tmp_path / "cosmic_cgc.ht")
     builder(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
+
+    # The fixture carries the current (v103+) header, so the current schema ID.
+    assert core_io.load(output_path).provenance.schema_id == "cosmic-cgc-v2"
 
     # SYNTHE has no entry in the stub catalog's map -> dropped when keyed by hgnc_id.
     kept_symbols = ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol))
@@ -150,6 +154,7 @@ def test_legacy_header_fields_are_renamed(hail_session, tmp_path):
     import hail as hl
     from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
 
+    # The whole legacy header: the builder requires every column of a generation.
     headers = [
         "Gene Symbol",
         "Name",
@@ -160,16 +165,22 @@ def test_legacy_header_fields_are_renamed(hail_session, tmp_path):
         "Chr Band",
         "Somatic",
         "Germline",
+        "Tumour Types(Somatic)",
+        "Tumour Types(Germline)",
+        "Cancer Syndrome",
+        "Tissue Type",
+        "Molecular Genetics",
+        "Role in Cancer",
+        "Mutation Types",
+        "Translocation Partner",
+        "Other Germline Mut",
+        "Other Syndrome",
+        "Synonyms",
     ]
+    values = ["SYNTHLEGACY", "synthetic", "123", "1:10-20", "yes", "1", "1p", "y", "n"]
+    values += [""] * (len(headers) - len(values))
     path = tmp_path / "legacy.tsv"
-    path.write_text(
-        "\t".join(headers)
-        + "\n"
-        + "\t".join(
-            ["SYNTHLEGACY", "synthetic", "123", "1:10-20", "yes", "1", "1p", "y", "n"]
-        )
-        + "\n"
-    )
+    path.write_text("\t".join(headers) + "\n" + "\t".join(values) + "\n")
     artifact = build_cosmic_cgc_submissions(path, _context())
     ht = artifact.to_hail()
 
@@ -200,7 +211,21 @@ def test_non_integer_coordinates_are_counted(caplog, hail_session, tmp_path):
 
 
 @pytest.mark.hail
-def test_empty_gene_mapping_builds_without_hail_type_error(hail_session):
+def test_partly_renamed_header_raises(hail_session, tmp_path):
+    from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
+
+    with gzip.open(FIXTURE, "rt", encoding="utf-8") as handle:
+        contents = handle.read()
+    assert "\tGENOME_START\t" in contents
+    path = tmp_path / "renamed-start.tsv"
+    path.write_text(contents.replace("\tGENOME_START\t", "\tGENOME_START_POS\t", 1))
+
+    with pytest.raises(ValueError, match=r"cosmic-cgc-v2 .*lacks GENOME_START\b"):
+        build_cosmic_cgc_submissions(path, _context())
+
+
+@pytest.mark.hail
+def test_gene_catalog_resolving_no_symbol_raises(hail_session):
     from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
 
     class NoMatches:
@@ -208,7 +233,5 @@ def test_empty_gene_mapping_builds_without_hail_type_error(hail_session):
             assert (source_type, target_type) == ("gene_symbol", "hgnc_id")
             return {symbol: None for symbol in ids}
 
-    artifact = build_cosmic_cgc_submissions(
-        FIXTURE, _context(), gene_catalog=NoMatches()
-    )
-    assert artifact.to_hail().count() == 0
+    with pytest.raises(ValueError, match="resolved none of the 5 gene symbols"):
+        build_cosmic_cgc_submissions(FIXTURE, _context(), gene_catalog=NoMatches())

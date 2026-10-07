@@ -8,8 +8,10 @@ SKILL.md s 2 for the producer snippet.
 Input contract
 --------------
 ``parsed_input`` is a directory holding one or more ``*.parquet`` files, or a
-single parquet file. Only ``*.parquet`` files directly inside the directory are
-read, so a NOTICE.md or a script kept beside them is ignored. Each file is the
+single parquet file: a local path, or a ``gs://`` / ``hdfs://`` URI given as a
+``str`` (``pathlib.Path`` collapses ``gs://`` to ``gs:/``). Only ``*.parquet``
+files directly inside the directory are read, so a NOTICE.md or a script kept
+beside them is ignored. Each file is the
 SDK's ``tidy_scores()`` long format: one row per variant x scorer x track (x gene
 or junction, for gene-level scorers). Columns used:
 
@@ -26,7 +28,8 @@ files may differ in physical types: a ``gene_id`` stored as parquet ``null`` (a
 file holding only track-level scorers), or float32 next to float64 scores.
 
 ``variant_id`` is the SDK's ``chrom:pos:ref>alt`` string, 1-based, on GRCh38
-``chr`` contigs (e.g. ``chr3:39408741:T>C``). All other columns are ignored.
+``chr`` contigs (e.g. ``chr3:39408741:T>C``), with both alleles non-empty. All
+other columns are ignored.
 
 A tidy-scores row is identified by ``ROW_KEY``: variant, scorer, track, strand,
 gene and junction. The same key twice means the same scores were passed twice
@@ -57,14 +60,15 @@ Dropped rows are reported in a warning with their count.
 The rows are checked with Spark before anything reaches Hail. ``ValueError`` is
 raised for a missing required column, an unknown ``output_types`` value, a
 missing ``variant_scorer`` or one not in ``SCORER_FIELDS`` anywhere in the input
-(whatever the filters), a ``variant_id`` not in ``chrom:pos:ref>alt`` form, a
-``ROW_KEY`` that occurs more than once, and filters that leave no row to
-aggregate.
+(whatever the filters), a ``variant_id`` not in ``chrom:pos:ref>alt`` form or
+with an empty allele, a ``ROW_KEY`` that occurs more than once, and filters that
+leave no row to aggregate.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -96,12 +100,17 @@ ROW_KEY = (
     "gene_id",
 ) + _JUNCTION_COLUMNS
 #: ``str(genome.Variant)``, the SDK's default variant format: ``chrom:pos:ref>alt``
-#: with non-empty alleles from ACGTN.
+#: with bases from ACGTN, where an allele may be empty.
+_SDK_VARIANT_ID_PATTERN = r"^[^:]+:[0-9]+:[ACGTN]*>[ACGTN]*$"
+#: The SDK's format with both alleles non-empty. The non-empty alleles are this
+#: builder's rule, not the SDK's: an empty allele cannot join VCF-keyed tables.
 VARIANT_ID_PATTERN = r"^[^:]+:[0-9]+:[ACGTN]+>[ACGTN]+$"
 
 
 def _parquet_paths(input_path, spark=None) -> list[str]:
-    """Absolute paths of the input parquet files (Spark wants absolute paths)."""
+    """The input parquet files: local ones as absolute paths, which Spark wants,
+    and ``gs://`` / ``hdfs://`` URIs as given (a directory URI is listed through
+    Spark's Hadoop filesystem)."""
     input_value = str(input_path)
     scheme = urlsplit(input_value).scheme
     if scheme in {"gs", "hdfs"}:
@@ -131,9 +140,11 @@ def _parquet_paths(input_path, spark=None) -> list[str]:
     return [str(f.resolve()) for f in files]
 
 
-def _as_list(value) -> list[str]:
-    """``--plugin-arg`` passes a single value as a plain string, not a list."""
-    return [value] if isinstance(value, str) else list(value)
+def _sorted_values(value) -> list[str]:
+    """A filter's values, sorted and without repeats, so the same filter given in
+    another order records the same provenance. ``--plugin-arg`` passes a single
+    value as a plain string, not a list."""
+    return sorted({value} if isinstance(value, str) else set(value))
 
 
 def _read_scores(input_path, need_ontology: bool):
@@ -189,26 +200,26 @@ def _read_scores(input_path, need_ontology: bool):
 
 
 def _check_unique_rows(sdf) -> None:
-    """Fail when a ``ROW_KEY`` occurs more than once (see the module docstring)."""
+    """Fail when a ``ROW_KEY`` occurs more than once (see the module docstring).
+
+    The rows are grouped on a 64-bit hash of the key, which is cheaper than
+    grouping on the seven key columns (timings in SKILL.md s 3). Only the rows
+    whose hash occurs more than once are joined back (``left_semi``) and grouped
+    on the exact key, so two keys that share a hash never fail the build. Every
+    step runs in Spark: nothing that grows with the number of duplicates is
+    collected to the driver.
+    """
     from pyspark.sql import functions as F
 
-    key_hash = F.sha2(F.to_json(F.struct(*[F.col(column) for column in ROW_KEY])), 256)
-    hashed = sdf.withColumn("_row_key_hash", key_hash)
-    possible_hashes = [
-        row["_row_key_hash"]
-        for row in (
-            hashed.groupBy("_row_key_hash")
-            .count()
-            .filter(F.col("count") > 1)
-            .select("_row_key_hash")
-            .collect()
-        )
-    ]
-    if not possible_hashes:
-        return
-
+    hashed = sdf.select(*ROW_KEY, F.xxhash64(*ROW_KEY).alias("_key_hash"))
+    colliding = (
+        hashed.groupBy("_key_hash")
+        .count()
+        .filter(F.col("count") > 1)
+        .select("_key_hash")
+    )
     duplicated = (
-        hashed.filter(F.col("_row_key_hash").isin(*possible_hashes))
+        hashed.join(colliding, on="_key_hash", how="left_semi")
         .groupBy(*ROW_KEY)
         .count()
         .filter(F.col("count") > 1)
@@ -231,11 +242,11 @@ def _check_unique_rows(sdf) -> None:
 def _checked_rows(sdf, output_types, ontology_curies):
     """Check the rows on the Spark side, then keep the ones to aggregate.
 
-    Two Spark passes before anything reaches Hail, so a bad input fails before
-    the shuffle: one validates the rows and counts each filter step, the other
-    (``_check_unique_rows``) looks for a ``ROW_KEY`` that occurs twice. Rows
-    dropped for lacking both scores are reported in a warning; filters that
-    leave nothing raise, naming the step that removed everything.
+    The rows are checked in Spark before anything reaches Hail, so a bad input
+    fails before the shuffle: one aggregation validates the rows and counts each
+    filter step, then ``_check_unique_rows`` looks for a ``ROW_KEY`` that occurs
+    twice. Rows dropped for lacking both scores are reported in a warning;
+    filters that leave nothing raise, naming the step that removed everything.
     """
     from pyspark.sql import functions as F
 
@@ -291,10 +302,16 @@ def _checked_rows(sdf, output_types, ontology_curies):
             "hvantk/skills/alphagenome/shared/constants.py once its output is "
             "understood (see SKILL.md s 8)."
         )
-    if stats["bad_id"] is not None:
+    bad_id = stats["bad_id"]
+    if bad_id is not None and re.match(_SDK_VARIANT_ID_PATTERN, bad_id):
         raise ValueError(
-            f"variant_id {stats['bad_id']!r} is not in the SDK's chrom:pos:ref>alt "
-            "form (e.g. chr3:39408741:T>C)"
+            f"variant_id {bad_id!r} has an empty allele; write indels VCF-style, "
+            "with the anchor base (an empty allele cannot join VCF-keyed tables)"
+        )
+    if bad_id is not None:
+        raise ValueError(
+            f"variant_id {bad_id!r} is not in the SDK's chrom:pos:ref>alt form "
+            "(e.g. chr3:39408741:T>C)"
         )
 
     _check_unique_rows(sdf)
@@ -344,7 +361,11 @@ def build_alphagenome_predictions(
     Parameters
     ----------
     parsed_input : str | Path
-        Directory of ``tidy_scores()`` parquet files, or one parquet file.
+        Directory of ``tidy_scores()`` parquet files, or one parquet file. A
+        ``gs://`` or ``hdfs://`` URI must be a ``str``: ``pathlib.Path``
+        collapses ``gs://`` to ``gs:/``. ``hvantk reprocess`` passes a URI only
+        with ``--skip-parse --intermediate <uri>``; its pre-flight rejects a
+        ``--raw-dir`` that is not a non-empty local directory.
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
     reference_genome : str
@@ -362,14 +383,14 @@ def build_alphagenome_predictions(
     from hvantk.core.models import AnnotationTable
 
     if output_types is not None:
-        output_types = _as_list(output_types)
+        output_types = _sorted_values(output_types)
         unknown = sorted(set(output_types) - OUTPUT_TYPES)
         if unknown:
             raise ValueError(
                 f"Unknown output_types {unknown}; known: {sorted(OUTPUT_TYPES)}"
             )
     if ontology_curies is not None:
-        ontology_curies = _as_list(ontology_curies)
+        ontology_curies = _sorted_values(ontology_curies)
 
     sdf = _read_scores(parsed_input, need_ontology=ontology_curies is not None)
     ht = hl.Table.from_spark(_checked_rows(sdf, output_types, ontology_curies))
