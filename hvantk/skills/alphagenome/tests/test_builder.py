@@ -107,8 +107,11 @@ def test_alphagenome_round_trip(hail_session, tmp_path, regenerate_snapshots):
     assert splice_sites == pytest.approx(AG_SPLICE_SITES, rel=1e-6)
 
     heart_path = str(tmp_path / "alphagenome_heart.ht")
+    # Given in reverse order: provenance records the filter values sorted.
     builder(
-        input_path=FIXTURE_DIR, output_path=heart_path, ontology_curies=HEART_CURIES
+        input_path=FIXTURE_DIR,
+        output_path=heart_path,
+        ontology_curies=HEART_CURIES[::-1],
     )
     assert load(heart_path).provenance.build_parameters == {
         "output_types": None,
