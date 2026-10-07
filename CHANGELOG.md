@@ -292,6 +292,17 @@
   one file, and failed with `IsADirectoryError`. The skill page and the data-sources
   guide now give the form that works, `--raw-dir <dir> --intermediate <dir>/<file>
   --skip-parse --skip-download`, as for `gwas-catalog:associations`.
+- **PeptideAtlas per-site `n_observations` counted each peptide once per modified form
+  (#425, #430).** `parse_peptideatlas_zip` added the parent peptide's total count, which
+  also covers its unmodified and other forms, once for every phospho form instead of
+  each form's own count. On the real build 202512/606 that inflated 237,428 of 259,932
+  sites (82× in total, median 16× per site) and reordered them (Spearman 0.82 against the
+  corrected counts). Rebuild any `peptideatlas:phospho` table built before this fix, and
+  re-check anything that used its counts. `hvantk download peptideatlas-phospho` returns
+  an existing parsed `peptideatlas-phospho-<date>-<id>.tsv` unchanged, so delete that
+  file first (or pass `--overwrite`, which also downloads the zip again). A phospho form
+  that maps to a kept protein and has no integer count now fails the parse. The plugin
+  version moves to 0.1.1, so provenance tells the two builds apart.
 
 ## 0.3.1 — 2026-08-30
 

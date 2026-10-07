@@ -33,6 +33,9 @@ table and the "what's real, what's fabricated" breakdown. In short:
     prefix.
   - One peptide carries only a non-phospho modification
     (``[Carbamidomethyl]``): must contribute zero output rows.
+  - One peptide (``peptide_instance`` 209, seen 100 times) in two phospho
+    forms (12 and 8 observations) plus its unmodified form (80): its site
+    P04637 S@42 counts 12 + 8 = 20, each form's own observations (#425).
 
 Regenerate the zip itself only by re-deriving it from the row design above
 (and in the README) -- no generator script is committed to this repo.
@@ -111,14 +114,16 @@ EXPECTED_COLUMNS = {
 KEY_FIELDS = ("accession", "position")
 
 # Keys into the fabricated fixture (see README.md's row-purpose table beside the
-# zip), chosen to cover three different code paths in one snapshot: an aggregated
-# multi-peptide site, a site from a one-peptide/two-site extraction, and one arm
-# of a multi-mapping peptide. Row selection below raises KeyError for any key
+# zip), chosen to cover four different code paths in one snapshot: an aggregated
+# multi-peptide site, a site from a one-peptide/two-site extraction, one arm of a
+# multi-mapping peptide, and a site seen in two phospho forms of one peptide
+# (counted from each form's own observations, #425). Row selection below raises KeyError for any key
 # absent from the table, so these cannot be invented.
 SAMPLE_KEYS = [
     {"accession": "P04637", "position": "14"},
     {"accession": "P04637", "position": "35"},
     {"accession": "P99999", "position": "23"},
+    {"accession": "P04637", "position": "42"},
 ]
 
 
@@ -200,8 +205,8 @@ def test_peptideatlas_phospho_snapshot_round_trip(tmp_path, regenerate_snapshots
     df = artifact.to_pandas()
 
     # Structural assertions, independent of the snapshot comparison.
-    assert len(df) == 5, (
-        "fixture has exactly five phospho sites (see the 'expected parse "
+    assert len(df) == 6, (
+        "fixture has exactly six phospho sites (see the 'expected parse "
         "output' table in README.md beside the fixture zip)"
     )
     assert set(df.columns) == EXPECTED_COLUMNS, (

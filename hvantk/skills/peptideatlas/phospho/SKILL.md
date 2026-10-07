@@ -32,9 +32,9 @@ The raw upstream artefact is a single TSV zip (e.g. `atlas_build_606.tsv.zip`, m
 
 - `biosequence.tsv` — proteins (`biosequence_id`, accession, gene name, sequence).
 - `protein_identification.tsv` — protein confidence; `presence_level_id == 1` means *canonical*. The parser filters by this and drops `DECOY_` / `CONTAM_` prefixed accessions in `biosequence.tsv`. This table is **optional** to the parser — it is not in `parse_peptideatlas_zip`'s `required_tables` — so when it is absent or misnamed, `canonical_bs_ids` stays empty and the canonical filter silently turns off (only a `logger.warning` fires), letting non-canonical isoforms pass through. Real builds ship it.
-- `peptide_instance.tsv` — distinct peptides + `n_observations` (sum of PSMs across experiments).
+- `peptide_instance.tsv` — distinct peptides + `n_observations` (sum of PSMs across experiments, over every form of the peptide, unmodified included).
 - `peptide_mapping.tsv` — peptide-to-protein coordinates (`start_in_biosequence`); 15M+ rows; must be streamed, not slurped.
-- `modified_peptide_instance.tsv` — modified peptide sequences in bracket notation; 3M+ rows.
+- `modified_peptide_instance.tsv` — modified peptide sequences in bracket notation, one row per modified form (sequence × charge), each with its own `n_observations`; 3M+ rows.
 
 Modification notation gotchas (see `_extract_phospho_offsets` in `shared/datasets.py`):
 
@@ -43,7 +43,7 @@ Modification notation gotchas (see `_extract_phospho_offsets` in `shared/dataset
 - N-terminal labels like `[TMT6plex]-` precede the first residue and must be skipped (no preceding amino acid).
 - Lowercase letters, digits, and dashes in the sequence are ignored.
 
-Aggregation gotcha: the same `(accession, position)` can be observed via multiple distinct peptides — `parse_peptideatlas_zip` sums `n_observations` across all contributing peptide instances.
+Aggregation gotcha: the same `(accession, position)` can be observed via multiple distinct peptides and via several modified forms of one peptide. `parse_peptideatlas_zip` sums each phospho form's own `modified_peptide_instance.n_observations` over all of them. It must not use the parent `peptide_instance.n_observations`: that count also covers the unmodified and other forms, and adding it once per form inflated 91% of the real build's 259,932 sites (82× in total, median 16× per site; #425). A phospho form that maps to a kept protein and has no integer count fails the parse. In build 606 the forms' counts sum exactly to the peptide's for all 381,252 peptides (42,499 forms are unmodified). Tables built before the fix (plugin version 0.1.0) carry the inflated counts; `hvantk download peptideatlas-phospho` returns an existing parsed TSV unchanged, so delete it (or pass `--overwrite`, which also downloads the zip again) before rebuilding. `peptide_mapping` repeats a (peptide, protein, start) row 508,098 times in build 606, but only for proteins the parser drops (decoys, contaminants, non-canonical isoforms): the 389,497 kept mappings are all distinct, so no site is counted twice through a repeated mapping. Re-check that on a new build, since `mapping_by_pi` keeps repeats.
 
 **Confirmed against a live build (202512 / 606, checked 2026-10-06).** Downloaded and parsed the full ~549 MB zip on the cluster to check the facts above against real data (no rows retained — see the licence note in § 9):
 
@@ -108,7 +108,7 @@ Per `_conventions` § 9:
 
 - **fixture:** `hvantk/skills/peptideatlas/phospho/tests/testdata/raw/peptideatlas-phospho/` (seeded) — a directory holding `atlas_build_606-synthetic.tsv.zip` plus a `README.md` describing it. This is a **synthetic miniature raw build**, not a truncation of a real PeptideAtlas build — the real `atlas_build_*.tsv.zip` is ~549 MB (`content_length` in `tests/drift_fingerprint.json`) and is not vendored into this repo. Its five tables (`biosequence.tsv`, `peptide_instance.tsv`, `peptide_mapping.tsv`, `modified_peptide_instance.tsv`, `protein_identification.tsv`) carry the real column headers and real `<residue>[Phospho]` modification notation confirmed against a live build (§ 4); every row is fabricated. The round-trip test runs the real `parse_raw_dir` over this zip, so it now covers upstream zip parsing (table joins, offset extraction, canonical/DECOY_/CONTAM_ filtering, observation aggregation) in addition to the intermediate-TSV -> `AnnotationTable` contract — `test_phospho.py`'s own hand-written mock-zip tests remain the place for notation edge cases (numeric-mass brackets, N-terminal labels, canonical filtering in isolation) this fixture does not need to re-cover.
 - **schema_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/schema.json` (seeded).
-- **row_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/sample_rows.json` (seeded, keyed on `(accession, position)` for three of the fixture's five phospho sites — an aggregated two-peptide site, a two-site-in-one-peptide site, and one arm of a multi-mapping peptide).
+- **row_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/sample_rows.json` (seeded, keyed on `(accession, position)` for four of the fixture's six phospho sites — an aggregated two-peptide site, a two-site-in-one-peptide site, one arm of a multi-mapping peptide, and a site seen in two phospho forms of one peptide).
 - **command:** `pytest hvantk/skills/peptideatlas/phospho/tests`.
 - **drift_fingerprint:** `hvantk/skills/peptideatlas/phospho/tests/drift_fingerprint.json` — a real baseline captured from a live probe run (build 202512 / 606, fetched 2026-07-27), not a placeholder. Refresh via the update playbook.
 

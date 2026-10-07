@@ -161,8 +161,12 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
 
     Joins biosequence, peptide_instance, peptide_mapping, and
     modified_peptide_instance tables. Filters out DECOY_ and CONTAM_
-    prefixed accessions. Aggregates observation counts for the same
-    protein site across multiple peptide instances.
+    prefixed accessions. A site's ``n_observations`` is the sum, over every
+    phospho-modified peptide form that carries it, of that form's own
+    ``modified_peptide_instance.n_observations``. The parent
+    ``peptide_instance.n_observations`` is not used: it also counts the
+    unmodified and other forms of the peptide, so adding it once per
+    modified form inflated sites many times over (#425).
 
     Uses a streaming approach: builds lightweight lookup dicts for
     smaller tables (biosequence, peptide_instance), then streams the
@@ -223,13 +227,14 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
             )
         logger.info("Indexed %d biosequences (%d canonical)", n_bio, len(bioseq_by_id))
 
-        # Step 2: Index peptide_instance (381K rows)
-        # Store: {peptide_instance_id: n_observations}
+        # Step 2: Index peptide_instance ids (381K rows). Only membership is
+        # needed: counts come from each modified form (step 4).
         logger.info("Indexing peptide instances...")
-        pi_obs: Dict[str, int] = {}
-        for row in _iter_tsv_from_zip(zf, "peptide_instance.tsv"):
-            pi_obs[row["peptide_instance_id"]] = int(row.get("n_observations", "0"))
-        logger.info("Indexed %d peptide instances", len(pi_obs))
+        pi_ids: set = {
+            row["peptide_instance_id"]
+            for row in _iter_tsv_from_zip(zf, "peptide_instance.tsv")
+        }
+        logger.info("Indexed %d peptide instances", len(pi_ids))
 
         # Step 3: Stream peptide_mapping (15M rows) — build a compact index
         # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]}
@@ -263,7 +268,7 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         for mp in _iter_tsv_from_zip(zf, "modified_peptide_instance.tsv"):
             n_mpi += 1
             pi_id = mp["peptide_instance_id"]
-            if pi_id not in pi_obs:
+            if pi_id not in pi_ids:
                 continue
 
             mod_seq = mp.get("modified_peptide_sequence", "")
@@ -272,8 +277,21 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                 continue
 
             n_with_phospho += 1
-            n_obs = pi_obs[pi_id]
             mappings = mapping_by_pi.get(pi_id, [])
+            if (
+                not mappings
+            ):  # maps only to decoy, contaminant or non-canonical proteins
+                continue
+            # This form's own observations; the parent peptide_instance count
+            # also covers the unmodified and every other form (#425).
+            try:
+                n_obs = int(mp["n_observations"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError(
+                    "modified_peptide_instance row "
+                    f"{mp.get('modified_peptide_instance_id', '?')} has no integer "
+                    f"n_observations ({mp.get('n_observations')!r})"
+                ) from None
 
             for bs_id, start in mappings:
                 bs = bioseq_by_id[bs_id]

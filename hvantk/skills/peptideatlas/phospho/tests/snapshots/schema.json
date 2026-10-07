@@ -23,5 +23,5 @@
     "sequence_length": "str",
     "source_db": "str"
   },
-  "n_rows": 5
+  "n_rows": 6
 }
