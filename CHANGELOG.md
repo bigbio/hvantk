@@ -32,6 +32,21 @@
   and nothing in the API let a user notice. With `--seed-sweep > 1`, the ablation now
   carries `d_lo_env`/`d_hi_env` — the union of the bootstrap interval and the across-seed
   range, never narrower than the interval alone — beside the bootstrap columns.
+- **Every shipped dataset is now graded: executable contracts for `pqtl:metrics` (#414),
+  `cosmic-cgc:submissions` (#417) and `alphagenome:predictions` (#421).** Each ships a
+  fixture, schema and row snapshots and a Hail round-trip test, so the known-incomplete
+  ledger in `hvantk/tests/test_plugin_contract_artifacts.py` is empty and all 26
+  datasets run the contract. The pQTL and COSMIC fixtures are synthetic but
+  format-faithful, because their licences forbid redistributing rows; AlphaGenome's is
+  a real subset under the AlphaGenome Output Terms. `peptideatlas:phospho`'s fixture is
+  now a synthetic raw build zip, so its round-trip test grades `parse_raw_dir` as well
+  as the builder (#415).
+- **`THIRD_PARTY_DATA.md` and a fixture-provenance rule (#413).** A fixture that holds
+  real third-party data must have an entry there: source, version or retrieval date,
+  licence, attribution and modifications (`hvantk/skills/_conventions/SKILL.md` § 9). A
+  licence that forbids redistributing rows limits what a fixture may contain, not
+  whether one exists. The Expression Atlas, AlphaGenome and dbNSFP fixtures are listed
+  so far (#413, #421, #423).
 
 ### Changed
 
@@ -110,6 +125,19 @@
   `flanking_codons`. `ptm_build_pipeline`, the one function that writes the table,
   checks `output_ht` (`hvantk.tools.ptm.pipeline.config_errors`) and resolves the
   `uniprot-ptm:sites` plugin before it downloads anything.
+- **`alphagenome:predictions` ingests the AlphaGenome SDK's `tidy_scores` parquet instead
+  of calling the AlphaGenome API (#421, #424).** It builds one row per variant, with a
+  summary struct per (output type, scorer). A missing column, a missing or unknown
+  scorer, a malformed variant id, or the same scores given twice (a file passed twice,
+  or two scoring runs mixed) fails the build instead of being dropped or counted twice.
+  A missing or NaN score leaves out only the statistic it feeds, and dropped rows are
+  counted in a warning. `schema_id` is now `alphagenome-v2` and the plugin 0.2.0. The
+  old builder called the API, discarded the predictions and returned only its input
+  variants. Score variants with the AlphaGenome SDK (`score_variant` →
+  `variant_scorers.tidy_scores()`), save the full result as parquet (the builder needs
+  `track_strand` and, for splice junctions, `junction_Start`/`junction_End`), then run
+  `python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet>
+  --output <out.ht>`.
 
 ### Removed
 
@@ -129,6 +157,13 @@
   `PTMAtlasConfig.uniprot_tsv` is `PTMBuildConfig.ptm_tsv`, and
   `PTMAtlasResult.combined_tsv` / `.n_sites` / `.sources_used` are
   `PTMBuildResult.mapped_tsv_path` / `.n_mapped` / `.source_counts`.
+- **`hvantk.skills.alphagenome.pipelines` and `examples/alphagenome/` (#421)**, the
+  pipeline that called the AlphaGenome API (`AlphaGenomePipeline`, `CheckpointManager`,
+  `RateLimitedCaller`, `compute_intervals`, `load_config` and their helpers). hvantk no
+  longer calls the API; ingest the SDK's `tidy_scores` output instead (see Changed).
+- **An unused 11.7 MB copy of the Expression Atlas E-MTAB-6798 files** under
+  `hvantk/tests/testdata/raw/expression_atlas/` (#413). The fixture the tests read is
+  unchanged.
 
 ### Fixed
 
@@ -241,6 +276,22 @@
 - **`ptm_build_pipeline_core` checked for the UniProt TSV only after downloading and
   parsing the Ensembl GTF**, and let an empty `ptm_tsv` through; a missing or empty
   `ptm_tsv` now fails before either.
+- **`cosmic-cgc:submissions` builds from the current Census export (#417).** The builder
+  mapped only the legacy column names; it now also maps the 21 upper-snake-case
+  columns of the current export, casts genome coordinates to `int32`, and reads
+  plain-gzip input, which Hail refused to load without `force=True`. Multi-valued
+  `TISSUE_TYPE` stays a known gap (#419).
+- **The dbNSFP fixture is now attributed (#423).** It is real data: the header and the
+  first 4,999 chromosome-10 variants of the dbNSFP v4.9a academic branch, which is
+  licensed CC BY-NC-ND 4.0 (non-commercial use, attribution, no modified versions), and
+  it shipped without the attribution or non-commercial notice that licence requires. It
+  now has a `THIRD_PARTY_DATA.md` entry and a `NOTICE.md` beside the fixture and the
+  snapshot, and the catalog entry names the licence.
+- **The documented COSMIC CGC build command crashed (#424).** `hvantk reprocess
+  cosmic-cgc:submissions --raw-dir <dir>` handed the directory to a builder that reads
+  one file, and failed with `IsADirectoryError`. The skill page and the data-sources
+  guide now give the form that works, `--raw-dir <dir> --intermediate <dir>/<file>
+  --skip-parse --skip-download`, as for `gwas-catalog:associations`.
 
 ## 0.3.1 — 2026-08-30
 

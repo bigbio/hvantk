@@ -1,8 +1,7 @@
-"""Skipped: no fixture for cosmic-cgc; loader-only test."""
+"""Loader registration test for cosmic-cgc. The round-trip test lives in
+test_builder.py, against the committed synthetic fixture."""
 
 from __future__ import annotations
-
-import pytest
 
 from hvantk.core.models import AnnotationTable
 from hvantk.core.plugin import loader as plugin_loader
@@ -14,10 +13,3 @@ def test_cosmic_cgc_submissions_registered():
     spec = reg.get_dataset("cosmic-cgc:submissions")
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "cosmic-cgc-v1"
-
-
-@pytest.mark.skip(
-    reason="No fixture available for cosmic-cgc (COSMIC requires account login); manual smoke-test only"
-)
-def test_cosmic_cgc_submissions_round_trip():
-    pass

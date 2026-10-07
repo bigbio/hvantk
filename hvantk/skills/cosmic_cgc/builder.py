@@ -45,7 +45,8 @@ def build_cosmic_cgc_submissions(
     Parameters
     ----------
     parsed_input : str | Path
-        Path to the COSMIC CGC TSV file (e.g. Cosmic_Genes_v98_GRCh38.tsv.gz).
+        Path to the COSMIC CGC TSV file (e.g.
+        Cosmic_CancerGeneCensus_v10x_GRCh38.tsv.gz).
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
     **params
@@ -85,6 +86,16 @@ def build_cosmic_cgc_submissions(
     )
     if force_bgz:
         import_kwargs["force_bgz"] = True
+    else:
+        # The real COSMIC CGC export is standard (non-block) gzip, not BGZF
+        # (confirmed from its magic bytes). hl.import_table refuses to read
+        # ANY non-BGZF .gz path at all without this flag -- regardless of
+        # min_partitions (confirmed empirically with it unset, 1, and 10) --
+        # raising HailException: ".gz cannot be loaded in parallel". Harmless
+        # for uncompressed input: partition count is unaffected either way,
+        # and resolve_compression() already separates genuine bgzf (handled
+        # above) from plain gzip and uncompressed, both of which land here.
+        import_kwargs["force"] = True
     ht = hl.import_table(**import_kwargs)
 
     # 2. Transform
@@ -109,6 +120,15 @@ def build_cosmic_cgc_submissions(
     for bool_field in ("somatic", "germline", "hallmark"):
         if bool_field in get_row_fields(ht):
             ht = ht.annotate(**{bool_field: str_to_bool(ht[bool_field])})
+
+    # Cast genome coordinate fields (v103+ exports only; absent from legacy
+    # exports, hence the same existence guard used for `hallmark` above).
+    # hl.parse_int32 is missing-tolerant: an empty or non-numeric value
+    # becomes missing rather than raising (confirmed: 6/763 rows in a
+    # licensed v103 export leave these fields empty).
+    for coord_field in ("genome_start", "genome_stop"):
+        if coord_field in get_row_fields(ht):
+            ht = ht.annotate(**{coord_field: hl.parse_int32(ht[coord_field])})
 
     # Parse comma-separated multi-value fields into arrays
     multi_value_fields = [

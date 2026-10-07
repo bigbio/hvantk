@@ -1,0 +1,163 @@
+{
+  "key": [
+    "locus",
+    "alleles"
+  ],
+  "row": {
+    "alleles": "array<str>",
+    "atac_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "atac_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "cage_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "cage_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "chip_histone_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "chip_histone_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "chip_tf_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "chip_tf_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "contact_maps": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "dnase_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "dnase_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "locus": "locus<GRCh38>",
+    "procap_active_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "procap_diff_log2_sum": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "rna_seq_active": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "rna_seq_lfc": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "rna_seq_polyadenylation": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "splice_junctions": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "splice_site_usage": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "splice_sites": {
+      "max_abs_raw": "float64",
+      "n_rows": "int64",
+      "top_gene_id": "str",
+      "top_quantile": "float64",
+      "top_raw": "float64",
+      "top_track": "str"
+    },
+    "variant_id": "str"
+  }
+}

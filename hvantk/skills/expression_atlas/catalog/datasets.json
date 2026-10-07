@@ -116,6 +116,7 @@
     "last_updated": "2025-09-23T15:25:47.139828",
     "update_frequency": "static",
     "organism": "Homo sapiens",
+    "license": "CC BY 4.0",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
     "data_level": "transcript",

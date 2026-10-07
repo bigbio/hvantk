@@ -1,8 +1,8 @@
 api_version: 2
 name: alphagenome
-version: 0.1.0
+version: 0.2.0
 status: provisional
-description: AlphaGenome variant effect predictions - Hail Table
+description: AlphaGenome variant-effect scores (SDK tidy_scores parquet) - Hail Table
 
 source:
   catalog_ref: alphagenome
@@ -16,7 +16,7 @@ datasets:
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable
-    schema_id: alphagenome-v1
+    schema_id: alphagenome-v2
     builder:
       module: hvantk.skills.alphagenome.builder
       function: build_alphagenome_predictions
@@ -25,7 +25,7 @@ datasets:
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/alphagenome/tests
+      command: pytest hvantk/skills/alphagenome/tests -m hail
       fixture: tests/testdata/raw/alphagenome
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
