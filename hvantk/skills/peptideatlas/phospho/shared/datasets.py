@@ -321,7 +321,7 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         for mp in _iter_tsv_from_zip(
             zf,
             "modified_peptide_instance.tsv",
-            ("peptide_instance_id", "modified_peptide_sequence"),
+            ("peptide_instance_id", "modified_peptide_sequence", "n_observations"),
         ):
             n_mpi += 1
             pi_id = mp["peptide_instance_id"]

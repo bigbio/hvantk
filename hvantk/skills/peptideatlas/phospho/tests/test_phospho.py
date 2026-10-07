@@ -245,11 +245,17 @@ def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=N
     tables.mkdir()
     _write_tsv(
         tables / "biosequence.tsv",
-        ["biosequence_id", "biosequence_accession", "biosequence_seq"],
+        [
+            "biosequence_id",
+            "biosequence_accession",
+            "biosequence_gene_name",
+            "biosequence_seq",
+        ],
         [
             {
                 "biosequence_id": "100",
                 "biosequence_accession": "P04637",
+                "biosequence_gene_name": "TP53",
                 "biosequence_seq": "M" * 393,
             }
         ],
@@ -707,7 +713,10 @@ def test_url_no_doubled_phospho():
             "modified_peptide_instance.tsv",
             ("modified_peptide_sequence", "renamed_sequence"),
         ),
-        ("peptide_instance.tsv", ("n_observations", "renamed_observations")),
+        (
+            "modified_peptide_instance.tsv",
+            ("n_observations", "renamed_observations"),
+        ),
     ],
 )
 def test_parse_rejects_missing_required_columns(
@@ -756,7 +765,7 @@ def test_parse_rejects_empty_canonical_table(tmp_path):
     )
     _write_tsv(
         tables / "modified_peptide_instance.tsv",
-        ["peptide_instance_id", "modified_peptide_sequence"],
+        ["peptide_instance_id", "modified_peptide_sequence", "n_observations"],
         [],
     )
     with zipfile.ZipFile(original, "w") as zf:
