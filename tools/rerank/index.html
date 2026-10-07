@@ -1,0 +1,2078 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/rerank/">
+      
+      
+        <link rel="prev" href="../qtlcascade/">
+      
+      
+        <link rel="next" href="../../examples/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>ReRank - Gene Re-ranking - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerank-gene-re-ranking-by-multi-omic-credibility" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ReRank - Gene Re-ranking
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReRank - Gene Re-ranking
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReRank - Gene Re-ranking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiplicity-n-perm-null-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiplicity -- --n-perm, --null-out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blocked-cv-blocks-max-block-frac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blocked CV -- --blocks, --max-block-frac
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#seeds-seed-seed-sweep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seeds -- --seed, --seed-sweep
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output columns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output columns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ranked-table-o-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked table (-o/--output)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-axis-ablation-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-axis ablation (console)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#null-summary-null-out-or-the-consoles-abbreviated-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Null summary (--null-out, or the console's abbreviated view)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blocks-summary-console-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blocks summary (console only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunked-runs-on-a-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunked runs on a cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiplicity-n-perm-null-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiplicity -- --n-perm, --null-out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blocked-cv-blocks-max-block-frac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blocked CV -- --blocks, --max-block-frac
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#seeds-seed-seed-sweep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seeds -- --seed, --seed-sweep
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output columns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output columns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ranked-table-o-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked table (-o/--output)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-axis-ablation-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-axis ablation (console)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#null-summary-null-out-or-the-consoles-abbreviated-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Null summary (--null-out, or the console's abbreviated view)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blocks-summary-console-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blocks summary (console only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunked-runs-on-a-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunked runs on a cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="rerank-gene-re-ranking-by-multi-omic-credibility">ReRank: Gene Re-ranking by Multi-Omic Credibility<a class="headerlink" href="#rerank-gene-re-ranking-by-multi-omic-credibility" title="Permanent link">&para;</a></h1>
+<p><code>hvantk rerank</code> re-ranks a gene burden or prior statistic against one or more gene-keyed feature axes -- constraint, expression, or any other numeric table keyed by gene -- by fitting a calibrated, out-of-fold gradient-boosted model. It assigns credibility tiers and flags cohort artifacts for review (advisory only: the audit never overrides the ranking). The feature tables and the cohort's prior statistic are supplied by the caller through a declarative YAML config; the engine itself is disease-agnostic.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>A per-axis result -- "axis X adds +0.03 AUC over the constraint baseline" -- is only as informative as the questions that have been asked of it. Three questions recur, and each is answered by its own module rather than by inspection of the output table alone:</p>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Question</th>
+<th>Answered by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Circularity</td>
+<td>Was this feature trained on the same evidence the label was derived from?</td>
+<td><code>provenance.py</code> (<code>Config.feature_provenance</code> / <code>label_provenance</code>, <code>rerank_arms</code>)</td>
+</tr>
+<tr>
+<td>Presence leakage</td>
+<td>Does a column's <em>missingness</em>, not its value, predict the label?</td>
+<td><code>leakage.py</code> (<code>Config.leakage</code>, <code>LeakagePolicy</code>)</td>
+</tr>
+<tr>
+<td>Multiplicity</td>
+<td>Several axes were offered and the best one reported -- could that delta have arisen by chance?</td>
+<td><code>nulls.py</code> (<code>Config.nulls</code>, <code>NullConfig</code>, <code>--n-perm</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>This page documents the multiplicity control on the right of that last row, plus two further controls that ship alongside it and ask a related but distinct question -- not <em>is the delta real</em>, but <em>is the delta an artefact of one arbitrary modelling choice</em>:</p>
+<ul>
+<li><strong>Paralogue-blocked cross-validation</strong> -- does the delta survive when a gene family is not allowed to straddle a cross-validation fold?</li>
+<li><strong>Multi-seed evaluation</strong> -- does the delta survive a change of the one cross-validation partition every earlier run held fixed?</li>
+</ul>
+<p>All three are opt-in CLI flags, and every one of them defaults to today's behaviour: a bare <code>hvantk rerank -c config.yaml -o out.tsv</code> is unaffected by any of the flags below unless you pass them.</p>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hvantk<span class="w"> </span>rerank<span class="w"> </span>-c<span class="w"> </span>config.yaml<span class="w"> </span>-o<span class="w"> </span>out.tsv
+</code></pre></div>
+<p>This is the minimal invocation: a config naming a cohort manifest, one or more feature tables, and a label gene list (see <strong>The config YAML</strong> below). It writes a ranked TSV to <code>out.tsv</code> and prints a short console summary. Every console/TSV excerpt on this page, including this one, comes from one small synthetic cohort built purely for illustration -- a couple hundred genes, three feature axes, no real biology or gene names -- so that the numbers agree with each other from section to section:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Wrote 200 genes -&gt; out.tsv
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Credibility: ROBUST=80 / INTERMEDIATE=120 (over 200 scored genes)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Audit: 0 gene(s) FLAGGED for review (advisory; ranking not overridden). Reasons: {}
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Per-axis ablation (delta-AUC over constraint):
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>      family   auc   d_lo   d_md   d_hi
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  constraint 0.706  0.000  0.000  0.000
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  expression 0.738 -0.020  0.032  0.082
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>conservation 0.658 -0.089 -0.050 -0.009
+</code></pre></div>
+<p>The ablation table is the per-axis result: out-of-fold AUC of baseline+axis, and a paired gene-resampling bootstrap interval (<code>d_lo</code>/<code>d_md</code>/<code>d_hi</code>) on the delta over the baseline alone -- here <code>expression</code> adds a modest, not-quite-conclusive gain (the interval straddles zero) while <code>conservation</code> makes things worse (a genuine illustration of an axis that should not be added, not a hypothetical one). See <strong>Output columns</strong> for the full column reference, including the columns the controls below add.</p>
+<h2 id="the-config-yaml">The config YAML<a class="headerlink" href="#the-config-yaml" title="Permanent link">&para;</a></h2>
+<p><code>-c</code>/<code>--config</code> reads exactly five top-level keys; any other key is rejected before any work starts (a leftover <code>prior:</code> block from before the cohort-manifest migration gets its own hint in the error message).</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>no</td>
+<td>A label for the run (default <code>"rerank"</code>); has no effect on scoring.</td>
+</tr>
+<tr>
+<td><code>cohort</code></td>
+<td>yes</td>
+<td>Path to a cohort manifest YAML -- the single source of the prior statistic and, when it declares one, the columns the case/control architecture audit reads.</td>
+</tr>
+<tr>
+<td><code>features</code></td>
+<td>yes</td>
+<td>A list of <code>{name, path}</code> gene-keyed tables (<code>.parquet</code>/<code>.tsv</code>/<code>.csv</code>: a <code>gene</code> column plus one or more numeric feature columns). The <strong>first</strong> entry is the baseline every other axis is measured against.</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td>yes</td>
+<td><code>{path}</code> to a file of gene symbols, one per line -- the positive set.</td>
+</tr>
+<tr>
+<td><code>min_label_coverage</code></td>
+<td>no</td>
+<td>Minimum fraction of label-positive genes that must join the feature matrix (default <code>0.5</code>); below it the run aborts rather than silently scoring a mismatched gene universe.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-rerank-run</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">cohort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cohort.yaml</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">features</span><span class="p">:</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">constraint</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">constraint.parquet</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expression</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expression.tsv</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="nt">labels</span><span class="p">:</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">labels.txt</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nt">min_label_coverage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</code></pre></div>
+<p><code>cohort.yaml</code> is a separate, smaller manifest: the gene-key column, the prior statistic and its direction, and optionally which columns feed the architecture audit.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-cohort</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">symbol</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">key_column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gene</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cohort.tsv</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nt">prior</span><span class="p">:</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_is_better</span>
+</code></pre></div>
+<p>This section describes only the fields a rerank config needs, not a full reference for the cohort manifest itself (see <code>hvantk/algorithms/cohort/spec.py</code> for the complete <code>CohortManifest</code> shape: <code>key</code>, <code>key_column</code>, <code>table</code>, <code>prior.{column,direction}</code>, optional <code>cohort_axes</code>/<code>labels</code>) -- no dedicated cohort-manifest reference page exists under <code>docs_site/</code> yet.</p>
+<h2 id="controls">Controls<a class="headerlink" href="#controls" title="Permanent link">&para;</a></h2>
+<p>Three controls, six flags, all opt-in:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Controls</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--n-perm INTEGER</code></td>
+<td>Multiplicity</td>
+<td><code>0</code> (off)</td>
+</tr>
+<tr>
+<td><code>--null-out PATH</code></td>
+<td>Multiplicity</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--blocks PATH</code></td>
+<td>Blocked CV</td>
+<td>none (unblocked)</td>
+</tr>
+<tr>
+<td><code>--max-block-frac FLOAT</code></td>
+<td>Blocked CV</td>
+<td><code>0.1</code></td>
+</tr>
+<tr>
+<td><code>--seed INTEGER</code></td>
+<td>Seeds</td>
+<td><code>42</code></td>
+</tr>
+<tr>
+<td><code>--seed-sweep INTEGER</code></td>
+<td>Seeds</td>
+<td><code>1</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiplicity-n-perm-null-out">Multiplicity -- <code>--n-perm</code>, <code>--null-out</code><a class="headerlink" href="#multiplicity-n-perm-null-out" title="Permanent link">&para;</a></h3>
+<p>Offering several feature axes and reporting the best one's delta-AUC is itself a selection procedure, and the ablation table's bootstrap interval has nothing to say about it -- it describes one axis in isolation. <code>--n-perm</code> builds two permutation nulls that do:</p>
+<ul>
+<li><strong>Per-axis</strong> -- permute the label, refit the baseline and baseline+<em>this</em> axis, record the delta. Correct when the axis was pre-specified.</li>
+<li><strong>Selected-maximum</strong> -- permute, refit, add <em>each</em> offered axis, record the <em>largest</em> delta. Correct when the axis is reported <em>because</em> it came top over the other candidates. Only this one is a multiplicity correction: the maximum over several candidate axes is stochastically larger than any single one of them, so a per-axis null can sit near zero while the selected-maximum null does not.</li>
+</ul>
+<p>Both nulls refit the baseline on every permutation -- scoring a permuted-label model against the unpermuted baseline would measure the permutation, not the axis. P-values use <code>p = (1 + #{null &gt;= observed}) / (1 + n_perm)</code> (Phipson &amp; Smyth 2010): a naive <code>(null &gt;= observed).mean()</code> reports <code>p = 0</code> for a value no permutation reached, which a finite permutation set can never actually license. <code>p_selected_max</code> is the single-step max-T (Westfall-Young) adjusted p-value for that axis's observed delta. The observed deltas themselves come from the null's own scorer, unrounded -- <strong>not</strong> the ablation table's <code>d_md</code> (a bootstrap <em>median</em>, rounded to 3 decimal places: a different statistic, computed a different way).</p>
+<blockquote>
+<p><strong>What null hypothesis this tests.</strong> Permuting the label tests the <em>global</em> null that no feature, baseline included, carries label information -- not the <em>conditional</em> null that this one axis adds nothing given the baseline already in the model. With an informative baseline, the permutation null of the delta is wider than the delta's true sampling spread under the conditional null, so the test is valid but conservative: failing to clear the selected-maximum null is weak evidence that the axis adds nothing, not proof that it does not.</p>
+</blockquote>
+<p>That conservatism assumes genes are exchangeable under the label permutation. Paralogues share sequence, constraint, expression and disease status, so when labels and features cluster by gene family that assumption breaks and the <em>default</em> (unblocked) null becomes <strong>anti-conservative</strong> instead -- understating its own spread. That clustering is a property of the data, not of a flag: omitting <code>--blocks</code> does not remove it, it only removes the correction for it. Pass <code>--blocks</code> whenever that clustering is doubtful; when it is set, the null permutes labels <strong>by block</strong> (whole blocks swapped among blocks of the same size, then shuffled within each block -- Winkler et al. 2015, <em>NeuroImage</em>), which is what blocking requires of the null too. A block whose size is unique in the universe has no same-size sibling to swap with, so it is only ever shuffled within itself -- a real power caveat for that block, not a bug.</p>
+<p>The null is tied to one <strong>control setting</strong> -- the leakage and selection policies, the provenance arm, the exact baseline and candidate columns, the fold count actually used, the CV seed (<code>--seed</code>), and which blocking (if any) the folds used -- and refuses to answer about a delta computed under a different one, raising <code>ControlSettingMismatch</code> rather than silently comparing incomparable numbers. The ablation (and so the null) always scores 5 folds regardless of <code>Config.folds</code>, which governs only the headline score. The null's <code>observed</code> deltas are computed at <code>--seed</code> alone (never averaged over <code>--seed-sweep</code>); see <strong>Seeds</strong> below for why the two are reported separately.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hvantk<span class="w"> </span>rerank<span class="w"> </span>-c<span class="w"> </span>config.yaml<span class="w"> </span>-o<span class="w"> </span>out.tsv<span class="w"> </span>--blocks<span class="w"> </span>hgnc_complete_set.txt<span class="w"> </span>--n-perm<span class="w"> </span><span class="m">20</span><span class="w"> </span>--seed-sweep<span class="w"> </span><span class="m">3</span><span class="w"> </span>--null-out<span class="w"> </span>null_summary.tsv
+</code></pre></div>
+<p>(This example also passes <code>--blocks</code> and <code>--seed-sweep</code>, each covered in its own section below, so that every number on this page is drawn from one consistent run.) It adds, after the ablation table:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Multiplicity: 2 axes searched over 20 permutations; selected-maximum null median +0.0247
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Setting: arm='all' leakage=None selection=None folds=5 seed=42 block_digest='ad1a7436eced' baseline=['constraint'] candidates={'expression': 1, 'conservation': 1}
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        axis  observed  selmax_median  p_selected_max
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  expression  0.033367       0.024705        0.285714
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>conservation -0.025791       0.024705        0.809524
+</code></pre></div>
+<p>The <code>Setting:</code> line is <code>ControlSetting.describe()</code>: the leakage and selection policies, the provenance arm, the fold count, the CV seed, the baseline/candidate columns and -- whenever <code>--blocks</code> is set -- the digest of the blocking the folds actually used, so a p-value can always be traced back to exactly what it was computed under.</p>
+<p><code>--null-out</code> writes the full per-axis summary (see <strong>Output columns</strong>); without it, the console shows the summary line, the <code>Setting:</code> line, and the four columns above only. <code>--null-out</code> requires <code>--n-perm</code>: passing <code>--null-out</code> without <code>--n-perm</code> is rejected before any work starts (<code>Error: --null-out describes a permutation null; pass --n-perm N too.</code>), as is a negative <code>--n-perm</code> (<code>Error: --n-perm must be &gt;= 0; got -5.</code>, for example) -- both a plain <code>click</code> failure, never a traceback. <code>--n-perm</code> also needs at least one candidate axis besides the baseline: a config naming only a baseline has nothing to search over, and the CLI rejects it before writing any output the same way (<code>Error: --n-perm needs at least one feature axis besides the baseline; this config has only ['constraint'].</code>, for example) rather than silently skipping the correction. Via the Python API, <code>NullConfig()</code> alone (with no <code>n_perm=</code>) defaults to 200 permutations; the CLI's own default is <code>0</code> (off) so that a plain <code>hvantk rerank</code> run costs nothing extra.</p>
+<p><strong>Cost.</strong> Each permutation refits the baseline and every candidate axis -- roughly <code>n_perm x (1 + axes)</code> five-fold fits, and a selection policy (RFECV especially) multiplies that further. On the order of 10-20 seconds per permutation for about 1,000-4,000 genes and 9-17 axes on a 12-core laptop, i.e. tens of minutes to around an hour of wall-clock for <code>n_perm = 200</code>. Progress is logged at <code>INFO</code>, below the CLI's default <code>WARNING</code> level -- run <code>hvantk -v rerank ...</code> to see it as it happens.</p>
+<h3 id="blocked-cv-blocks-max-block-frac">Blocked CV -- <code>--blocks</code>, <code>--max-block-frac</code><a class="headerlink" href="#blocked-cv-blocks-max-block-frac" title="Permanent link">&para;</a></h3>
+<p>Every number <code>hvantk rerank</code> produces by default comes from plain stratified 5-fold cross-validation. Gene families break the independence that relies on: paralogues share sequence, constraint, expression pattern and disease status, so a family split across train and test lets the model partly recognise a relative rather than generalise. <code>--blocks</code> switches to cross-validation folds that keep each gene family whole.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hvantk<span class="w"> </span>rerank<span class="w"> </span>-c<span class="w"> </span>config.yaml<span class="w"> </span>-o<span class="w"> </span>out.tsv<span class="w"> </span>--blocks<span class="w"> </span>hgnc_complete_set.txt
+</code></pre></div>
+<p><code>--blocks</code> takes an HGNC complete-set TSV with <code>symbol</code>/<code>gene_group</code> columns (and, optionally, <code>status</code> -- when present, only <code>Approved</code> rows are kept). Genes are matched against it by their <strong>approved HGNC symbol only</strong>; a gene absent from the table, or known to your universe only by an alias or a previous symbol, becomes its own unconstrained singleton block rather than an error -- unless <em>none</em> of the universe's genes match, which almost always means the table's gene keys disagree with your universe's (e.g. Ensembl IDs against HGNC symbols) and <em>is</em> an error. A match rate below 50% is logged as a <code>WARNING</code>, which reaches the console by default (<code>hvantk</code> sends <code>WARNING</code> and above to stderr unless verbosity is turned down) -- but the quickest check either way is the matched count the console's <code>Blocks:</code> line below always prints too.</p>
+<p>Blocking uses each gene's <strong>first-listed</strong> HGNC gene group -- in HGNC's own list order, since HGNC does not designate a "primary" one -- rather than connected components over the (multi-membership, pipe-separated) <code>gene_group</code> field. Group membership chains transitively, so a union-find closure over shared membership can collapse a large fraction of a gene universe into a single component; blocking on it would then let <code>StratifiedGroupKFold</code> place nearly the whole universe in one fold, and the pooled out-of-fold AUC would no longer estimate the same quantity as the unblocked run. The tell-tale of that mistake is a <em>blocked</em> AUC scoring <strong>materially</strong> higher than the random-fold one, beyond the across-seed spread <code>--seed-sweep</code> reports -- blocking is harder only <em>on average</em>, so a single correctly blocked run can still land above the random-fold AUC by chance, and a difference within that spread is not itself suspicious. First-listed grouping keeps blocks small; the residual leak it accepts -- two genes sharing only a later-listed group -- is a far smaller error than an incomparable estimator.</p>
+<p><strong>The ceiling is a hard abort, not a warning.</strong> <code>--max-block-frac</code> (default <code>0.1</code>) caps the largest block's share of the universe; going over it fails the run instead of producing a plausible-looking number, because the failure mode is otherwise silent -- the output looks fine, and a counterintuitive AUC is the only tell, and a reader has no particular reason to question it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_dominant_family.txt
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Error: the largest paralogue block (group 'Family_Huge') holds 40/200 units (20.0%), over the 0.1 ceiling (max_block_frac). StratifiedGroupKFold must place a whole block in one fold, so one fold would hold that entire block and the pooled out-of-fold AUC would not estimate the same quantity as the unblocked run. Raise max_block_frac deliberately if you accept that, or restrict the universe.
+</code></pre></div>
+<p>No output file is written when this happens. <code>--max-block-frac</code> only means anything alongside <code>--blocks</code>; passing it alone is rejected before any work starts (<code>Error: --max-block-frac only applies to paralogue-blocked folds; pass --blocks too (or drop it).</code>). Raise it deliberately (<code>--max-block-frac 0.5</code>, say) if a dominant block is expected and accepted for your universe.</p>
+<p>Two further mechanics worth knowing about: the grouped splitter is a <strong>correctly stratified</strong> one, not scikit-learn's <code>StratifiedGroupKFold(shuffle=True)</code> -- as of scikit-learn 1.7.2 that shuffles the per-group class-count rows before balancing folds but then assigns each group to a fold under its <em>original</em>, unshuffled index, so groups stay whole but the folds stop actually being stratified; <code>hvantk</code> instead relabels group IDs with a seeded random permutation and calls the unshuffled (correctly balancing) path underneath, which randomises the same tie-breaks the upstream shuffle intended without inheriting its defect, and stays correct even if that upstream behaviour is later fixed. Separately, a class confined to too few blocks to cover the requested fold count is refused with a clear error rather than silently producing a fold with no positive (or no negative) training example, which would otherwise surface only as an opaque scikit-learn warning, or several calls later as "found array with 0 sample(s)".</p>
+<p>Blocking is threaded everywhere a fold boundary matters: the outer cross-validation of both the headline score and the ablation, the multi-seed sweep, and -- as described above -- the permutation null. There are three documented exceptions to this blocking: <code>CalibratedClassifierCV</code>'s own inner calibration split, which takes only an integer fold count and so cannot see the blocks; a family can therefore straddle <em>that</em> split within one already-blocked outer training fold. Similarly, with a selection policy that uses the RFECV wrapper (<code>SelectionPolicy(wrapper="rfecv")</code>), RFECV's inner <code>StratifiedKFold</code> inside each training fold is likewise unblocked (it is opt-in). The third applies only when a fit sees more than 10,000 rows: the estimator leaves <code>HistGradientBoostingClassifier</code>'s <code>early_stopping="auto"</code>, which scikit-learn (1.7.2) switches on for <code>n_samples &gt; 10,000</code>, and each fit then holds out a class-stratified random 10% validation split drawn with the run's seed and blind to the blocks -- a family can straddle <em>that</em> split too, and <code>--seed-sweep</code> then also varies which rows every fit holds out, on top of the fold assignment. The estimator is left as is deliberately (changing it would change every historic result); below that size no such split exists. The per-axis deltas that are the scientific claim never go through the first two -- they use the uncalibrated, fully-blocked scorer in <code>evaluator.py</code> (fully blocked below 10,000 rows; the early-stopping split applies to it exactly as to the headline). Custom API scorers passed directly to <code>permutation_deltas</code> that carry no <code>.groups</code> attribute are not checked against <code>blocks=</code> at all -- only scorers built by the library's own <code>oof_scorer</code> declare one.</p>
+<p>The console's <code>Blocks:</code> line (shown whenever <code>--blocks</code> did not abort) reports the blocking, including the matched-gene count that catches a silent key mismatch:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Blocks: 152 paralogue block(s); largest 4 (2.0%); 64 gene(s) in a block of size &gt; 1; 200/200 genes matched the gene-group table; digest ad1a7436eced
+</code></pre></div>
+<h3 id="seeds-seed-seed-sweep">Seeds -- <code>--seed</code>, <code>--seed-sweep</code><a class="headerlink" href="#seeds-seed-seed-sweep" title="Permanent link">&para;</a></h3>
+<p><code>--seed</code> (default <code>42</code>, the historic value) is the one seed that drives the cross-validation partition (both the headline score and the ablation), the gradient-boosted estimator's own randomness, the bootstrap resample, and the permutation null's base seed. Changing it produces a different, equally valid partition -- it is not a tuning knob, and the default is unchanged so every result produced before <code>--seed</code> existed still reproduces exactly.</p>
+<p>Doubling as the null's base seed has one consequence worth knowing before you rely on it: permutation <code>i</code> is drawn with seed <code>--seed + i</code> (see <strong>Chunked runs</strong> below), so bumping <code>--seed</code> by 1 is not an independent replicate of the null -- it reuses <code>n_perm - 1</code> of the previous run's permutations (<code>--seed 42</code> and <code>--seed 43</code> at <code>--n-perm 20</code> share 19 of their 20 draws). An independent replicate needs a base seed at least <code>n_perm</code> away from the first.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hvantk<span class="w"> </span>rerank<span class="w"> </span>-c<span class="w"> </span>config.yaml<span class="w"> </span>-o<span class="w"> </span>out.tsv<span class="w"> </span>--blocks<span class="w"> </span>hgnc_complete_set.txt<span class="w"> </span>--seed-sweep<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
+<p>(Shown with <code>--blocks</code> because the tables on this page all come from one blocked run; the
+envelope works the same way without it.)</p>
+<p>The gene-resampling bootstrap (<code>d_lo</code>/<code>d_md</code>/<code>d_hi</code>) asks how a delta would move if the gene <em>sample</em> moved. It cannot see a second variance component: which genes land in which cross-validation fold. <code>--seed-sweep N</code> recomputes each axis's delta under <code>N</code> consecutive cross-validation seeds (<code>--seed</code>, <code>--seed</code> + 1, ...) and reports the <strong>envelope</strong> -- the union of the bootstrap interval and the across-seed range -- as <code>d_lo_env</code>/<code>d_hi_env</code>, beside the untouched <code>d_lo</code>/<code>d_md</code>/<code>d_hi</code>. The same sweep width travels under a different name at each layer: the CLI's <code>--seed-sweep</code>, <code>Config.seed_sweep</code>, <code>Evaluator.evaluate</code>'s <code>n_seeds</code> parameter, and the ablation table's own <code>n_seeds</code> column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Per-axis ablation (delta-AUC over constraint):
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>      family   auc   d_lo   d_md  d_hi  d_lo_env  d_hi_env  n_seeds
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  constraint 0.659  0.000  0.000 0.000     0.000     0.000        3
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  expression 0.693 -0.028  0.034 0.091    -0.028     0.091        3
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>conservation 0.633 -0.071 -0.027 0.014    -0.071     0.014        3
+</code></pre></div>
+<p>The envelope is a <strong>union, not a calibrated interval</strong> over both components: the two are not independent draws from one distribution, and combining them properly would need a nested design nobody has run. <code>d_lo_env</code>/<code>d_hi_env</code> are that union rounded to 3 decimal places, exactly like <code>d_lo</code>/<code>d_hi</code>. The union is guaranteed never to be narrower than the bootstrap interval alone, but <strong>not</strong> guaranteed to be strictly wider -- that depends on the data: when the across-seed range happens to fall entirely inside <code>[d_lo, d_hi]</code>, <code>d_lo_env == d_lo</code> and <code>d_hi_env == d_hi</code> and no widening is visible, which is itself informative (it says the CV partition was not, on this data, a meaningful source of extra spread), not a sign that the sweep did nothing. It exists so a reader cannot mistake one lucky (or unlucky) partition for a measured effect -- a single cross-validation partition can land anywhere within that spread. With the default <code>--seed-sweep 1</code>, the three extra columns are <strong>absent</strong> from the ablation table entirely, so a plain <code>hvantk rerank</code> run is byte-for-byte what it always was.</p>
+<p>The permutation null (<code>--n-perm</code>, above) already recomputes the stratified partition for every permutation, so it already contains partition noise as one of its own components. The envelope is a separate report on the <em>observed</em> delta and is never folded into the null on top of that -- doing so would count partition variance twice. For the same reason, the null's <code>observed</code> deltas are always computed at <code>--seed</code> alone, never averaged over the swept seeds.</p>
+<p><code>SelectionPolicy.seed</code> (used only when a feature-selection policy is configured) is independent of <code>--seed</code> by design -- it seeds the selection wrapper's own inner cross-validation, not the outer partition <code>--seed</code> controls. Turning on <code>--seed-sweep N</code> multiplies the ablation's per-axis cost by roughly <code>N</code> (one refit per axis per seed); the baseline is fit once per seed and shared across every axis rather than refit per axis, so the extra cost scales with the number of candidate axes times <code>N</code>, not more.</p>
+<h2 id="output-columns">Output columns<a class="headerlink" href="#output-columns" title="Permanent link">&para;</a></h2>
+<h3 id="ranked-table-o-output">Ranked table (<code>-o</code>/<code>--output</code>)<a class="headerlink" href="#ranked-table-o-output" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gene</code></td>
+<td>The gene identifier, in the cohort's key space.</td>
+</tr>
+<tr>
+<td><code>prior_stat</code></td>
+<td>The cohort's prior statistic for this gene (from the cohort manifest).</td>
+</tr>
+<tr>
+<td><code>score</code></td>
+<td>The calibrated model probability -- the credibility score. <code>NaN</code> for genes excluded from scoring (e.g. <code>extra_flagged_genes</code>).</td>
+</tr>
+<tr>
+<td><code>score_percentile</code></td>
+<td>Percentile rank of <code>score</code> among scored genes (0-100).</td>
+</tr>
+<tr>
+<td><code>tier</code></td>
+<td>The credibility tier assigned from <code>score</code> alone.</td>
+</tr>
+<tr>
+<td><code>verdict</code></td>
+<td>A coarser credibility verdict derived from <code>tier</code> (the console summary counts <code>ROBUST</code> vs <code>INTERMEDIATE</code>).</td>
+</tr>
+<tr>
+<td><code>flag</code></td>
+<td>Whether the audit flagged this gene for review. Advisory: never changes <code>score</code>, <code>tier</code> or rank.</td>
+</tr>
+<tr>
+<td><code>flag_reason</code></td>
+<td>Why <code>flag</code> is set (empty when it is not) -- e.g. an architecture/QC problem such as too few case-carrying variants, when the cohort manifest declares the columns the audit needs.</td>
+</tr>
+<tr>
+<td><code>y</code></td>
+<td><code>1</code> if the gene is in the label set, else <code>0</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="per-axis-ablation-console">Per-axis ablation (console)<a class="headerlink" href="#per-axis-ablation-console" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>family</code></td>
+<td>The axis name, or the baseline axis (always <code>d_lo</code>/<code>d_md</code>/<code>d_hi</code> <code>== 0.0</code> there, by construction).</td>
+</tr>
+<tr>
+<td><code>auc</code></td>
+<td>Out-of-fold AUC of baseline+axis (uncalibrated).</td>
+</tr>
+<tr>
+<td><code>d_lo</code>, <code>d_md</code>, <code>d_hi</code></td>
+<td>2.5th/50th/97.5th percentile of a paired, gene-resampling bootstrap on the delta-AUC of this axis over the baseline alone.</td>
+</tr>
+<tr>
+<td><code>d_lo_env</code>, <code>d_hi_env</code></td>
+<td><em>Only when <code>--seed-sweep &gt; 1</code>.</em> The envelope described above: the union of <code>[d_lo, d_hi]</code> and the across-seed delta range, rounded to 3 decimal places. Never narrower than <code>[d_lo, d_hi]</code>; not guaranteed to be strictly wider (depends on the data).</td>
+</tr>
+<tr>
+<td><code>n_seeds</code></td>
+<td><em>Only when <code>--seed-sweep &gt; 1</code>.</em> The sweep width actually used -- the same count as the CLI's <code>--seed-sweep</code>, <code>Config.seed_sweep</code> and <code>Evaluator.evaluate</code>'s <code>n_seeds</code> parameter.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="null-summary-null-out-or-the-consoles-abbreviated-view">Null summary (<code>--null-out</code>, or the console's abbreviated view)<a class="headerlink" href="#null-summary-null-out-or-the-consoles-abbreviated-view" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>axis</code></td>
+<td>Candidate axis name.</td>
+</tr>
+<tr>
+<td><code>n_perm</code></td>
+<td>Permutations actually present in this null.</td>
+</tr>
+<tr>
+<td><code>n_candidates</code></td>
+<td>Number of axes searched -- the width the selected-maximum null was built over.</td>
+</tr>
+<tr>
+<td><code>null_mean</code>, <code>null_sd</code>, <code>null_p95</code></td>
+<td>Mean / SD / 95th percentile of <em>this axis's own</em> per-axis permutation-delta distribution.</td>
+</tr>
+<tr>
+<td><code>selmax_median</code>, <code>selmax_p95</code></td>
+<td>Median / 95th percentile of the selected-maximum null -- identical across every axis's row, since it is one null shared by all of them.</td>
+</tr>
+<tr>
+<td><code>observed</code></td>
+<td>The real-label delta-AUC for this axis, from the null's own scorer -- not the ablation's <code>d_md</code>.</td>
+</tr>
+<tr>
+<td><code>p_per_axis</code></td>
+<td>P-value of <code>observed</code> against this axis's own per-axis null. Correct only if the axis was pre-specified.</td>
+</tr>
+<tr>
+<td><code>p_selected_max</code></td>
+<td>The multiplicity-corrected p-value of <code>observed</code> against the selected-maximum null -- the number that answers "could the best of the N offered axes have arisen by chance?"</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>        axis  n_perm  n_candidates  null_mean  null_sd  null_p95  selmax_median  selmax_p95  observed  p_per_axis  p_selected_max
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  expression      20             2   0.000574 0.055376  0.125819       0.024705    0.125819  0.033367    0.238095        0.285714
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>conservation      20             2   0.001621 0.043121  0.065352       0.024705    0.125819 -0.025791    0.714286        0.809524
+</code></pre></div>
+<h3 id="blocks-summary-console-only">Blocks summary (console only)<a class="headerlink" href="#blocks-summary-console-only" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Block count</td>
+<td>How many paralogue blocks the universe was split into.</td>
+</tr>
+<tr>
+<td>Largest block, and its share</td>
+<td>Size and fraction of the universe held by the single largest block -- compared against <code>--max-block-frac</code>.</td>
+</tr>
+<tr>
+<td>Genes in a block of size &gt; 1</td>
+<td>How many genes actually share a block with at least one paralogue (the rest are unconstrained singletons).</td>
+</tr>
+<tr>
+<td>Genes matched</td>
+<td>How many of the universe's genes were found in the <code>--blocks</code> table at all -- the signal for a silent key mismatch.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no file output for the blocking report; it is printed to the console only. From the Python API it is <code>RerankResult.blocks</code> (a <code>BlockReport</code>), available whether or not the run also used <code>--n-perm</code>.</p>
+<h2 id="chunked-runs-on-a-cluster">Chunked runs on a cluster<a class="headerlink" href="#chunked-runs-on-a-cluster" title="Permanent link">&para;</a></h2>
+<p>There is no <code>--chunk</code>/<code>--n-chunks</code> CLI flag: a CLI process that computed one chunk and wrote only a coarse summary could never be combined with its siblings, so a user fanning a permutation null out across <code>k</code> array tasks would be left with <code>k</code> p-values and no way to merge them. Chunking a null is an <strong>API-only</strong> feature, built for exactly that fan-out, and it pickles cleanly because <code>NullDistribution</code> (and the <code>ControlSetting</code> it carries) are plain dataclasses of NumPy arrays, tuples and other pickle-safe values.</p>
+<p>Each array task builds the <em>same</em> <code>Config</code> used everywhere else, but with a <code>nulls=</code> that names its own slice of the permutation index:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.rerank</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">NullConfig</span><span class="p">,</span> <span class="n">rerank</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># `base_config` is the Config every task in the array shares -- everything the same</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># except `nulls` -- build it exactly as you would for a single-process run, with</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1"># `nulls=None`.</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">base_config</span><span class="p">:</span> <span class="n">Config</span> <span class="o">=</span> <span class="o">...</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">N_CHUNKS</span> <span class="o">=</span> <span class="mi">20</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="n">N_PERM</span> <span class="o">=</span> <span class="mi">2000</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>  <span class="c1"># identical across every task in the array</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="k">def</span><span class="w"> </span><span class="nf">run_chunk</span><span class="p">(</span><span class="n">chunk_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    <span class="n">cfg</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        <span class="n">base_config</span><span class="p">,</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>        <span class="n">nulls</span><span class="o">=</span><span class="n">NullConfig</span><span class="p">(</span><span class="n">n_perm</span><span class="o">=</span><span class="n">N_PERM</span><span class="p">,</span> <span class="n">chunk</span><span class="o">=</span><span class="n">chunk_index</span><span class="p">,</span> <span class="n">n_chunks</span><span class="o">=</span><span class="n">N_CHUNKS</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">),</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    <span class="p">)</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>    <span class="n">res</span> <span class="o">=</span> <span class="n">rerank</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">"null_chunk_</span><span class="si">{</span><span class="n">chunk_index</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.pkl"</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">nulls</span><span class="p">,</span> <span class="n">fh</span><span class="p">)</span>
+</code></pre></div>
+<p>A final step loads every chunk's pickle and merges them into one <code>NullDistribution</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.rerank</span><span class="w"> </span><span class="kn">import</span> <span class="n">NullDistribution</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"null_chunk_*.pkl"</span><span class="p">)):</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">))</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">merged</span> <span class="o">=</span> <span class="n">NullDistribution</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">merged</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>  <span class="c1"># axis, n_perm, ..., observed, p_per_axis, p_selected_max</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">summary</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">"null_summary.tsv"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">"</span><span class="se">\t</span><span class="s2">"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<p>Read before relying on this:</p>
+<ul>
+<li>Every chunk must share <code>NullConfig.seed</code> and <code>NullConfig.n_perm</code> -- the base seed and the <em>planned</em> (whole-run) permutation count, not the chunk's own slice size; <code>merge</code> refuses chunks built from different ones.</li>
+<li>Permutation <code>i</code>'s seed is <code>NullConfig.seed + i</code>, so two base seeds closer together than <code>n_perm</code> share permutations (<code>seed=42</code> and <code>seed=43</code> share <code>n_perm - 1</code> of their draws) -- move an independent replicate's seed by at least <code>n_perm</code>.</li>
+<li>Each array task reruns the <strong>whole</strong> <code>rerank()</code> call -- scoring and the ablation, not only its slice of the null -- so this fan-out only pays for itself when the permutation null, not the scoring itself, dominates the wall-clock.</li>
+<li>Pickled <code>NullDistribution</code> objects are tied to the <code>hvantk</code> version that wrote them; do not merge pickles written by different versions.</li>
+<li><code>merge</code> raises rather than silently combining when any chunk: offered different candidate axes; was built under a different control setting (different leakage or selection policy, baseline, fold count, CV seed, or <strong>block digest</strong> -- every chunk must have used the same <code>--blocks</code> table); carries <code>observed</code> deltas that disagree with the others' (a free check that every chunk ran on the same data, seed and estimator); or overlaps another chunk's permutation indices. It also raises when the chunks together leave a gap in the planned permutations (a chunk that never arrived, such as a pre-empted array task), naming the missing indices; pass <code>merge(parts, allow_partial=True)</code> to accept the smaller null deliberately.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
