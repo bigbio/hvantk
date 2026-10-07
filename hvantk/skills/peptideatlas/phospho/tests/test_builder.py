@@ -33,6 +33,9 @@ table and the "what's real, what's fabricated" breakdown. In short:
     prefix.
   - One peptide carries only a non-phospho modification
     (``[Carbamidomethyl]``): must contribute zero output rows.
+  - One peptide (``peptide_instance`` 209, seen 100 times) in two phospho
+    forms (12 and 8 observations) plus its unmodified form (80): its site
+    P04637 S@42 counts 12 + 8 = 20, each form's own observations (#425).
 
 Regenerate the zip itself only by re-deriving it from the row design above
 (and in the README) -- no generator script is committed to this repo.

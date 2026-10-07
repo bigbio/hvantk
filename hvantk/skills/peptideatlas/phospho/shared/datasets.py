@@ -277,6 +277,11 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                 continue
 
             n_with_phospho += 1
+            mappings = mapping_by_pi.get(pi_id, [])
+            if (
+                not mappings
+            ):  # maps only to decoy, contaminant or non-canonical proteins
+                continue
             # This form's own observations; the parent peptide_instance count
             # also covers the unmodified and every other form (#425).
             try:
@@ -287,7 +292,6 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                     f"{mp.get('modified_peptide_instance_id', '?')} has no integer "
                     f"n_observations ({mp.get('n_observations')!r})"
                 ) from None
-            mappings = mapping_by_pi.get(pi_id, [])
 
             for bs_id, start in mappings:
                 bs = bioseq_by_id[bs_id]

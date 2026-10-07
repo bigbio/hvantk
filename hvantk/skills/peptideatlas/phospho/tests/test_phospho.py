@@ -222,8 +222,11 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     assert by_pos[6]["n_observations"] == 10
 
 
-def _two_form_zip(tmp_path, form_counts):
-    """One peptide, seen 100 times in total, with a phospho form per count."""
+def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=None):
+    """Peptide 1, seen 100 times, mapped to P04637: a phospho form per count in
+    ``form_counts`` plus its unmodified form (``unmodified_count``). With
+    ``unmapped_count``, peptide 2 (no mapping to a kept protein) adds one phospho
+    form with that count."""
     tables = tmp_path / "two_forms"
     tables.mkdir()
     _write_tsv(
@@ -240,7 +243,10 @@ def _two_form_zip(tmp_path, form_counts):
     _write_tsv(
         tables / "peptide_instance.tsv",
         ["peptide_instance_id", "n_observations"],
-        [{"peptide_instance_id": "1", "n_observations": "100"}],
+        [
+            {"peptide_instance_id": "1", "n_observations": "100"},
+            {"peptide_instance_id": "2", "n_observations": "5"},
+        ],
     )
     _write_tsv(
         tables / "peptide_mapping.tsv",
@@ -271,7 +277,29 @@ def _two_form_zip(tmp_path, form_counts):
                 "n_observations": count,
             }
             for charge, count in enumerate(form_counts, start=2)
-        ],
+        ]
+        + [
+            {
+                "modified_peptide_instance_id": "1100",
+                "peptide_instance_id": "1",
+                "modified_peptide_sequence": "AAAAASAAAAA",
+                "peptide_charge": "2",
+                "n_observations": unmodified_count,
+            }
+        ]
+        + (
+            []
+            if unmapped_count is None
+            else [
+                {
+                    "modified_peptide_instance_id": "2001",
+                    "peptide_instance_id": "2",
+                    "modified_peptide_sequence": "AAS[Phospho]AA",
+                    "peptide_charge": "2",
+                    "n_observations": unmapped_count,
+                }
+            ]
+        ),
     )
     zip_path = tmp_path / "two_forms.tsv.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
@@ -281,7 +309,9 @@ def _two_form_zip(tmp_path, form_counts):
 
 
 def test_site_counts_sum_each_forms_own_observations(tmp_path):
-    """#425: forms seen 12 and 8 times give the site 20, not 100 per form."""
+    """#425: phospho forms seen 12 and 8 times give the site 20: not the peptide's
+    100 once per form, and not its 100 over all forms (the unmodified form, 80,
+    does not carry the site)."""
     from hvantk.skills.peptideatlas.phospho.shared.datasets import (
         parse_peptideatlas_zip,
     )
@@ -297,6 +327,20 @@ def test_form_without_a_count_fails(tmp_path):
 
     with pytest.raises(ValueError, match="has no integer n_observations"):
         parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "\\N"]))
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"unmodified_count": "\\N"}, {"unmapped_count": "\\N"}]
+)
+def test_forms_that_add_nothing_are_not_checked(tmp_path, kwargs):
+    """A count is read only from a phospho form that maps to a kept protein: an
+    unmodified form, or a form of a peptide with no kept mapping, may lack one."""
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    sites = parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "8"], **kwargs))
+    assert [(s["position"], s["n_observations"]) for s in sites] == [(315, 20)]
 
 
 # ---------- Test 2: DECOY filtering ----------
