@@ -12,4 +12,5 @@ def test_cosmic_cgc_submissions_registered():
     reg = plugin_loader.get_registry()
     spec = reg.get_dataset("cosmic-cgc:submissions")
     assert spec.artifact_type is AnnotationTable
-    assert spec.schema_id == "cosmic-cgc-v1"
+    assert spec.schema_id == "cosmic-cgc-v2"
+    assert spec.schema_ids == ("cosmic-cgc-legacy-v1",)

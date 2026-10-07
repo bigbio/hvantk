@@ -125,6 +125,15 @@
             "type": "string",
             "description": "The schema identifier stamped onto the artifact's Provenance."
           },
+          "schema_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Additional schema identifiers accepted when a builder supports multiple input schema generations."
+          },
           "skill": {
             "type": "string",
             "minLength": 1,

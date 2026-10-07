@@ -365,6 +365,7 @@ class DatasetManifest:
     drift_probe_ref: tuple[str, str] = field(default=("", ""))
     download_ref: tuple[str, str] | None = None
     parse_ref: tuple[str, str] | None = None
+    schema_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -403,6 +404,7 @@ class DatasetSpec:
     schema_id: str | None = None
     plugin_version: str | None = None
     acquisition: Acquisition = field(default_factory=Acquisition)
+    schema_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
