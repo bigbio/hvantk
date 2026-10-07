@@ -16,7 +16,9 @@ datasets:
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable
-    schema_id: cosmic-cgc-v1
+    schema_id: cosmic-cgc-v2
+    schema_ids:
+      - cosmic-cgc-legacy-v1
     builder:
       module: hvantk.skills.cosmic_cgc.builder
       function: build_cosmic_cgc_submissions

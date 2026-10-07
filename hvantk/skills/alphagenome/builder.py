@@ -66,6 +66,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import hail as hl
 
@@ -95,12 +96,34 @@ ROW_KEY = (
     "gene_id",
 ) + _JUNCTION_COLUMNS
 #: ``str(genome.Variant)``, the SDK's default variant format: ``chrom:pos:ref>alt``
-#: with bases from ACGTN (an allele may be empty).
-VARIANT_ID_PATTERN = r"^[^:]+:[0-9]+:[ACGTN]*>[ACGTN]*$"
+#: with non-empty alleles from ACGTN.
+VARIANT_ID_PATTERN = r"^[^:]+:[0-9]+:[ACGTN]+>[ACGTN]+$"
 
 
-def _parquet_paths(input_path) -> list[str]:
+def _parquet_paths(input_path, spark=None) -> list[str]:
     """Absolute paths of the input parquet files (Spark wants absolute paths)."""
+    input_value = str(input_path)
+    scheme = urlsplit(input_value).scheme
+    if scheme in {"gs", "hdfs"}:
+        if input_value.endswith(".parquet"):
+            return [input_value]
+        if spark is None:
+            from pyspark.sql import SparkSession
+
+            from hvantk.core.utils.hail_context import init_hail
+
+            init_hail()
+            spark = SparkSession.builder.getOrCreate()
+        jvm = spark.sparkContext._jvm
+        conf = spark.sparkContext._jsc.hadoopConfiguration()
+        glob_path = jvm.org.apache.hadoop.fs.Path(
+            input_value.rstrip("/") + "/*.parquet"
+        )
+        statuses = glob_path.getFileSystem(conf).globStatus(glob_path)
+        if not statuses:
+            raise FileNotFoundError(f"No *.parquet file found at {input_value}")
+        return sorted(str(status.getPath().toString()) for status in statuses)
+
     path = Path(input_path)
     files = [path] if path.is_file() else sorted(path.glob("*.parquet"))
     if not files:
@@ -113,7 +136,7 @@ def _as_list(value) -> list[str]:
     return [value] if isinstance(value, str) else list(value)
 
 
-def _read_scores(paths: list[str], need_ontology: bool):
+def _read_scores(input_path, need_ontology: bool):
     """Read the parquet files into one Spark DataFrame of the columns used.
 
     Spark reading several files at once applies one file's schema to all of them:
@@ -131,8 +154,14 @@ def _read_scores(paths: list[str], need_ontology: bool):
 
     from hvantk.core.utils.hail_context import init_hail
 
+    if urlsplit(str(input_path)).scheme not in {"gs", "hdfs"}:
+        paths = _parquet_paths(input_path)
+    else:
+        paths = None
     init_hail()  # Spark must be Hail's session, so Hail starts first
     spark = SparkSession.builder.getOrCreate()
+    if paths is None:
+        paths = _parquet_paths(input_path, spark=spark)
 
     strings = _STRING_COLUMNS + (("ontology_curie",) if need_ontology else ())
     frames = []
@@ -163,7 +192,27 @@ def _check_unique_rows(sdf) -> None:
     """Fail when a ``ROW_KEY`` occurs more than once (see the module docstring)."""
     from pyspark.sql import functions as F
 
-    duplicated = sdf.groupBy(*ROW_KEY).count().filter(F.col("count") > 1)
+    key_hash = F.sha2(F.to_json(F.struct(*[F.col(column) for column in ROW_KEY])), 256)
+    hashed = sdf.withColumn("_row_key_hash", key_hash)
+    possible_hashes = [
+        row["_row_key_hash"]
+        for row in (
+            hashed.groupBy("_row_key_hash")
+            .count()
+            .filter(F.col("count") > 1)
+            .select("_row_key_hash")
+            .collect()
+        )
+    ]
+    if not possible_hashes:
+        return
+
+    duplicated = (
+        hashed.filter(F.col("_row_key_hash").isin(*possible_hashes))
+        .groupBy(*ROW_KEY)
+        .count()
+        .filter(F.col("count") > 1)
+    )
     example = duplicated.limit(1).collect()
     if example:
         row = example[0]
@@ -322,9 +371,7 @@ def build_alphagenome_predictions(
     if ontology_curies is not None:
         ontology_curies = _as_list(ontology_curies)
 
-    sdf = _read_scores(
-        _parquet_paths(parsed_input), need_ontology=ontology_curies is not None
-    )
+    sdf = _read_scores(parsed_input, need_ontology=ontology_curies is not None)
     ht = hl.Table.from_spark(_checked_rows(sdf, output_types, ontology_curies))
 
     # One summary per (variant, scorer). Missing scores are skipped: the top_*
@@ -382,4 +429,13 @@ def build_alphagenome_predictions(
         "variant_id", **{f: ht.summaries.get(f) for f in SCORER_FIELDS.values()}
     )
 
-    return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id=SCHEMA_ID))
+    return AnnotationTable.from_hail(
+        ht,
+        provenance=ctx.provenance(
+            schema_id=SCHEMA_ID,
+            build_parameters={
+                "output_types": output_types,
+                "ontology_curies": ontology_curies,
+            },
+        ),
+    )

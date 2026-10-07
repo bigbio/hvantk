@@ -1,6 +1,6 @@
 name: Python Package using Conda
 
-on: [push]
+on: [push, pull_request]
 
 # Every job here only reads the repo -- builds, installs, runs tests. The default token grants
 # write scopes none of them need. Flagged in review on #249 and not applied at the time; set

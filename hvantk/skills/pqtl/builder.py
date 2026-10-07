@@ -26,6 +26,47 @@ from hvantk.core.utils.qtl_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _map_gene_symbols(gene_catalog, symbols):
+    """Map approved symbols and aliases to Ensembl IDs; report unresolved symbols."""
+    mapping = gene_catalog.map_ids(
+        list(symbols), source_type="gene_symbol", target_type="ensembl_gene_id"
+    )
+    mapping = {symbol: value for symbol, value in mapping.items() if value}
+
+    resolve_alias = getattr(gene_catalog, "resolve_alias", None)
+    aliases = {
+        symbol: canonical
+        for symbol in symbols
+        if symbol not in mapping
+        and resolve_alias is not None
+        and (canonical := resolve_alias(symbol)) is not None
+    }
+    if aliases:
+        canonical_mapping = gene_catalog.map_ids(
+            sorted(set(aliases.values())),
+            source_type="gene_symbol",
+            target_type="ensembl_gene_id",
+        )
+        mapping.update(
+            {
+                alias: canonical_mapping[canonical]
+                for alias, canonical in aliases.items()
+                if canonical_mapping.get(canonical)
+            }
+        )
+
+    unmapped = sorted(symbol for symbol in symbols if symbol not in mapping)
+    if unmapped:
+        logger.warning(
+            "Could not map %d of %d pQTL gene symbol(s) to Ensembl IDs; "
+            "using their source symbols as gene_id. Examples: %s",
+            len(unmapped),
+            len(symbols),
+            ", ".join(unmapped[:10]),
+        )
+    return mapping, unmapped
+
+
 def _import_gtex_fang(input_path, tissue):
     """Import Fang et al. (2025) pQTL allpairs (space-delimited gzip).
 
@@ -124,10 +165,8 @@ def build_pqtl_metrics(
     if gene_catalog is not None:
         logger.info("Mapping gene symbols → Ensembl IDs via gene catalog")
         symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        ensembl_mapping = gene_catalog.map_ids(
-            list(symbols), source_type="gene_symbol", target_type="ensembl_gene_id"
-        )
-        mapping_literal = hl.literal(ensembl_mapping)
+        ensembl_mapping, _ = _map_gene_symbols(gene_catalog, symbols)
+        mapping_literal = hl.literal(ensembl_mapping, hl.tdict(hl.tstr, hl.tstr))
         ht = ht.annotate(
             gene_id=hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)
         )
