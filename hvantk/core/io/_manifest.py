@@ -52,6 +52,7 @@ def _to_dict(p: Provenance) -> dict:
         "build_timestamp": p.build_timestamp.isoformat(),
         "builder_commit": p.builder_commit,
         "parents": [_to_dict(parent) for parent in p.parents],
+        "build_parameters": p.build_parameters,
     }
 
 
@@ -65,4 +66,5 @@ def _from_dict(d: dict) -> Provenance:
         build_timestamp=datetime.fromisoformat(d["build_timestamp"]),
         builder_commit=d.get("builder_commit"),
         parents=tuple(_from_dict(p) for p in d.get("parents", [])),
+        build_parameters=d.get("build_parameters", {}),
     )

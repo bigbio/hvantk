@@ -12,6 +12,8 @@ Regenerate after an intentional change:
 
 from __future__ import annotations
 
+import gzip
+import logging
 from pathlib import Path
 
 import pytest
@@ -129,3 +131,84 @@ def test_cosmic_cgc_submissions_round_trip(
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
     assert actual_rows == expected_rows, "COSMIC CGC sample rows drifted from snapshot"
+
+
+def _context():
+    from hvantk.core.models.build_context import BuildContext
+
+    return BuildContext(
+        plugin="cosmic-cgc",
+        dataset="cosmic-cgc:submissions",
+        plugin_version="test",
+        source_fingerprint="sha256:test",
+        builder_commit=None,
+    )
+
+
+@pytest.mark.hail
+def test_legacy_header_fields_are_renamed(hail_session, tmp_path):
+    import hail as hl
+    from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
+
+    headers = [
+        "Gene Symbol",
+        "Name",
+        "Entrez GeneId",
+        "Genome Location",
+        "Hallmark",
+        "Tier",
+        "Chr Band",
+        "Somatic",
+        "Germline",
+    ]
+    path = tmp_path / "legacy.tsv"
+    path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(
+            ["SYNTHLEGACY", "synthetic", "123", "1:10-20", "yes", "1", "1p", "y", "n"]
+        )
+        + "\n"
+    )
+    artifact = build_cosmic_cgc_submissions(path, _context())
+    ht = artifact.to_hail()
+
+    assert artifact.provenance.schema_id == "cosmic-cgc-legacy-v1"
+    assert ht.count() == 1
+    row = ht.collect()[0]
+    assert row.entrez_id == "123"
+    assert row.genome_location == "1:10-20"
+    assert row.hallmark is True
+    assert hl.tstr == ht.row.dtype["entrez_id"]
+
+
+@pytest.mark.hail
+def test_non_integer_coordinates_are_counted(caplog, hail_session, tmp_path):
+    from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
+
+    with gzip.open(FIXTURE, "rt", encoding="utf-8") as handle:
+        contents = handle.read()
+    assert "1000000\t" in contents
+    path = tmp_path / "bad-coordinate.tsv.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        handle.write(contents.replace("1000000\t", "1000000.0\t", 1))
+
+    caplog.set_level(logging.WARNING, logger="hvantk.skills.cosmic_cgc.builder")
+    build_cosmic_cgc_submissions(path, _context(), gene_catalog=_StubGeneCatalog())
+
+    assert "1 non-empty genome_start value(s)" in caplog.text
+
+
+@pytest.mark.hail
+def test_empty_gene_mapping_builds_without_hail_type_error(hail_session):
+    from hvantk.skills.cosmic_cgc.builder import build_cosmic_cgc_submissions
+
+    class NoMatches:
+        def map_ids(self, ids, source_type, target_type):
+            assert (source_type, target_type) == ("gene_symbol", "hgnc_id")
+            return {symbol: None for symbol in ids}
+
+    artifact = build_cosmic_cgc_submissions(
+        FIXTURE, _context(), gene_catalog=NoMatches()
+    )
+    assert artifact.to_hail().count() == 0

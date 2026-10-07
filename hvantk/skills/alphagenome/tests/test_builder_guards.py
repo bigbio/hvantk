@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from itertools import count
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -104,6 +105,58 @@ def test_malformed_variant_id_fails(build):
     df.loc[df.index[df.variant_id == CHR6][0], "variant_id"] = "chr6:112216367:C:A"
     with pytest.raises(ValueError, match="not in the SDK's chrom:pos:ref>alt form"):
         build(df)
+
+
+@pytest.mark.parametrize("variant_id", ["chr3:39408741:>C", "chr3:39408741:T>"])
+def test_empty_variant_allele_fails(build, variant_id):
+    df = _base()
+    df.loc[df.index[0], "variant_id"] = variant_id
+    with pytest.raises(ValueError, match="not in the SDK's chrom:pos:ref>alt form"):
+        build(df)
+
+
+def test_parquet_paths_enumerate_cloud_files():
+    from hvantk.skills.alphagenome.builder import _parquet_paths
+
+    class HadoopPath:
+        def __init__(self, value):
+            self.value = value
+
+        def getFileSystem(self, _conf):
+            return filesystem
+
+    class FileStatus:
+        def __init__(self, path):
+            self.path = path
+
+        def getPath(self):
+            return SimpleNamespace(toString=lambda: self.path)
+
+    class FileSystem:
+        def globStatus(self, path):
+            assert path.value == "gs://bucket/scores/*.parquet"
+            return [FileStatus("gs://bucket/scores/part-000.parquet")]
+
+    filesystem = FileSystem()
+    jvm = SimpleNamespace(
+        org=SimpleNamespace(
+            apache=SimpleNamespace(
+                hadoop=SimpleNamespace(fs=SimpleNamespace(Path=HadoopPath))
+            )
+        )
+    )
+    spark = SimpleNamespace(
+        sparkContext=SimpleNamespace(
+            _jvm=jvm, _jsc=SimpleNamespace(hadoopConfiguration=lambda: object())
+        )
+    )
+
+    assert _parquet_paths("gs://bucket/scores", spark=spark) == [
+        "gs://bucket/scores/part-000.parquet"
+    ]
+    assert _parquet_paths("hdfs://namenode/data/part.parquet") == [
+        "hdfs://namenode/data/part.parquet"
+    ]
 
 
 def test_same_scores_twice_fail(build):

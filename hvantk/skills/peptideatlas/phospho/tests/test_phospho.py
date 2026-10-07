@@ -31,6 +31,20 @@ def _write_tsv(path, fieldnames, rows):
             writer.writerow(row)
 
 
+def _rewrite_zip_table(zip_path, tmp_path, table_name, replacements):
+    rewritten = tmp_path / f"rewritten-{zip_path.name}"
+    with zipfile.ZipFile(zip_path) as source, zipfile.ZipFile(rewritten, "w") as target:
+        for name in source.namelist():
+            content = source.read(name)
+            if name == table_name:
+                text = content.decode("utf-8")
+                for old, new in replacements:
+                    text = text.replace(old, new)
+                content = text.encode("utf-8")
+            target.writestr(name, content)
+    return rewritten
+
+
 @pytest.fixture
 def mock_pa_zip(tmp_path):
     """Create a mock PeptideAtlas TSV zip with minimal phospho data.
@@ -320,6 +334,9 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
         ("AAAAAS[167]AAAAA", [(5, "S")]),
         ("AAAAT[181]AAAAA", [(4, "T")]),
         ("AAAAY[243]AAAAA", [(4, "Y")]),
+        ("AS[+79.966]K", [(1, "S")]),
+        ("AS[+80.5]K", []),
+        ("AT[UNIMOD:21]K", [(1, "T")]),
         # N-terminal label skipped (no preceding residue)
         ("[TMT6plex]-DSY[Phospho]VGDEAQSK", [(2, "Y")]),
         ("[iTRAQ4plex]-AAST[Phospho]R", [(3, "T")]),
@@ -553,3 +570,98 @@ def test_url_no_doubled_phospho():
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     assert "/phospho/phospho/" not in dataset.zip_url
     assert "202512/atlas_build_606.tsv.zip" in dataset.zip_url
+
+
+@pytest.mark.parametrize(
+    ("table", "replacement"),
+    [
+        (
+            "modified_peptide_instance.tsv",
+            ("modified_peptide_sequence", "renamed_sequence"),
+        ),
+        ("peptide_instance.tsv", ("n_observations", "renamed_observations")),
+    ],
+)
+def test_parse_rejects_missing_required_columns(
+    mock_pa_zip, tmp_path, table, replacement
+):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    path = _rewrite_zip_table(mock_pa_zip, tmp_path, table, [replacement])
+    with pytest.raises(ValueError, match="missing required column"):
+        parse_peptideatlas_zip(str(path))
+
+
+def test_parse_rejects_empty_canonical_table(tmp_path):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    original = tmp_path / "canonical.zip"
+    tables = tmp_path / "canonical-tables"
+    tables.mkdir()
+    _write_tsv(
+        tables / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id"],
+        [{"biosequence_id": "1", "presence_level_id": "3"}],
+    )
+    # The remaining required tables are valid, but have no data rows.
+    _write_tsv(
+        tables / "biosequence.tsv",
+        [
+            "biosequence_id",
+            "biosequence_accession",
+            "biosequence_gene_name",
+            "biosequence_seq",
+        ],
+        [],
+    )
+    _write_tsv(
+        tables / "peptide_instance.tsv", ["peptide_instance_id", "n_observations"], []
+    )
+    _write_tsv(
+        tables / "peptide_mapping.tsv",
+        ["peptide_instance_id", "matched_biosequence_id", "start_in_biosequence"],
+        [],
+    )
+    _write_tsv(
+        tables / "modified_peptide_instance.tsv",
+        ["peptide_instance_id", "modified_peptide_sequence"],
+        [],
+    )
+    with zipfile.ZipFile(original, "w") as zf:
+        for path in tables.glob("*.tsv"):
+            zf.write(path, path.name)
+
+    with pytest.raises(ValueError, match="no canonical proteins"):
+        parse_peptideatlas_zip(str(original))
+
+
+def test_parse_normalizes_backslash_n_null_marker(mock_pa_zip, tmp_path):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    path = _rewrite_zip_table(
+        mock_pa_zip, tmp_path, "biosequence.tsv", [("TP53", r"\N")]
+    )
+    sites = parse_peptideatlas_zip(str(path))
+    assert all(site["gene_symbol"] != r"\N" for site in sites)
+    assert any(site["gene_symbol"] == "" for site in sites)
+
+
+def test_parse_raises_when_no_phospho_sites(mock_pa_zip, tmp_path):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    path = _rewrite_zip_table(
+        mock_pa_zip,
+        tmp_path,
+        "modified_peptide_instance.tsv",
+        [("[Phospho]", "[Oxidation]"), ("[167]", "[Oxidation]")],
+    )
+    with pytest.raises(ValueError, match="No phospho sites found"):
+        parse_peptideatlas_zip(str(path))

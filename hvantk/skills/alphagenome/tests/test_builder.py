@@ -86,6 +86,12 @@ def test_alphagenome_round_trip(hail_session, tmp_path, regenerate_snapshots):
     output_path = str(tmp_path / "alphagenome.ht")
     builder(input_path=FIXTURE_DIR, output_path=output_path)
     ht = hl.read_table(output_path)
+    from hvantk.core.io import load
+
+    assert load(output_path).provenance.build_parameters == {
+        "output_types": None,
+        "ontology_curies": None,
+    }
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
     assert hail_schema_to_dict(ht) == expected_schema, (
@@ -104,8 +110,19 @@ def test_alphagenome_round_trip(hail_session, tmp_path, regenerate_snapshots):
     builder(
         input_path=FIXTURE_DIR, output_path=heart_path, ontology_curies=HEART_CURIES
     )
+    assert load(heart_path).provenance.build_parameters == {
+        "output_types": None,
+        "ontology_curies": HEART_CURIES,
+    }
     heart = {
         r.variant_id: r.splice_site_usage.max_abs_raw
         for r in hl.read_table(heart_path).collect()
     }
     assert heart == pytest.approx(HEART_SPLICE_SITE_USAGE, rel=1e-6)
+
+    filtered_path = str(tmp_path / "alphagenome_rna.ht")
+    builder(input_path=FIXTURE_DIR, output_path=filtered_path, output_types="RNA_SEQ")
+    assert load(filtered_path).provenance.build_parameters == {
+        "output_types": ["RNA_SEQ"],
+        "ontology_curies": None,
+    }
