@@ -145,7 +145,10 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
 3. **Create tests**
    - `hvantk/skills/<provider>/tests/test_builder.py` — snapshot
      round-trip test (use `phase_b_snapshot_adapter` from
-     `hvantk/tests/_snapshot_utils.py`).
+     `hvantk/tests/_snapshot_utils.py`). Name it `test_*round_trip*`, give it
+     no `skip`/`skipif` marker, and mark it `@pytest.mark.hail` for a
+     `backend: hail` dataset; `hvantk/tests/test_plugin_contract_artifacts.py`
+     fails otherwise.
    - `hvantk/skills/<provider>/tests/testdata/` — minimal fixture.
    - `hvantk/skills/<provider>/tests/snapshots/` — generated via
      `pytest --regenerate-snapshots`.

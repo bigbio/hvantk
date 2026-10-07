@@ -47,6 +47,20 @@
   licence that forbids redistributing rows limits what a fixture may contain, not
   whether one exists. The Expression Atlas, AlphaGenome and dbNSFP fixtures are listed
   so far (#413, #421, #423).
+- **Provenance can record the options that shaped a build, and a manifest can declare
+  more than one output schema (#428, #433).** `ctx.provenance(build_parameters=...)`
+  stores an optional dict of the options that shaped an artifact, as a JSON copy, so a
+  value that is not JSON fails before any data is written. AlphaGenome records its
+  `output_types` and `ontology_curies` filters, sorted, so a filtered build no longer
+  differs from an unfiltered one only in its timestamp. Sidecars written before the field
+  existed read it as empty. A manifest's `schema_ids` lists the other output schema IDs a
+  builder may stamp; COSMIC CGC uses it for its two header generations.
+- **`alphagenome:predictions` reads `gs://` and `hdfs://` inputs (#428, #433).** Pass the
+  URI from Python as a `str`, or through `hvantk reprocess --skip-parse --intermediate
+  <uri>`; `--raw-dir` must still be a local directory.
+- **`HGNCGeneCatalogStreamer.get_genes_listing_symbols(symbols, field)` (#433)** returns
+  every HGNC ID whose `prev_symbols` or `alias_symbols` lists each symbol, so a caller can
+  rank previous symbols above aliases and reject a symbol that several genes share.
 
 ### Changed
 
@@ -138,6 +152,13 @@
   `track_strand` and, for splice junctions, `junction_Start`/`junction_End`), then run
   `python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet>
   --output <out.ht>`.
+- **CI runs the Hail jobs on pull requests, and the plugin contract checks round trips
+  (#428).** The Conda workflow now also runs on `pull_request`, so a pull request from a
+  fork gets the plugin-contract and HGC jobs. A push to a branch with an open pull request
+  now runs the workflow more than once (#432). The contract test requires each dataset
+  to have a `*round_trip*` test with no skip marker, and a `hail` marker for Hail
+  datasets. The check reads the source, so a `pytest.skip()` inside a test still passes
+  it (#432).
 
 ### Removed
 
@@ -292,6 +313,50 @@
   one file, and failed with `IsADirectoryError`. The skill page and the data-sources
   guide now give the form that works, `--raw-dir <dir> --intermediate <dir>/<file>
   --skip-parse --skip-download`, as for `gwas-catalog:associations`.
+- **PeptideAtlas per-site `n_observations` counted each peptide once per modified form
+  (#425, #430).** `parse_peptideatlas_zip` added the parent peptide's total count, which
+  also covers its unmodified and other forms, once for every phospho form instead of
+  each form's own count. On the real build 202512/606 that inflated 237,428 of 259,932
+  sites (82× in total, median 16× per site) and reordered them (Spearman 0.82 against the
+  corrected counts). Rebuild any `peptideatlas:phospho` table built before this fix
+  (plugin version 0.1.0); `hvantk reprocess` re-parses the zip unless given
+  `--skip-parse`. `hvantk download peptideatlas-phospho` returns an existing parsed
+  `peptideatlas-phospho-<date>-<id>.tsv` unchanged, so delete that file first (or pass
+  `--overwrite`, which also downloads the zip again), then rerun `hvantk ptm build
+  --peptideatlas-tsv` and anything else that used its counts. A phospho form
+  that maps to a kept protein and has no integer count now fails the parse. The plugin
+  version moves to 0.1.1, so provenance tells the two builds apart.
+- **Builds that could finish with wrong or empty output now fail with an error (#427,
+  #428, #433).**
+  - *PeptideAtlas:* a missing required column, a `protein_identification.tsv` with no
+    canonical row, or an archive with no phospho site now fails the parse. The `\N` null
+    marker is read as empty, not as a gene symbol `\N` (177 sites in build 606). ProForma
+    notation (`[+79.966]` or `[+79.97]`, within ±0.005 Da of 79.96633, and `[UNIMOD:21]`)
+    is accepted, although the live build uses `[Phospho]` only. In an archive whose member
+    names carry a prefix, a lookup for `peptide_instance.tsv` no longer finds
+    `modified_peptide_instance.tsv`. A build without `protein_identification.tsv` still
+    runs unfiltered, with a warning (#416).
+  - *COSMIC CGC:* the header must match one known generation in full: the current export,
+    stamped `cosmic-cgc-v2`, or the legacy one, stamped `cosmic-cgc-legacy-v1` (both were
+    `cosmic-cgc-v1` before). A partly renamed header raises and names the missing columns,
+    instead of being stamped with the wrong schema or keeping string coordinates.
+    Non-integer coordinates are counted. A gene catalog (`--plugin-arg hgnc_ht=<path>`)
+    that resolves no symbol raises: it crashed before #428 and wrote an empty table after
+    it. A partial match logs how many genes were dropped. The plugin version moves to
+    0.2.0.
+  - *pQTL:* a symbol that is not an approved HGNC symbol is resolved through previous
+    symbols, then aliases, and only when exactly one gene lists it; a symbol that several
+    genes share stays unmapped instead of taking the first gene. The build logs how the
+    symbols resolved and raises when none maps (drop `hgnc_ht` and pass `--plugin-arg
+    no_gene_map=true` to build a symbol-keyed table on purpose). A row with no
+    `gene_name` keeps a missing `gene_id`, with a warning, instead of crashing the build.
+    The plugin version moves to 0.1.1, since some `gene_id` keys change.
+  - *AlphaGenome:* an empty allele (`chr3:39408741:>C`) is rejected with its own message.
+    The duplicate-row check (#424) groups on a 64-bit hash of the key and checks only the
+    rows whose hash repeats. On the real 16.6M-row shard it takes about half as long as
+    #424's, and the same file given twice fails in about a minute. #428's version
+    collected every duplicated key to the driver; in a local test it ran out of memory at
+    200,000 duplicated rows.
 
 ## 0.3.1 — 2026-08-30
 

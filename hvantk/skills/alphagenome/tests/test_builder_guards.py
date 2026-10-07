@@ -109,9 +109,10 @@ def test_malformed_variant_id_fails(build):
 
 @pytest.mark.parametrize("variant_id", ["chr3:39408741:>C", "chr3:39408741:T>"])
 def test_empty_variant_allele_fails(build, variant_id):
+    """The SDK's form allows an empty allele; the builder does not."""
     df = _base()
     df.loc[df.index[0], "variant_id"] = variant_id
-    with pytest.raises(ValueError, match="not in the SDK's chrom:pos:ref>alt form"):
+    with pytest.raises(ValueError, match="has an empty allele"):
         build(df)
 
 

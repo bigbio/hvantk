@@ -1,6 +1,6 @@
 api_version: 2
 name: peptideatlas
-version: 0.1.0
+version: 0.1.1
 status: provisional
 description: PeptideAtlas human phospho-proteome builds - pandas intermediate TSV
 

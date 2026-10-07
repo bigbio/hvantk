@@ -31,7 +31,7 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=/data/tables/ensembl_gene.ht \
+  --plugin-arg hgnc_ht=/data/tables/hgnc.ht \
   --plugin-arg p_threshold=5e-8
 
 # Step 3: Run the cascade pipeline
@@ -100,7 +100,7 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=/data/tables/ensembl_gene.ht
+  --plugin-arg hgnc_ht=/data/tables/hgnc.ht
 
 # Run pipeline with coloc
 hvantk qtlcascade run \

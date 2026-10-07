@@ -169,6 +169,7 @@ def mock_pa_zip(tmp_path):
             "peptide_instance_id",
             "modified_peptide_sequence",
             "modification_mass",
+            "n_observations",
         ],
         [
             {
@@ -176,24 +177,28 @@ def mock_pa_zip(tmp_path):
                 "peptide_instance_id": "1",
                 "modified_peptide_sequence": "AAAAAS[167]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "50",
             },
             {
                 "modified_peptide_instance_id": "1002",
                 "peptide_instance_id": "2",
                 "modified_peptide_sequence": "AAS[167]AAAAAAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "30",
             },
             {
                 "modified_peptide_instance_id": "1003",
                 "peptide_instance_id": "3",
                 "modified_peptide_sequence": "AAAAAS[167]AAAAAAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "10",
             },
             {
                 "modified_peptide_instance_id": "1004",
                 "peptide_instance_id": "4",
                 "modified_peptide_sequence": "AAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "15",
             },
         ],
     )
@@ -229,6 +234,133 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     assert by_pos[315]["gene_symbol"] == "TP53"
 
     assert by_pos[6]["n_observations"] == 10
+
+
+def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=None):
+    """Peptide 1, seen 100 times, mapped to P04637: a phospho form per count in
+    ``form_counts`` plus its unmodified form (``unmodified_count``). With
+    ``unmapped_count``, peptide 2 (no mapping to a kept protein) adds one phospho
+    form with that count."""
+    tables = tmp_path / "two_forms"
+    tables.mkdir()
+    _write_tsv(
+        tables / "biosequence.tsv",
+        [
+            "biosequence_id",
+            "biosequence_accession",
+            "biosequence_gene_name",
+            "biosequence_seq",
+        ],
+        [
+            {
+                "biosequence_id": "100",
+                "biosequence_accession": "P04637",
+                "biosequence_gene_name": "TP53",
+                "biosequence_seq": "M" * 393,
+            }
+        ],
+    )
+    _write_tsv(
+        tables / "peptide_instance.tsv",
+        ["peptide_instance_id", "n_observations"],
+        [
+            {"peptide_instance_id": "1", "n_observations": "100"},
+            {"peptide_instance_id": "2", "n_observations": "5"},
+        ],
+    )
+    _write_tsv(
+        tables / "peptide_mapping.tsv",
+        ["peptide_instance_id", "matched_biosequence_id", "start_in_biosequence"],
+        [
+            {
+                "peptide_instance_id": "1",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "310",
+            }
+        ],
+    )
+    _write_tsv(
+        tables / "modified_peptide_instance.tsv",
+        [
+            "modified_peptide_instance_id",
+            "peptide_instance_id",
+            "modified_peptide_sequence",
+            "peptide_charge",
+            "n_observations",
+        ],
+        [
+            {
+                "modified_peptide_instance_id": str(1000 + charge),
+                "peptide_instance_id": "1",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
+                "peptide_charge": str(charge),
+                "n_observations": count,
+            }
+            for charge, count in enumerate(form_counts, start=2)
+        ]
+        + [
+            {
+                "modified_peptide_instance_id": "1100",
+                "peptide_instance_id": "1",
+                "modified_peptide_sequence": "AAAAASAAAAA",
+                "peptide_charge": "2",
+                "n_observations": unmodified_count,
+            }
+        ]
+        + (
+            []
+            if unmapped_count is None
+            else [
+                {
+                    "modified_peptide_instance_id": "2001",
+                    "peptide_instance_id": "2",
+                    "modified_peptide_sequence": "AAS[Phospho]AA",
+                    "peptide_charge": "2",
+                    "n_observations": unmapped_count,
+                }
+            ]
+        ),
+    )
+    zip_path = tmp_path / "two_forms.tsv.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        for tsv_file in tables.glob("*.tsv"):
+            zf.write(tsv_file, tsv_file.name)
+    return str(zip_path)
+
+
+def test_site_counts_sum_each_forms_own_observations(tmp_path):
+    """#425: phospho forms seen 12 and 8 times give the site 20: not the peptide's
+    100 once per form, and not its 100 over all forms (the unmodified form, 80,
+    does not carry the site)."""
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    sites = parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "8"]))
+    assert [(s["position"], s["n_observations"]) for s in sites] == [(315, 20)]
+
+
+def test_form_without_a_count_fails(tmp_path):
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    with pytest.raises(ValueError, match="has no integer n_observations"):
+        parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "\\N"]))
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"unmodified_count": "\\N"}, {"unmapped_count": "\\N"}]
+)
+def test_forms_that_add_nothing_are_not_checked(tmp_path, kwargs):
+    """A count is read only from a phospho form that maps to a kept protein: an
+    unmodified form, or a form of a peptide with no kept mapping, may lack one."""
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
+
+    sites = parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "8"], **kwargs))
+    assert [(s["position"], s["n_observations"]) for s in sites] == [(315, 20)]
 
 
 # ---------- Test 2: DECOY filtering ----------
@@ -335,8 +467,12 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
         ("AAAAT[181]AAAAA", [(4, "T")]),
         ("AAAAY[243]AAAAA", [(4, "Y")]),
         ("AS[+79.966]K", [(1, "S")]),
+        ("AS[+79.97]K", [(1, "S")]),
         ("AS[+80.5]K", []),
         ("AT[UNIMOD:21]K", [(1, "T")]),
+        # Sulfation (79.9568 Da) is close enough to phospho (79.96633 Da) that
+        # a loose tolerance wrongly accepted it; must stay rejected.
+        ("AY[+79.957]K", []),
         # N-terminal label skipped (no preceding residue)
         ("[TMT6plex]-DSY[Phospho]VGDEAQSK", [(2, "Y")]),
         ("[iTRAQ4plex]-AAST[Phospho]R", [(3, "T")]),
@@ -532,6 +668,7 @@ def test_canonical_protein_filtering(tmp_path):
             "peptide_instance_id",
             "modified_peptide_sequence",
             "modification_mass",
+            "n_observations",
         ],
         [
             {
@@ -539,6 +676,7 @@ def test_canonical_protein_filtering(tmp_path):
                 "peptide_instance_id": "1",
                 "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
+                "n_observations": "50",
             },
         ],
     )
@@ -579,7 +717,10 @@ def test_url_no_doubled_phospho():
             "modified_peptide_instance.tsv",
             ("modified_peptide_sequence", "renamed_sequence"),
         ),
-        ("peptide_instance.tsv", ("n_observations", "renamed_observations")),
+        (
+            "modified_peptide_instance.tsv",
+            ("n_observations", "renamed_observations"),
+        ),
     ],
 )
 def test_parse_rejects_missing_required_columns(
@@ -628,7 +769,7 @@ def test_parse_rejects_empty_canonical_table(tmp_path):
     )
     _write_tsv(
         tables / "modified_peptide_instance.tsv",
-        ["peptide_instance_id", "modified_peptide_sequence"],
+        ["peptide_instance_id", "modified_peptide_sequence", "n_observations"],
         [],
     )
     with zipfile.ZipFile(original, "w") as zf:
@@ -665,3 +806,44 @@ def test_parse_raises_when_no_phospho_sites(mock_pa_zip, tmp_path):
     )
     with pytest.raises(ValueError, match="No phospho sites found"):
         parse_peptideatlas_zip(str(path))
+
+
+# ---------- Test 10: _find_table_in_zip substring disambiguation ----------
+
+
+def test_find_table_prefers_shorter_name_over_longer_substring_match(tmp_path):
+    """A lookup for ``peptide_instance.tsv`` must not return
+    ``atlas_build_606_modified_peptide_instance.tsv`` just because it also
+    contains ``peptide_instance.tsv`` as a substring. With the modified table
+    listed first, the old plain substring scan returned it instead of the
+    real ``atlas_build_606_peptide_instance.tsv`` (#427)."""
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        _find_table_in_zip,
+    )
+
+    zip_path = tmp_path / "prefixed.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("atlas_build_606_modified_peptide_instance.tsv", "")
+        zf.writestr("atlas_build_606_peptide_instance.tsv", "")
+
+    with zipfile.ZipFile(zip_path) as zf:
+        found = _find_table_in_zip(zf, "peptide_instance.tsv")
+
+    assert found == "atlas_build_606_peptide_instance.tsv"
+
+    # The file name decides, not the folder depth, and the modified table is never
+    # taken for a missing peptide_instance table.
+    foldered = tmp_path / "foldered.zip"
+    with zipfile.ZipFile(foldered, "w") as zf:
+        zf.writestr("a/atlas_build_606_modified_peptide_instance.tsv", "")
+        zf.writestr("long_folder/atlas_build_606_peptide_instance.tsv", "")
+    with zipfile.ZipFile(foldered) as zf:
+        assert (
+            _find_table_in_zip(zf, "peptide_instance.tsv")
+            == "long_folder/atlas_build_606_peptide_instance.tsv"
+        )
+    only_modified = tmp_path / "only_modified.zip"
+    with zipfile.ZipFile(only_modified, "w") as zf:
+        zf.writestr("atlas_build_606_modified_peptide_instance.tsv", "")
+    with zipfile.ZipFile(only_modified) as zf:
+        assert _find_table_in_zip(zf, "peptide_instance.tsv") is None
