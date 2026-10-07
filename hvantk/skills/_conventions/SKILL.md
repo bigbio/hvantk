@@ -229,7 +229,7 @@ datasets:
 
 ### Optional: `schema_ids:` — a builder that stamps more than one schema
 
-`schema_id` is the default output schema. A builder whose output schema depends on its input lists the other IDs it may stamp under `schema_ids`. `cosmic-cgc` stamps `cosmic-cgc-legacy-v1` when the export uses the legacy header and `cosmic-cgc-v2` otherwise:
+`schema_id` is the default output schema. A builder whose output schema depends on its input lists the other IDs it may stamp under `schema_ids`. `cosmic-cgc` stamps `cosmic-cgc-legacy-v1` when the export uses the legacy header and `cosmic-cgc-v2` for the current header; a header that matches neither raises:
 
 ```yaml
     schema_id: cosmic-cgc-v2
@@ -306,7 +306,7 @@ This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycl
 - Tests live next to the code: `hvantk/skills/<provider>/tests/` (single-dataset) or `hvantk/skills/<provider>/<dataset>/tests/` (multi-dataset).
 - Round-trip test file: `test_builder.py` (Hail-backed providers) or `test_<dataset>.py` (anndata providers). Name the round-trip function `test_*round_trip*` (e.g. `test_msigdb_round_trip`).
 - Mark with `@pytest.mark.hail` if Hail is required. Use the `hail_session` fixture.
-- `hvantk/tests/test_plugin_contract_artifacts.py` checks three things for each dataset: the files its `tests.command` points pytest at define a module-level `test_*round_trip*` function; none of those functions carries a `skip` or `skipif` marker, as a decorator or through a module-level `pytestmark`; and, when the dataset's `backend` is `hail`, at least one of them is marked `hail`, so a `-m hail` run selects it. The check is static: it parses the test files without running them, so it does not catch a `pytest.skip()` call in the test body, `pytest.importorskip`, or a marker not written as `pytest.mark.<name>`. A follow-up will add a run-time check.
+- `hvantk/tests/test_plugin_contract_artifacts.py` checks three things for each dataset: the files its `tests.command` points pytest at define a module-level `test_*round_trip*` function; none of those functions carries a `skip` or `skipif` marker, as a decorator or through a module-level `pytestmark`; and, when the dataset's `backend` is `hail`, at least one of them is marked `hail`, so a `-m hail` run selects it. The check is static: it parses the test files without running them, so it does not catch a `pytest.skip()` call in the test body, `pytest.importorskip`, or a marker not written as `pytest.mark.<name>`. A run-time check is tracked in #432.
 - Fixtures: `tests/testdata/raw/<dataset>/`. Snapshots: `tests/snapshots/`.
 - Assert against snapshots with `hvantk.tests._snapshot_utils`. The `--regenerate-snapshots` flag rewrites snapshots in place.
 

@@ -593,7 +593,7 @@ Protein quantitative trait loci from Fang et al. (2025), covering 5 tissues (Col
 
 URL: Contact authors or GTEx Portal supplementary data.
 
-> **Note:** Fang pQTL data uses gene symbols. Pass an Ensembl gene-table path via `--plugin-arg hgnc_ht=<path>` for symbol → Ensembl ID mapping (the builder uses an HGNC-style lookup table).
+> **Note:** Fang pQTL data uses gene symbols. For symbol → Ensembl ID mapping, pass the HGNC lookup table built by `hvantk reprocess hgnc:lookup` via `--plugin-arg hgnc_ht=<path>`. Symbols that are not approved HGNC symbols are resolved through previous symbols, then aliases, when exactly one gene lists them; the build fails if no symbol maps.
 
 ```bash
 # Build pQTL table with gene mapping

@@ -212,7 +212,7 @@ def test_dataset_round_trips_exist_and_are_not_marked_skipped():
     decorator or through a module-level ``pytestmark``); and a hail-backed dataset needs
     one marked ``hail``. This is a static check of the source, not proof the test runs: a
     ``pytest.skip()`` call in the body, ``pytest.importorskip`` or a failing import
-    still passes it. A run-time check is a planned follow-up.
+    still passes it. A run-time check is tracked in #432.
     """
     problems = []
     for manifest_path in sorted(SKILLS_DIR.glob("*/plugin.yaml")):

@@ -61,8 +61,9 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
   generation, the missing columns and the columns it does not define, so a partly
   renamed header (e.g. `GENOME_START` → `GENOME_START_POS`, or a legacy `Genome
   Location` renamed) never gets a schema ID whose fields it lacks. A header that has
-  every column plus extra ones builds, keeping the extras unchanged, with a warning that
-  names them.
+  every column plus extra ones builds and keeps the extras, with a warning that names
+  them; an extra column that the other generation's map knows is renamed (and
+  `Hallmark` is cast to bool).
 - Compression: the real `.tsv.gz` is **standard gzip, not BGZF** — confirmed from its
   magic bytes (`FLG=0x08`/FNAME set; no BGZF `"BC"` extra-field subfield).
   `resolve_compression()` (`hvantk/core/utils/file_utils.py`) correctly classifies it as
@@ -103,7 +104,7 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 
 `gene_symbol` (str), `gene_name` (str), `cosmic_gene_id` (str), `chromosome` (str), `genome_start` (int32), `genome_stop` (int32), `chr_band` (str), `somatic` (bool), `germline` (bool), `tumour_types_somatic` (`array<str>`), `tumour_types_germline` (`array<str>`), `cancer_syndrome` (str), `tissue_type` (str), `molecular_genetics` (str), `role_in_cancer` (`array<str>`), `mutation_types` (`array<str>`), `translocation_partner` (str), `other_germline_mut` (str), `other_syndrome` (str), `classification` (str, `"Tier 1"`/`"Tier 2"`), `synonyms` (str), `classification_level` (int32), `hgnc_id` (str, only when a `gene_catalog` was supplied).
 
-`hallmark` (bool), `entrez_id` (str), and `genome_location` (str) come from `COSMIC_CGC_LEGACY_FIELDS` and are **legacy-export-only**: a legacy header must carry all three (§ 4), and they appear in the built table, in place of `cosmic_gene_id`, `chromosome`, `genome_start` and `genome_stop`, only for a `cosmic-cgc-legacy-v1` build. The current v103+ header carries none of the three, so none of them appear in the schema above, and the builder does not fabricate them.
+`hallmark` (bool), `entrez_id` (str), and `genome_location` (str) come from `COSMIC_CGC_LEGACY_FIELDS` and are **legacy-export-only**: a legacy header must carry all three (§ 4), and they appear in the built table, in place of `cosmic_gene_id`, `chromosome`, `genome_start` and `genome_stop`, for a `cosmic-cgc-legacy-v1` build. The current v103+ header carries none of the three, so none of them appear in the schema above, and the builder does not fabricate them.
 
 ## 6. hvantk integration points
 

@@ -72,8 +72,13 @@ COSMIC_CGC_HEADER_GENERATIONS = {
     "cosmic-cgc-legacy-v1": COSMIC_CGC_LEGACY_FIELDS,
 }
 
-# Every known column, for renaming before the generation is known.
-COSMIC_CGC_FIELDS = {**COSMIC_CGC_CURRENT_FIELDS, **COSMIC_CGC_LEGACY_FIELDS}
+# Every known column, for renaming before the generation is known. Built from the
+# registry, so a newly registered generation's columns are renamed too.
+COSMIC_CGC_FIELDS = {
+    raw: field
+    for fields in COSMIC_CGC_HEADER_GENERATIONS.values()
+    for raw, field in fields.items()
+}
 
 COSMIC_CGC_CLASSIFICATION_LEVELS = [
     "Tier 1",

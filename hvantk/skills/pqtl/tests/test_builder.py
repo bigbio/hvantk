@@ -75,12 +75,13 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, c
     """Build pQTL metrics from the synthetic Liver fixture; assert schema/row stability.
 
     Also pins behaviors that have no dedicated test elsewhere, folded into this
-    test rather than split into separate ones so they reuse this test's single Hail
-    build instead of each paying for their own:
+    test so they share its fixture and Hail session:
       - the fixture's STAT == 0 row (gene_name=BRCA1, chr17:43095211) is dropped,
         since SE is undefined for it;
       - every surviving row's derived SE (= |beta / stat|) is strictly positive;
-      - the build logs the gene-mapping counts, with the unmapped SYNTHGENE1.
+      - the build logs the gene-mapping counts, with the unmapped SYNTHGENE1;
+      - in two more builds, tissue="Liver" ignores a Heart file beside the fixture,
+        and p_threshold=1e-5 keeps the two rows at or below it.
     """
     import hail as hl
     from hvantk.skills.pqtl.builder import build_pqtl_metrics

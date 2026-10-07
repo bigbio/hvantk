@@ -52,10 +52,11 @@ _PHOSPHO_BRACKET_MASS_BY_AA = {
     "Y": 243.0,
 }
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
-_PHOSPHO_MOD_MASS = 79.966
-# Tight enough to exclude sulfation (79.9568 Da, ~0.0095 Da away), which
-# otherwise also passes a ±0.01 Da window around the same S/T/Y residues.
-_PHOSPHO_MOD_MASS_TOLERANCE = 0.003
+_PHOSPHO_MOD_MASS = 79.96633
+# Wide enough for the usual 2-decimal rounding (+79.97, 0.0037 Da away), tight
+# enough to exclude sulfation on the same residues (79.95682 Da, 0.0095 Da away;
+# its rounding +79.96 is 0.0063 Da away).
+_PHOSPHO_MOD_MASS_TOLERANCE = 0.005
 
 # Output TSV column order for intermediate file
 _TSV_COLUMNS = [
@@ -75,27 +76,47 @@ _TSV_COLUMNS = [
 _BRACKET_MOD_PATTERN = re.compile(r"\[([0-9.]+)\]")
 
 
+# The tables the parser reads. modified_peptide_instance.tsv ends with
+# peptide_instance.tsv, so a substring lookup must tell the two apart.
+_TABLE_FILES = (
+    "biosequence.tsv",
+    "peptide_instance.tsv",
+    "peptide_mapping.tsv",
+    "modified_peptide_instance.tsv",
+    "protein_identification.tsv",
+)
+
+
 def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
     """Find a table file in a PeptideAtlas zip by name.
 
-    Tries exact match first (e.g. ``biosequence.tsv``), then substring match
-    (e.g. ``atlas_build_606_biosequence.tsv``). Among substring matches, a
-    member whose basename equals ``table_name`` exactly wins; otherwise the
-    shortest matching name wins. This keeps a lookup for
-    ``peptide_instance.tsv`` from returning
-    ``atlas_build_606_modified_peptide_instance.tsv``, which also contains
-    ``peptide_instance.tsv`` as a substring but names a different table.
+    Tries an exact match first (e.g. ``biosequence.tsv``), then a member whose
+    file name contains ``table_name`` (e.g. ``atlas_build_606_biosequence.tsv``),
+    preferring an exact file name, then the shortest one. A file name that
+    contains a longer table name ending in ``table_name`` belongs to that other
+    table, so a lookup for ``peptide_instance.tsv`` never returns
+    ``atlas_build_606_modified_peptide_instance.tsv``, even when the
+    ``peptide_instance`` table is missing.
     """
     names = zf.namelist()
-    # Exact match
     if table_name in names:
         return table_name
-    # Substring match: prefer an exact basename match, then the shortest name.
-    candidates = [name for name in names if table_name in name]
+    longer = [t for t in _TABLE_FILES if t != table_name and t.endswith(table_name)]
+    candidates = [
+        name
+        for name in names
+        if table_name in os.path.basename(name)
+        and not any(t in os.path.basename(name) for t in longer)
+    ]
     if not candidates:
         return None
-    candidates.sort(key=lambda name: (os.path.basename(name) != table_name, len(name)))
-    return candidates[0]
+    return min(
+        candidates,
+        key=lambda name: (
+            os.path.basename(name) != table_name,
+            len(os.path.basename(name)),
+        ),
+    )
 
 
 def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str, required_columns=()):
@@ -131,8 +152,8 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
       - Numeric mass: ``S[167]``, ``T[181]``, ``Y[243]``
       - ProForma: ``S[+79.966]`` or ``T[UNIMOD:21]``
 
-    The ProForma forms are accepted defensively: the live build (606) this
-    parser targets uses only ``[Phospho]``.
+    The ProForma forms are accepted defensively: a sample of the live build
+    (606) this parser targets showed only ``[Phospho]``.
 
     N-terminal labels like ``[TMT6plex]-`` are skipped (no preceding residue).
 

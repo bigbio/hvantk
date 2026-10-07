@@ -44,7 +44,7 @@ Modification notation gotchas (see `_extract_phospho_offsets` in `shared/dataset
 
 - Text form: `S[Phospho]`, `T[Phospho]`, `Y[Phospho]`, or `S[Phospho:80]` (substring match handles the latter).
 - Numeric form: `S[167]`, `T[181]`, `Y[243]` — the total modified-residue mass (residue + HPO3 ≈ 80). The parser only treats numeric brackets as phospho when the preceding residue is S/T/Y and the mass matches within ±1.0 Da.
-- ProForma delta-mass form: `S[+79.966]`, `T[+79.966]`, `Y[+79.966]` (±0.003 Da around the 79.96633 Da phospho mass — tight enough to exclude sulfation, 79.9568 Da) and `S[UNIMOD:21]` / `T[UNIMOD:21]` / `Y[UNIMOD:21]`. Accepted defensively: build 606, the live build this parser targets, emits only `[Phospho]` (see the live-build check below).
+- ProForma delta-mass form: `S[+79.966]`, `T[+79.966]`, `Y[+79.966]` (±0.005 Da around `_PHOSPHO_MOD_MASS` = 79.96633 Da: wide enough for the 2-decimal `+79.97`, tight enough to exclude sulfation, 79.9568 Da) and `S[UNIMOD:21]` / `T[UNIMOD:21]` / `Y[UNIMOD:21]`. Accepted defensively: a 1.55M-row sample of build 606, the live build this parser targets, showed only `[Phospho]` (see the live-build check below).
 - N-terminal labels like `[TMT6plex]-` precede the first residue and must be skipped (no preceding amino acid).
 - Lowercase letters, digits, and dashes in the sequence are ignored.
 

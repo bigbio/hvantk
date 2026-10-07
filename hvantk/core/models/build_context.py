@@ -32,10 +32,16 @@ class BuildContext:
         The copy makes a non-JSON value (a Path, NaN) raise here, before save()
         writes any data; detaches the record from the caller's dict; and stores a
         tuple as the list the sidecar reloads, so a reloaded provenance equals
-        the stamped one.
+        the stamped one. The keys must be strings, which JSON would otherwise
+        convert silently.
         """
+        build_parameters = build_parameters or {}
+        if not isinstance(build_parameters, dict) or not all(
+            isinstance(key, str) for key in build_parameters
+        ):
+            raise TypeError("build_parameters must be a dict with str keys")
         build_parameters = json.loads(
-            json.dumps(build_parameters or {}, sort_keys=True, allow_nan=False)
+            json.dumps(build_parameters, sort_keys=True, allow_nan=False)
         )
         return Provenance(
             plugin=self.plugin,

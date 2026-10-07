@@ -84,8 +84,8 @@ def _map_gene_symbols(gene_catalog, symbols):
     each remaining symbol that is not an approved symbol is looked up among previous
     symbols and, only when no gene lists it there, among aliases. A match counts only
     when exactly one gene lists the symbol in that list: a symbol that several genes
-    list there is ambiguous and stays unmapped, so two source proteins cannot share a
-    ``gene_id``.
+    list there is ambiguous and stays unmapped, instead of going to whichever of
+    those genes comes first.
 
     Returns the symbol -> Ensembl ID mapping. Unmapped and ambiguous symbols are left
     out of it, so they keep their source symbol as ``gene_id``. Raises ``ValueError``

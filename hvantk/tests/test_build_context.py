@@ -98,6 +98,8 @@ def test_build_parameters_are_stamped_as_a_json_copy(tmp_path):
     )
     with pytest.raises(TypeError, match="not JSON serializable"):
         ctx.provenance(schema_id="x-y-v1", build_parameters={"input": Path("in.tsv")})
+    with pytest.raises(TypeError, match="str keys"):
+        ctx.provenance(schema_id="x-y-v1", build_parameters={1: "a", "b": 2})
 
     params = {"curies": ("UBERON:0006566",)}
     provenance = ctx.provenance(schema_id="x-y-v1", build_parameters=params)

@@ -467,6 +467,7 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
         ("AAAAT[181]AAAAA", [(4, "T")]),
         ("AAAAY[243]AAAAA", [(4, "Y")]),
         ("AS[+79.966]K", [(1, "S")]),
+        ("AS[+79.97]K", [(1, "S")]),
         ("AS[+80.5]K", []),
         ("AT[UNIMOD:21]K", [(1, "T")]),
         # Sulfation (79.9568 Da) is close enough to phospho (79.96633 Da) that
@@ -829,3 +830,20 @@ def test_find_table_prefers_shorter_name_over_longer_substring_match(tmp_path):
         found = _find_table_in_zip(zf, "peptide_instance.tsv")
 
     assert found == "atlas_build_606_peptide_instance.tsv"
+
+    # The file name decides, not the folder depth, and the modified table is never
+    # taken for a missing peptide_instance table.
+    foldered = tmp_path / "foldered.zip"
+    with zipfile.ZipFile(foldered, "w") as zf:
+        zf.writestr("a/atlas_build_606_modified_peptide_instance.tsv", "")
+        zf.writestr("long_folder/atlas_build_606_peptide_instance.tsv", "")
+    with zipfile.ZipFile(foldered) as zf:
+        assert (
+            _find_table_in_zip(zf, "peptide_instance.tsv")
+            == "long_folder/atlas_build_606_peptide_instance.tsv"
+        )
+    only_modified = tmp_path / "only_modified.zip"
+    with zipfile.ZipFile(only_modified, "w") as zf:
+        zf.writestr("atlas_build_606_modified_peptide_instance.tsv", "")
+    with zipfile.ZipFile(only_modified) as zf:
+        assert _find_table_in_zip(zf, "peptide_instance.tsv") is None
