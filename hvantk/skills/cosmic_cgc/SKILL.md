@@ -86,8 +86,8 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
   non-numeric input becomes missing rather than raising (Hail 0.2 API:
   `functions/string.html#hail.expr.functions.parse_int32`). The builder counts the
   non-empty values that fail to parse (e.g. `1000000.0`) and logs a warning with the
-  count for each column that has any. A current header must carry both columns, so the cast and the
-  count always run for it; legacy exports carry neither.
+  count for each column that has any. A current header must carry both columns, so the
+  cast and the count always run for it; legacy exports carry neither.
 - `COSMIC_GENE_ID`: shape `COSG` + 5-6 digits; always populated.
 - Tier normalization: raw digit-only `classification` values (`"1"`, `"2"`) are rewritten to `"Tier 1"` / `"Tier 2"`; already-prefixed values pass through unchanged.
 - `classification_level` (int) is added via `annotate_classification_level()` against `COSMIC_CGC_CLASSIFICATION_LEVELS = ["Tier 1", "Tier 2"]` — ordinal rank, most-confident first; anything unmatched (including missing) sorts last.

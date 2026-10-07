@@ -604,7 +604,7 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=ensembl_gene.ht \
+  --plugin-arg hgnc_ht=hgnc.ht \
   --plugin-arg p_threshold=5e-8
 
 # Allpairs for coloc (omit p_threshold to keep all variants)
@@ -614,7 +614,7 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=ensembl_gene.ht
+  --plugin-arg hgnc_ht=hgnc.ht
 ```
 
 ## Expression data sources

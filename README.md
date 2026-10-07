@@ -114,9 +114,9 @@ automated fetch. Sources behind a license gate, or too large to mirror, ship a
 documented acquisition procedure instead. The platform orchestrator
 [`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) resolves the manifest,
 computes the source fingerprint, calls the builder, validates the returned artifact
-against the manifest's `artifact_type` and `schema_id`, and saves it alongside a
-sidecar `.provenance.json`. The loader discovers manifests on its own — there is no
-registry to edit.
+against the manifest's `artifact_type` and `schema_id` (or one of its `schema_ids`),
+and saves it alongside a sidecar `.provenance.json`. The loader discovers manifests on
+its own — there is no registry to edit.
 
 The full contract and the annotated directory tree live in the architecture guide:
 
