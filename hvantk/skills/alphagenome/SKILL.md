@@ -64,9 +64,9 @@ df.to_parquet("scores.parquet", index=False)
 
 ## 3. Backend choice + reasoning
 
-`hail` (`plugin.yaml`: `backend: hail`). The output is a variant-level annotation keyed by `(locus, alleles)` (`_conventions` § 3), joinable to every other variant table in the toolkit. The input is large: the real shard behind the fixture holds 16,642,316 rows for 411 variants (about 40,000 rows per variant), so the aggregation runs in Hail/Spark rather than pandas. On 8 cores that shard builds in about 20 seconds.
+`hail` (`plugin.yaml`: `backend: hail`). The output is a variant-level annotation keyed by `(locus, alleles)` (`_conventions` § 3), joinable to every other variant table in the toolkit. The input is large: the real shard behind the fixture holds 16,642,316 rows for 411 variants (about 40,000 rows per variant), so the aggregation runs in Hail/Spark rather than pandas. On 8 cores that shard builds in about 20 seconds; the duplicate-row check (§ 4) takes about two thirds of that (a warm build without it took 7 seconds, with it 22).
 
-The parquet is read with Spark (`SparkSession.builder.getOrCreate()` → `spark.read.parquet(...)` → `hl.Table.from_spark`), the same bridge `gtex_eqtl` uses. The builder calls `init_hail()` first, so the Spark session is Hail's. Spark also checks and filters the rows in one pass before the conversion, so a bad input fails before Hail's shuffle; Hail only aggregates.
+The parquet is read with Spark (`SparkSession.builder.getOrCreate()` → `spark.read.parquet(...)` → `hl.Table.from_spark`), the same bridge `gtex_eqtl` uses. The builder calls `init_hail()` first, so the Spark session is Hail's. Spark also checks and filters the rows before the conversion, in two passes (one validates the rows and counts each filter, one looks for a duplicated `ROW_KEY`), so a bad input fails before Hail's shuffle; Hail only aggregates.
 
 ## 4. Raw format & gotchas
 
