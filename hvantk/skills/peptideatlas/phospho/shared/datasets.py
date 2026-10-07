@@ -53,7 +53,9 @@ _PHOSPHO_BRACKET_MASS_BY_AA = {
 }
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
 _PHOSPHO_MOD_MASS = 79.966
-_PHOSPHO_MOD_MASS_TOLERANCE = 0.01
+# Tight enough to exclude sulfation (79.9568 Da, ~0.0095 Da away), which
+# otherwise also passes a ±0.01 Da window around the same S/T/Y residues.
+_PHOSPHO_MOD_MASS_TOLERANCE = 0.003
 
 # Output TSV column order for intermediate file
 _TSV_COLUMNS = [
@@ -77,21 +79,32 @@ def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
     """Find a table file in a PeptideAtlas zip by name.
 
     Tries exact match first (e.g. ``biosequence.tsv``), then substring match
-    (e.g. ``atlas_build_606_biosequence.tsv``).
+    (e.g. ``atlas_build_606_biosequence.tsv``). Among substring matches, a
+    member whose basename equals ``table_name`` exactly wins; otherwise the
+    shortest matching name wins. This keeps a lookup for
+    ``peptide_instance.tsv`` from returning
+    ``atlas_build_606_modified_peptide_instance.tsv``, which also contains
+    ``peptide_instance.tsv`` as a substring but names a different table.
     """
     names = zf.namelist()
     # Exact match
     if table_name in names:
         return table_name
-    # Substring match
-    for name in names:
-        if table_name in name:
-            return name
-    return None
+    # Substring match: prefer an exact basename match, then the shortest name.
+    candidates = [name for name in names if table_name in name]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda name: (os.path.basename(name) != table_name, len(name)))
+    return candidates[0]
 
 
 def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str, required_columns=()):
-    """Iterate over rows of a TSV table inside a zip without loading all into memory."""
+    """Iterate over rows of a TSV table inside a zip without loading all into memory.
+
+    Raises ``ValueError`` if any of ``required_columns`` is missing from the
+    table's header. PeptideAtlas's ``\\N`` null marker is normalized to an
+    empty string in every yielded row.
+    """
     member = _find_table_in_zip(zf, table_name)
     if member is None:
         logger.warning("Table %s not found in zip archive", table_name)
@@ -117,6 +130,9 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
       - Text: ``S[Phospho]``, ``T[Phospho]``, ``Y[Phospho]``
       - Numeric mass: ``S[167]``, ``T[181]``, ``Y[243]``
       - ProForma: ``S[+79.966]`` or ``T[UNIMOD:21]``
+
+    The ProForma forms are accepted defensively: the live build (606) this
+    parser targets uses only ``[Phospho]``.
 
     N-terminal labels like ``[TMT6plex]-`` are skipped (no preceding residue).
 
@@ -268,7 +284,7 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                 row.get("biosequence_gene_name", ""),
                 str(len(row.get("biosequence_seq", ""))),
             )
-        logger.info("Indexed %d biosequences (%d canonical)", n_bio, len(bioseq_by_id))
+        logger.info("Indexed %d biosequences (%d kept)", n_bio, len(bioseq_by_id))
 
         # Step 2: Index peptide_instance ids (381K rows). Only membership is
         # needed: counts come from each modified form (step 4).
