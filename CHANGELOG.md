@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — 2026-10-07
+## 0.4.0 — 2026-10-08
 
 Every shipped dataset now runs an executable contract, and builders that could finish
 with wrong or empty output now fail instead. `hvantk rerank` gains the controls a result
