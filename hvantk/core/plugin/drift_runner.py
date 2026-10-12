@@ -74,13 +74,14 @@ def run_drift_checks(
 
     Datasets that declare the SAME ``drift_fingerprint`` baseline and resolve to the
     SAME probe callable do not have separate drift signals -- they have one, reported
-    several times. `ucsc-cellbrowser` is the worked example: `default`, `adult-ctx` and
-    `dev-ctx` are distinct *schema* variants (their obs cell-type column is `celltype`,
-    `Class` and `Type_v2` respectively, which is why each earns its own snapshot), but
-    `fetch_fingerprint()` takes no arguments and fingerprints the provider-wide catalog
-    at cells.ucsc.edu/dataset.json. One upstream event therefore produced three
-    identical drift reports, three branches writing the same file, and three mutually
-    conflicting PRs -- merging any one made the other two conflict.
+    several times. `ucsc-cellbrowser` was the worked example until #396: `default`,
+    `adult-ctx` and `dev-ctx` are distinct *schema* variants (their obs cell-type column
+    is `celltype`, `Class` and `Type_v2` respectively, which is why each earns its own
+    snapshot), but they shared one zero-argument probe of the provider-wide catalog at
+    cells.ucsc.edu/dataset.json. One upstream event therefore produced three identical
+    drift reports, three branches writing the same file, and three mutually conflicting
+    PRs -- merging any one made the other two conflict. (Each now has its own probe and
+    baseline; the grouping still applies to any datasets that share one.)
 
     Grouping is keyed on ``(fingerprint path, probe callable)`` rather than the path
     alone. Two datasets sharing a baseline but resolving to DIFFERENT probes is a

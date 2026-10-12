@@ -1,0 +1,58 @@
+{
+  "probe_version": 2,
+  "source_version": null,
+  "headers": {
+    "adult-ctx-meta-atlas/meta.tsv": [
+      "Cell_ID",
+      "nCount_RNA",
+      "nFeature_RNA",
+      "Dataset",
+      "Sample_Name",
+      "Individual",
+      "Area_V2",
+      "Class",
+      "Type",
+      "Subtype",
+      "Subtype_ID"
+    ],
+    "adult-ctx-meta-atlas/meta.tsv:Class": [
+      "Astrocyte",
+      "Endothelial",
+      "IT",
+      "L4 IT",
+      "L5 ET",
+      "L5/6 IT Car3",
+      "L5/6 NP",
+      "L6 CT",
+      "L6b",
+      "LAMP5",
+      "Microglia",
+      "OPC",
+      "Oligodendrocyte",
+      "PAX6",
+      "PVALB",
+      "Pericyte",
+      "SST",
+      "VIP",
+      "VLMC"
+    ]
+  },
+  "checksums": {
+    "adult-ctx-meta-atlas/meta.tsv": "72d96d30f385e971f9d26987d80a6321dd741ab3145ee4ee349e324b48ba6994"
+  },
+  "extras": {
+    "adult-ctx-meta-atlas/exprMatrix.tsv.gz": {
+      "md5": "1f2fbb3ff7",
+      "size": 9321940510
+    },
+    "adult-ctx-meta-atlas/meta.tsv": {
+      "md5": "8381a139e9",
+      "size": 63416376
+    }
+  },
+  "informational": {
+    "collection_md5": "7cb6b243df",
+    "last_build_time": "2025-01-08T14:59:57.970232"
+  },
+  "fetched_at": "2026-10-12T10:23:01.248958+00:00"
+}

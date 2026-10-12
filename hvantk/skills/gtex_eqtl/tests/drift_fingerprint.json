@@ -1,22 +1,56 @@
 {
-  "probe_version": 1,
-  "source_version": "cl362",
+  "probe_version": 2,
+  "source_version": "v11",
   "headers": {
-    "gtex-portal-qtl-downloads": [
-      "gtex-version",
-      "gtex-build-date",
-      "ETag",
-      "Last-Modified"
+    "gs://adult-gtex/bulk-qtl/": [
+      "v10",
+      "v11",
+      "v3",
+      "v4",
+      "v6",
+      "v6p",
+      "v7",
+      "v8"
+    ],
+    "gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/": [
+      "GTEx_Analysis_v11_apaQTL.tar",
+      "GTEx_Analysis_v11_apaQTL_covariates.tar",
+      "GTEx_Analysis_v11_apaQTL_groups.tar",
+      "GTEx_Analysis_v11_apaQTL_phenotype_matrices.tar",
+      "GTEx_Analysis_v11_eQTL.tar",
+      "GTEx_Analysis_v11_eQTL_covariates.tar",
+      "GTEx_Analysis_v11_eQTL_expression_matrices.tar",
+      "GTEx_Analysis_v11_sQTL.tar",
+      "GTEx_Analysis_v11_sQTL_covariates.tar",
+      "GTEx_Analysis_v11_sQTL_groups.tar",
+      "GTEx_Analysis_v11_sQTL_phenotype_matrices.tar",
+      "README_eQTL_v11.txt",
+      "description.tsv"
+    ],
+    "README_eQTL_v11.txt:signif_pairs": [
+      "gene_id",
+      "phenotype_id",
+      "variant_id",
+      "tss_distance",
+      "af",
+      "ma_samples",
+      "ma_count",
+      "pval_nominal",
+      "slope",
+      "slope_se",
+      "pval_nominal_threshold",
+      "min_pval_nominal",
+      "pval_beta"
     ]
   },
   "checksums": {
-    "gtex-portal-qtl-downloads": "b443a8c7df141d3504ef702d033f7720d459f9a8d3a3762ac839a6f6e2fd8955"
+    "README_eQTL_v11.txt:signif_pairs": "2db4b00a9e1d12823142b554825a4c88697d5f9b3a21edd8ee588d30ef737381"
   },
-  "fetched_at": "2026-08-27T17:25:39.948145+00:00",
   "extras": {
-    "gtex_version": "cl362",
-    "gtex_build_date": "8/26/2026, 2:53:07 PM",
-    "etag": "W/\"6a8f363d-2235\"",
-    "last_modified": "Wed, 26 Aug 2026 18:53:49 GMT"
-  }
+    "GTEx_Analysis_v11_eQTL.tar": {
+      "md5Hash": "O68VeoUuGIDxrhyAzSwQHw==",
+      "size": "3288535040"
+    }
+  },
+  "fetched_at": "2026-10-12T10:23:26.524074+00:00"
 }

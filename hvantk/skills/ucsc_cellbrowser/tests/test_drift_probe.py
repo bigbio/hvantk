@@ -1,57 +1,39 @@
-"""UCSC Cell Browser drift probe: catalog + upstream index fingerprint.
+"""UCSC Cell Browser drift probes: one per dataset (issue #396).
 
-Runs OFFLINE - the upstream request is stubbed via requests_mock; the local
-catalog is read from the package resources.
+Runs OFFLINE - every upstream request is stubbed via requests_mock.
 
-Two things this file deliberately does, both of which it previously did not
-(issue #341, item 2):
-
-1. **The expected index URL is pinned as a literal here**, not imported from the
-   module under test. Importing ``UCSC_DATASET_INDEX_URL`` and feeding it to the
-   mock made the URL assertion circular: a probe pointing at
-   ``https://cells.ucsc.edu/datasets.json`` (plural - a real mistake made while
-   re-authoring this probe) registered its own wrong URL with the mocker and
-   passed green. The literal below is the one upstream actually serves; if the
-   module constant moves, that is a deliberate change and this test should fail
-   until the literal is updated too.
-
-2. **Both HEAD and GET are stubbed.** The committed probe fingerprints the index
-   with a single ``HEAD`` (ETag/Content-Length/Last-Modified), but checksumming
-   the fetched body with a ``GET`` is an equally reasonable design - and under a
-   HEAD-only mock it died with ``requests_mock.exceptions.NoMockAddress`` rather
-   than on its merits. The probe *contract* (``SKILL.md`` s 9) is "fingerprint the
-   index"; the verb is an implementation detail, so the test allows either.
+**Expected URLs are pinned as literals here**, not imported from the module under test
+(issue #341, item 2). Importing a URL constant and feeding it to the mock made the URL
+assertion circular: a probe pointing at ``https://cells.ucsc.edu/datasets.json`` (plural -
+a real mistake made while re-authoring this probe) registered its own wrong URL with the
+mocker and passed green. Registering against the literals below makes a probe aimed
+anywhere else raise ``NoMockAddress`` instead.
 """
 
 from __future__ import annotations
 
-import json
+import hashlib
 
+import pytest
 import requests
 import requests_mock
-import pytest
 
 from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.ucsc_cellbrowser.drift_probe import (
-    fetch_fingerprint,
     UCSC_DATASET_INDEX_URL,
+    fetch_adult_ctx_fingerprint,
+    fetch_default_fingerprint,
+    fetch_dev_ctx_fingerprint,
 )
 
-# Pinned independently of the module under test - see the note above. Note the
-# SINGULAR "dataset.json"; "datasets.json" does not exist upstream.
+# Note the SINGULAR "dataset.json"; "datasets.json" does not exist upstream.
 EXPECTED_INDEX_URL = "https://cells.ucsc.edu/dataset.json"
 
 _INDEX_HEADERS = {
-    "Last-Modified": "Sat, 16 May 2026 01:18:32 GMT",
-    "ETag": '"21878-651e51b95b435"',
-    "Content-Length": "137336",
+    "Last-Modified": "Wed, 30 Sep 2026 23:39:35 GMT",
+    "ETag": '"25108-65cbbcfd8767d"',
+    "Content-Length": "151816",
 }
-
-# Minimal stand-in for the upstream index body, so a probe that GETs and hashes
-# the payload has something deterministic to hash.
-_INDEX_BODY = json.dumps(
-    {"datasets": [{"name": "cortex-dev", "shortLabel": "Cortex development"}]}
-)
 
 
 def test_probe_targets_the_documented_index_url():
@@ -59,26 +41,133 @@ def test_probe_targets_the_documented_index_url():
     assert UCSC_DATASET_INDEX_URL == EXPECTED_INDEX_URL
 
 
-def test_fetch_fingerprint_shape():
+def test_default_tracks_the_index_as_content_with_no_schema_signal():
+    """`default` has no fixed collection: index churn must tier `routine`, never `schema`."""
     with requests_mock.Mocker() as m:
-        # Register against the pinned literal, NOT the imported constant, so a
-        # probe aimed elsewhere raises NoMockAddress instead of passing.
         m.head(EXPECTED_INDEX_URL, headers=_INDEX_HEADERS)
-        m.get(EXPECTED_INDEX_URL, headers=_INDEX_HEADERS, text=_INDEX_BODY)
-        fp = fetch_fingerprint()
-    assert fp["probe_version"] == 1
-    assert fp["source_version"] == "Sat, 16 May 2026 01:18:32 GMT"
-    assert "cells_ucsc_datasets.json" in fp["checksums"]
-    assert "dataset.json" in fp["checksums"]
-    # The local-catalog hash is deterministic per ship; just assert it is non-empty.
-    assert fp["checksums"]["cells_ucsc_datasets.json"]
-    assert fp["checksums"]["dataset.json"]
+        fp = fetch_default_fingerprint()
+        # Identity encoding, or Apache reports the gzip length and a "-gzip" ETag.
+        assert m.last_request.headers["Accept-Encoding"] == "identity"
+
+    assert fp["probe_version"] == 2
+    assert fp["source_version"] is None
+    # Empty schema keys are the point of #396: nothing here may move `headers`/`checksums`.
+    assert fp["headers"] == {} and fp["checksums"] == {}
+    assert fp["extras"] == {
+        "dataset.json": {"etag": "25108-65cbbcfd8767d", "content_length": "151816"}
+    }
+    assert fp["informational"] == {"last_modified": "Wed, 30 Sep 2026 23:39:35 GMT"}
     assert "fetched_at" in fp
 
 
-def test_fetch_fingerprint_raises_on_request_failure():
+def test_default_fails_closed_without_an_etag():
+    headers = {k: v for k, v in _INDEX_HEADERS.items() if k != "ETag"}
+    with requests_mock.Mocker() as m:
+        m.head(EXPECTED_INDEX_URL, headers=headers)
+        with pytest.raises(DriftProbeError, match="no content signal"):
+            fetch_default_fingerprint()
+
+
+def test_default_raises_on_request_failure():
     with requests_mock.Mocker() as m:
         m.head(EXPECTED_INDEX_URL, exc=requests.ConnectionError("boom"))
-        m.get(EXPECTED_INDEX_URL, exc=requests.ConnectionError("boom"))
         with pytest.raises(DriftProbeError):
-            fetch_fingerprint()
+            fetch_default_fingerprint()
+
+
+# --- adult-ctx / dev-ctx: the pinned parent collection of each derived dataset ----------
+
+# (probe, parent collection, raw meta.tsv grouping column), pinned as literals.
+_PARENTS = [
+    (fetch_adult_ctx_fingerprint, "adult-ctx-meta-atlas", "Class"),
+    (fetch_dev_ctx_fingerprint, "dev-ctx-meta-atlas", "Type.v2"),
+]
+
+
+def _descriptor(group_column: str, *, with_group: bool = True) -> dict:
+    """Minimal per-collection dataset.json: just the keys the probe reads."""
+    fields = [{"name": "cellId", "label": "cellId", "type": "uniqueString"}]
+    if with_group:
+        fields.append(
+            {
+                "name": group_column.replace(".", ""),
+                "label": group_column,
+                "type": "enum",
+                # Ordered by cell count upstream; the probe must sort.
+                "valCounts": [["Neuron", 437], ["Astrocyte", 29], ["NA", 4]],
+            }
+        )
+    return {
+        "md5": "7cb6b243df",
+        "lastBuildTime": "2025-01-08T14:59:57.970232",
+        "fileVersions": {
+            "outMatrix": {"md5": "1f2fbb3ff7", "size": 9321940510},
+            "outMeta": {"md5": "8381a139e9", "size": 63416376},
+        },
+        "metaFields": fields,
+    }
+
+
+def _mock_parent(m, parent, group_column, *, meta_body=None, descriptor=None):
+    header = f"cellId\tnCount_RNA\t{group_column}"
+    m.get(
+        f"https://cells.ucsc.edu/{parent}/meta.tsv",
+        status_code=206,
+        content=(
+            meta_body if meta_body is not None else f"{header}\nc1\t5\tNeuron\n"
+        ).encode("utf-8"),
+    )
+    m.get(
+        f"https://cells.ucsc.edu/{parent}/dataset.json",
+        json=descriptor if descriptor is not None else _descriptor(group_column),
+    )
+    return header
+
+
+@pytest.mark.parametrize("probe, parent, group_column", _PARENTS)
+def test_parent_fingerprint_layout(probe, parent, group_column):
+    """Schema keys hold the parent's real column list and class labels; content is extras."""
+    with requests_mock.Mocker() as m:
+        header = _mock_parent(m, parent, group_column)
+        fp = probe()
+        meta_request = next(r for r in m.request_history if r.path.endswith("meta.tsv"))
+        assert meta_request.headers["Range"] == "bytes=0-65535"
+
+    meta = f"{parent}/meta.tsv"
+    assert fp["probe_version"] == 2
+    assert fp["headers"] == {
+        meta: ["cellId", "nCount_RNA", group_column],
+        f"{meta}:{group_column}": ["Astrocyte", "NA", "Neuron"],
+    }
+    assert fp["checksums"] == {meta: hashlib.sha256(header.encode("utf-8")).hexdigest()}
+    assert fp["extras"] == {
+        f"{parent}/exprMatrix.tsv.gz": {"md5": "1f2fbb3ff7", "size": 9321940510},
+        meta: {"md5": "8381a139e9", "size": 63416376},
+    }
+    assert fp["informational"] == {
+        "collection_md5": "7cb6b243df",
+        "last_build_time": "2025-01-08T14:59:57.970232",
+    }
+
+
+def test_parent_reports_a_vanished_group_column_as_drift_not_failure():
+    """A renamed grouping column is the schema change the probe exists to report."""
+    probe, parent, group_column = _PARENTS[0]
+    with requests_mock.Mocker() as m:
+        _mock_parent(
+            m,
+            parent,
+            group_column,
+            descriptor=_descriptor(group_column, with_group=False),
+        )
+        fp = probe()
+    assert fp["headers"][f"{parent}/meta.tsv:{group_column}"] == []
+
+
+def test_parent_fails_closed_on_a_truncated_header_row():
+    """No newline within the range means the column list may be cut short."""
+    probe, parent, group_column = _PARENTS[1]
+    with requests_mock.Mocker() as m:
+        _mock_parent(m, parent, group_column, meta_body="cellId\tnCount_RNA\tTy")
+        with pytest.raises(DriftProbeError, match="no complete header row"):
+            probe()
