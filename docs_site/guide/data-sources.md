@@ -207,10 +207,8 @@ INSIDER ships **two** products, and hvantk builds a dataset from each:
 **Download**: the downloads page carries no links in its markup, so both the plugin
 catalog (`hvantk catalog show INSIDER_v1.0`) and the `insider:interfaces` downloader use
 the direct URLs above. Both files are served over plain HTTP; the site has no HTTPS
-listener. The BED is >1 GB, so `insider:variants` stays manual acquisition (see
-[Downloader or documented acquisition](#downloader-or-documented-acquisition) above);
-the pair table is small enough that `insider:interfaces` ships a real downloader
-instead:
+listener. The BED is >1 GB, so `insider:variants` stays manual acquisition; the pair
+table is small enough that `insider:interfaces` ships a real downloader instead:
 
 ```bash
 hvantk download insider-interfaces --output data/insider/H_sapiens_interfacesALL.txt
