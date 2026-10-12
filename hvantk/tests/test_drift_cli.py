@@ -600,7 +600,14 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     tmp_path: Path, monkeypatch
 ):
     """A probe that succeeds but a write_fingerprint that fails (disk full, permission
-    denied, ...) must also exit 2, not let the OSError escape as a traceback's 1."""
+    denied, ...) must also exit 2, not let the OSError escape as a traceback's 1.
+
+    Patches `os.replace` -- the atomic-rename step inside the REAL write_fingerprint
+    (drift_runner.py) -- rather than replacing write_fingerprint itself: a wholesale
+    stub never runs the real function, so its own cleanup (unlink the temp file,
+    re-raise, leaving the committed baseline untouched) was never exercised and could
+    not have failed either.
+    """
     import shutil
 
     from hvantk.core.plugin import drift_runner
@@ -613,10 +620,10 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
     before = fp_path.read_text()
 
-    def boom_write(path, fingerprint):
+    def boom_replace(src, dst):
         raise OSError("disk full")
 
-    monkeypatch.setattr(drift_runner, "write_fingerprint", boom_write)
+    monkeypatch.setattr(drift_runner.os, "replace", boom_replace)
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
@@ -627,6 +634,9 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     assert fp_path.read_text() == before, (
         "a write failure must not corrupt the baseline"
     )
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
 
 
 def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_exit_code(
