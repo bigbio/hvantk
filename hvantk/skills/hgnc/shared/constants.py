@@ -56,4 +56,10 @@ HGNC_PIPE_SEPARATED_FIELDS = [
     "gene_group_id",
     "omim_id",
     "mane_select",
+    # Not in HGNC_GENE_FIELDS (no rename), so the post-rename name is the raw
+    # column name. The live dump quotes and pipe-separates these the same way
+    # as the fields above (e.g. ena: `"KI270879|BC050410"`) -- see #391.
+    "ena",
+    "lsdb",
+    "pubmed_id",
 ]
