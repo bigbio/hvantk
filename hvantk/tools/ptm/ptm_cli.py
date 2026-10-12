@@ -820,6 +820,7 @@ def ptm_test(
           --input variants.tsv --stratum-col primary_tissue_broad \\
           -o results/tissue_lmm.tsv
 
+    \b
       hvantk ptm test --test lmm-binned \\
           --input variants.tsv --stratum-col cell_type \\
           --expression-pkl brain_gene_celltype_median_expr.pkl \\
