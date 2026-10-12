@@ -92,8 +92,8 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 - Tier normalization: raw digit-only `classification` values (`"1"`, `"2"`) are rewritten to `"Tier 1"` / `"Tier 2"`; already-prefixed values pass through unchanged.
 - `classification_level` (int) is added via `annotate_classification_level()` against `COSMIC_CGC_CLASSIFICATION_LEVELS = ["Tier 1", "Tier 2"]` — ordinal rank, most-confident first; anything unmatched (including missing) sorts last.
 - `somatic`, `germline`, `hallmark` are coerced to boolean via `str_to_bool()`: recognises `yes`/`y`/`true`/`1` case-insensitively; missing or anything else → `False`. `hallmark` is only annotated when the input actually carries a `Hallmark` column (legacy exports) — the current header has none, and the builder does not fabricate it.
-- Multi-value fields `tumour_types_somatic`, `tumour_types_germline`, `role_in_cancer`, `mutation_types` are comma-separated, usually `", "` but not always — a handful of rows in the licensed export have a bare `,` with no following space, which is why the builder splits on `,` and strips each token rather than splitting on the literal `", "`. Tokens are stripped and emptied entries dropped; missing/empty input becomes `[]`, not a missing array. `ROLE_IN_CANCER` vocabulary: `oncogene`, `TSG`, `fusion`. `MUTATION_TYPES` vocabulary includes short codes (`Mis`, `N`, `F`, `D`, `A`, `O`, `S`, `T`) and a couple of multi-word tokens (e.g. one with an embedded period and space) — real COSMIC data, not a parsing artifact; the comma-split-then-strip approach handles both without special-casing.
-- `TISSUE_TYPE` vocabulary: `E`/`L`/`M`/`O`, decoded by `COSMIC_TISSUE_TYPES` in `shared/constants.py` (`Epithelial`/`Lymphoid`/`Mesenchymal`/`Other`), though the builder never applies that decode — `tissue_type` stays as the raw code. **Known gap** (not fixed by this update, flagged for whoever picks it up next): `TISSUE_TYPE` is itself sometimes multi-valued in the licensed export — comma-separated, same convention as the four fields above, roughly 18% of rows carry 2+ codes — but the builder leaves it as a raw scalar string rather than splitting it into an array. `CosmicCGCGeneDiseaseTableStreamer.get_geneset_per_tissue()` (§ 6) groups by it as a scalar, so splitting it here would need a matching streamer change; out of scope for this builder-focused update.
+- Multi-value fields `tumour_types_somatic`, `tumour_types_germline`, `role_in_cancer`, `mutation_types`, `tissue_type` are comma-separated, usually `", "` but not always — a handful of rows in the licensed export have a bare `,` with no following space, which is why the builder splits on `,` and strips each token rather than splitting on the literal `", "`. Tokens are stripped and emptied entries dropped; missing/empty input becomes `[]`, not a missing array. `ROLE_IN_CANCER` vocabulary: `oncogene`, `TSG`, `fusion`. `MUTATION_TYPES` vocabulary includes short codes (`Mis`, `N`, `F`, `D`, `A`, `O`, `S`, `T`) and a couple of multi-word tokens (e.g. one with an embedded period and space) — real COSMIC data, not a parsing artifact; the comma-split-then-strip approach handles both without special-casing.
+- `TISSUE_TYPE` vocabulary: `E`/`L`/`M`/`O`, decoded by `COSMIC_TISSUE_TYPES` in `shared/constants.py` (`Epithelial`/`Lymphoid`/`Mesenchymal`/`Other`), though the builder never applies that decode — `tissue_type` stays the raw code(s). `TISSUE_TYPE` is itself sometimes multi-valued in the licensed export — comma-separated, same convention as the four fields above, roughly 18% of rows carry 2+ codes — so like them it is split into `tissue_type` (`array<str>`) rather than kept as a scalar. `CosmicCGCGeneDiseaseTableStreamer.get_geneset_per_tissue()` (§ 6) explodes the array before grouping, so a gene tagged `E, M` lands in both the `E` and `M` tissue gene sets.
 - `SYNONYMS` is comma-separated but **not** split into an array by the builder — it stays a raw string. Its separator spacing is the opposite of the four fields above: a bare `,` with no following space is the common case, `", "` the exception.
 - Keying: if a `gene_catalog` (a `GeneCatalogStreamer`) build param is supplied, symbols are resolved to `hgnc_id` via `map_ids()`, the `HGNC:` prefix is stripped, unresolved rows are dropped, and the table is keyed by `hgnc_id`. The builder logs how many symbols resolved, as a warning naming the dropped count (and up to ten examples) when any did not; if the table has symbols but the catalog resolves none of them, the build raises `ValueError` instead of writing an empty table. Otherwise the table is keyed by `gene_symbol` (a warning is logged).
 - No downloader is implemented; upstream files must be externally materialized because COSMIC gates the CGC export behind account login.
@@ -102,7 +102,7 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 
 `AnnotationTable` (`schema_id="cosmic-cgc-v2"` for v103+ headers, or `cosmic-cgc-legacy-v1` for legacy headers; a header missing a column of its generation raises, § 4), one row per gene, keyed by `hgnc_id` (if a `gene_catalog` was supplied) or `gene_symbol` (default). Field list below is the committed `tests/snapshots/schema.json` (§ 9), built from the current (v103+) header via the synthetic fixture with a `gene_catalog` supplied (hence `hgnc_id` present and keyed):
 
-`gene_symbol` (str), `gene_name` (str), `cosmic_gene_id` (str), `chromosome` (str), `genome_start` (int32), `genome_stop` (int32), `chr_band` (str), `somatic` (bool), `germline` (bool), `tumour_types_somatic` (`array<str>`), `tumour_types_germline` (`array<str>`), `cancer_syndrome` (str), `tissue_type` (str), `molecular_genetics` (str), `role_in_cancer` (`array<str>`), `mutation_types` (`array<str>`), `translocation_partner` (str), `other_germline_mut` (str), `other_syndrome` (str), `classification` (str, `"Tier 1"`/`"Tier 2"`), `synonyms` (str), `classification_level` (int32), `hgnc_id` (str, only when a `gene_catalog` was supplied).
+`gene_symbol` (str), `gene_name` (str), `cosmic_gene_id` (str), `chromosome` (str), `genome_start` (int32), `genome_stop` (int32), `chr_band` (str), `somatic` (bool), `germline` (bool), `tumour_types_somatic` (`array<str>`), `tumour_types_germline` (`array<str>`), `cancer_syndrome` (str), `tissue_type` (`array<str>`), `molecular_genetics` (str), `role_in_cancer` (`array<str>`), `mutation_types` (`array<str>`), `translocation_partner` (str), `other_germline_mut` (str), `other_syndrome` (str), `classification` (str, `"Tier 1"`/`"Tier 2"`), `synonyms` (str), `classification_level` (int32), `hgnc_id` (str, only when a `gene_catalog` was supplied).
 
 `hallmark` (bool), `entrez_id` (str), and `genome_location` (str) come from `COSMIC_CGC_LEGACY_FIELDS` and are **legacy-export-only**: a legacy header must carry all three (§ 4), and they appear in the built table, in place of `cosmic_gene_id`, `chromosome`, `genome_start` and `genome_stop`, for a `cosmic-cgc-legacy-v1` build. The current v103+ header carries none of the three, so none of them appear in the schema above, and the builder does not fabricate them.
 
@@ -151,16 +151,18 @@ Declared in `plugin.yaml`'s `tests:` block (`hvantk/skills/cosmic_cgc/plugin.yam
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/cosmic_cgc/tests -m hail`
 
-`-m hail` selects the five `@pytest.mark.hail`-marked tests in `test_builder.py`, 5 of
-the 13 tests collected under `hvantk/skills/cosmic_cgc/tests`: the round trip
-(`test_cosmic_cgc_submissions_round_trip`, below), a full legacy header
+`-m hail` selects the six `@pytest.mark.hail`-marked tests in `test_builder.py` and
+`test_streamer.py`, 6 of the 14 tests collected under `hvantk/skills/cosmic_cgc/tests`:
+the round trip (`test_cosmic_cgc_submissions_round_trip`, below), a full legacy header
 (`test_legacy_header_fields_are_renamed`), the non-integer coordinate count
 (`test_non_integer_coordinates_are_counted`), a current header with `GENOME_START`
-renamed raising (`test_partly_renamed_header_raises`), and a gene catalog that resolves
-no symbol raising (`test_gene_catalog_resolving_no_symbol_raises`). The other 8 (the
-`test_cosmic_cgc.py` registration check plus 7 offline `test_drift_probe.py` cases)
-carry no `hail` marker and run under the default (non-`-m hail`) pytest selection
-instead.
+renamed raising (`test_partly_renamed_header_raises`), a gene catalog that resolves
+no symbol raising (`test_gene_catalog_resolving_no_symbol_raises`), and a gene tagged
+with two tissue codes landing in both tissue gene sets
+(`test_get_geneset_per_tissue_splits_multi_valued_codes` in `test_streamer.py`). The
+other 8 (the `test_cosmic_cgc.py` registration check plus 7 offline
+`test_drift_probe.py` cases) carry no `hail` marker and run under the default
+(non-`-m hail`) pytest selection instead.
 
 The COSMIC CGC licence forbids redistributing rows, so `fixture` is a **synthetic,
 format-faithful** TSV (`tests/testdata/raw/cosmic-cgc/cosmic-cgc-synthetic.tsv.gz`, with

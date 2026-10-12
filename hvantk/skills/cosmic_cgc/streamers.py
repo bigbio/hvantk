@@ -263,7 +263,12 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         min_genes: int = 0,
         mutation_context: str = "both",
     ) -> Dict[str, Set[str]]:
-        """Gene sets grouped by tissue type (E, L, M, O)."""
+        """Gene sets grouped by tissue type (E, L, M, O).
+
+        Explodes the multi-value tissue_type field, so a gene tagged with
+        more than one tissue code (e.g. "E, M") lands in each tissue's gene
+        set rather than its own combined-code group.
+        """
         self._ensure_table_loaded()
         ht = self.filter_by_mutation_context(mutation_context)
 
@@ -276,20 +281,23 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
             logger.warning("tissue_type field not found in table")
             return {}
 
-        grouped = ht.group_by(tissue=ht.tissue_type).aggregate(
-            genes=hl.agg.collect_as_set(ht.gene_symbol)
+        exploded = ht.explode("tissue_type")
+        exploded = exploded.filter(
+            hl.is_defined(exploded.tissue_type) & (exploded.tissue_type != "")
+        )
+        grouped = exploded.group_by(tissue=exploded.tissue_type).aggregate(
+            genes=hl.agg.collect_as_set(exploded.gene_symbol)
         )
         rows = grouped.collect()
 
         result: Dict[str, Set[str]] = {}
         for row in rows:
-            tissue = row.tissue
-            if not tissue or tissue.strip() == "":
+            if not row.tissue:
                 continue
             genes = set(row.genes)
             if len(genes) < min_genes:
                 continue
-            result[tissue] = genes
+            result[row.tissue] = genes
 
         logger.info(
             f"Built {len(result)} tissue-type gene sets"

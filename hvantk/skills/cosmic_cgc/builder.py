@@ -194,6 +194,7 @@ def build_cosmic_cgc_submissions(
         "tumour_types_germline",
         "role_in_cancer",
         "mutation_types",
+        "tissue_type",
     ]
     for mv_field in multi_value_fields:
         if mv_field in get_row_fields(ht):
