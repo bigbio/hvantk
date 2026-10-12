@@ -31,12 +31,15 @@ h5py>=3.7
 # The floor matches pyproject and is non-binding in practice: hail itself requires
 # numpy>=2,<3, so a real install lands on 2.x regardless.
 numpy>=1.23
+# scipy has been a base dependency in pyproject.toml since #376 (imported at module
+# scope by skills/ucsc_cellbrowser/shared/ucsc.py, reachable from a base install), not
+# an extra -- it lived here by mistake (#392).
+scipy>=1.8
 
 # --- optional extras, installed so the tests behind them actually run ---
 # ml / ancestry / psroc. Without scikit-learn, hvantk/tests/rerank/test_example.py
 # importorskips itself and the feature-selection stack goes untested on this path.
 scikit-learn>=1.4,<2
-scipy>=1.8
 # viz (matplotlib/seaborn also back the hgc, constraint and ancestry extras)
 matplotlib
 seaborn
