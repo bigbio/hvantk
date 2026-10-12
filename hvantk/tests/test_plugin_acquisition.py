@@ -169,7 +169,6 @@ def test_byo_datasets_are_not_exempt_from_the_validation_contract():
 #: Datasets whose downloader belongs here but is not written yet (#386). That state is
 #: spelled by OMITTING the acquisition block; this set pins which datasets are in it.
 DOWNLOADER_NOT_WRITTEN_YET = {
-    "cptac:expression",
     "gevir:metrics",
     "gwas-catalog:associations",
     "insider:interfaces",
