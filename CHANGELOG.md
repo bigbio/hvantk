@@ -1,5 +1,75 @@
 # Changelog
 
+## Unreleased
+
+Two new downloaders, drift probes that watch the data they guard, and fixes from the
+0.4.0 follow-up issues.
+
+**Upgrade notes.**
+- `hvantk ptm build` into an existing `--output-ht` now stops before any download or
+  mapping; pass `--overwrite` to replace the table (#445).
+- `hvantk rerank` runs the ablation and the permutation null at `Config.folds` folds, like
+  the headline score. A config that sets `folds` to anything but the default 5 gets
+  different ablation and null deltas than before (#446).
+- Rebuild a `cosmic-cgc:submissions` table built before this release before calling
+  `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
+- `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
+  `array<struct{name, url}>` (#443).
+- `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
+
+### Added
+
+- **Downloaders for `insider:interfaces` and `gwas-catalog:associations`.** `hvantk
+  download insider-interfaces` and `hvantk download gwas-catalog`, which `hvantk reprocess`
+  now runs too. The gwas-catalog builder resolves a raw directory to its associations
+  file, so the plain `--raw-dir` form works (#450).
+- **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
+  field missing from the input header into an error instead of a warning (#443).
+- **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
+  `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
+- **The downloader decision framework is published** in the data-sources guide: when a
+  source gets a downloader, and when its acquisition is documented instead (#441).
+
+### Changed
+
+- **The UCSC Cell Browser and GTEx drift probes watch the data they guard.** Each UCSC
+  dataset has its own baseline: `adult-ctx` and `dev-ctx` fingerprint their parent
+  collection's `meta.tsv` header and grouping labels, and `default` tracks the browser
+  index as routine content only. GTEx reads the public `adult-gtex` bucket (release
+  folders, the v11 file layout, the documented `signif_pairs` columns) instead of the
+  portal's web-app build tags. Index churn and portal redeploys no longer open
+  `drift:schema` PRs (#447).
+- **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
+  on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
+- **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
+  (#446).
+- **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
+  plugins validate` already did (#449).
+
+### Fixed
+
+- **Twelve commands reported their own `ctx.exit(1)` as a crash** (a traceback, then
+  `Error: 1`): the `hgc` commands, `ancestry-inference`, `psroc` and `ptm constraint`
+  (#439).
+- **PeptideAtlas:** a build without `protein_identification.tsv` silently skipped
+  canonical-isoform filtering and now fails, and a repeated (peptide, protein, start)
+  mapping is counted once (#440).
+- **`map_ptm_sites` labelled PeptideAtlas and CPTAC rows as curated UniProt** when their
+  TSV had no `source_db` / `evidence_type` (#445).
+- **`hvantk ptm build` could not re-run on the same day** into its output directory: the
+  dated UniProt download raised `FileExistsError`. It is now reused, and written
+  atomically (#445).
+- **`cosmic-cgc:submissions` kept multi-valued `TISSUE_TYPE` as one string**, so a gene
+  tagged `E, M` formed its own tissue group (#442).
+- **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
+  (#443).
+- **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like
+  a build with no parameters; it now reads as `None`, "not recorded" (#449).
+- **drift-validate skipped suffixed fingerprints** such as onek-genomes'
+  `drift_fingerprint_variants.json` (#444).
+- **Docs:** the README genesets row, the psroc page title, the Expression Atlas licence URI
+  and the E-MTAB-6798 organism (#438).
+
 ## 0.4.0 — 2026-10-08
 
 Every shipped dataset now runs an executable contract, and builders that could finish
