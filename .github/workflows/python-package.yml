@@ -13,6 +13,13 @@ on:
   pull_request:
     branches: ["main", "dev"]
 
+# Cancel a superseded PR run so it stops competing for runners; never cancel a run on
+# main/dev, where `github.event.pull_request.number` is unset and the group key falls
+# back to the ref (#432).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # lint + test only; no write scopes needed
 permissions:
   contents: read
