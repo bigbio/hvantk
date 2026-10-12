@@ -81,15 +81,40 @@ GROUPED = {
 }
 
 
-def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeypatch):
-    """The regression: drift detected, branch pushed, `gh pr create` refused, exit 0.
+@pytest.mark.parametrize(
+    "failing_cmd,stderr_msg",
+    [
+        (
+            ["gh", "pr", "create"],
+            "GitHub Actions is not permitted to create or approve "
+            "pull requests (createPullRequest)",
+        ),
+        (
+            ["git", "checkout", "-B"],
+            "fatal: a branch named 'drift/routine-batch' is already checked out",
+        ),
+    ],
+    ids=["gh-pr-create", "git-checkout-B"],
+)
+def test_exits_nonzero_when_a_pr_cannot_be_opened(
+    drift_to_pr, tmp_path, monkeypatch, failing_cmd, stderr_msg
+):
+    """The regression: drift detected, branch pushed, `gh pr create` refused, exit 0
+    (now exit 1). Reproduces the exact stderr the repository setting produced in run
+    30255526454 for the `gh pr create` case.
 
-    Reproduces the exact stderr the repository setting produced in run 30255526454.
+    Also parametrized over a `git checkout -B` refusal (#408 review fix 1):
+    `handle_routine_batch`'s own branch setup (`git fetch` / `git checkout -B`) runs
+    BEFORE either of its try blocks, and `main()` no longer wraps the call itself
+    (`handle_routine_batch` is documented to never raise `CalledProcessError`), so a
+    refusal there used to escape as an UNCAUGHT exception -- this test would error
+    instead of asserting `rc == 1` -- rather than being caught and reported like
+    every other failure in the batch.
     """
     report = _write_report(tmp_path, [DRIFTED])
 
     def _explode(cmd, **kwargs):
-        """Succeed for every git call; fail only on `gh pr create`.
+        """Succeed for every call except ``failing_cmd``.
 
         `DRIFTED`'s diff has no schema-key changes, so `classify_risk` reads it as
         routine and this report is routed through `handle_routine_batch`, whose own
@@ -97,16 +122,12 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
         `handle_drifted`'s, which shells out to `subprocess.run` directly. Answer that
         one command with "there IS something staged" (nonzero), matching this test's
         premise -- drift was detected and a branch was pushed -- so the guard does not
-        short-circuit before `gh pr create` gets a chance to fail.
+        short-circuit before the failing command gets a chance to run. Irrelevant to
+        the `git-checkout-B` case, which fails before that check is ever reached, but
+        harmless there too.
         """
-        if cmd[:3] == ["gh", "pr", "create"]:
-            raise subprocess.CalledProcessError(
-                1,
-                cmd,
-                output="",
-                stderr="GitHub Actions is not permitted to create or approve "
-                "pull requests (createPullRequest)",
-            )
+        if cmd[: len(failing_cmd)] == failing_cmd:
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr=stderr_msg)
         if cmd == ["git", "diff", "--cached", "--quiet"]:
             return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -491,26 +512,85 @@ def test_matching_branch_with_no_open_pr_is_never_skipped(
     assert any(c.startswith("gh pr create") for c in joined), joined
 
 
+# --- the regenerate-vs-probe stability check (#408 fix 1) --------------------------
+#
+# `--regenerate` makes a SECOND, independent probe call -- not a replay of the one
+# that produced the drift report's `observed` fingerprint. A transiently stale
+# upstream response in the window between the two (a stale cache edge, a mid-deploy
+# response) would otherwise be committed as the new baseline, then reverted again next
+# run when a THIRD probe disagrees with it: a flip-flop PR that churns forever without
+# anything upstream actually settling. Nothing compared the two before this fix --
+# `entry["observed"]` was read only to render the PR body.
+
+
+def test_handle_drifted_skips_when_regenerate_disagrees_with_the_probe(
+    drift_to_pr, monkeypatch, tmp_path
+):
+    """The regression: a regenerated fingerprint that disagrees with the report's own
+    probe call must not be committed, pushed, or turned into a PR -- it is a skip
+    (retry next run), not a failure."""
+    fp = tmp_path / "drift_fingerprint.json"
+    # Stands in for what a real `--regenerate` subprocess call would have just
+    # written to disk -- `_run` is mocked by `_capture_handle_drifted`, so it never
+    # really invokes the CLI; this is the SECOND probe's reading.
+    fp.write_text(json.dumps({"source_version": "stale-cache-read", "fetched_at": "t"}))
+
+    entry = {
+        **DRIFTED,
+        # The FIRST probe's reading, from the drift report that triggered this run.
+        "observed": {"source_version": "the-real-current-value", "fetched_at": "t0"},
+        "fingerprint_path": str(fp),
+    }
+
+    cmds, cleanups, summary = _capture_handle_drifted(
+        drift_to_pr,
+        monkeypatch,
+        tmp_path,
+        needs_update=True,
+        pr_exists=False,
+        entry=entry,
+    )
+
+    joined = [" ".join(c) for c in cmds]
+    assert not any(c.startswith("git commit") for c in joined), joined
+    assert not any(c.startswith("git push") for c in joined), joined
+    assert not any(c.startswith("gh pr") for c in joined), joined
+    # The disagreeing fingerprint must be discarded, for real, exactly like the
+    # pre-existing "branch already proposes this" skip just above.
+    assert cleanups == [{"dry_run": False}], (
+        "an unstable regenerate must discard the disagreeing fingerprint, for real"
+    )
+    assert "SKIPPED" in summary and "clinvar:variants" in summary, summary
+
+
 # --- partial-batch contamination: a failure must not leave a dirty working tree -----
 #
 # `handle_routine_batch` regenerates every routine dataset in a loop, staging only AFTER
 # the loop finishes. If dataset N of M fails, datasets before it have already written
-# modified fingerprint files to the working tree. `main()` catches the resulting
-# CalledProcessError, logs it, and continues into the schema loop, whose `git checkout -B`
-# does not touch an already-dirty working tree, and whose `git add hvantk/skills` would
-# stage -- and then commit -- those leftovers onto an unrelated PR: a schema-change PR,
-# invisible in its diff and its ledger entry. The same risk exists one level up in
-# `handle_drifted`'s own single regenerate call, contaminating the NEXT schema-loop entry.
+# modified fingerprint files to the working tree. The loop now isolates that failure to
+# dataset N alone (#408 fix 2): its own file is restored and it is dropped from the
+# batch, while datasets 1..N-1 survive to be staged, committed, and pushed with the
+# rest. The test below pins that per-dataset isolation. The SAME contamination risk
+# still applies one level up in `handle_drifted`'s own single regenerate call -- a
+# failure there still discards and re-raises (it covers only one dataset to begin
+# with, so there is no "rest of the batch" to isolate it from), contaminating the NEXT
+# schema-loop entry if not cleaned up; the second test below pins that guard.
 
 
-def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
+def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_failure(
     drift_to_pr, monkeypatch
 ):
-    """A regenerate failure partway through the batch must discard whatever earlier
-    datasets already wrote to the working tree before the exception is allowed to
-    propagate -- or `main()`'s except-and-continue leaves it for the schema loop to
-    silently absorb."""
+    """A regenerate failure partway through the batch must NOT discard what earlier
+    datasets already wrote to the working tree, and must not abort the batch: it is
+    isolated to its own dataset, restored on its own, and the loop continues. This
+    replaces the old all-or-nothing contract, where ANY dataset's refused regenerate
+    raised, `_discard_staged_fingerprints` wiped the WHOLE `hvantk/skills` tree
+    (including datasets that had already regenerated cleanly), and `main()` marked
+    every routine dataset failed -- see
+    `test_routine_batch_isolates_a_single_regenerate_failure` for the end-to-end
+    fix this drives."""
     calls: list[list[str]] = []
+    fp_path = str(drift_to_pr.REPO_ROOT / "hvantk/skills/x/drift_fingerprint.json")
 
     def _regen_fails_on_third(cmd, **kwargs):
         calls.append(list(cmd))
@@ -519,6 +599,10 @@ def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
             and cmd[-1] == "c:three"
         ):
             raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            # Something IS staged (a:one and b:two regenerated cleanly) -- the state
+            # this test means to drive past the emptiness check and into commit/push.
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     def _record_subprocess_run(cmd, **kwargs):
@@ -527,24 +611,83 @@ def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
 
     monkeypatch.setattr(drift_to_pr, "_run", _regen_fails_on_third)
     monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
 
     entries = [
         {"dataset_name": "a:one", "diff": {}},
         {"dataset_name": "b:two", "diff": {}},
-        {"dataset_name": "c:three", "diff": {}},
+        {"dataset_name": "c:three", "diff": {}, "fingerprint_path": fp_path},
     ]
 
-    with pytest.raises(subprocess.CalledProcessError):
-        drift_to_pr.handle_routine_batch(
-            entries, base_branch="dev", dry_run=False, step_summary=None
-        )
+    failed = drift_to_pr.handle_routine_batch(
+        entries, base_branch="dev", dry_run=False, step_summary=None
+    )
 
+    assert failed == [("c:three", "regenerate refused/failed")]
     joined = [" ".join(c) for c in calls]
-    # The cleanup must actually run -- and run BEFORE the exception escapes, i.e. as the
-    # very next command after the failing regenerate call.
-    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
-    # And the leftover must never reach the index in the first place on this path.
-    assert not any(c.startswith("git add") for c in joined), joined
+    # a:one and b:two's regenerate calls both ran -- the loop did not abort early.
+    regen = [c for c in calls if c[:4] == ["python", "-m", "hvantk.hvantk", "drift"]]
+    assert [c[-1] for c in regen] == ["a:one", "b:two", "c:three"], calls
+    # The blanket whole-tree discard must never fire for a single dataset's failure.
+    assert not any(c == "git checkout HEAD -- hvantk/skills" for c in joined), joined
+    # Only c:three's own file is restored.
+    assert "git checkout HEAD -- hvantk/skills/x/drift_fingerprint.json" in joined, (
+        joined
+    )
+
+
+def test_routine_batch_isolates_a_single_regenerate_failure(
+    drift_to_pr, monkeypatch, tmp_path
+):
+    """The end-to-end regression for #408 fix 2, driven through `main()`: a refused
+    regenerate for ONE routine dataset must not sink the other one -- it still gets
+    committed, pushed, and opened as a PR -- and the final summary must name the REAL
+    failing stage ("regenerate refused/failed") instead of the old blanket "The
+    branches were pushed; the `gh pr create` calls failed" sentence, which used to
+    cover this exact case even though neither a push nor a `gh pr create` call had
+    been attempted for the failed dataset.
+    """
+    report = _write_report(
+        tmp_path,
+        [
+            {**DRIFTED, "dataset_name": "a:ok"},
+            {**DRIFTED, "dataset_name": "b:refused"},
+        ],
+    )
+    calls: list[list[str]] = []
+
+    def _stub(cmd, **kwargs):
+        calls.append(list(cmd))
+        if (
+            cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]
+            and cmd[-1] == "b:refused"
+        ):
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr="refused")
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _stub)
+    monkeypatch.setattr(subprocess, "run", _stub)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+
+    rc = drift_to_pr.main(["--report", str(report), "--base-branch", "dev"])
+
+    assert rc == 1
+    joined = [" ".join(c) for c in calls]
+    # a:ok still makes it all the way to a PR.
+    assert any(c.startswith("git commit") for c in joined), joined
+    assert any(c.startswith("git push") for c in joined), joined
+    assert any(c.startswith("gh pr create") for c in joined), joined
+
+    text = summary.read_text()
+    assert "regenerate refused/failed" in text, text
+    assert "The branches were pushed; the `gh pr create` calls failed" not in text
 
 
 def test_handle_drifted_discards_working_tree_when_regenerate_fails(
