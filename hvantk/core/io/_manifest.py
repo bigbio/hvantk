@@ -66,5 +66,8 @@ def _from_dict(d: dict) -> Provenance:
         build_timestamp=datetime.fromisoformat(d["build_timestamp"]),
         builder_commit=d.get("builder_commit"),
         parents=tuple(_from_dict(p) for p in d.get("parents", [])),
-        build_parameters=d.get("build_parameters", {}),
+        # A missing key means "not recorded" (a sidecar written before this field
+        # existed), which must not read back as {} ("recorded as no parameters") --
+        # see Provenance.build_parameters.
+        build_parameters=d.get("build_parameters"),
     )

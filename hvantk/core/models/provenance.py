@@ -7,10 +7,23 @@ upstream lineage; production code must plumb real provenance.
 
 ``build_parameters`` is optional: a builder may use it to record the options that
 shaped the artifact's contents (AlphaGenome records its ``output_types`` and
-``ontology_curies`` filters). Most builders record nothing, so an empty dict does
-not mean the build took no options. The value must be JSON-serialisable
-(``BuildContext.provenance`` stores a JSON copy and rejects anything else), and it
-is empty in sidecars written before the field existed.
+``ontology_curies`` filters). ``{}`` and ``None`` mean different things, and both
+are distinct from "has entries":
+
+  * a dict with entries -- the builder ran with those options;
+  * ``{}`` -- the builder recorded that it ran with NO options;
+  * ``None`` -- nothing was recorded at all. This is what a sidecar written before
+    this field existed reads back as (``core.io._manifest`` reads a missing key as
+    None, never defaulting it to ``{}``) -- otherwise a filtered AlphaGenome
+    artifact built before this field existed would look identical to one explicitly
+    built with no filters.
+
+Every Provenance a builder stamps today gets a real dict, never None -- only a
+value read back from a legacy sidecar can be None, so callers that read an
+EXISTING artifact's ``build_parameters`` (rather than one they just stamped) must
+handle it, e.g. by treating None the same as "unknown" rather than iterating over
+it. The value must be JSON-serialisable (``BuildContext.provenance`` stores a JSON
+copy and rejects anything else).
 """
 
 from __future__ import annotations
@@ -30,7 +43,9 @@ class Provenance:
     builder_commit: str | None
     parents: tuple["Provenance", ...] = field(default_factory=tuple)
     # A dict is unhashable, so it stays out of __hash__; __eq__ still compares it.
-    build_parameters: dict[str, object] = field(default_factory=dict, hash=False)
+    # None only ever comes from reading a legacy sidecar (see the class docstring);
+    # a freshly stamped Provenance always gets a real dict here.
+    build_parameters: dict[str, object] | None = field(default_factory=dict, hash=False)
 
     @classmethod
     def unknown(cls, *, reason: str) -> "Provenance":
