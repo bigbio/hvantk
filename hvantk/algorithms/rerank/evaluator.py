@@ -29,7 +29,14 @@ from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
 ABLATION_FOLDS = 5
-"""The ablation's fold count. ``Config.folds`` governs ``ReRanker.score`` only."""
+"""The ablation's fold count when no caller threads one through.
+
+The engine always passes ``Config.folds`` explicitly -- to ``Evaluator.evaluate``,
+to ``seed_sweep`` and, via ``engine._run_nulls``, to ``nulls.oof_scorer`` -- so the
+headline score, the ablation and the permutation null all use the SAME fold count on
+every path `hvantk rerank`/`rerank()` take. This constant is only still read as a
+default by a direct call to ``_raw_oof``/``seed_sweep``/``Evaluator.evaluate`` that
+passes no ``folds=`` of its own (e.g. a script calling this module directly)."""
 
 
 def _raw_oof(
@@ -103,6 +110,19 @@ class SeedSpread:
     mean: float
     sd: float
 
+    def __post_init__(self) -> None:
+        """The two relationships ``seed_sweep`` already guarantees: one delta per seed,
+        and a minimum that is at most the maximum it was computed alongside."""
+        if len(self.seeds) != len(self.deltas):
+            raise ValueError(
+                f"seeds has {len(self.seeds)} entrie(s) but deltas has "
+                f"{len(self.deltas)}; seed_sweep records exactly one delta per seed"
+            )
+        # `not (lo <= hi)` rather than `lo > hi`: every comparison with NaN is False,
+        # so the latter would let a NaN bound through.
+        if not (self.lo <= self.hi):
+            raise ValueError(f"lo ({self.lo!r}) must be <= hi ({self.hi!r})")
+
 
 def seed_sweep(
     matrix,
@@ -115,6 +135,7 @@ def seed_sweep(
     groups=None,
     base_oof=None,
     aug_oof=None,
+    folds=ABLATION_FOLDS,
 ):
     """Delta-AUC of baseline+axis over baseline, recomputed under each CV seed.
 
@@ -126,6 +147,10 @@ def seed_sweep(
     refitting it a second time, rather than refitting both once per (axis, seed) pair. The
     standalone call with neither mapping computes every seed's baseline and augmented fit
     itself.
+
+    ``folds`` must be the SAME fold count any cached ``base_oof``/``aug_oof`` arrays were
+    fitted with -- ``Evaluator.evaluate`` passes its own ``folds`` through here for exactly
+    that reason. Left at ``ABLATION_FOLDS`` for a standalone call that threads none.
     """
     from sklearn.metrics import roc_auc_score
 
@@ -137,12 +162,20 @@ def seed_sweep(
             p0 = base_oof[seed]
         else:
             p0 = _raw_oof(
-                matrix, list(base_cols), y, selector, groups=groups, seed=seed
+                matrix,
+                list(base_cols),
+                y,
+                selector,
+                groups=groups,
+                seed=seed,
+                folds=folds,
             )
         if aug_oof is not None and seed in aug_oof:
             p1 = aug_oof[seed]
         else:
-            p1 = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed)
+            p1 = _raw_oof(
+                matrix, cc, y, selector, groups=groups, seed=seed, folds=folds
+            )
         deltas.append(float(roc_auc_score(y, p1) - roc_auc_score(y, p0)))
     arr = np.asarray(deltas, dtype=float)
     return SeedSpread(
@@ -205,7 +238,17 @@ class Evaluator:
         groups=None,
         seed=DEFAULT_SEED,
         n_seeds=1,
+        folds=ABLATION_FOLDS,
     ):
+        """Headline metrics plus the per-axis ablation table (see the module docstring).
+
+        ``folds`` governs every out-of-fold fit THIS method makes (the baseline, each
+        axis, and -- via ``seed_sweep`` -- every swept seed's refit): one fold count for
+        the whole ablation. The engine passes ``Config.folds`` here so the ablation
+        matches the headline score and the permutation null (``nulls.oof_scorer`` is
+        built from the same ``Config.folds`` in ``engine._run_nulls``); a direct caller
+        that passes none gets ``ABLATION_FOLDS``, the historic fixed value.
+        """
         y = np.asarray(y)
         scores = np.asarray(scores)
         auc = roc_auc_score(y, scores)
@@ -215,7 +258,9 @@ class Evaluator:
         cal = calibration_curve(y, cs, n_bins=8, strategy="quantile")
 
         base_cols = axis_groups[baseline_axis]
-        p_base = _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=seed)
+        p_base = _raw_oof(
+            matrix, base_cols, y, selector, groups=groups, seed=seed, folds=folds
+        )
         base_auc = roc_auc_score(y, p_base)
         base_row = {
             "family": baseline_axis,
@@ -234,7 +279,15 @@ class Evaluator:
             base_oof_by_seed = {seed: p_base}
             base_oof_by_seed.update(
                 {
-                    s: _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=s)
+                    s: _raw_oof(
+                        matrix,
+                        base_cols,
+                        y,
+                        selector,
+                        groups=groups,
+                        seed=s,
+                        folds=folds,
+                    )
                     for s in (seed + k for k in range(1, n_seeds))
                 }
             )
@@ -244,7 +297,7 @@ class Evaluator:
             if fam == baseline_axis:
                 continue
             cc = list(dict.fromkeys(base_cols + cols))
-            p = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed)
+            p = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed, folds=folds)
             lo, md, hi = _boot_ci(y, p, p_base, seed=seed)
             row = {
                 "family": fam,
@@ -266,6 +319,7 @@ class Evaluator:
                     groups=groups,
                     base_oof=base_oof_by_seed,
                     aug_oof={seed: p},
+                    folds=folds,
                 )
                 spreads[fam] = spread
                 env_lo, env_hi = _envelope((lo, hi), spread)

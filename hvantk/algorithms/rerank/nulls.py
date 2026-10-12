@@ -136,8 +136,14 @@ class ControlSetting:
         given. A selected-maximum null computed over a different candidate set is a
         different statistic even when the baseline and the winning axis are identical.
     folds
-        The fold count the scorer ACTUALLY used -- not ``Config.folds``, which governs
-        ``ReRanker.score`` only (see ``evaluator.ABLATION_FOLDS``).
+        The fold count the scorer ACTUALLY used. The engine takes this from
+        ``Config.folds`` on every path it builds -- the headline score
+        (``ReRanker.score``), the ablation (``Evaluator.evaluate``) and this null all
+        read the SAME field now, so recording it here is what lets two chunks run under
+        different ``Config.folds`` values compare unequal instead of silently merging.
+        ``evaluator.ABLATION_FOLDS`` remains only the fallback for a direct API call
+        (``oof_scorer``/``seed_sweep``/``Evaluator.evaluate``) that threads no ``folds=``
+        of its own.
     seed
         The CV seed the scorer's folds were drawn with (``Config.seed``, as handed to
         ``oof_scorer``). The partition is a function of ``(seed, labels)``, so a null and
@@ -634,6 +640,33 @@ def _setting_mismatch(generated: ControlSetting, asked: ControlSetting) -> str:
     )
 
 
+_SETTING_FIELD_MISSING = object()
+"""Sentinel for ``getattr(setting, name, _SETTING_FIELD_MISSING)``: a ``ControlSetting``
+unpickled under an older hvantk predates one of these fields entirely -- its ``__dict__``
+was pickled before the field existed -- so a plain attribute access raises
+``AttributeError`` rather than returning anything falsy. Comparing two such settings with
+``==`` builds a tuple of every field and would raise the same way, deep inside ``merge``,
+with no hint of why.
+"""
+
+
+def _legacy_setting_fields(setting) -> list:
+    """Field name(s) a current ``ControlSetting`` records that ``setting`` lacks entirely.
+
+    ``seed`` was added to ``ControlSetting`` after some null chunks were already written
+    to disk (#409); an older pickle's ``__dict__`` simply does not have the key. ``folds``
+    is guarded the same defensive way: before #390 every chunk was scored at the fixed
+    ``ABLATION_FOLDS``, so an old chunk's recorded ``folds`` happens to still be correct,
+    but a ``ControlSetting`` missing it for any other reason should fail with the same
+    clear message, not a bare ``AttributeError`` three lines into an ``==`` comparison.
+    """
+    return [
+        name
+        for name in ("seed", "folds")
+        if getattr(setting, name, _SETTING_FIELD_MISSING) is _SETTING_FIELD_MISSING
+    ]
+
+
 @dataclass(frozen=True, eq=False)
 class NullDistribution:
     """Per-axis and selected-maximum nulls, tagged with the setting they were built under.
@@ -668,6 +701,38 @@ class NullDistribution:
     perm_seed: int
     planned_n_perm: int
     observed: "dict | None" = None
+
+    def __post_init__(self) -> None:
+        """The key/length relationships ``from_deltas`` and ``merge`` already keep in
+        lockstep -- checked here, cheaply, so a ``NullDistribution`` built by hand (or
+        corrupted in transit) fails at construction rather than three calls into
+        ``summary()`` or ``p_selected_max``.
+        """
+        axes = set(self.axes)
+        if len(axes) != len(self.axes):
+            raise ValueError(f"axes has duplicate names: {list(self.axes)!r}")
+        if set(self.per_axis) != axes:
+            raise ValueError(
+                f"per_axis keys {sorted(self.per_axis)!r} do not match axes "
+                f"{sorted(axes)!r}"
+            )
+        n_perm = len(self.perms)
+        for axis, draws in self.per_axis.items():
+            if len(draws) != n_perm:
+                raise ValueError(
+                    f"per_axis[{axis!r}] has {len(draws)} draw(s), expected {n_perm} "
+                    "(len(perms))"
+                )
+        if len(self.selected_max) != n_perm:
+            raise ValueError(
+                f"selected_max has {len(self.selected_max)} draw(s), expected {n_perm} "
+                "(len(perms))"
+            )
+        if self.observed is not None and set(self.observed) != axes:
+            raise ValueError(
+                f"observed keys {sorted(self.observed)!r} do not match axes "
+                f"{sorted(axes)!r}"
+            )
 
     @property
     def n_perm(self) -> int:
@@ -772,6 +837,12 @@ class NullDistribution:
 
         Checked in this order, each an error rather than a reconciliation:
 
+        0. every chunk's ``ControlSetting`` carries the fields a current one records --
+           a chunk written by an older hvantk, before ``seed`` (#409) existed on this
+           record, would otherwise raise a bare ``AttributeError`` from check 2 below,
+           which compares settings with ``==`` and so touches every field; ``folds`` is
+           guarded the same defensive way, although every historic chunk already
+           recorded it (just always at the fixed ``ABLATION_FOLDS``, before #390);
         1. the offered axes -- a selected-maximum over a candidate set nobody searched is
            a different statistic;
         2. the control setting -- ditto;
@@ -801,6 +872,16 @@ class NullDistribution:
         if not parts:
             raise ValueError("merge() needs at least one chunk")
         head = parts[0]
+
+        for part in parts:
+            missing = _legacy_setting_fields(part.setting)
+            if missing:
+                raise ControlSettingMismatch(
+                    "cannot merge permutation chunks: one chunk's ControlSetting is "
+                    f"missing field(s) {missing!r} -- it was written by an older hvantk "
+                    "(before ControlSetting recorded them) and must be recomputed, not "
+                    "merged"
+                )
 
         for other in parts[1:]:
             if other.axes != head.axes:

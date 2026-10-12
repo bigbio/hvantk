@@ -206,7 +206,6 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
     if getattr(config, "nulls", None) is None:
         return None
     from hvantk.algorithms.rerank.blocks import block_digest
-    from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
     from hvantk.algorithms.rerank.nulls import (
         NullDistribution,
         axis_deltas,
@@ -244,7 +243,7 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
             "baseline: add one, declare 'trained_on' for the barred columns, or leave "
             "Config.nulls unset to run without a correction."
         )
-    folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
+    folds = config.folds  # ONE variable (Config.folds) feeds the scorer and the setting
     scorer = oof_scorer(
         selector=selector,
         groups=blocks,
@@ -407,6 +406,7 @@ def rerank(
         groups=blocks,
         seed=config.seed,
         n_seeds=config.seed_sweep,
+        folds=config.folds,
     )
     nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(
