@@ -118,7 +118,9 @@ class SeedSpread:
                 f"seeds has {len(self.seeds)} entrie(s) but deltas has "
                 f"{len(self.deltas)}; seed_sweep records exactly one delta per seed"
             )
-        if self.lo > self.hi:
+        # `not (lo <= hi)` rather than `lo > hi`: every comparison with NaN is False,
+        # so the latter would let a NaN bound through.
+        if not (self.lo <= self.hi):
             raise ValueError(f"lo ({self.lo!r}) must be <= hi ({self.hi!r})")
 
 

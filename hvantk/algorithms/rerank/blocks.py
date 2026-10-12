@@ -171,7 +171,16 @@ class BlockReport:
         """
         blocks = np.asarray(self.blocks)
         n = int(blocks.size)
-        sizes = np.bincount(blocks) if n else np.zeros(0, dtype=int)
+        # Sizes come from the distinct codes actually present, not from the numeric
+        # encoding: the reranker treats codes as plain group labels, so non-consecutive
+        # codes are valid and must not count as empty blocks (and a large code must not
+        # allocate a bincount of that length).
+        if n:
+            _, inverse, sizes = np.unique(
+                blocks, return_inverse=True, return_counts=True
+            )
+        else:
+            inverse = sizes = np.zeros(0, dtype=int)
         n_blocks = int(sizes.size)
         if self.n_blocks != n_blocks:
             raise ValueError(
@@ -190,7 +199,7 @@ class BlockReport:
                 f"largest_frac ({self.largest_frac!r}) does not match largest/len(blocks) "
                 f"({expected_frac!r})"
             )
-        n_in_multi = int((sizes[blocks] > 1).sum()) if n else 0
+        n_in_multi = int((sizes[inverse] > 1).sum()) if n else 0
         if self.n_in_multi != n_in_multi:
             raise ValueError(
                 f"n_in_multi ({self.n_in_multi!r}) does not match the count derived from "

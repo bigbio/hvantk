@@ -709,6 +709,8 @@ class NullDistribution:
         ``summary()`` or ``p_selected_max``.
         """
         axes = set(self.axes)
+        if len(axes) != len(self.axes):
+            raise ValueError(f"axes has duplicate names: {list(self.axes)!r}")
         if set(self.per_axis) != axes:
             raise ValueError(
                 f"per_axis keys {sorted(self.per_axis)!r} do not match axes "
