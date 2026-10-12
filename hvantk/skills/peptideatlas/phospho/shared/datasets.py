@@ -312,7 +312,9 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         logger.info("Indexed %d peptide instances", len(pi_ids))
 
         # Step 3: Stream peptide_mapping (15M rows) — build a compact index
-        # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]}
+        # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]},
+        # deduplicated per peptide_instance_id so a (protein, start) pair repeated
+        # across rows for a kept protein is only ever counted once (#432).
         logger.info("Streaming peptide mappings...")
         mapping_by_pi: Dict[str, List[tuple]] = defaultdict(list)
         n_mappings = 0
@@ -330,7 +332,9 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
             bs_id = row.get("matched_biosequence_id", "")
             if bs_id in bioseq_by_id:  # Only keep mappings to non-decoy proteins
                 start = int(row["start_in_biosequence"])
-                mapping_by_pi[pi_id].append((bs_id, start))
+                key = (bs_id, start)
+                if key not in mapping_by_pi[pi_id]:
+                    mapping_by_pi[pi_id].append(key)
             if n_mappings % 5_000_000 == 0:
                 logger.info(
                     "  ...processed %dM peptide mappings", n_mappings // 1_000_000
