@@ -22,7 +22,7 @@
     "role_in_cancer": "array<str>",
     "somatic": "bool",
     "synonyms": "str",
-    "tissue_type": "str",
+    "tissue_type": "array<str>",
     "translocation_partner": "str",
     "tumour_types_germline": "array<str>",
     "tumour_types_somatic": "array<str>"
