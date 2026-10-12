@@ -20,7 +20,7 @@ datasets:
       function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
-      function: fetch_fingerprint
+      function: fetch_default_fingerprint
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/ucsc_cellbrowser/tests
@@ -47,14 +47,14 @@ datasets:
       function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
-      function: fetch_fingerprint
+      function: fetch_adult_ctx_fingerprint
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/ucsc_cellbrowser/tests
       fixture: tests/testdata/raw/ucsc-cellbrowser-adult-ctx
       schema_snapshot: tests/snapshots/ucsc-cellbrowser-adult-ctx/schema.json
       row_snapshot: tests/snapshots/ucsc-cellbrowser-adult-ctx/sample_rows.json
-      drift_fingerprint: tests/drift_fingerprint.json
+      drift_fingerprint: tests/drift_fingerprint_adult_ctx.json
 
   - name: dev-ctx
     acquisition:
@@ -70,14 +70,14 @@ datasets:
       function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
-      function: fetch_fingerprint
+      function: fetch_dev_ctx_fingerprint
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/ucsc_cellbrowser/tests
       fixture: tests/testdata/raw/ucsc-cellbrowser-dev-ctx
       schema_snapshot: tests/snapshots/ucsc-cellbrowser-dev-ctx/schema.json
       row_snapshot: tests/snapshots/ucsc-cellbrowser-dev-ctx/sample_rows.json
-      drift_fingerprint: tests/drift_fingerprint.json
+      drift_fingerprint: tests/drift_fingerprint_dev_ctx.json
 
 cli:
   - command: ucsc-download

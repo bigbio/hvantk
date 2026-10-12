@@ -21,7 +21,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 - **Provider:** GTEx Consortium. **Variant pinned by this skill:** v11 / cis-eQTL / signif_pairs / per-tissue parquet.
 - **Catalog entry:** present. `hvantk/skills/gtex_eqtl/catalog/datasets.json` contains `GTEx_v11_eQTL_signif_pairs`. URLs / cadence / license / citation live in the catalog entry — not here.
-- **Source schema documentation:** the `README_eQTL_v11.txt` that GTEx ships inside the v11 cis-QTL release archive (download via the GTEx portal). The skill cites this README as the authoritative format reference; do NOT restate column definitions here.
+- **Source schema documentation:** the `README_eQTL_v11.txt` that GTEx publishes beside the v11 cis-QTL archives, not inside them (https://storage.googleapis.com/adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/README_eQTL_v11.txt, linked from the portal's QTL downloads page). The skill cites this README as the authoritative format reference; do NOT restate column definitions here.
 
 Stable note (not in catalog): GTEx ships per-tissue parquet files named `<Tissue>.v11.eQTLs.signif_pairs.parquet`. The builder scans a directory and infers tissue from the filename prefix before the first dot (e.g., `Liver.v11.eQTLs.signif_pairs.parquet` → `Liver`). Single-file input is also accepted.
 
@@ -43,7 +43,7 @@ The post-import transform is shared across all three (inline in `build_eqtl_asso
 
 ## 4. Raw format & gotchas
 
-The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite the upstream `README_eQTL_v11.txt` (shipped in the GTEx v11 cis-QTL release archive) for the canonical schema, but be aware of two README/file drifts (observed when slicing the Liver fixture):
+The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite the upstream `README_eQTL_v11.txt` (published beside the v11 cis-QTL archives; see § 2) for the canonical schema, but be aware of two README/file drifts (observed when slicing the Liver fixture):
 
 **Drift 1: column name `start_distance`, not `tss_distance`.** The README documents column 4 as `tss_distance`; the actual parquet column is named `start_distance`. The builder does NOT read this column (only `phenotype_id`, `variant_id`, `slope`, `slope_se`, `pval_nominal`, and `af`/`maf` — see below), so the output Hail Table is unaffected. Documentation drift, harmless.
 
@@ -97,7 +97,10 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 - **Plugin resolution:** declared in `hvantk/skills/gtex_eqtl/plugin.yaml` (dataset `eqtls`, builder `hvantk.skills.gtex_eqtl.builder:build_eqtl_associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves `gtex-eqtl:eqtls` via `get_registry().get_dataset(...)`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). No `TABLE_BUILDERS` registry or `create_table_adapter`.
 - **CLI:** `hvantk reprocess gtex-eqtl:eqtls --raw-dir <dir> --output <path>.ht`. Source-specific kwargs (`source`, `tissue`, `p_threshold`, `reference_genome`) flow through `--plugin-arg key=value`.
 - **Downstream consumer:** `hvantk/algorithms/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
-- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gtex_eqtl/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gtex-eqtl:eqtls` (see § 12 of `_conventions`).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gtex_eqtl/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gtex-eqtl:eqtls` (see § 12 of `_conventions`). It reads the pinned v11 release from the public `adult-gtex` Cloud Storage bucket the portal's download links point at: two anonymous JSON listings and the 7 KB README. The module docstring is the full design.
+  - `headers`: the bulk-QTL release folders under `gs://adult-gtex/bulk-qtl/` (a new release is a builder change, § 8); the object names in `gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/` (the file layout); and the columns the README documents for `*.signif_pairs.parquet`. `checksums`: the sha256 of that README section. Any of these moving is a `drift:schema` PR.
+  - `extras`: the `size` and a content hash of `GTEx_Analysis_v11_eQTL.tar`, the archive the per-tissue signif_pairs files ship in, keyed by the hash used: `md5Hash`, or `crc32c` for a composite object, which Cloud Storage lists without an md5. A re-upload that keeps the layout, including one that switches hash, is a `drift:routine` PR. Only an archive absent from the folder is recorded as `null`. A listed archive without a size or any hash fails the probe instead, since recording it would erase its identity.
+  - Not recorded: the portal's `gtex-version` build tag, its build date and the page `ETag`. Probe version 1 hashed those under `checksums`, so every portal redeploy (cl362 to cl363, bot PR #403) was tiered as a schema change, although no data file had moved since January 2026. The GTEx API's dataset list is no release signal here either: it names the releases the portal serves through its API, and it omits v11.
 - **Tests:** `pytest hvantk/skills/gtex_eqtl/tests -m hail` — artifact paths in § 9.
 
 ## 7. Workflow steps
@@ -126,6 +129,8 @@ hvantk reprocess gtex-eqtl:eqtls \
 ```
 
 ## 8. Update playbook
+
+A new release reaches this skill as a `drift:schema` PR: the release folder appears under `gs://adult-gtex/bulk-qtl/` in the drift fingerprint (§ 6). Adopting it also means pointing the probe at it, by updating `GTEX_RELEASE` in `drift_probe.py` and bumping its `PROBE_VERSION`.
 
 GTEx releases major versions every few years (v8 → v9 → v10 → v11). Per release:
 

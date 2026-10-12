@@ -344,11 +344,12 @@ def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
 
     Datasets sharing a ``fingerprint_path`` share a baseline file, so they cannot have
     independent drift: one upstream event produces N identical reports, N branches
-    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` is the
-    worked case -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants
-    (obs cell-type column `celltype` / `Class` / `Type_v2`), but the probe fingerprints
-    the provider-wide catalog, so all three always agree. Merging one made the other two
-    conflict.
+    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` was the
+    worked case until #396 -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema*
+    variants (obs cell-type column `celltype` / `Class` / `Type_v2`), but its probe then
+    fingerprinted the provider-wide catalog into one shared baseline, so all three always
+    agreed and merging one PR made the other two conflict. Each now has its own baseline;
+    the grouping stays for any provider that declares a shared one.
 
     Returns one entry per signal, each carrying a ``datasets`` list naming every member,
     so the PR can say what it covers. Entries WITHOUT a fingerprint_path are never

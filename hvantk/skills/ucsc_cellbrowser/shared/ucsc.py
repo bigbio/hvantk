@@ -21,6 +21,7 @@ from anndata.io import sparse_dataset, write_elem
 from scipy import sparse
 
 from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+    SUMMARIZE_MIN_CELLS_PER_GROUP,
     UCSC_CELL_ID_COLUMN,
     UCSC_GENE_COLUMN,
 )
@@ -628,7 +629,7 @@ def summarize_ucsc_streaming(
     metadata_df: pd.DataFrame,
     group_by: str | list[str],
     filter_by: dict[str, str | list[str]] | None = None,
-    min_cells_per_group: int = 10,
+    min_cells_per_group: int = SUMMARIZE_MIN_CELLS_PER_GROUP,
     gene_column: str = UCSC_GENE_COLUMN,
     delimiter: str = "\t",
     split_gene_field: bool = True,

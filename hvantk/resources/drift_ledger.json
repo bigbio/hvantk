@@ -29,6 +29,12 @@
     "rebuilt_at": null,
     "signal": "routine"
   },
+  "gtex-eqtl:eqtls": {
+    "accepted_in": "PR #447",
+    "last_upstream_change": "2026-10-12T21:43:32+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
   "gwas-catalog:associations": {
     "accepted_in": "drift/gwas-catalog-associations",
     "last_upstream_change": "2026-09-15T10:45:37.955370+00:00",
@@ -41,9 +47,21 @@
     "rebuilt_at": null,
     "signal": "schema"
   },
+  "ucsc-cellbrowser:adult-ctx": {
+    "accepted_in": "PR #447",
+    "last_upstream_change": "2026-10-12T21:43:18+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
   "ucsc-cellbrowser:default": {
-    "accepted_in": "drift/ucsc-cellbrowser",
-    "last_upstream_change": "2026-10-01T00:01:51.885110+00:00",
+    "accepted_in": "PR #447",
+    "last_upstream_change": "2026-10-12T10:22:51+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
+  "ucsc-cellbrowser:dev-ctx": {
+    "accepted_in": "PR #447",
+    "last_upstream_change": "2026-10-12T21:43:24+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   }
