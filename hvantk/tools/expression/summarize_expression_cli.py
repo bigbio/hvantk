@@ -15,6 +15,9 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+    SUMMARIZE_MIN_CELLS_PER_GROUP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -438,7 +441,7 @@ def markers_cmd(
 @click.option(
     "--min-cells",
     type=int,
-    default=10,
+    default=SUMMARIZE_MIN_CELLS_PER_GROUP,
     show_default=True,
     help="Drop groups with fewer cells than this threshold.",
 )

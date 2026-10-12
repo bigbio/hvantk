@@ -31,7 +31,7 @@
   },
   "gtex-eqtl:eqtls": {
     "accepted_in": "PR #447",
-    "last_upstream_change": "2026-10-12T10:23:26+00:00",
+    "last_upstream_change": "2026-10-12T21:43:32+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   },
@@ -49,7 +49,7 @@
   },
   "ucsc-cellbrowser:adult-ctx": {
     "accepted_in": "PR #447",
-    "last_upstream_change": "2026-10-12T10:23:01+00:00",
+    "last_upstream_change": "2026-10-12T21:43:18+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   },
@@ -61,7 +61,7 @@
   },
   "ucsc-cellbrowser:dev-ctx": {
     "accepted_in": "PR #447",
-    "last_upstream_change": "2026-10-12T10:23:13+00:00",
+    "last_upstream_change": "2026-10-12T21:43:24+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   }

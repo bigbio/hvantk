@@ -65,27 +65,31 @@ _README = "\n".join(
     ]
 )
 
-_ARCHIVE = {"md5Hash": "O68VeoUuGIDxrhyAzSwQHw==", "size": "3288535040"}
+_ARCHIVE_NAME = "GTEx_Analysis_v11_eQTL.tar"
+# Both hashes listed, as Cloud Storage does for a non-composite object.
+_ARCHIVE = {
+    "md5Hash": "O68VeoUuGIDxrhyAzSwQHw==",
+    "crc32c": "e696yA==",
+    "size": "3288535040",
+}
 _README_OBJECT = {"md5Hash": "tT4pzpwctWjgqXHqiTd2Aw==", "size": "7182"}
 
 
-def _mock_bucket(m, *, objects=("GTEx_Analysis_v11_eQTL.tar", "README_eQTL_v11.txt")):
-    """Answer both listings the probe makes, keyed on the requested prefix."""
+def _mock_bucket(m, *, archive=_ARCHIVE):
+    """Answer both listings the probe makes, keyed on the requested prefix.
+
+    ``archive`` is the eQTL archive's listing entry, or None to leave it out.
+    """
 
     def listing(request, context):
         prefix = request.qs["prefix"][0]
         if prefix == "bulk-qtl/":
             return {"prefixes": ["bulk-qtl/v8/", "bulk-qtl/v11/", "bulk-qtl/v10/"]}
         assert prefix == RELEASE_PREFIX, prefix
-        return {
-            "items": [
-                {
-                    "name": RELEASE_PREFIX + name,
-                    **(_ARCHIVE if name.endswith(".tar") else _README_OBJECT),
-                }
-                for name in objects
-            ]
-        }
+        items = [{"name": RELEASE_PREFIX + "README_eQTL_v11.txt", **_README_OBJECT}]
+        if archive is not None:
+            items.insert(0, {"name": RELEASE_PREFIX + _ARCHIVE_NAME, **archive})
+        return {"items": items}
 
     m.get(LIST_URL, json=listing)
 
@@ -95,6 +99,12 @@ def test_fetch_fingerprint_shape():
         _mock_bucket(m)
         m.get(README_URL, text=_README)
         fp = fetch_fingerprint()
+        folder_listing = next(
+            r for r in m.request_history if r.qs.get("prefix") == [RELEASE_PREFIX]
+        )
+    # Without asking for both hashes, the live API would return neither.
+    requested = folder_listing.qs["fields"][0].lower()
+    assert "md5hash" in requested and "crc32c" in requested
 
     readme_key = "README_eQTL_v11.txt:signif_pairs"
     assert fp["probe_version"] == 2
@@ -102,7 +112,7 @@ def test_fetch_fingerprint_shape():
     assert fp["headers"] == {
         "gs://adult-gtex/bulk-qtl/": ["v10", "v11", "v8"],
         "gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/": [
-            "GTEx_Analysis_v11_eQTL.tar",
+            _ARCHIVE_NAME,
             "README_eQTL_v11.txt",
         ],
         # Only the signif_pairs section: `gene_name` lives in the eGenes section.
@@ -111,20 +121,42 @@ def test_fetch_fingerprint_shape():
     assert fp["checksums"] == {
         readme_key: hashlib.sha256(_SIGNIF_SECTION.encode("utf-8")).hexdigest()
     }
-    assert fp["extras"] == {"GTEx_Analysis_v11_eQTL.tar": _ARCHIVE}
+    # md5Hash is preferred when both are listed, and only the hash used is recorded.
+    assert fp["extras"] == {
+        _ARCHIVE_NAME: {"md5Hash": "O68VeoUuGIDxrhyAzSwQHw==", "size": "3288535040"}
+    }
     assert "fetched_at" in fp
 
 
-def test_a_missing_archive_is_layout_drift_not_a_failure():
-    """The folder listing under `headers` reports it; extras records the archive as null."""
+@pytest.mark.parametrize(
+    "archive, expected",
+    [
+        # Absent: a layout change the folder listing reports, not a probe failure.
+        (None, None),
+        # A composite object lists no md5Hash; its crc32c stands in, named as such.
+        (
+            {"crc32c": "e696yA==", "size": "3288535040"},
+            {"crc32c": "e696yA==", "size": "3288535040"},
+        ),
+        # Present without a size, or without any hash: no identity, so fail closed.
+        ({"md5Hash": "O68VeoUuGIDxrhyAzSwQHw=="}, DriftProbeError),
+        ({"size": "3288535040"}, DriftProbeError),
+    ],
+    ids=["absent", "crc32c-fallback", "no-size", "no-hash"],
+)
+def test_archive_identity(archive, expected):
+    """Only an absent archive is recorded as null; a listed one needs a size and a hash."""
     with requests_mock.Mocker() as m:
-        _mock_bucket(m, objects=("README_eQTL_v11.txt",))
+        _mock_bucket(m, archive=archive)
         m.get(README_URL, text=_README)
+        if expected is DriftProbeError:
+            with pytest.raises(DriftProbeError, match="refusing to record"):
+                fetch_fingerprint()
+            return
         fp = fetch_fingerprint()
-    assert fp["headers"]["gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/"] == [
-        "README_eQTL_v11.txt"
-    ]
-    assert fp["extras"] == {"GTEx_Analysis_v11_eQTL.tar": None}
+    assert fp["extras"] == {_ARCHIVE_NAME: expected}
+    listed = fp["headers"]["gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/"]
+    assert (_ARCHIVE_NAME in listed) is (archive is not None)
 
 
 def test_fetch_fingerprint_raises_when_readme_drops_signif_pairs():

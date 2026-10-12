@@ -25,6 +25,9 @@ from hvantk.skills.ucsc_cellbrowser.drift_probe import (
     fetch_default_fingerprint,
     fetch_dev_ctx_fingerprint,
 )
+from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+    SUMMARIZE_MIN_CELLS_PER_GROUP as CUT_OFF,
+)
 
 # Note the SINGULAR "dataset.json"; "datasets.json" does not exist upstream.
 EXPECTED_INDEX_URL = "https://cells.ucsc.edu/dataset.json"
@@ -93,8 +96,19 @@ def _descriptor(group_column: str, *, with_group: bool = True) -> dict:
                 "name": group_column.replace(".", ""),
                 "label": group_column,
                 "type": "enum",
-                # Ordered by cell count upstream; the probe must sort.
-                "valCounts": [["Neuron", 437], ["Astrocyte", 29], ["NA", 4]],
+                # Ordered by cell count upstream; the probe must sort. Built rows
+                # follow summarize-ucsc: pandas reads NA, n/a and the empty field
+                # as missing ("na" it keeps), and groups below the cut-off drop.
+                "valCounts": [
+                    ["Neuron", 437],
+                    ["NA", 305],
+                    ["n/a", 40],
+                    ["na", 30],
+                    ["Astrocyte", 29],
+                    ["", 12],
+                    ["Edge", CUT_OFF],
+                    ["Rare", CUT_OFF - 1],
+                ],
             }
         )
     return {
@@ -126,7 +140,7 @@ def _mock_parent(m, parent, group_column, *, meta_body=None, descriptor=None):
 
 @pytest.mark.parametrize("probe, parent, group_column", _PARENTS)
 def test_parent_fingerprint_layout(probe, parent, group_column):
-    """Schema keys hold the parent's real column list and class labels; content is extras."""
+    """Schema keys: the column list and the rows summarize-ucsc keeps. Extras: content."""
     with requests_mock.Mocker() as m:
         header = _mock_parent(m, parent, group_column)
         fp = probe()
@@ -134,15 +148,27 @@ def test_parent_fingerprint_layout(probe, parent, group_column):
         assert meta_request.headers["Range"] == "bytes=0-65535"
 
     meta = f"{parent}/meta.tsv"
+    labels = f"{meta}:{group_column}"
     assert fp["probe_version"] == 2
     assert fp["headers"] == {
         meta: ["cellId", "nCount_RNA", group_column],
-        f"{meta}:{group_column}": ["Astrocyte", "NA", "Neuron"],
+        labels: ["Astrocyte", "Edge", "Neuron", "na"],
     }
     assert fp["checksums"] == {meta: hashlib.sha256(header.encode("utf-8")).hexdigest()}
     assert fp["extras"] == {
         f"{parent}/exprMatrix.tsv.gz": {"md5": "1f2fbb3ff7", "size": 9321940510},
         meta: {"md5": "8381a139e9", "size": 63416376},
+        # Every published label's count, dropped ones included: routine content.
+        labels: {
+            "": 12,
+            "Astrocyte": 29,
+            "Edge": CUT_OFF,
+            "NA": 305,
+            "Neuron": 437,
+            "Rare": CUT_OFF - 1,
+            "n/a": 40,
+            "na": 30,
+        },
     }
     assert fp["informational"] == {
         "collection_md5": "7cb6b243df",
@@ -162,6 +188,7 @@ def test_parent_reports_a_vanished_group_column_as_drift_not_failure():
         )
         fp = probe()
     assert fp["headers"][f"{parent}/meta.tsv:{group_column}"] == []
+    assert fp["extras"][f"{parent}/meta.tsv:{group_column}"] == {}
 
 
 def test_parent_fails_closed_on_a_truncated_header_row():

@@ -21,16 +21,27 @@ gives each dataset the signal it actually has.
     (62 KB and 236 KB respectively).
 
     * ``headers`` -- the parent's ``meta.tsv`` header row, i.e. the real column list the
-      summary is grouped from; and the grouping column's labels, sorted, taken from the
-      descriptor's ``metaFields``. Each label is one ``obs`` row of the derived dataset and
-      one column of its expression TSV, so a class appearing, vanishing or being renamed
-      is a layout change to the dataset, not just new content. (Checked on 2026-10-12: the
-      19 ``Class`` labels and the 15 non-``NA`` ``Type.v2`` labels are exactly the
-      committed fixtures' rows, with the same cell counts.)
+      summary is grouped from; and, sorted, the grouping column's labels that the summary
+      keeps as rows. Each kept label is one ``obs`` row of the derived dataset and one
+      column of its expression TSV, so a class appearing, vanishing or being renamed is a
+      layout change to the dataset, not just new content. The labels come from the
+      descriptor's ``metaFields`` and pass through the same two filters as
+      ``summarize_ucsc_streaming``, which ``hvantk expression summarize-ucsc`` runs. Cells
+      whose label ``load_ucsc_metadata``'s ``pd.read_csv`` defaults read as missing (``NA``,
+      ``n/a``, an empty field, ...) are dropped by its ``notna()``; pandas itself decides
+      which labels those are, so the probe cannot disagree with the build. Groups below
+      ``SUMMARIZE_MIN_CELLS_PER_GROUP`` cells (the ``--min-cells`` default, imported from
+      ``shared/constants.py``) are dropped too. The cortex derivations are not scripted in
+      this repository and record no cut-off of their own, so the default is the one that
+      applies. Checked on 2026-10-12: this yields the 19 ``Class`` labels and the 15
+      ``Type.v2`` labels of the committed fixtures, ``NA`` (305 cells) excluded.
     * ``checksums`` -- sha256 of the ``meta.tsv`` header line bytes.
     * ``extras`` -- the ``md5`` and ``size`` the descriptor's ``fileVersions`` publishes for
       ``exprMatrix.tsv.gz`` and ``meta.tsv``: the content identity of exactly the two files
-      the summary is derived from. A re-release that keeps the layout is ``routine``.
+      the summary is derived from. Also the cell count of every published label, the
+      dropped ones included, so a count that moves, even below the cut-off, shows as
+      content drift; only a label crossing the cut-off changes the rows. A re-release that
+      keeps the layout is ``routine``.
     * ``informational`` -- the collection-level ``md5`` (the value the root index lists)
       and ``lastBuildTime``. Not compared: the collection ``md5`` also covers coordinates,
       descriptions and the config, none of which reach the summary, and a rebuild bumps the
@@ -55,7 +66,9 @@ rather than writing a fingerprint that a later run would compare equal to.
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 from datetime import datetime, timezone
 
 import requests
@@ -64,6 +77,7 @@ from hvantk.core.plugin.api import DriftProbeError, normalize_etag
 from hvantk.skills.ucsc_cellbrowser.shared.constants import (
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,
+    SUMMARIZE_MIN_CELLS_PER_GROUP,
     UCSC_CELL_BROWSER_BASE_URL,
 )
 
@@ -156,21 +170,19 @@ def _parent_fingerprint(parent: str, group_column: str) -> dict:
         raise DriftProbeError(f"{meta_key} header row is not UTF-8: {exc}") from exc
 
     descriptor = _get_descriptor(parent)
+    labels_key = f"{meta_key}:{group_column}"
+    rows, counts = _group_rows(descriptor, parent, group_column)
     return {
         "probe_version": PROBE_VERSION,
         "source_version": None,
-        "headers": {
-            meta_key: columns,
-            f"{meta_key}:{group_column}": _group_labels(
-                descriptor, parent, group_column
-            ),
-        },
+        "headers": {meta_key: columns, labels_key: rows},
         "checksums": {meta_key: hashlib.sha256(header_line).hexdigest()},
         "extras": {
             f"{parent}/{EXPRESSION_MATRIX_FILE_NAME}": _published_file(
                 descriptor, parent, "outMatrix"
             ),
             meta_key: _published_file(descriptor, parent, "outMeta"),
+            labels_key: counts,
         },
         "informational": {
             "collection_md5": descriptor.get("md5"),
@@ -230,13 +242,20 @@ def _get_descriptor(parent: str) -> dict:
     return descriptor
 
 
-def _group_labels(descriptor: dict, parent: str, column: str) -> list[str]:
-    """Sorted labels of ``column`` (matched on its raw ``meta.tsv`` header, the ``label``).
+def _group_rows(
+    descriptor: dict, parent: str, column: str
+) -> tuple[list[str], dict[str, int]]:
+    """The summary rows ``column`` yields, and the cell count of every published label.
 
-    A column missing from ``metaFields`` yields ``[]`` rather than an error: that is the
-    upstream schema change this entry exists to report, and the ``meta.tsv`` header row
-    recorded beside it moves too. Sorted because ``valCounts`` is ordered by cell count,
-    which a re-annotation can reshuffle without adding or removing a class.
+    Rows: the labels ``summarize_ucsc_streaming`` keeps -- not read as missing, and at
+    least ``SUMMARIZE_MIN_CELLS_PER_GROUP`` cells -- sorted, because ``valCounts`` is
+    ordered by cell count, which a re-annotation can reshuffle without adding or
+    removing a class. The labels are matched on the column's raw ``meta.tsv`` header,
+    which the descriptor calls ``label``.
+
+    A column missing from ``metaFields`` yields ``([], {})`` rather than an error: that is
+    the upstream schema change this entry exists to report, and the ``meta.tsv`` header
+    row recorded beside it moves too.
     """
     fields = descriptor.get("metaFields")
     if not isinstance(fields, list):
@@ -244,17 +263,63 @@ def _group_labels(descriptor: dict, parent: str, column: str) -> list[str]:
             f"{parent}/dataset.json has no metaFields list; the Cell Browser descriptor "
             "format has changed"
         )
-    for field in fields:
-        if isinstance(field, dict) and field.get("label") == column:
-            try:
-                return sorted(
-                    str(label) for label, _count in field.get("valCounts") or []
-                )
-            except (TypeError, ValueError) as exc:
-                raise DriftProbeError(
-                    f"{parent}/dataset.json: unreadable valCounts for {column!r}: {exc}"
-                ) from exc
-    return []
+    field = next(
+        (f for f in fields if isinstance(f, dict) and f.get("label") == column), None
+    )
+    if field is None:
+        return [], {}
+    try:
+        counts = {
+            str(label): int(count) for label, count in field.get("valCounts") or []
+        }
+    except (TypeError, ValueError) as exc:
+        raise DriftProbeError(
+            f"{parent}/dataset.json: unreadable valCounts for {column!r}: {exc}"
+        ) from exc
+    missing = _read_as_missing(list(counts))
+    rows = sorted(
+        label
+        for label, count in counts.items()
+        if label not in missing and count >= SUMMARIZE_MIN_CELLS_PER_GROUP
+    )
+    return rows, dict(sorted(counts.items()))
+
+
+def _read_as_missing(labels: list[str]) -> set[str]:
+    """The labels pandas' ``read_csv`` defaults turn into NaN.
+
+    That is how ``load_ucsc_metadata`` reads ``meta.tsv`` before ``summarize_ucsc_streaming``
+    drops NaN-labelled cells with ``notna()``. Asking pandas itself, rather than copying
+    its NA list, keeps the probe and the build from disagreeing. Each label gets its own
+    indexed line, so an empty label stays a row. ``QUOTE_NONE`` pins one row per label;
+    it departs from the real read only for a label containing a double quote, and no
+    ``Class`` or ``Type.v2`` label contains one. pandas is imported here, not at module
+    level, so loading the plugin registry does not pay for it.
+    """
+    import pandas as pd
+
+    if not labels:
+        return set()
+    text = "".join(f"{i}\t{label}\n" for i, label in enumerate(labels))
+    try:
+        parsed = pd.read_csv(
+            io.StringIO(text),
+            sep="\t",
+            header=None,
+            index_col=0,
+            dtype=str,
+            quoting=csv.QUOTE_NONE,
+        ).iloc[:, 0]
+    except ValueError as exc:  # pandas' ParserError and EmptyDataError included
+        raise DriftProbeError(f"could not parse the published labels: {exc}") from exc
+    if len(parsed) != len(labels):
+        raise DriftProbeError(
+            f"parsed {len(parsed)} labels from {len(labels)}; refusing to guess which "
+            "ones pandas reads as missing"
+        )
+    return {
+        label for label, value in zip(labels, parsed, strict=True) if pd.isna(value)
+    }
 
 
 def _published_file(descriptor: dict, parent: str, kind: str) -> dict:

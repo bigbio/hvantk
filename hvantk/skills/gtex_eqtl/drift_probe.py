@@ -38,10 +38,16 @@ small GETs (two listings and a 7 KB README):
   (the ``af`` direction the builder depends on, say) or file extension moves it even when
   the column names do not. The rest of the README (eGenes, allpairs, fine-mapping) is out
   of scope for this builder and deliberately not hashed.
-* ``extras`` -- ``md5Hash`` and ``size`` of ``GTEx_Analysis_v11_eQTL.tar``, the content
-  identity of the archive holding the builder's inputs. A re-upload of v11 data that
-  keeps the layout is ``routine``. Recorded as ``null`` when the archive is missing from
-  the folder; the folder listing under ``headers`` reports that layout change.
+* ``extras`` -- ``size`` and a content hash of ``GTEx_Analysis_v11_eQTL.tar``, the
+  identity of the archive holding the builder's inputs, keyed by the hash it is:
+  ``md5Hash`` when the listing has one, else ``crc32c``. Cloud Storage lists no
+  ``md5Hash`` for a composite object, while every object has a ``crc32c``, so a
+  re-upload that drops the md5 shows as a routine change of key instead of breaking
+  the probe for good. A re-upload of v11 data that keeps the layout is ``routine``.
+  Only an archive missing from the folder is recorded as ``null``; the folder listing
+  under ``headers`` reports that layout change. An archive listed without a size, or
+  without either hash, fails the probe: recording it would erase its identity, and a
+  baseline regenerated in that state would compare clean through later changes.
 * ``source_version`` -- ``v11``, the release this probe is pinned to. A constant: moving
   to a newer release is a change to this probe, not an observation of it.
 
@@ -50,8 +56,9 @@ Portal build tags, build dates and page ``ETag``s are not recorded at all, not e
 page for them would add a request, and an HTML scrape that can fail the probe, for no
 drift signal.
 
-Fails closed (``DriftProbeError``) when a listing is empty, paginated or unreadable, or
-when the README no longer documents the files this builder reads.
+Fails closed (``DriftProbeError``) when a listing is empty, paginated or unreadable, when
+the archive is listed without a size or hash, or when the README no longer documents
+the files this builder reads.
 """
 
 from __future__ import annotations
@@ -106,9 +113,9 @@ def fetch_fingerprint() -> dict:
             f"{_RELEASES_KEY} lists no release folders; the bucket layout has changed"
         )
 
-    items = _list(_RELEASE_PREFIX, fields="items(name,size,md5Hash),nextPageToken").get(
-        "items"
-    )
+    items = _list(
+        _RELEASE_PREFIX, fields="items(name,size,md5Hash,crc32c),nextPageToken"
+    ).get("items")
     objects = {
         item["name"][len(_RELEASE_PREFIX) :]: item
         for item in items or []
@@ -143,14 +150,27 @@ def fetch_fingerprint() -> dict:
             _README_KEY: hashlib.sha256(section.encode("utf-8")).hexdigest(),
         },
         "extras": {
-            _ARCHIVE: (
-                {"md5Hash": archive.get("md5Hash"), "size": archive.get("size")}
-                if archive is not None
-                else None
-            ),
+            _ARCHIVE: None if archive is None else _content_identity(archive),
         },
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _content_identity(item: dict) -> dict:
+    """``size`` plus the strongest hash the listing gives, keyed by the hash's name."""
+    name = f"gs://{GTEX_BUCKET}/{item.get('name')}"
+    size = item.get("size")
+    if size in (None, ""):
+        raise DriftProbeError(
+            f"{name} is listed without a size; refusing to record it with no identity"
+        )
+    for key in ("md5Hash", "crc32c"):
+        if item.get(key):
+            return {key: item[key], "size": size}
+    raise DriftProbeError(
+        f"{name} is listed with neither md5Hash nor crc32c; refusing to record it "
+        "with no content hash"
+    )
 
 
 def _list(prefix: str, *, fields: str) -> dict:

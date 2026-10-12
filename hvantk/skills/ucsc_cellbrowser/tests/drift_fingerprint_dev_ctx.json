@@ -24,7 +24,6 @@
       "IPC",
       "Inhibitory Neuron",
       "Microglia",
-      "NA",
       "Newborn Neuron",
       "OPC",
       "OPC.div",
@@ -46,11 +45,29 @@
     "dev-ctx-meta-atlas/meta.tsv": {
       "md5": "a84896f783",
       "size": 98077425
+    },
+    "dev-ctx-meta-atlas/meta.tsv:Type.v2": {
+      "Astrocyte": 3997,
+      "Div": 33467,
+      "Endothelial": 2921,
+      "Excitatory Neuron": 237352,
+      "IPC": 29233,
+      "Inhibitory Neuron": 124268,
+      "Microglia": 11309,
+      "NA": 305,
+      "Newborn Neuron": 75633,
+      "OPC": 15767,
+      "OPC.div": 1399,
+      "Oligodendrocyte": 2900,
+      "Pericyte": 1273,
+      "RG": 51114,
+      "RG.div": 7976,
+      "Red blood cells": 297
     }
   },
   "informational": {
     "collection_md5": "1e8e9e54ff",
     "last_build_time": "2023-09-13T11:12:09.752905"
   },
-  "fetched_at": "2026-10-12T10:23:13.156066+00:00"
+  "fetched_at": "2026-10-12T21:43:24.950937+00:00"
 }
