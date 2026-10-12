@@ -131,6 +131,8 @@ def vds2mt(
 
         click.echo(f"✅ Successfully converted {input} to MatrixTable at {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"VDS to MatrixTable conversion failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
@@ -213,6 +215,8 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, check_adj, dry_r
 
         click.echo(f"✅ Successfully converted {input} to VCF at {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"MatrixTable to VCF conversion failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)

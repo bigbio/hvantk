@@ -169,6 +169,8 @@ def gvcf_combine(
 
         click.echo(f"✅ Successfully combined GVCFs to {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"GVCF combination failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
@@ -235,6 +237,8 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
 
         click.echo(f"✅ Successfully combined VDS datasets to {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"VDS combination failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)

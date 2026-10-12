@@ -251,6 +251,8 @@ def compute_qc(
         for file_type, file_path in saved_files.items():
             click.echo(f"   • {file_type}: {file_path}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"QC computation failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
@@ -446,6 +448,8 @@ def filter_qc(
         )
         click.echo(f"   • Output: {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"QC filtering failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
@@ -606,6 +610,8 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
 
         click.echo("✅ QC summary completed successfully")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"QC summary generation failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
@@ -744,6 +750,8 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         click.echo(f"   file://{report_path.absolute()}")
         click.echo("✅ QC HTML report generated successfully")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"QC HTML report generation failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
