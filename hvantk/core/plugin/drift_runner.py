@@ -24,8 +24,23 @@ from .api import (
 DriftStatus = Literal["clean", "drifted", "probe_failed", "stub"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class DriftResult:
+    """Structured outcome of one dataset's drift check.
+
+    ``eq=False``: ``observed``/``expected``/``diff`` are plain dicts, and a frozen
+    dataclass with the default ``eq=True`` generates a ``__hash__`` over every field
+    -- so hashing any real (non-stub, non-clean-without-a-baseline) DriftResult raised
+    ``TypeError: unhashable type: 'dict'`` the moment anything tried. Nothing compares
+    two DriftResults with ``==`` (the only ``==`` near this type compares ``.status``
+    to a plain string, never one instance to another; `run_drift_checks` fans a cached
+    result out to several datasets via ``dataclasses.replace``, not equality), so
+    turning equality off -- as `BlockReport`/`NullDistribution` already do for numpy
+    arrays, for the same reason -- removes the crash without changing any real
+    comparison: it falls back to identity-based ``__eq__``/``__hash__`` from `object`,
+    which never inspects the dict fields at all.
+    """
+
     dataset_name: str
     status: DriftStatus
     observed: dict[str, Any] | None = None
