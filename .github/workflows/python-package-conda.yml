@@ -52,6 +52,16 @@ jobs:
         run: python -m pip install --upgrade pip poetry
       - name: Check pyproject.toml is valid and poetry.lock matches it
         run: poetry check --lock
+      # requirements.txt / environment.yml say in their own header that they are kept
+      # in sync with pyproject.toml by hand; nothing checked that until this (#408).
+      # tomllib needs Python >= 3.11, one more than the 3.10 above, hence the second
+      # setup-python here rather than bumping the job's main interpreter.
+      - name: Set up Python 3.11+ for the requirements-sync check
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check requirements.txt / environment.yml are in sync with pyproject.toml
+        run: python .github/scripts/check_requirements_sync.py
 
   # Nothing in CI installed the package, so `pytest` always imported hvantk from the checkout
   # directory and three things were never exercised: the `hvantk` console script, the

@@ -2,7 +2,9 @@
 #
 # `pyproject.toml` is the source of truth for what hvantk depends on. This file exists
 # only because .github/workflows/python-app.yml and python-package.yml install with pip
-# rather than poetry, and it has to be kept in sync by hand -- nothing checks it for you.
+# rather than poetry, and it has to be kept in sync by hand -- nothing enforced that
+# until .github/scripts/check_requirements_sync.py (#408), which the lockfile job in
+# python-package-conda.yml runs on every pull request and on every push to main/dev.
 # If you add or change a dependency in pyproject.toml, change it here too.
 #
 # It deliberately installs the OPTIONAL extras as well, because the test suite covers the
