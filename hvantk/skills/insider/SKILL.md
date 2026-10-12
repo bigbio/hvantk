@@ -17,7 +17,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 - **In scope:** building an `interval`-keyed Hail Table from the BED file for variant-interval intersection (e.g., "does this variant fall in any predicted interface residue?").
 - **Out of scope:**
   - The complementary `H_sapiens_interfacesALL.txt` product (protein-pair keyed; encodes per-protein interface residue arrays with Source = ECLAIR / PDB / I3D) was out of scope for this skill's initial design. It has since shipped as a second dataset in this same plugin, `insider:interfaces` — see § 9b.
-  - Downloader. The BED is >1 GB; per `_conventions` § 11 and the downloader strategy (CLAUDE.md), acquisition is manual.
+  - Downloader. The BED is >1 GB; per `_conventions` § 11 and the downloader-or-documented-acquisition rule (`docs_site/guide/data-sources.md#downloader-or-documented-acquisition`), acquisition is manual.
 
 This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 declares `interval` keying as valid; this skill anchors it.
 
@@ -166,17 +166,19 @@ rows over 15,144 proteins), not the 1.17 GB BED: the pair table already carries 
 UniProt accessions and both interface-residue lists, so a per-gene reduction needs no
 genomic join.
 
-**Build**: `interfaces` has no `lifecycle.download` yet (automatable but not yet written;
-tracked in issue #386), so acquire `H_sapiens_interfacesALL.txt`
-manually from the direct URL in `catalog/datasets.json` and pass `--skip-download`:
+**Build**: `interfaces` has its own `lifecycle.download` (#386) -- the pair table is
+small, public, and served from a stable direct URL, so it qualifies per
+`docs_site/guide/data-sources.md#downloader-or-documented-acquisition`.
+`hvantk reprocess insider:interfaces` downloads `H_sapiens_interfacesALL.txt` on its
+own; no `--skip-download` needed:
 
 ```bash
 hvantk reprocess insider:interfaces \
     --raw-dir /path/to/insider_raw_dir \
-    --output /path/to/insider_interfaces.ht \
-    --skip-download
+    --output /path/to/insider_interfaces.ht
 ```
 
+- **Downloader:** `hvantk/skills/insider/interfaces/cli.py` (`download_dataset` lifecycle entry point, wired via `plugin.yaml` `lifecycle.download`; CLI command `hvantk download insider-interfaces` via the `cli:` block). Streams the response to a `.tmp` sibling file and renames it into place (atomic write); same skip-if-present/`--overwrite` semantics as `hgnc`. Test: `interfaces/tests/test_downloader.py` (mocked, no network).
 - **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source).
 - **schema_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/schema.json` — `{uniprot_id, n_partners, n_partners_experimental, n_partners_predicted, n_interface_residues}`, keyed `uniprot_id`.
 - **row_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/sample_rows.json`.

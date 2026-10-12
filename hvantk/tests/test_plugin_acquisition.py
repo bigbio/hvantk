@@ -172,7 +172,6 @@ DOWNLOADER_NOT_WRITTEN_YET = {
     "cptac:expression",
     "gevir:metrics",
     "gwas-catalog:associations",
-    "insider:interfaces",
 }
 
 

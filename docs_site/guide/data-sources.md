@@ -27,6 +27,7 @@ hvantk utils convert-bgz input.gz
 | UniProt PTM sites | `hvantk download uniprot-ptm` | varies (REST API query) |
 | CPTAC phosphoproteomics | `hvantk download cptac-phospho` | varies by cancer type |
 | PeptideAtlas phospho | `hvantk download peptideatlas-phospho` | ~549 MB |
+| INSIDER interfaces | `hvantk download insider-interfaces` | ~49 MB |
 | 1000 Genomes sample panel | *(no standalone command; see [1000 Genomes](#1000-genomes-nygcccdg-high-coverage-callset))* | ~55 KB |
 
 ### ClinVar
@@ -128,9 +129,9 @@ Most of these sources need manual acquisition — too large, license-gated, or a
 — and for those, follow the instructions below, place the raw file(s) in a per-source
 directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
 members of this section ship a downloader instead (gnomAD constraint, Ensembl gene
-annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho and the 1000 Genomes
-sample metadata); they are grouped here because they carry a license, size, versioning
-or build-path caveat worth reading before relying on them.
+annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho, INSIDER interfaces
+and the 1000 Genomes sample metadata); they are grouped here because they carry a
+license, size, versioning or build-path caveat worth reading before relying on them.
 
 ### dbNSFP (~50 GB)
 
@@ -201,15 +202,22 @@ INSIDER ships **two** products, and hvantk builds a dataset from each:
 | `insider:variants` | `Whole_Human_Interactome_Interface_hg38.bed` | ~1.17 GB | `http://interactomeinsider.yulab.org/bed/all.bed` |
 | `insider:interfaces` | `H_sapiens_interfacesALL.txt` | ~49 MB | `http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt` |
 
-**Download**: the downloads page carries no links in its markup, so use the direct
-URLs above (they are also recorded in the plugin catalog — `hvantk catalog show
-INSIDER_v1.0`). Both are served over plain HTTP; the site has no HTTPS listener.
-The BED is >1 GB, so acquisition is manual per the downloader framework in CLAUDE.md.
+**Download**: the downloads page carries no links in its markup, so both the plugin
+catalog (`hvantk catalog show INSIDER_v1.0`) and the `insider:interfaces` downloader use
+the direct URLs above. Both files are served over plain HTTP; the site has no HTTPS
+listener. The BED is >1 GB, so `insider:variants` stays manual acquisition (see
+[Downloader or documented acquisition](#downloader-or-documented-acquisition) above);
+the pair table is small enough that `insider:interfaces` ships a real downloader
+instead:
+
+```bash
+hvantk download insider-interfaces --output data/insider/H_sapiens_interfacesALL.txt
+```
 
 **Build**:
 
 ```bash
-# Place insider_interaction_sites.bed.bgz in data/insider/ then:
+# Place Whole_Human_Interactome_Interface_hg38.bed in data/insider/ then:
 hvantk reprocess insider:variants \
   --raw-dir data/insider/ \
   --output interactome.ht \
@@ -222,18 +230,14 @@ locus-keyed (interaction sites as genomic intervals), `insider:interfaces` is ke
 `uniprot_id` and summarises each protein's interactome: `n_partners`,
 `n_partners_experimental`, `n_partners_predicted` and `n_interface_residues`. The two are
 complementary, not alternatives — use `interfaces` when the question is "how connected is
-this gene", and `variants` when it is "does this variant fall in an interaction site". Unlike
-`insider:variants`, this file is well under 1 GB, but `insider:interfaces` declares no
-`acquisition` block and no `lifecycle.download` either — no downloader exists yet for it
-(tracked in #386), so `--skip-download` is required below for the same reason as `gevir` and
-`gwas-catalog`.
+this gene", and `variants` when it is "does this variant fall in an interaction site".
+Unlike `insider:variants`, this file is well under 1 GB, so it declares `lifecycle.download`
+(#386) and `reprocess` fetches it automatically — no `--skip-download` needed:
 
 ```bash
-# Place H_sapiens_interfacesALL.txt in data/insider/ then:
 hvantk reprocess insider:interfaces \
   --raw-dir data/insider/ \
-  --output insider_interfaces.ht \
-  --skip-download
+  --output insider_interfaces.ht
 ```
 
 ### Ensembl gene annotations (~60 MB GTF)

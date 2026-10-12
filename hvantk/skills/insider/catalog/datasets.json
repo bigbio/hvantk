@@ -29,14 +29,14 @@
         "format": "bed",
         "size_bytes": 1171848841,
         "url": "http://interactomeinsider.yulab.org/bed/all.bed",
-        "description": "UCSC-style BED with 208,448 'track name=<P1>_ppi_<P2>' headers; 18.6M data rows representing per-residue genomic intervals (typically 1-3 bp) for predicted/experimental protein-protein interface positions. >1 GB; manual acquisition per CLAUDE.md downloader strategy. The track-aware INSIDER builder preserves track-name metadata as PPI IDs during import."
+        "description": "UCSC-style BED with 208,448 'track name=<P1>_ppi_<P2>' headers; 18.6M data rows representing per-residue genomic intervals (typically 1-3 bp) for predicted/experimental protein-protein interface positions. >1 GB; manual acquisition (see docs_site/guide/data-sources.md#downloader-or-documented-acquisition). The track-aware INSIDER builder preserves track-name metadata as PPI IDs during import."
       },
       {
         "path": "H_sapiens_interfacesALL.txt",
         "format": "tsv",
         "size_bytes": 49762981,
         "url": "http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt",
-        "description": "Per-protein-pair interface residue arrays with Source provenance (ECLAIR predicted / PDB / I3D homology). Backs `insider:interfaces`; protein-keyed rather than genomic, so no coordinate join is needed. Direct path: the downloads page carries no links in its markup."
+        "description": "Per-protein-pair interface residue arrays with Source provenance (ECLAIR predicted / PDB / I3D homology). Backs `insider:interfaces`; protein-keyed rather than genomic, so no coordinate join is needed. Direct path: the downloads page carries no links in its markup. Downloaded automatically by `hvantk reprocess insider:interfaces` (lifecycle.download)."
       }
     ]
   }
