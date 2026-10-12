@@ -35,6 +35,7 @@ def build_hgnc_gene_lookup(
     *,
     include_withdrawn: bool = False,
     fields=None,
+    strict_fields: bool = False,
 ):
     """Plugin builder — returns an AnnotationTable.
 
@@ -48,11 +49,21 @@ def build_hgnc_gene_lookup(
         If True, include withdrawn genes (default False).
     fields : list of str, optional
         Optional field subset; if None, all fields are kept.
+    strict_fields : bool, optional
+        If True, raise ValueError when a field declared in HGNC_GENE_FIELDS is
+        absent from the input header, instead of only logging a warning
+        (default False).
 
     Returns
     -------
     hvantk.core.models.AnnotationTable
         The HGNC table wrapped with Provenance.
+
+    Raises
+    ------
+    ValueError
+        If ``strict_fields`` is True and the input header is missing one or
+        more fields declared in HGNC_GENE_FIELDS.
     """
     from hvantk.core.models import AnnotationTable
 
@@ -67,6 +78,10 @@ def build_hgnc_gene_lookup(
     row_fields = get_row_fields(ht)
     missing_fields = _missing_declared_fields(row_fields)
     if missing_fields:
+        if strict_fields:
+            raise ValueError(
+                "HGNC input is missing declared field(s): " + ", ".join(missing_fields)
+            )
         logger.warning(
             "HGNC input is missing declared field(s): %s", ", ".join(missing_fields)
         )
