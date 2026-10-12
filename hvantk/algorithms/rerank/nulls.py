@@ -634,6 +634,33 @@ def _setting_mismatch(generated: ControlSetting, asked: ControlSetting) -> str:
     )
 
 
+_SETTING_FIELD_MISSING = object()
+"""Sentinel for ``getattr(setting, name, _SETTING_FIELD_MISSING)``: a ``ControlSetting``
+unpickled under an older hvantk predates one of these fields entirely -- its ``__dict__``
+was pickled before the field existed -- so a plain attribute access raises
+``AttributeError`` rather than returning anything falsy. Comparing two such settings with
+``==`` builds a tuple of every field and would raise the same way, deep inside ``merge``,
+with no hint of why.
+"""
+
+
+def _legacy_setting_fields(setting) -> list:
+    """Field name(s) a current ``ControlSetting`` records that ``setting`` lacks entirely.
+
+    ``seed`` was added to ``ControlSetting`` after some null chunks were already written
+    to disk (#409); an older pickle's ``__dict__`` simply does not have the key. ``folds``
+    is guarded the same defensive way: before #390 every chunk was scored at the fixed
+    ``ABLATION_FOLDS``, so an old chunk's recorded ``folds`` happens to still be correct,
+    but a ``ControlSetting`` missing it for any other reason should fail with the same
+    clear message, not a bare ``AttributeError`` three lines into an ``==`` comparison.
+    """
+    return [
+        name
+        for name in ("seed", "folds")
+        if getattr(setting, name, _SETTING_FIELD_MISSING) is _SETTING_FIELD_MISSING
+    ]
+
+
 @dataclass(frozen=True, eq=False)
 class NullDistribution:
     """Per-axis and selected-maximum nulls, tagged with the setting they were built under.
@@ -802,6 +829,12 @@ class NullDistribution:
 
         Checked in this order, each an error rather than a reconciliation:
 
+        0. every chunk's ``ControlSetting`` carries the fields a current one records --
+           a chunk written by an older hvantk, before ``seed`` (#409) existed on this
+           record, would otherwise raise a bare ``AttributeError`` from check 2 below,
+           which compares settings with ``==`` and so touches every field; ``folds`` is
+           guarded the same defensive way, although every historic chunk already
+           recorded it (just always at the fixed ``ABLATION_FOLDS``, before #390);
         1. the offered axes -- a selected-maximum over a candidate set nobody searched is
            a different statistic;
         2. the control setting -- ditto;
@@ -831,6 +864,16 @@ class NullDistribution:
         if not parts:
             raise ValueError("merge() needs at least one chunk")
         head = parts[0]
+
+        for part in parts:
+            missing = _legacy_setting_fields(part.setting)
+            if missing:
+                raise ControlSettingMismatch(
+                    "cannot merge permutation chunks: one chunk's ControlSetting is "
+                    f"missing field(s) {missing!r} -- it was written by an older hvantk "
+                    "(before ControlSetting recorded them) and must be recomputed, not "
+                    "merged"
+                )
 
         for other in parts[1:]:
             if other.axes != head.axes:
