@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + dataset class + builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (download resilience + drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
+- **Status:** provisional. Downloader + dataset class + builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (downloader unit tests + drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
 - **In scope:** per-cancer-type whole-proteome fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a long-format matrix CSV (`SampleID`, `GeneID`, `Gene Name`, `Expression`) plus a clinical metadata CSV. The builder produces a `(samples x genes)` AnnData from that pair, one cancer type at a time. A long-format TSV/CSV staged by hand (the pre-#386 workflow) still works via the `{"expression","metadata"}` mapping form of `parsed_input`.
 - **Out of scope:** phosphoproteomics (sibling dataset `cptac:phospho`); pan-cancer joint analysis (`--all` downloads every cancer type but does not merge them -- gene sets and sample columns differ per cancer type, unlike phospho's site-level TSV which does have a pan-cancer merge); any Hail-Table or wide-format representation.
 
@@ -73,7 +73,7 @@ AnnData (`.h5ad`) builder output:
 - **Lifecycle entry points:** `download_dataset` (in `expression/cli.py`), wired via `lifecycle.download` in `plugin.yaml`. There is **no** `lifecycle.parse`: the download already writes the builder's matrix+metadata inputs, so `reprocess` hands the raw dir straight to the builder (mirrors `cptac:phospho`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:expression")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
-- **Tests:** `hvantk/skills/cptac/expression/tests/` (download resilience in `test_download_resilience.py` + builder round-trip in `test_builder.py` + drift-probe sanity in `test_drift_probe.py`).
+- **Tests:** `hvantk/skills/cptac/expression/tests/` (downloader unit tests -- including the fetch-both-then-atomically-publish guarantee -- in `test_downloader.py` + builder round-trip in `test_builder.py` + drift-probe sanity in `test_drift_probe.py`).
 
 ## 7. Workflow steps
 
@@ -95,7 +95,7 @@ build (select its matrix+metadata pair). Steps:
 
 1. **Download.** Via the download CLI (`hvantk download cptac-expression --cancer-type brca -o /data/cptac`) or the lifecycle entry point (`reprocess` calls `download_dataset(raw_dir=..., cancer_type=brca)`). Pass `--all` to fetch every cancer type (no pan-cancer merge -- see § 1); the downloader skips-and-continues past any cancer that fails upstream.
 2. **Builder.** `build_cptac_expression(<raw_dir>, ctx, cancer_type="brca")` (or a `{"expression","metadata"}` dict for the direct API / a hand-staged TSV) produces the `(samples x genes)` `ExpressionMatrix`.
-3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (download resilience + builder + drift-probe).
+3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (downloader + builder + drift-probe).
 
 ## 8. Update playbook
 
@@ -116,7 +116,7 @@ Per `_conventions` § 9:
 - **command:** `pytest hvantk/skills/cptac/expression/tests`.
 - **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
-The plugin manifest declares these paths so the loader contract holds. Download-resilience, drift-probe sanity, and builder round-trip tests all pass.
+The plugin manifest declares these paths so the loader contract holds. Downloader, drift-probe sanity, and builder round-trip tests all pass.
 
 > **Snapshot status:** seeded. `test_builder.py` asserts the build against both
 > snapshots. Regenerate after an intentional schema change with

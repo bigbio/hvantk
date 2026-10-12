@@ -21,6 +21,7 @@ import csv
 import logging
 import os
 import re
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -634,13 +635,6 @@ class CPTACExpressionDataset:
             ) from exc
         logger.info("Proteomics: %d samples x %d columns", *proteomics_df.shape)
 
-        long_df = melt_proteomics_wide_to_long(proteomics_df)
-        os.makedirs(os.path.dirname(matrix_path) or ".", exist_ok=True)
-        long_df.to_csv(matrix_path, index=False)
-        logger.info(
-            "Wrote expression matrix (%d rows) to %s", len(long_df), matrix_path
-        )
-
         clinical_source = "mssm"
         logger.info("Fetching clinical metadata (source=%s)...", clinical_source)
         try:
@@ -651,9 +645,39 @@ class CPTACExpressionDataset:
                 f"data_type='clinical', source={clinical_source!r}: {exc}"
             ) from exc
 
+        # Both fetches succeeded; compute both outputs before writing anything.
+        long_df = melt_proteomics_wide_to_long(proteomics_df)
         clinical_copy = _tag_tissue_type(clinical_df, proteomics_df.index)
-        write_metadata_csv(clinical_copy, ct, metadata_path)
 
+        # Write to temp files first and publish (os.replace, atomic within one
+        # filesystem) only once BOTH writes have succeeded. Publishing the matrix
+        # as soon as it was ready -- the previous behavior -- could leave a fresh
+        # matrix beside a stale (or missing) metadata file if the clinical fetch or
+        # write then failed, and a bare `df.to_csv(final_path)` is not atomic either
+        # (a crash or error mid-write leaves a truncated file under the final name).
+        matrix_fd, matrix_tmp = tempfile.mkstemp(
+            dir=output_dir, prefix=f".{os.path.basename(matrix_path)}."
+        )
+        os.close(matrix_fd)
+        metadata_fd, metadata_tmp = tempfile.mkstemp(
+            dir=output_dir, prefix=f".{os.path.basename(metadata_path)}."
+        )
+        os.close(metadata_fd)
+        try:
+            long_df.to_csv(matrix_tmp, index=False)
+            write_metadata_csv(clinical_copy, ct, metadata_tmp)
+            os.replace(matrix_tmp, matrix_path)
+            os.replace(metadata_tmp, metadata_path)
+        finally:
+            for tmp in (matrix_tmp, metadata_tmp):
+                try:
+                    os.unlink(tmp)
+                except FileNotFoundError:
+                    pass  # already published (renamed) or never written
+
+        logger.info(
+            "Wrote expression matrix (%d rows) to %s", len(long_df), matrix_path
+        )
         logger.info(
             "CPTAC %s expression complete: %d samples, %d (sample, gene) rows",
             ct,
