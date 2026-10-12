@@ -48,7 +48,10 @@ seaborn
 # expression. Note this extra cannot be installed on Intel macOS (scanpy -> numba ->
 # llvmlite ships no x86_64 macOS wheel from 0.47); CI is linux, so it installs fine here.
 scanpy>=1.10.0
-# constraint
+# constraint. statsmodels backs `hvantk ptm test`'s LMMs (run_lmm,
+# run_binned_interaction_lmm); scanpy happens to pull it in today, but those tests
+# should not depend on that (#408).
+statsmodels>=0.14
 tspex>=0.6.0
 
 # Deliberately NOT installed: the ptm (cptac, sorted-nearest), duckdb and interactive
