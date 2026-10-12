@@ -17,6 +17,7 @@ Example usage:
 import csv
 import logging
 import os
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -262,24 +263,28 @@ class UniProtPTMDataset:
         pagination, extracts MOD_RES features from each protein, and
         writes one row per PTM site.
 
+        If a file is already at the destination and ``overwrite`` is False,
+        the existing file is reused (no network call) rather than treated as
+        an error: the destination is dated (``uniprot-ptm-human-<date>.tsv``),
+        so re-running on the same day against the same ``output_dir`` is
+        expected to land on the same path.
+
         Args:
             output_dir: Directory to save the output TSV file
-            overwrite: If True, overwrite an existing file
+            overwrite: If True, re-download even when the file already exists
 
         Returns:
-            Path to the written TSV file
+            Path to the (possibly reused) TSV file
 
         Raises:
-            FileExistsError: If file exists and overwrite is False
             RuntimeError: If the API request fails
         """
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, self.file_name)
 
         if os.path.exists(output_path) and not overwrite:
-            raise FileExistsError(
-                f"File already exists: {output_path}. Use overwrite=True to replace."
-            )
+            logger.info(f"Reusing existing UniProt PTM download: {output_path}")
+            return output_path
 
         url = _build_search_url(
             self.api_url, self.query, UNIPROT_API_FIELDS, UNIPROT_BATCH_SIZE
@@ -289,8 +294,13 @@ class UniProtPTMDataset:
         total_records = 0
         page_count = 0
 
+        # Write to a sibling temp file and rename into place atomically, so a
+        # crash or interrupt mid-download never leaves a partial file under
+        # `output_path` for a later run to mistake for a complete, reusable
+        # download.
+        fd, tmp_path = tempfile.mkstemp(dir=output_dir, prefix=f".{self.file_name}.")
         try:
-            with open(output_path, "w", newline="") as fh:
+            with os.fdopen(fd, "w", newline="") as fh:
                 writer = csv.DictWriter(
                     fh, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n"
                 )
@@ -310,17 +320,19 @@ class UniProtPTMDataset:
 
                     url = _get_next_link(response)
 
-            logger.info(
-                f"Downloaded {total_records} PTM records from {page_count} pages "
-                f"to {output_path}"
-            )
-            return output_path
-
+            os.replace(tmp_path, output_path)
         except Exception as e:
-            # Clean up partial file on failure
-            if os.path.exists(output_path):
-                os.remove(output_path)
             raise RuntimeError(f"Failed to download UniProt PTM data: {str(e)}") from e
+        finally:
+            # No-op once the replace above succeeds (tmp_path no longer exists).
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        logger.info(
+            f"Downloaded {total_records} PTM records from {page_count} pages "
+            f"to {output_path}"
+        )
+        return output_path
 
     def get_metadata(self) -> Dict[str, str]:
         """

@@ -132,6 +132,10 @@ def test_ptm_build_pipeline_fails_when_no_site_maps(monkeypatch, tmp_path):
         output_dir=str(tmp_path),
         output_ht=str(earlier_table),
         ptm_tsv=str(ptm_tsv),
+        # overwrite=True so the pre-existing earlier_table doesn't trip the
+        # early exists-check (tested separately); this test is specifically
+        # about the zero-mapped-sites guard that still applies underneath it.
+        overwrite=True,
     )
 
     with pytest.raises(ValueError, match="No PTM sites mapped"):

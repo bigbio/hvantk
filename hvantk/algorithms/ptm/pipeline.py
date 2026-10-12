@@ -180,16 +180,20 @@ def map_ptm_sites(
     gtf_data: GTFData,
     output_path: str,
     transcript_cache: Optional[Dict] = None,
+    source_db_default: str = "UniProt",
+    evidence_type_default: str = "curated",
 ) -> PTMBuildResult:
     """Map PTM sites from protein coordinates to genomic coordinates.
 
-    Reads the UniProt PTM TSV, resolves transcripts, maps each site to
-    genomic codon coordinates, and writes the result to a new TSV.
+    Reads a PTM TSV (UniProt, or another source sharing the same column
+    layout), resolves transcripts, maps each site to genomic codon
+    coordinates, and writes the result to a new TSV.
 
     Parameters
     ----------
     ptm_tsv : str
-        Path to the UniProt PTM TSV (from download_uniprot_ptm).
+        Path to the PTM TSV (from download_uniprot_ptm, or another source's
+        downloader, e.g. ``hvantk download peptideatlas-phospho``).
     gtf_data : GTFData
         Parsed Ensembl GTF data.
     output_path : str
@@ -197,6 +201,15 @@ def map_ptm_sites(
     transcript_cache : dict, optional
         Shared TranscriptCDS cache for cross-call reuse. If None, a local
         cache is created for this call only.
+    source_db_default : str, optional
+        ``source_db`` written for a row whose input TSV has no ``source_db``
+        column (default: ``"UniProt"``). Callers mapping a different
+        source's TSV should pass that source's own label (e.g.
+        ``"PeptideAtlas"``) so a hand-made or third-party TSV missing the
+        column isn't mislabelled as curated UniProt.
+    evidence_type_default : str, optional
+        ``evidence_type`` written for a row with no ``evidence_type`` column
+        (default: ``"curated"``).
 
     Returns
     -------
@@ -275,8 +288,10 @@ def map_ptm_sites(
                         "amino_acid": rec.get("amino_acid", ""),
                         "ptm_type": desc,
                         "ptm_category": ptm_category,
-                        "source_db": rec.get("source_db", "UniProt"),
-                        "evidence_type": rec.get("evidence_type", "curated"),
+                        "source_db": rec.get("source_db", source_db_default),
+                        "evidence_type": rec.get(
+                            "evidence_type", evidence_type_default
+                        ),
                         "n_observations": rec.get("n_observations", "0"),
                         "tissue_type": rec.get("tissue_type", ""),
                     }
@@ -423,7 +438,16 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
         logger.info("Mapping %s phospho sites...", source_name)
         source_mapped_path = os.path.join(config.output_dir, source_filename)
         source_result = map_ptm_sites(
-            source_tsv, gtf_data, source_mapped_path, transcript_cache
+            source_tsv,
+            gtf_data,
+            source_mapped_path,
+            transcript_cache,
+            # source_name is already "PeptideAtlas"/"CPTAC" — the exact
+            # source_db value each downloader writes (see their shared/
+            # datasets.py) — so a TSV missing the column is labelled by its
+            # own source instead of defaulting to curated UniProt.
+            source_db_default=source_name,
+            evidence_type_default="mass_spectrometry",
         )
         source_paths.append(source_mapped_path)
         source_counts[source_name] = source_result.n_mapped
