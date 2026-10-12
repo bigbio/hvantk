@@ -68,18 +68,30 @@
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
       "lsdb": [
-        "Breast Cancer",
-        "http://research.nhgri.nih.gov/bic/",
-        "Fanconi Anaemia Mutation Database",
-        "http://www2.rockefeller.edu/fanconi",
-        "BRCA1 database at LOVD-China",
-        "http://genomed.org/LOVD/BC/home.php?select_db=BRCA1",
-        "Global Variome shared LOVD",
-        "https://databases.lovd.nl/shared/genes/BRCA1",
-        "LOVD - Leiden Open Variation Database",
-        "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA1",
-        "LRG_292",
-        "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_292.xml"
+        {
+          "name": "Breast Cancer",
+          "url": "http://research.nhgri.nih.gov/bic/"
+        },
+        {
+          "name": "Fanconi Anaemia Mutation Database",
+          "url": "http://www2.rockefeller.edu/fanconi"
+        },
+        {
+          "name": "BRCA1 database at LOVD-China",
+          "url": "http://genomed.org/LOVD/BC/home.php?select_db=BRCA1"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/BRCA1"
+        },
+        {
+          "name": "LOVD - Leiden Open Variation Database",
+          "url": "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA1"
+        },
+        {
+          "name": "LRG_292",
+          "url": "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_292.xml"
+        }
       ],
       "mamit-trnadb": null,
       "mane_select": [
@@ -168,20 +180,34 @@
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
       "lsdb": [
-        "Breast Cancer",
-        "http://research.nhgri.nih.gov/bic/",
-        "Fanconi Anaemia Mutation Database",
-        "http://www2.rockefeller.edu/fanconi/",
-        "BRCA1 database at LOVD-China",
-        "http://genomed.org/LOVD/BC/home.php?select_db=BRCA2",
-        "Global Variome shared LOVD",
-        "https://databases.lovd.nl/shared/genes/BRCA2",
-        "LOVD - Leiden Open Variation Database",
-        "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2",
-        "Global Variome shared LOVD",
-        "https://databases.lovd.nl/shared/genes/FANCD1",
-        "LRG_293",
-        "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml"
+        {
+          "name": "Breast Cancer",
+          "url": "http://research.nhgri.nih.gov/bic/"
+        },
+        {
+          "name": "Fanconi Anaemia Mutation Database",
+          "url": "http://www2.rockefeller.edu/fanconi/"
+        },
+        {
+          "name": "BRCA1 database at LOVD-China",
+          "url": "http://genomed.org/LOVD/BC/home.php?select_db=BRCA2"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/BRCA2"
+        },
+        {
+          "name": "LOVD - Leiden Open Variation Database",
+          "url": "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/FANCD1"
+        },
+        {
+          "name": "LRG_293",
+          "url": "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml"
+        }
       ],
       "mamit-trnadb": null,
       "mane_select": [

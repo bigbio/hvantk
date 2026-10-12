@@ -60,6 +60,12 @@ HGNC_PIPE_SEPARATED_FIELDS = [
     # column name. The live dump quotes and pipe-separates these the same way
     # as the fields above (e.g. ena: `"KI270879|BC050410"`) -- see #391.
     "ena",
-    "lsdb",
     "pubmed_id",
+    # lsdb is deliberately NOT here: its pipe-separated tokens are (database
+    # name, URL) PAIRS (e.g. `"Breast Cancer|http://...|LRG_292|http://..."`),
+    # not independent multi-values -- splitting it flat like the fields above
+    # would interleave names and URLs into one array. build_hgnc_gene_lookup
+    # tokenizes it with the same quote-strip/split/strip/filter helper used
+    # for this list, then re-pairs consecutive tokens into
+    # array<struct{name, url}> instead of appending it here.
 ]
