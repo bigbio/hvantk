@@ -14,7 +14,7 @@ This document lists third-party datasets committed to this repository as test fi
 - `E-MTAB-6798-transcripts-tpms.tsv`: Transcript-level TPM expression matrix
 - `E-MTAB-6798.condensed-sdrf.tsv`: Sample and data relationship format metadata
 
-**Licence**: CC BY 4.0
+**Licence**: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
 
 **Attribution**: Expression Atlas, EMBL-EBI — https://www.ebi.ac.uk/gxa/experiments/E-MTAB-6798. Citation: "Expression Atlas in 2026: enabling FAIR and open expression data through community collaboration and integration" (*Nucleic Acids Research*, 10 December 2025).
 
