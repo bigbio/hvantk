@@ -669,6 +669,36 @@ class NullDistribution:
     planned_n_perm: int
     observed: "dict | None" = None
 
+    def __post_init__(self) -> None:
+        """The key/length relationships ``from_deltas`` and ``merge`` already keep in
+        lockstep -- checked here, cheaply, so a ``NullDistribution`` built by hand (or
+        corrupted in transit) fails at construction rather than three calls into
+        ``summary()`` or ``p_selected_max``.
+        """
+        axes = set(self.axes)
+        if set(self.per_axis) != axes:
+            raise ValueError(
+                f"per_axis keys {sorted(self.per_axis)!r} do not match axes "
+                f"{sorted(axes)!r}"
+            )
+        n_perm = len(self.perms)
+        for axis, draws in self.per_axis.items():
+            if len(draws) != n_perm:
+                raise ValueError(
+                    f"per_axis[{axis!r}] has {len(draws)} draw(s), expected {n_perm} "
+                    "(len(perms))"
+                )
+        if len(self.selected_max) != n_perm:
+            raise ValueError(
+                f"selected_max has {len(self.selected_max)} draw(s), expected {n_perm} "
+                "(len(perms))"
+            )
+        if self.observed is not None and set(self.observed) != axes:
+            raise ValueError(
+                f"observed keys {sorted(self.observed)!r} do not match axes "
+                f"{sorted(axes)!r}"
+            )
+
     @property
     def n_perm(self) -> int:
         return len(self.perms)

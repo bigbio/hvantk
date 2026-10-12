@@ -84,8 +84,17 @@ class _ManifestPrior:
         return load_prior_frame(self.manifest)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Config:
+    """One rerank run's full configuration.
+
+    Frozen: every invariant ``__post_init__`` establishes below (the seed/seed_sweep
+    ranges, the ``isinstance`` checks on ``leakage``/``nulls``/``blocks``/``selection``)
+    would otherwise be erasable by a later plain attribute assignment, leaving a
+    ``Config`` that looks validated but silently is not. Derive a changed copy with
+    ``dataclasses.replace(cfg, field=value)`` instead of assigning to an existing one.
+    """
+
     name: str
     features: list
     labels: LabelSpec
@@ -178,10 +187,12 @@ class Config:
         # bool is an int in Python, and numpy/sklearn both reject a negative seed, so
         # `_coerce_int` (shared with NullConfig/ControlSetting) checks the TYPE and this
         # checks the RANGE.
-        self.seed = _coerce_int(self.seed, "seed")
+        object.__setattr__(self, "seed", _coerce_int(self.seed, "seed"))
         if self.seed < 0:
             raise ValueError(f"Config.seed must be an int >= 0; got {self.seed!r}")
-        self.seed_sweep = _coerce_int(self.seed_sweep, "seed_sweep")
+        object.__setattr__(
+            self, "seed_sweep", _coerce_int(self.seed_sweep, "seed_sweep")
+        )
         if self.seed_sweep < 1:
             raise ValueError(
                 f"Config.seed_sweep must be an int >= 1; got {self.seed_sweep!r}"
@@ -199,7 +210,7 @@ class Config:
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 
-            self.audit = NoAudit()
+            object.__setattr__(self, "audit", NoAudit())
         if self.leakage is not None:
             from hvantk.algorithms.rerank.leakage import LeakagePolicy
 
@@ -271,7 +282,7 @@ class Config:
                 )
         if self.cohort is not None:
             if self.prior is None:
-                self.prior = _ManifestPrior(self.cohort)
+                object.__setattr__(self, "prior", _ManifestPrior(self.cohort))
             elif isinstance(self.prior, PriorSpec):
                 # "Disagree" is defined structurally, not by data content: the explicit
                 # PriorSpec's (path, unit_col, stat_col) vs. the (table, key_column,

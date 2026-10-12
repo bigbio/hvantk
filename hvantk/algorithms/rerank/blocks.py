@@ -159,6 +159,48 @@ class BlockReport:
     "blocked" CV toward unblocked without any block-count signal to catch it, since a wave of
     unmatched genes still shows up as ordinary (if numerous) singletons."""
 
+    def __post_init__(self) -> None:
+        """The relationships ``gene_blocks`` already guarantees among these fields --
+        checked here, cheaply, so a ``BlockReport`` built by hand (or corrupted in
+        transit) fails at construction rather than three call sites away, inside
+        something that trusted ``n_blocks``/``largest_frac`` without checking.
+
+        ``n_matched`` alone is left to a bound check: it counts matches against the
+        gene-group mapping, which this report does not carry, so nothing cheaper than
+        re-reading that mapping could verify it exactly.
+        """
+        blocks = np.asarray(self.blocks)
+        n = int(blocks.size)
+        sizes = np.bincount(blocks) if n else np.zeros(0, dtype=int)
+        n_blocks = int(sizes.size)
+        if self.n_blocks != n_blocks:
+            raise ValueError(
+                f"n_blocks ({self.n_blocks!r}) does not match the {n_blocks} distinct "
+                "block code(s) actually present in blocks"
+            )
+        largest = int(sizes.max()) if sizes.size else 0
+        if self.largest != largest:
+            raise ValueError(
+                f"largest ({self.largest!r}) does not match the largest block's size "
+                f"({largest!r}) in blocks"
+            )
+        expected_frac = float(largest / n) if n else 0.0
+        if self.largest_frac != expected_frac:
+            raise ValueError(
+                f"largest_frac ({self.largest_frac!r}) does not match largest/len(blocks) "
+                f"({expected_frac!r})"
+            )
+        n_in_multi = int((sizes[blocks] > 1).sum()) if n else 0
+        if self.n_in_multi != n_in_multi:
+            raise ValueError(
+                f"n_in_multi ({self.n_in_multi!r}) does not match the count derived from "
+                f"blocks ({n_in_multi!r})"
+            )
+        if not (0 <= self.n_matched <= n):
+            raise ValueError(
+                f"n_matched must be in [0, {n}] (len(blocks)); got {self.n_matched!r}"
+            )
+
     @property
     def digest(self) -> str:
         """See :func:`block_digest`."""

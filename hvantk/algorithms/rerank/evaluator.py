@@ -103,6 +103,17 @@ class SeedSpread:
     mean: float
     sd: float
 
+    def __post_init__(self) -> None:
+        """The two relationships ``seed_sweep`` already guarantees: one delta per seed,
+        and a minimum that is at most the maximum it was computed alongside."""
+        if len(self.seeds) != len(self.deltas):
+            raise ValueError(
+                f"seeds has {len(self.seeds)} entrie(s) but deltas has "
+                f"{len(self.deltas)}; seed_sweep records exactly one delta per seed"
+            )
+        if self.lo > self.hi:
+            raise ValueError(f"lo ({self.lo!r}) must be <= hi ({self.hi!r})")
+
 
 def seed_sweep(
     matrix,
