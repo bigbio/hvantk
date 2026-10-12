@@ -170,8 +170,6 @@ def test_byo_datasets_are_not_exempt_from_the_validation_contract():
 #: spelled by OMITTING the acquisition block; this set pins which datasets are in it.
 DOWNLOADER_NOT_WRITTEN_YET = {
     "gevir:metrics",
-    "gwas-catalog:associations",
-    "insider:interfaces",
 }
 
 

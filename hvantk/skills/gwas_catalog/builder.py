@@ -8,13 +8,43 @@ judgment call #1 in the skill).
 
 from __future__ import annotations
 
+import glob
 import logging
+import os
 
 import hail as hl
 
 from hvantk.core.utils.table_utils import str_to_bool
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_gwas_catalog_path(parsed_input) -> str:
+    """Resolve the builder's input to the associations TSV file itself.
+
+    gwas-catalog declares no ``lifecycle.parse``, so ``hvantk reprocess`` hands the
+    builder the raw *directory* (reprocess forwards ``raw_dir`` verbatim as
+    ``parsed_input`` for no-parse datasets) when no ``--intermediate`` is given --
+    not the TSV file inside it. ``hl.import_table`` cannot read a directory, so
+    resolve a directory to the single raw file it contains, the same way gevir's
+    ``_resolve_gevir_path`` does (``hvantk/skills/gevir/builder.py``). A path that
+    already points at a file is returned unchanged, which keeps the direct
+    ``build(<file>)`` calls (tests, snapshots) working. Fixes #388.
+    """
+    path = str(parsed_input)
+    if not os.path.isdir(path):
+        return path
+    candidates = sorted(
+        f
+        for f in glob.glob(os.path.join(path, "*"))
+        if os.path.isfile(f) and not os.path.basename(f).startswith(".")
+    )
+    if len(candidates) != 1:
+        raise ValueError(
+            f"expected exactly one raw file in directory {path!r}, found "
+            f"{len(candidates)}: {[os.path.basename(c) for c in candidates]}"
+        )
+    return candidates[0]
 
 
 # Map from raw GWAS Catalog v1.0 column names (whitespace + slash + brackets)
@@ -66,15 +96,16 @@ def build_gwas_catalog_associations(
     """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT).
 
-    Two filters drop rows the schema cannot express cleanly (skill judgment
-    calls #2 + #3): ``STRONGEST SNP-RISK ALLELE`` ending in ``-?`` (no risk
-    allele recorded) and non-canonical ``CHR_ID`` (multi-chromosome /
-    haplotype associations).
+    ``parsed_input`` may be the TSV file itself or the directory containing it
+    (see ``_resolve_gwas_catalog_path``). Two filters drop rows the schema
+    cannot express cleanly (skill judgment calls #2 + #3): ``STRONGEST
+    SNP-RISK ALLELE`` ending in ``-?`` (no risk allele recorded) and
+    non-canonical ``CHR_ID`` (multi-chromosome / haplotype associations).
     """
     from hvantk.core.models import AnnotationTable
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=_resolve_gwas_catalog_path(parsed_input),
         delimiter="\t",
         quote=None,
         missing="",
