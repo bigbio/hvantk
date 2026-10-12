@@ -80,7 +80,11 @@ def ptm_group(ctx):
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Overwrite existing outputs",
+    help=(
+        "Re-download the GTF and UniProt inputs instead of reusing cached "
+        "files, and replace an existing --output-ht table (without it, an "
+        "existing table stops the build before any work)"
+    ),
 )
 @click.pass_context
 def ptm_build(

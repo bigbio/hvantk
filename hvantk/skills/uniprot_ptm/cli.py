@@ -110,10 +110,6 @@ def download_cmd(ctx, version_date, output_dir, overwrite):
         click.echo(f"Downloaded to: {output_path}")
         logger.info(f"UniProt PTM dataset downloaded to {output_path}")
 
-    except FileExistsError as e:
-        click.echo(f"Error: {e}", err=True)
-        click.echo("Use --overwrite to replace existing files.")
-        ctx.exit(1)
     except RuntimeError as e:
         click.echo(f"Download failed: {e}", err=True)
         ctx.exit(1)
