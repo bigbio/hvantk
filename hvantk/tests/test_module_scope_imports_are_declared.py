@@ -64,12 +64,22 @@ def _declared_distributions(*, include_extras: bool) -> set[str]:
 #: imported at module scope on a base-install-reachable path
 #: (`skills/ucsc_cellbrowser/shared/ucsc.py`) while declared only in extras unrelated
 #: to that path, and the any-extra union made each look declared regardless.
-_BASE_ONLY_LAYERS = ("core", "skills", "tools")
+#:
+#: `resources/` joined this set (#408): it is imported at module scope by skills/ (the
+#: unified registry), which is itself base-only, so a resources/ import unreachable on
+#: a base install would already break skills/ before this test ever looked at it.
+_BASE_ONLY_LAYERS = ("core", "skills", "tools", "resources")
+
+#: Top-level modules (siblings of the layer packages, not inside any of them) that are
+#: also reachable from a base install: the console script and `python -m hvantk`.
+_BASE_ONLY_MODULES = ("hvantk.py", "__main__.py")
 
 
 def _requires_base_only(path: Path) -> bool:
     parts = path.relative_to(PACKAGE).parts
-    return parts == ("hvantk.py",) or (parts and parts[0] in _BASE_ONLY_LAYERS)
+    if len(parts) == 1:
+        return parts[0] in _BASE_ONLY_MODULES
+    return bool(parts) and parts[0] in _BASE_ONLY_LAYERS
 
 
 def _source_files():

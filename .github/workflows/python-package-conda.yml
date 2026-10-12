@@ -99,6 +99,11 @@ jobs:
           /tmp/venv/bin/python -c "import hvantk, os; p = os.path.dirname(hvantk.__file__); assert 'site-packages' in p, p; print('importing installed copy:', p)"
           /tmp/venv/bin/hvantk --help
           /tmp/venv/bin/hvantk plugins list
+      # `list` only omits a provider that failed to load; `errors` is the one that
+      # actually catches that (exits 1 whenever it has anything to report, #408).
+      - name: No plugin failed to load from the installed copy
+        working-directory: /tmp
+        run: /tmp/venv/bin/hvantk plugins errors
       # A packaging glob that drops manifests would still let `plugins list` exit 0 with a
       # short list, so assert the count instead of just the exit code.
       - name: Every plugin manifest survived packaging
