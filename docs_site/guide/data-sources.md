@@ -28,6 +28,7 @@ hvantk utils convert-bgz input.gz
 | CPTAC phosphoproteomics | `hvantk download cptac-phospho` | varies by cancer type |
 | PeptideAtlas phospho | `hvantk download peptideatlas-phospho` | ~549 MB |
 | INSIDER interfaces | `hvantk download insider-interfaces` | ~49 MB |
+| GWAS Catalog | `hvantk download gwas-catalog` | ~70 MB zip (~601 MB unzipped TSV) |
 | 1000 Genomes sample panel | *(no standalone command; see [1000 Genomes](#1000-genomes-nygcccdg-high-coverage-callset))* | ~55 KB |
 
 ### ClinVar
@@ -129,9 +130,10 @@ Most of these sources need manual acquisition — too large, license-gated, or a
 — and for those, follow the instructions below, place the raw file(s) in a per-source
 directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
 members of this section ship a downloader instead (gnomAD constraint, Ensembl gene
-annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho, INSIDER interfaces
-and the 1000 Genomes sample metadata); they are grouped here because they carry a
-license, size, versioning or build-path caveat worth reading before relying on them.
+annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho, INSIDER interfaces,
+the GWAS Catalog and the 1000 Genomes sample metadata); they are grouped here because
+they carry a license, size, versioning or build-path caveat worth reading before relying
+on them.
 
 ### dbNSFP (~50 GB)
 
@@ -312,32 +314,35 @@ study provenance, p-value, effect size, and risk-allele frequency, built into a
 Hail Table keyed by `(locus, alleles)` with a sentinel ALT. v1.0 schema (34 columns).
 URL: https://www.ebi.ac.uk/gwas/
 
-**Download**: a periodic full dump, zipped, from EBI's FTP, released every 1-3 weeks:
+A periodic full dump, zipped, from EBI's FTP, released every 1-3 weeks. The zip is small
+and public, so hvantk ships a downloader (`hvantk download gwas-catalog`; it is also in
+the built-in-downloader list above) that fetches the current release from the FTP
+`releases/latest/` alias and extracts the associations TSV it contains.
+
+**Download + build** (end-to-end, fetches the current release automatically):
+
+```bash
+hvantk reprocess gwas-catalog:associations \
+  --raw-dir data/gwas_catalog/ \
+  --output gwas_catalog.ht
+```
+
+**Manual download**:
 
 ```
 https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations-full.zip
 ```
 
 Unzip to get `gwas-catalog-download-associations-v1.0-full.tsv` (verified live
-2026-09-30: zip 69,506,531 bytes, TSV 600,996,055 bytes). No `lifecycle.download` is
-declared yet for this plugin — see #386.
-
-**Build**:
+2026-09-30: zip 69,506,531 bytes, TSV 600,996,055 bytes), place it in `data/gwas_catalog/`,
+then build with `--skip-download`:
 
 ```bash
-# Place the unzipped TSV in data/gwas_catalog/ then:
 hvantk reprocess gwas-catalog:associations \
   --raw-dir data/gwas_catalog/ \
-  --intermediate data/gwas_catalog/gwas-catalog-download-associations-v1.0-full.tsv \
-  --skip-parse \
-  --skip-download \
-  --output gwas_catalog.ht
+  --output gwas_catalog.ht \
+  --skip-download
 ```
-
-> **Note:** `--intermediate <file> --skip-parse` is required, not optional, even though
-> this dataset declares no `lifecycle.parse` — the builder needs the exact TSV path, and
-> `--raw-dir` can only be a directory. `--skip-download` is also required — no
-> `lifecycle.download` is declared. See `hvantk/skills/gwas_catalog/SKILL.md` §6.
 
 ### COSMIC Cancer Gene Census
 

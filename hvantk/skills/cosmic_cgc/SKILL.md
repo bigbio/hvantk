@@ -122,9 +122,9 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
    `--intermediate <file> --skip-parse` is required: the dataset declares no
    `lifecycle.parse`, so without it `hvantk reprocess` hands the `--raw-dir` directory
    to the builder, which needs the file itself and fails with `IsADirectoryError`.
-   `gwas-catalog:associations` documents the same pattern
-   (`hvantk/skills/gwas_catalog/SKILL.md` § 6). On the committed synthetic fixture this
-   builds a 5-row table keyed by `gene_symbol`.
+   Unlike `gwas-catalog:associations` (`hvantk/skills/gwas_catalog/SKILL.md` § 6), this
+   builder has no directory-resolving helper, so the workaround stays required here. On
+   the committed synthetic fixture this builds a 5-row table keyed by `gene_symbol`.
 3. To resolve `hgnc_id`, add `--plugin-arg hgnc_ht=<path-to-hgnc-lookup.ht>` (or
    `hgnc_path=<path>`): `hvantk reprocess` builds an `HGNCGeneCatalogStreamer` from it
    and passes it to the builder as `gene_catalog`, as for `pqtl`. From Python, pass any

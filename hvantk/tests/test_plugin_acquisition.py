@@ -171,7 +171,6 @@ def test_byo_datasets_are_not_exempt_from_the_validation_contract():
 DOWNLOADER_NOT_WRITTEN_YET = {
     "cptac:expression",
     "gevir:metrics",
-    "gwas-catalog:associations",
 }
 
 

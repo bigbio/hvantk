@@ -12,9 +12,9 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. The builder, fixture, snapshots, and round-trip test now exist; this skill remains the design contract and update reference for future agents.
+- **Status:** provisional. The builder, downloader, fixture, snapshots, and round-trip test now exist; this skill remains the design contract and update reference for future agents.
 - **In scope:** raw GWAS Catalog v1.0 full-associations TSV → single Hail Table, checkpointed, keyed for variant joins.
-- **Out of scope:** downloader — no `lifecycle.download` is declared yet (§4); v1.0.2 schema (EFO URIs — possible follow-on); trait-aware enrichment / burden / PS-ROC; cross-source joins.
+- **Out of scope:** v1.0.2 schema (EFO URIs — possible follow-on); trait-aware enrichment / burden / PS-ROC; cross-source joins.
 
 ## 2. Source identity
 
@@ -75,11 +75,10 @@ Type coercions in transform (all string at import):
 
 ## 6. hvantk integration points
 
-- **Builder:** `build_gwas_catalog_associations` in `hvantk/skills/gwas_catalog/builder.py`. Signature `(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable`. Imports and transforms the table inline; no shared `_create_table_base` helper exists.
+- **Builder:** `build_gwas_catalog_associations` in `hvantk/skills/gwas_catalog/builder.py`. Signature `(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable`. Imports and transforms the table inline; no shared `_create_table_base` helper exists. `parsed_input` may be the TSV file itself or the raw directory containing it: `_resolve_gwas_catalog_path` resolves a directory to the single file it contains, the same way `gevir`'s `_resolve_gevir_path` does (fixes #388).
 - **Plugin manifest:** `hvantk/skills/gwas_catalog/plugin.yaml`, `datasets[].builder` (dataset key `gwas-catalog:associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset via `get_registry().get_dataset("gwas-catalog:associations")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry.
-- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --intermediate <dir>/<unzipped-tsv> --skip-parse --skip-download --output <path>.ht` (verified #360, 2026-09-30). `--skip-download` is required: no `lifecycle.download` is declared yet (#386). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
-  - **`--intermediate ... --skip-parse` is required too**, despite this dataset declaring no `lifecycle.parse`: the builder (`build_gwas_catalog_associations`) calls `hl.import_table(paths=str(parsed_input), ...)` on `parsed_input` directly with no directory resolution (unlike `gevir`'s `_resolve_gevir_path`). Absent `lifecycle.parse`, `reprocess_cli.py` forwards `--raw-dir` itself as `parsed_input` -- but `--raw-dir` is `click.Path(file_okay=False)`, so it can never BE the file, only a directory containing it, and Hail refuses to `import_table` a directory (`FileNotFoundException: '...' is a directory`). Passing `--skip-parse --intermediate <exact-tsv-path>` bypasses this: `reprocess_cli.py` then resolves `parsed_path` to `--intermediate` verbatim, which *can* be a file. This is a separate, pre-existing gap (not part of #360's acquisition/schema fix, and not fixed here) -- no existing test caught it because the round-trip test calls `build_gwas_catalog_associations(input_path=FIXTURE, ...)` directly, bypassing `hvantk reprocess` entirely. Tracked in #388.
-- **Catalog wiring:** see §2. **Downloader:** out of scope — no `lifecycle.download` is declared yet (§4).
+- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht` downloads the current release, extracts the associations TSV, and builds the table in one command. Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`. For a pre-downloaded TSV, place it in `--raw-dir <dir>` and add `--skip-download`: the directory resolution above means `--intermediate`/`--skip-parse` are no longer required (#388).
+- **Catalog wiring:** see §2. **Downloader:** `hvantk/skills/gwas_catalog/cli.py` (`download_dataset` lifecycle entry point, wired via `plugin.yaml` `lifecycle.download`; CLI command `hvantk download gwas-catalog` via the `cli:` block). Streams the current release zip from the EBI FTP `releases/latest/` alias -- not the release pinned in the catalog entry (§2), which tracks a point-in-time accession -- and extracts the single TSV member it contains in a streaming way (``zipfile`` + chunked copy, never fully materialized in memory). Both the zip download and the TSV extraction are atomic (temp file + rename), so a failed or interrupted run cannot leave a partial file behind.
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gwas_catalog/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gwas-catalog:associations` (see § 12 of `_conventions`).
 - **Tests:** `pytest hvantk/skills/gwas_catalog/tests -m hail` — artifact paths in § 9.
 
@@ -101,7 +100,7 @@ Type coercions in transform (all string at import):
 
 Releases every 1-3 weeks (verified live 2026-09-30 against `releases/2026/{06..09}/`: 2026-06-01, -06-22, -07-10, -07-20, -08-03, -08-24, -09-04, -09-15 -- gaps of 10-21 days). Per release:
 
-1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json`: a release bump updates the pinned `url` (the new release's dated EBI FTP path), the accession's release stamp (`eNNN_rYYYY-MM-DD`), and `last_updated` together. Bump the `vX.Y` schema-version prefix only on an actual schema change.
+1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json`: a release bump updates the pinned `url` (the new release's dated EBI FTP path), the accession's release stamp (`eNNN_rYYYY-MM-DD`), and `last_updated` together. Bump the `vX.Y` schema-version prefix only on an actual schema change. The downloader (§6) needs no change here -- it always targets the `releases/latest/` alias, not this pinned, point-in-time `url`.
 2. Re-run the round-trip test (§9). If it passes, no builder change.
 3. On schema change: bump accession suffix, update the rename map in the builder, regenerate snapshots with `pytest --regenerate-snapshots`, revisit §3–§4 judgment calls.
 4. If EBI publishes v1.0.2 alongside v1.0: revisit judgment call #4 (option B).

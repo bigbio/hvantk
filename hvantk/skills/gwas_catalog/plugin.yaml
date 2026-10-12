@@ -21,6 +21,10 @@ datasets:
     drift_probe:
       module: hvantk.skills.gwas_catalog.drift_probe
       function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.gwas_catalog.cli
+        function: download_dataset
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/gwas_catalog/tests -m hail
@@ -28,3 +32,8 @@ datasets:
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: gwas-catalog-download
+    module: hvantk.skills.gwas_catalog.cli
+    function: download_cmd
