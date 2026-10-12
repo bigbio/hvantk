@@ -57,6 +57,12 @@ def mock_pa_zip(tmp_path):
     actually has a phospho site to remove. Without this mapping, DECOY_Q99999
     carries no peptide at all and `test_decoy_sequences_filtered`'s assertion
     passes vacuously regardless of whether the prefix filter exists.
+
+    Includes a protein_identification.tsv marking both biosequences canonical
+    (presence_level_id "1"), so DECOY_Q99999 is dropped by the accession-prefix
+    filter rather than the canonical filter -- exercising the two filters
+    independently, the way a real build does (every biosequence_id referenced
+    by a peptide mapping gets its own protein_identification row).
     """
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
@@ -88,6 +94,25 @@ def mock_pa_zip(tmp_path):
                 "biosequence_gene_name": "FOO",
                 "biosequence_seq": "M" * 100,
                 "organism_id": "9606",
+            },
+        ],
+    )
+
+    # protein_identification table -- both biosequences are canonical, so
+    # DECOY_Q99999 is excluded by the accession-prefix filter, not this one.
+    _write_tsv(
+        tables_dir / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id", "protein_identification_id"],
+        [
+            {
+                "biosequence_id": "100",
+                "presence_level_id": "1",
+                "protein_identification_id": "1",
+            },
+            {
+                "biosequence_id": "200",
+                "presence_level_id": "1",
+                "protein_identification_id": "2",
             },
         ],
     )
@@ -175,21 +200,21 @@ def mock_pa_zip(tmp_path):
             {
                 "modified_peptide_instance_id": "1001",
                 "peptide_instance_id": "1",
-                "modified_peptide_sequence": "AAAAAS[167]AAAAA",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "50",
             },
             {
                 "modified_peptide_instance_id": "1002",
                 "peptide_instance_id": "2",
-                "modified_peptide_sequence": "AAS[167]AAAAAAAAA",
+                "modified_peptide_sequence": "AAS[Phospho]AAAAAAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "30",
             },
             {
                 "modified_peptide_instance_id": "1003",
                 "peptide_instance_id": "3",
-                "modified_peptide_sequence": "AAAAAS[167]AAAAAAAAA",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAAAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "10",
             },
@@ -259,6 +284,11 @@ def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=N
                 "biosequence_seq": "M" * 393,
             }
         ],
+    )
+    _write_tsv(
+        tables / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id"],
+        [{"biosequence_id": "100", "presence_level_id": "1"}],
     )
     _write_tsv(
         tables / "peptide_instance.tsv",
@@ -802,7 +832,7 @@ def test_parse_raises_when_no_phospho_sites(mock_pa_zip, tmp_path):
         mock_pa_zip,
         tmp_path,
         "modified_peptide_instance.tsv",
-        [("[Phospho]", "[Oxidation]"), ("[167]", "[Oxidation]")],
+        [("[Phospho]", "[Oxidation]")],
     )
     with pytest.raises(ValueError, match="No phospho sites found"):
         parse_peptideatlas_zip(str(path))
