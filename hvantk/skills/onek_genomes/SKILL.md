@@ -19,7 +19,7 @@ Provisional. This plugin ships **two datasets**, both `domain: genomics` / `back
 
 Out of scope for this skill:
 - Joining `:samples` onto `:variants`. This is a deliberate post-load, user-side step (not baked into the `:variants` build) — see the worked example in § 7.
-- Downloading the ~1.5 TB genotype VCF set programmatically — out of the "build a downloader" tier per `CLAUDE.md`'s size threshold; the plugin has no `cli.py` and no `lifecycle.download` for `:variants`.
+- Downloading the ~1.5 TB genotype VCF set programmatically — beyond the size threshold of the "build a downloader" tier (see `docs_site/guide/data-sources.md#downloader-or-documented-acquisition`); the plugin has no `cli.py` and no `lifecycle.download` for `:variants`.
 
 ## 2. Source identity
 
