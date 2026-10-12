@@ -136,8 +136,14 @@ class ControlSetting:
         given. A selected-maximum null computed over a different candidate set is a
         different statistic even when the baseline and the winning axis are identical.
     folds
-        The fold count the scorer ACTUALLY used -- not ``Config.folds``, which governs
-        ``ReRanker.score`` only (see ``evaluator.ABLATION_FOLDS``).
+        The fold count the scorer ACTUALLY used. The engine takes this from
+        ``Config.folds`` on every path it builds -- the headline score
+        (``ReRanker.score``), the ablation (``Evaluator.evaluate``) and this null all
+        read the SAME field now, so recording it here is what lets two chunks run under
+        different ``Config.folds`` values compare unequal instead of silently merging.
+        ``evaluator.ABLATION_FOLDS`` remains only the fallback for a direct API call
+        (``oof_scorer``/``seed_sweep``/``Evaluator.evaluate``) that threads no ``folds=``
+        of its own.
     seed
         The CV seed the scorer's folds were drawn with (``Config.seed``, as handed to
         ``oof_scorer``). The partition is a function of ``(seed, labels)``, so a null and
