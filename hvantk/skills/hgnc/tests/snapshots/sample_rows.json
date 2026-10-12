@@ -30,7 +30,9 @@
       "date_modified": "2023-03-15",
       "date_name_changed": "2019-01-22",
       "date_symbol_changed": null,
-      "ena": "U14680",
+      "ena": [
+        "U14680"
+      ],
       "ensembl_gene_id": "ENSG00000012048",
       "entrez_id": "672",
       "enzyme_id": null,
@@ -65,7 +67,32 @@
       "location": "17q21.31",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
-      "lsdb": "\"Breast Cancer|http://research.nhgri.nih.gov/bic/|Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi|BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA1|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA1|LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA1|LRG_292|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_292.xml\"",
+      "lsdb": [
+        {
+          "name": "Breast Cancer",
+          "url": "http://research.nhgri.nih.gov/bic/"
+        },
+        {
+          "name": "Fanconi Anaemia Mutation Database",
+          "url": "http://www2.rockefeller.edu/fanconi"
+        },
+        {
+          "name": "BRCA1 database at LOVD-China",
+          "url": "http://genomed.org/LOVD/BC/home.php?select_db=BRCA1"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/BRCA1"
+        },
+        {
+          "name": "LOVD - Leiden Open Variation Database",
+          "url": "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA1"
+        },
+        {
+          "name": "LRG_292",
+          "url": "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_292.xml"
+        }
+      ],
       "mamit-trnadb": null,
       "mane_select": [
         "ENST00000357654.9",
@@ -84,7 +111,10 @@
       ],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": "\"1676470|25472942\"",
+      "pubmed_id": [
+        "1676470",
+        "25472942"
+      ],
       "refseq_id": "NM_007294",
       "rgd_id": "RGD:2218",
       "rna_central_id": null,
@@ -122,7 +152,9 @@
       "date_modified": "2023-01-20",
       "date_name_changed": "2019-01-22",
       "date_symbol_changed": null,
-      "ena": "U43746",
+      "ena": [
+        "U43746"
+      ],
       "ensembl_gene_id": "ENSG00000139618",
       "entrez_id": "675",
       "enzyme_id": null,
@@ -147,7 +179,36 @@
       "location": "13q13.1",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
-      "lsdb": "\"Breast Cancer|http://research.nhgri.nih.gov/bic/|Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi/|BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA2|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA2|LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/FANCD1|LRG_293|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml\"",
+      "lsdb": [
+        {
+          "name": "Breast Cancer",
+          "url": "http://research.nhgri.nih.gov/bic/"
+        },
+        {
+          "name": "Fanconi Anaemia Mutation Database",
+          "url": "http://www2.rockefeller.edu/fanconi/"
+        },
+        {
+          "name": "BRCA1 database at LOVD-China",
+          "url": "http://genomed.org/LOVD/BC/home.php?select_db=BRCA2"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/BRCA2"
+        },
+        {
+          "name": "LOVD - Leiden Open Variation Database",
+          "url": "http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2"
+        },
+        {
+          "name": "Global Variome shared LOVD",
+          "url": "https://databases.lovd.nl/shared/genes/FANCD1"
+        },
+        {
+          "name": "LRG_293",
+          "url": "http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml"
+        }
+      ],
       "mamit-trnadb": null,
       "mane_select": [
         "ENST00000380152.8",
@@ -171,7 +232,11 @@
         "FANCD"
       ],
       "pseudogene.org": null,
-      "pubmed_id": "\"8091231|7581463|15057823\"",
+      "pubmed_id": [
+        "8091231",
+        "7581463",
+        "15057823"
+      ],
       "refseq_id": "NM_000059",
       "rgd_id": "RGD:2219",
       "rna_central_id": null,
@@ -200,7 +265,9 @@
       "date_modified": "2016-09-30",
       "date_name_changed": "2015-11-18",
       "date_symbol_changed": null,
-      "ena": "AF315798",
+      "ena": [
+        "AF315798"
+      ],
       "ensembl_gene_id": "ENSG00000238101",
       "entrez_id": "114181",
       "enzyme_id": null,
@@ -221,7 +288,7 @@
       "location": "6p21 alternate reference locus",
       "locus_group": "pseudogene",
       "locus_type": "pseudogene",
-      "lsdb": null,
+      "lsdb": [],
       "mamit-trnadb": null,
       "mane_select": [],
       "merops": null,
@@ -234,7 +301,9 @@
       ],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": "11707071",
+      "pubmed_id": [
+        "11707071"
+      ],
       "refseq_id": "NG_001298",
       "rgd_id": null,
       "rna_central_id": null,
@@ -261,7 +330,9 @@
       "date_modified": "2023-03-15",
       "date_name_changed": null,
       "date_symbol_changed": null,
-      "ena": "KI270879",
+      "ena": [
+        "KI270879"
+      ],
       "ensembl_gene_id": "ENSG00000277656",
       "entrez_id": "2952",
       "enzyme_id": "2.5.1.18",
@@ -286,7 +357,7 @@
       "location": "22q11.23 alternate reference locus",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
-      "lsdb": null,
+      "lsdb": [],
       "mamit-trnadb": null,
       "mane_select": [
         "ENST00000612885.4",
@@ -302,7 +373,9 @@
       "prev_names": [],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": "8617495",
+      "pubmed_id": [
+        "8617495"
+      ],
       "refseq_id": "NM_000853",
       "rgd_id": "RGD:2765",
       "rna_central_id": null,
@@ -335,7 +408,10 @@
       "date_modified": "2015-08-05",
       "date_name_changed": null,
       "date_symbol_changed": null,
-      "ena": "\"KI270879|BC050410\"",
+      "ena": [
+        "KI270879",
+        "BC050410"
+      ],
       "ensembl_gene_id": null,
       "entrez_id": "106099130",
       "enzyme_id": null,
@@ -360,7 +436,7 @@
       "location": "22q11.23 alternate reference locus",
       "locus_group": "non-coding RNA",
       "locus_type": "RNA, long non-coding",
-      "lsdb": null,
+      "lsdb": [],
       "mamit-trnadb": null,
       "mane_select": [],
       "merops": null,
@@ -371,7 +447,9 @@
       "prev_names": [],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": "26150504",
+      "pubmed_id": [
+        "26150504"
+      ],
       "refseq_id": "NR_132348",
       "rgd_id": null,
       "rna_central_id": null,
