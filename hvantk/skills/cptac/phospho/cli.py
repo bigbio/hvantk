@@ -54,27 +54,20 @@ def download_dataset(
         Mapping of cancer-type to per-cancer output-file dict (the dict
         returned by :meth:`CPTACPhosphoDataset.download`).
     """
-    from hvantk.skills.cptac.shared.datasets import CPTACPhosphoDataset
+    from hvantk.skills.cptac.shared.datasets import (
+        CPTACPhosphoDataset,
+        download_cancer_types,
+    )
 
-    cancer_types = [cancer_type] if cancer_type else CPTAC_CANCER_TYPES
-    results: dict = {}
-    failures: dict = {}
-    for ct in cancer_types:
-        try:
-            results[ct] = CPTACPhosphoDataset(cancer_type=ct).download(
-                raw_dir, overwrite=overwrite
-            )
-        except Exception as exc:  # noqa: BLE001 - skip-and-continue per cancer
-            # coad + ov fail inside cptac 1.5.14 upstream; one bad type must not
-            # lose the rest. Record and continue.
-            logger.warning("CPTAC phospho download failed for %s: %s", ct, exc)
-            failures[ct] = str(exc)
-    if failures:
-        results["_failures"] = failures
-    succeeded = [k for k in results if k != "_failures"]
-    if not succeeded:
-        raise RuntimeError(f"All CPTAC phospho downloads failed: {failures}")
-    return results
+    # coad + ov fail inside cptac 1.5.14 upstream; one bad type must not lose the
+    # rest. download_cancer_types records failures per cancer and continues.
+    return download_cancer_types(
+        CPTACPhosphoDataset,
+        raw_dir,
+        cancer_type=cancer_type,
+        overwrite=overwrite,
+        label="CPTAC phospho",
+    )
 
 
 @click.command(name="cptac-phospho-download")

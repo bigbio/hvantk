@@ -26,6 +26,14 @@ datasets:
       schema_snapshot: expression/tests/snapshots/schema.json
       row_snapshot: expression/tests/snapshots/sample_rows.json
       drift_fingerprint: expression/tests/drift_fingerprint.json
+    lifecycle:
+      # No parse stage: the download already writes the builder's inputs
+      # (per-cancer cptac-expression-<ct>-matrix.csv / -metadata.csv), so reprocess
+      # hands the raw dir straight to the builder (mirrors cptac:phospho).
+      # The builder selects the cancer via --plugin-arg cancer_type=<ct>.
+      download:
+        module: hvantk.skills.cptac.expression.cli
+        function: download_dataset
 
   - name: phospho
     domain: proteomics
@@ -55,6 +63,9 @@ datasets:
         function: download_dataset
 
 cli:
+  - command: cptac-expression-download
+    module: hvantk.skills.cptac.expression.cli
+    function: download_cmd
   - command: cptac-phospho-download
     module: hvantk.skills.cptac.phospho.cli
     function: download_cmd

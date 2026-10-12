@@ -25,6 +25,7 @@ hvantk utils convert-bgz input.gz
 | Expression Atlas | `hvantk download expression-atlas` | varies |
 | Ensembl gene annotations | `hvantk download ensembl-structure` | ~60 MB |
 | UniProt PTM sites | `hvantk download uniprot-ptm` | varies (REST API query) |
+| CPTAC protein expression | `hvantk download cptac-expression` | varies by cancer type |
 | CPTAC phosphoproteomics | `hvantk download cptac-phospho` | varies by cancer type |
 | PeptideAtlas phospho | `hvantk download peptideatlas-phospho` | ~549 MB |
 | 1000 Genomes sample panel | *(no standalone command; see [1000 Genomes](#1000-genomes-nygcccdg-high-coverage-callset))* | ~55 KB |
@@ -477,13 +478,24 @@ hvantk reprocess cptac:phospho \
   --plugin-arg cancer_type=brca
 ```
 
-**`cptac:expression`** (protein expression) has no downloader and `hvantk reprocess
-cptac:expression` is not wired at all: the manifest declares no `lifecycle.parse` to turn
-a raw download into the `{"expression": <tsv>, "metadata": <tsv>}` mapping the builder
-needs. Stage the expression and metadata TSVs yourself and call the builder directly —
-see `hvantk/skills/cptac/expression/SKILL.md` §6-7 for the full workflow
-(`build_cptac_expression(parsed_input, ctx, gene_id_col=..., sample_id_col=...,
-expression_col=...)`); an automated downloader is tracked in #386.
+**`cptac:expression`** (whole-proteome protein expression, also one AnnData per cancer
+type) ships the same shape of downloader (`hvantk download cptac-expression`; also in
+the built-in-downloader list above):
+
+```bash
+hvantk reprocess cptac:expression \
+  --raw-dir data/cptac/ \
+  --output cptac_expression_brca.h5ad \
+  --plugin-arg cancer_type=brca
+```
+
+The `cancer_type` plugin-arg flows to both the download (fetch only that cancer) and the
+build (select its matrix+metadata pair). `--all` on `hvantk download cptac-expression`
+fetches every cancer type but does not merge them -- unlike `cptac:phospho`'s pan-cancer
+TSV merge, each cancer type's expression matrix keeps its own gene set and sample
+columns. A long-format TSV/CSV staged by hand still works too, via the
+`{"expression","metadata"}` mapping form of `parsed_input` -- see
+`hvantk/skills/cptac/expression/SKILL.md` §6-7 for the full workflow.
 
 ### PeptideAtlas phospho sites
 
