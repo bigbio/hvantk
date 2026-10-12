@@ -65,6 +65,11 @@ def test_build_context_records_and_round_trips_build_parameters():
 
 
 def test_provenance_manifest_without_build_parameters_remains_readable():
+    """A sidecar written before this field existed has no `build_parameters` key at
+    all. Reading it back must not crash, and must read as None ("not recorded"), not
+    {} ("recorded as no parameters") -- otherwise a filtered artifact built before
+    this field existed would look identical to one explicitly built with no filters.
+    """
     from hvantk.core.io._manifest import _from_dict, _to_dict
 
     provenance = BuildContext(
@@ -77,7 +82,7 @@ def test_provenance_manifest_without_build_parameters_remains_readable():
     payload = _to_dict(provenance)
     payload.pop("build_parameters")
 
-    assert _from_dict(payload).build_parameters == {}
+    assert _from_dict(payload).build_parameters is None
 
 
 def test_build_parameters_are_stamped_as_a_json_copy(tmp_path):

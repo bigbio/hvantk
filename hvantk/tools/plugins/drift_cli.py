@@ -17,11 +17,32 @@ EXIT_CLEAN = 0
 EXIT_DRIFTED = 1
 EXIT_PROBE_FAILED = 2
 EXIT_REGISTRY_ERROR = 3
+# A caller-side invocation mistake (an invalid flag combination, an unresolvable
+# --domain) rather than anything about a dataset's drift status. click.UsageError's
+# own exit_code is 2 -- the same as EXIT_PROBE_FAILED -- and both drift.yml and
+# drift-health.yml tolerate any `rc <= 2` as "a signal, not a failure" (drifted /
+# probe_failed), so a typo'd flag combination used to pass the scheduled workflows'
+# own gate instead of failing the run. Raised via _usage_error() below instead of
+# click.UsageError so it exits with this code rather than click's.
+EXIT_USAGE_ERROR = 4
 
 # hvantk/tools/plugins/drift_cli.py -> parents[2] is hvantk/, so this resolves to
 # hvantk/resources/drift_ledger.json -- the ledger the drift bot writes in the same
 # commit as the fingerprints it describes (see .github/scripts/drift_to_pr.py).
 LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.json"
+
+
+def _usage_error(message: str) -> None:
+    """Report an invalid invocation and exit EXIT_USAGE_ERROR.
+
+    Mirrors what click.UsageError("message") would print -- none of the call sites
+    below attach a ctx, so click's own UsageError.show() would skip the "Usage: ..."
+    banner anyway and print only this "Error: ..." line -- but exits with its own
+    code instead of click's (always 2, colliding with EXIT_PROBE_FAILED; see
+    EXIT_USAGE_ERROR above).
+    """
+    click.echo(f"Error: {message}", err=True)
+    raise SystemExit(EXIT_USAGE_ERROR)
 
 
 @click.command(name="drift")
@@ -64,9 +85,9 @@ def drift_cmd(
         # enough as two commands) that it is not worth the ambiguity of picking an
         # implicit ordering between "mutate" and "report" in a single call.
         if ledger_flag:
-            raise click.UsageError("--mark-rebuilt and --ledger are mutually exclusive")
+            _usage_error("--mark-rebuilt and --ledger are mutually exclusive")
         if all_flag or dataset or regenerate or as_json:
-            raise click.UsageError(
+            _usage_error(
                 "--mark-rebuilt takes its own dataset name; it cannot be combined "
                 "with --all, --regenerate, --json, or a dataset argument"
             )
@@ -88,7 +109,7 @@ def drift_cmd(
         # unguarded because it is already a no-op without --all outside this branch
         # too, so --ledger --domain is not a NEW inconsistency.
         if all_flag or dataset or regenerate or as_json:
-            raise click.UsageError(
+            _usage_error(
                 "--ledger cannot be combined with --all, --regenerate, --json, or a "
                 "dataset argument"
             )
@@ -104,9 +125,9 @@ def drift_cmd(
         return
 
     if all_flag and dataset:
-        raise click.UsageError("pass either a dataset name or --all, not both")
+        _usage_error("pass either a dataset name or --all, not both")
     if not all_flag and not dataset:
-        raise click.UsageError("specify a dataset name or --all")
+        _usage_error("specify a dataset name or --all")
 
     reg = plugin_loader.get_registry()
 
@@ -135,9 +156,9 @@ def drift_cmd(
 
     if regenerate:
         if all_flag:
-            raise click.UsageError("--regenerate requires a specific dataset name")
+            _usage_error("--regenerate requires a specific dataset name")
         if as_json:
-            raise click.UsageError("--regenerate does not support --json")
+            _usage_error("--regenerate does not support --json")
         try:
             _regenerate_fingerprint(reg, dataset, timeout=timeout)
         except KeyError:
@@ -241,7 +262,7 @@ def drift_cmd(
     if all_flag and not targets:
         known = sorted({m.domain for m in reg.list_manifests() if m.domain})
         if domain is not None and domain not in known:
-            raise click.UsageError(
+            _usage_error(
                 f"--domain {domain!r} matches no dataset; known domains: "
                 f"{', '.join(known) or '(none)'}"
             )

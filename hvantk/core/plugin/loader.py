@@ -114,6 +114,70 @@ def _acquisition_of(ds_manifest: dict, lifecycle: dict, compound: str) -> Acquis
     return acq
 
 
+def _dataset_label(content: Any, path: list) -> str | None:
+    """The ``name:`` of the dataset at ``content["datasets"][path[1]]``, if ``path``
+    (a jsonschema ``ValidationError.absolute_path``, already converted to a list)
+    points there, else None.
+
+    A manifest declares a LIST of datasets, so a schema failure inside one of them is
+    reported by ``jsonschema`` only as an array index -- the ``PluginLoadError`` this
+    raises is then filed under the PROVIDER's name (``_record_load_error`` has no
+    dataset to attribute it to), with nothing saying which of a multi-dataset plugin's
+    entries actually broke. Defensive: this augments an error message and must never
+    raise one of its own, so any shape mismatch (a non-dict entry, an out-of-range
+    index, a manifest that is not even a dict) falls through to None rather than
+    masking the real ValidationError.
+    """
+    if len(path) < 2 or path[0] != "datasets" or not isinstance(path[1], int):
+        return None
+    try:
+        dataset = content["datasets"][path[1]]
+    except (LookupError, TypeError):
+        return None
+    name = dataset.get("name") if isinstance(dataset, dict) else None
+    return name if isinstance(name, str) and name else f"#{path[1]}"
+
+
+def _explain(exc: jsonschema.ValidationError, content: Any = None) -> str:
+    """Render a schema error, translating the ones whose raw text explains nothing,
+    and naming the dataset when the failing path points inside one.
+
+    A conditional rule reports as `... should not be valid under {'required': [...]}`,
+    which states the mechanism and not the problem. This is the message a plugin
+    author sees -- at ``hvantk plugins validate`` time, and since #408 at load time
+    too -- so the two ``if/then`` rules on ``acquisition``/``lifecycle`` (#360) get a
+    sentence instead.
+
+    ``content`` is the parsed manifest ``exc`` came from. Passing it lets a failure
+    inside ``datasets[i]`` be attributed to that dataset's own ``name:`` instead of
+    the bare provider, which is all a load error was recorded under before #408 --
+    with no way to tell which entry of a multi-dataset plugin actually broke.
+    ``hvantk plugins validate`` checks one manifest at a time and already names it on
+    the command line, so it omits ``content`` and keeps today's wording.
+    """
+    path = list(exc.absolute_path)
+    if exc.validator == "not" and "lifecycle" in path:
+        message = (
+            "acquisition.mode is 'byo' but lifecycle.download is declared. A dataset "
+            "either fetches its own inputs or it cannot -- drop the downloader, or set "
+            "acquisition.mode to 'download'."
+        )
+    elif exc.validator == "required" and (
+        exc.validator_value == ["lifecycle"]
+        or (exc.validator_value == ["download"] and path and path[-1] == "lifecycle")
+    ):
+        message = (
+            "acquisition.mode is 'download' but no lifecycle.download is declared. "
+            "Declare the downloader, or set acquisition.mode to 'byo' with a reason; "
+            "omit the acquisition block while a downloader is still to be written."
+        )
+    else:
+        where = " -> ".join(str(x) for x in path)
+        message = f"{exc.message}{f' (at {where})' if where else ''}"
+    dataset = _dataset_label(content, path) if content is not None else None
+    return f"dataset {dataset!r}: {message}" if dataset is not None else message
+
+
 class PluginRegistry:
     """Registry of all loaded provider plugins.
 
@@ -374,7 +438,9 @@ class PluginRegistry:
         try:
             jsonschema.validate(content, self._schema)
         except jsonschema.ValidationError as exc:
-            raise PluginLoadError(f"schema validation failed: {exc.message}") from exc
+            raise PluginLoadError(
+                f"schema validation failed: {_explain(exc, content)}"
+            ) from exc
         return content
 
     def _build_dataset_manifest(

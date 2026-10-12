@@ -366,9 +366,10 @@ def test_mark_rebuilt_and_ledger_flag_are_mutually_exclusive(tmp_path, monkeypat
     result = CliRunner().invoke(
         drift_cli.drift_cmd, ["--ledger", "--mark-rebuilt", "clinvar:variants"]
     )
-    assert result.exit_code != 0
-    # Must be OUR validation catching the combination, not e.g. an unrecognized-option
+    # EXIT_USAGE_ERROR, not click's own UsageError.exit_code (2, == EXIT_PROBE_FAILED):
+    # must be OUR validation catching the combination, not e.g. an unrecognized-option
     # error from click -- the wording should name both flags.
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--ledger" in result.output and "--mark-rebuilt" in result.output, (
         result.output
     )
@@ -389,7 +390,7 @@ def test_ledger_flag_rejects_all_flag(tmp_path, monkeypatch):
 
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--all"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--ledger" in result.output and "--all" in result.output, result.output
 
 
@@ -398,7 +399,7 @@ def test_ledger_flag_rejects_a_dataset_argument(tmp_path, monkeypatch):
 
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "clinvar:variants"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--ledger" in result.output, result.output
 
 
@@ -407,7 +408,7 @@ def test_ledger_flag_rejects_regenerate(tmp_path, monkeypatch):
 
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--regenerate"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--ledger" in result.output and "--regenerate" in result.output, (
         result.output
     )
@@ -418,7 +419,7 @@ def test_ledger_flag_rejects_json(tmp_path, monkeypatch):
 
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--json"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--ledger" in result.output and "--json" in result.output, result.output
 
 
@@ -513,8 +514,10 @@ def test_drift_all_refuses_to_report_clean_over_an_empty_registry(monkeypatch):
 def test_drift_all_rejects_a_domain_that_matches_nothing(monkeypatch):
     """--domain takes a free-form string and its help text names no valid value, so a
     typo silently meant 'check nothing' and exited 0."""
+    from hvantk.tools.plugins import drift_cli
+
     result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomicz"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "matches no dataset" in result.output
     assert "genomics" in result.output  # names the real ones
 
@@ -597,7 +600,14 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     tmp_path: Path, monkeypatch
 ):
     """A probe that succeeds but a write_fingerprint that fails (disk full, permission
-    denied, ...) must also exit 2, not let the OSError escape as a traceback's 1."""
+    denied, ...) must also exit 2, not let the OSError escape as a traceback's 1.
+
+    Patches `os.replace` -- the atomic-rename step inside the REAL write_fingerprint
+    (drift_runner.py) -- rather than replacing write_fingerprint itself: a wholesale
+    stub never runs the real function, so its own cleanup (unlink the temp file,
+    re-raise, leaving the committed baseline untouched) was never exercised and could
+    not have failed either.
+    """
     import shutil
 
     from hvantk.core.plugin import drift_runner
@@ -610,10 +620,10 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
     before = fp_path.read_text()
 
-    def boom_write(path, fingerprint):
+    def boom_replace(src, dst):
         raise OSError("disk full")
 
-    monkeypatch.setattr(drift_runner, "write_fingerprint", boom_write)
+    monkeypatch.setattr(drift_runner.os, "replace", boom_replace)
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
@@ -624,6 +634,9 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     assert fp_path.read_text() == before, (
         "a write failure must not corrupt the baseline"
     )
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
 
 
 def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_exit_code(
@@ -887,13 +900,15 @@ def test_regenerate_and_json_are_mutually_exclusive(tmp_path, monkeypatch):
     # A tmp copy, like the other --regenerate tests: with the autouse registry this
     # pointed at the COMMITTED fixture, so a regressed guard would have rewritten
     # hvantk/tests/testdata/raw/plugins/fake_plugin/tests/drift_fingerprint.json.
+    from hvantk.tools.plugins import drift_cli
+
     _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
     fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
     before = fp_path.read_text()
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "--json", "fake:default"])
 
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "--regenerate" in result.output and "--json" in result.output, result.output
     assert fp_path.read_text() == before, "a rejected combination must write nothing"
 
@@ -1089,9 +1104,11 @@ def test_drift_all_domain_typo_lists_the_domains_of_unbound_manifests_too(
 ):
     """`known` came from bound datasets only, so with everything unbound the typo
     message said `known domains: (none)` about a registry that declares one."""
+    from hvantk.tools.plugins import drift_cli
+
     _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
     result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomicz"])
-    assert result.exit_code != 0
+    assert result.exit_code == drift_cli.EXIT_USAGE_ERROR, result.output
     assert "matches no dataset" in result.output
     assert "proteomics" in result.output, result.output
 
