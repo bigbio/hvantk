@@ -577,8 +577,11 @@ def test_handle_drifted_skips_when_regenerate_disagrees_with_the_probe(
 # schema-loop entry if not cleaned up; the second test below pins that guard.
 
 
+@pytest.mark.parametrize(
+    "restore_succeeds", [True, False], ids=["restore-succeeds", "restore-fails"]
+)
 def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_failure(
-    drift_to_pr, monkeypatch
+    drift_to_pr, monkeypatch, restore_succeeds
 ):
     """A regenerate failure partway through the batch must NOT discard what earlier
     datasets already wrote to the working tree, and must not abort the batch: it is
@@ -588,7 +591,14 @@ def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_f
     (including datasets that had already regenerated cleanly), and `main()` marked
     every routine dataset failed -- see
     `test_routine_batch_isolates_a_single_regenerate_failure` for the end-to-end
-    fix this drives."""
+    fix this drives.
+
+    Parametrized over the restore itself failing (Copilot review on #448): if
+    `_discard_one_fingerprint` cannot actually restore c:three's file, the working
+    tree can no longer be trusted, so per-dataset isolation is no longer safe --
+    a:one and b:two must NOT get a PR out of a batch that might still carry c:three's
+    leftover into their commit. The whole batch is abandoned instead.
+    """
     calls: list[list[str]] = []
     fp_path = str(drift_to_pr.REPO_ROOT / "hvantk/skills/x/drift_fingerprint.json")
 
@@ -607,6 +617,12 @@ def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_f
 
     def _record_subprocess_run(cmd, **kwargs):
         calls.append(list(cmd))
+        if not restore_succeeds and cmd[:2] == ["git", "checkout"]:
+            # The file IS tracked at HEAD (the `git cat-file -e` probe just above
+            # this, in `_discard_one_fingerprint`, still succeeds via the default
+            # branch below) -- but the restore itself is refused, e.g. a lock held
+            # by a concurrent process.
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="locked")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(drift_to_pr, "_run", _regen_fails_on_third)
@@ -624,17 +640,39 @@ def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_f
         entries, base_branch="dev", dry_run=False, step_summary=None
     )
 
-    assert failed == [("c:three", "regenerate refused/failed")]
     joined = [" ".join(c) for c in calls]
     # a:one and b:two's regenerate calls both ran -- the loop did not abort early.
     regen = [c for c in calls if c[:4] == ["python", "-m", "hvantk.hvantk", "drift"]]
     assert [c[-1] for c in regen] == ["a:one", "b:two", "c:three"], calls
-    # The blanket whole-tree discard must never fire for a single dataset's failure.
-    assert not any(c == "git checkout HEAD -- hvantk/skills" for c in joined), joined
-    # Only c:three's own file is restored.
-    assert "git checkout HEAD -- hvantk/skills/x/drift_fingerprint.json" in joined, (
-        joined
-    )
+
+    if restore_succeeds:
+        assert failed == [("c:three", "regenerate refused/failed")]
+        # The blanket whole-tree discard must never fire for a single dataset's
+        # failure -- only c:three's own file is restored.
+        assert not any(c == "git checkout HEAD -- hvantk/skills" for c in joined), (
+            joined
+        )
+        assert (
+            "git checkout HEAD -- hvantk/skills/x/drift_fingerprint.json" in joined
+        ), joined
+        # a:one and b:two still make it all the way to a PR.
+        assert any(c.startswith("git commit") for c in joined), joined
+        assert any(c.startswith("gh pr create") for c in joined), joined
+    else:
+        # The restore failed: the whole batch is abandoned, not just c:three, and
+        # c:three's own entry keeps its original stage plus the restore note.
+        assert failed == [
+            ("a:one", "restore failed"),
+            ("b:two", "restore failed"),
+            ("c:three", "regenerate refused/failed; restore failed"),
+        ], failed
+        assert not any(c.startswith("git add") for c in joined), joined
+        assert not any(c.startswith("git commit") for c in joined), joined
+        assert not any(c.startswith("git push") for c in joined), joined
+        assert not any(c.startswith("gh pr") for c in joined), joined
+        # The best-effort blanket discard still runs even though the single-path
+        # restore already failed.
+        assert "git checkout HEAD -- hvantk/skills" in joined, joined
 
 
 def test_routine_batch_isolates_a_single_regenerate_failure(

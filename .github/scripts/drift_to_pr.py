@@ -611,7 +611,7 @@ def _discard_staged_fingerprints(*, dry_run: bool) -> None:
         )
 
 
-def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> None:
+def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> bool:
     """Best-effort restore of ONE dataset's own fingerprint file to HEAD.
 
     `handle_routine_batch`'s regenerate loop now isolates a per-dataset failure (a
@@ -625,21 +625,49 @@ def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> 
     it cannot discard a sibling dataset's already-regenerated file earlier in the
     same loop.
 
-    Silently does nothing when ``fingerprint_path`` is missing, relative (a real
-    report's path is always absolute; see `_read_fingerprint_file`), or outside the
-    repository -- the same "cannot verify, so do not act" posture as the rest of
-    this module's defensive checks, since a wrong guess here could discard an
-    unrelated file.
+    Does nothing, and returns True (nothing to undo, so nothing is wrong), when
+    ``fingerprint_path`` is missing, relative (a real report's path is always
+    absolute; see `_read_fingerprint_file`), or outside the repository -- the same
+    "cannot verify, so do not act" posture as the rest of this module's defensive
+    checks, since a wrong guess here could discard an unrelated file.
+
+    Returns False when an actual restore was attempted and failed -- the caller
+    must then assume the file is STILL dirty and stop before anything stages it
+    (see `handle_routine_batch`'s callers), rather than merely warn and continue as
+    this used to.
     """
     if dry_run or not fingerprint_path:
-        return
+        return True
     path = Path(fingerprint_path)
     if not path.is_absolute():
-        return
+        return True
     try:
         rel = path.relative_to(REPO_ROOT)
     except ValueError:
-        return
+        return True
+
+    # A regenerate can CREATE a fingerprint file HEAD has never seen (a brand-new
+    # dataset's first run), not only modify an existing one. `git checkout HEAD --
+    # <path>` has nothing to restore FROM in that case and fails outright, even
+    # though discarding the file is still exactly right: delete it instead.
+    tracked = subprocess.run(
+        ["git", "cat-file", "-e", f"HEAD:{rel.as_posix()}"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if tracked.returncode != 0:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            print(
+                f"  WARNING: could not delete untracked {rel}; it may ride along "
+                f"into an unrelated commit: {exc}",
+                file=sys.stderr,
+            )
+            return False
+        return True
+
     result = subprocess.run(
         ["git", "checkout", "HEAD", "--", str(rel)],
         check=False,
@@ -652,6 +680,8 @@ def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> 
             f"unrelated commit: {(result.stderr or '').strip()}",
             file=sys.stderr,
         )
+        return False
+    return True
 
 
 def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
@@ -911,12 +941,16 @@ def _stage_for_called_process_error(exc: subprocess.CalledProcessError) -> str:
     calls failed" -- for every failure regardless of cause, which was simply wrong
     whenever the real failure was a refused regenerate: neither a push nor a
     `gh pr create` call had even been attempted yet on that path.
+
+    No ``git fetch`` case: every ``git fetch`` call in this module is invoked with
+    ``check=False`` (its own result is read directly instead -- see the warning
+    printed right after each one), so it can never raise a `CalledProcessError`
+    for this function to label. Re-add the case only alongside a fetch call that
+    actually uses ``check=True``.
     """
     cmd = list(exc.cmd) if exc.cmd else []
     if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]:
         return "regenerate refused/failed"
-    if cmd[:2] == ["git", "fetch"]:
-        return "git fetch failed"
     if cmd[:2] == ["git", "checkout"]:
         return "git checkout failed"
     if cmd[:2] == ["git", "commit"]:
@@ -954,7 +988,28 @@ def handle_drifted(
     print(f"\n=== Drifted: {dataset} -> branch {branch} ===")
 
     # 1) branch off base
-    _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
+    fetch_result = _run(
+        ["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False
+    )
+    if fetch_result.returncode != 0:
+        # `check=False`: the workflow's checkout step already fetched the base
+        # minutes earlier in the same job, so a transient network failure here must
+        # not fail the run -- the checkout below falls back to the cached
+        # `origin/<base_branch>`. But a silently-ignored result means a LATER
+        # checkout failure (if the cache is stale too) gets misattributed, with no
+        # record that the fetch was the first thing to go wrong.
+        print(
+            f"  WARNING: git fetch origin {base_branch} failed (exit "
+            f"{fetch_result.returncode}); continuing from the cached "
+            f"origin/{base_branch}.",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- WARNING: `git fetch origin {base_branch}` failed (exit "
+            f"{fetch_result.returncode}); continuing from the cached "
+            f"origin/{base_branch}.",
+        )
     _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
 
     # 2) regenerate fingerprint via the CLI we already ship
@@ -1130,6 +1185,49 @@ def handle_drifted(
     )
 
 
+def _abort_routine_batch_on_restore_failure(
+    *,
+    datasets: list[str],
+    triggering_name: str,
+    triggering_note: str,
+    fingerprint_path: str | None,
+    dry_run: bool,
+    step_summary: Path | None,
+) -> list[tuple[str, str]]:
+    """Stop the WHOLE routine batch when `_discard_one_fingerprint` could not
+    restore one dataset's file.
+
+    A failed restore means the working tree can no longer be trusted: the
+    disagreeing/refused content may still be sitting at ``fingerprint_path``, and
+    the later `git add hvantk/skills` stages the WHOLE directory, so it would
+    otherwise ride into the surviving datasets' commit -- exactly the
+    contamination `_discard_one_fingerprint` exists to prevent. There is no safe
+    per-dataset isolation left at this point, so every dataset still in the batch
+    is marked failed rather than risk silently committing the leftover. A
+    best-effort blanket discard still runs, on the chance it clears what the
+    single-path restore could not (e.g. a permissions change mid-run).
+    """
+    _discard_staged_fingerprints(dry_run=dry_run)
+    stage = "restore failed"
+    label = ", ".join(datasets)
+    print(
+        f"error handling routine batch ({label}): could not restore "
+        f"{fingerprint_path} for {triggering_name} ({triggering_note}); aborting "
+        "the batch for this run",
+        file=sys.stderr,
+    )
+    _summary_line(
+        step_summary,
+        f"- ERROR: routine batch (`{label}`) -- could not restore "
+        f"`{fingerprint_path}` (from `{triggering_name}`, {triggering_note}); "
+        f"{stage}",
+    )
+    return [
+        (name, f"{triggering_note}; {stage}" if name == triggering_name else stage)
+        for name in datasets
+    ]
+
+
 def handle_routine_batch(
     entries: list[dict],
     *,
@@ -1164,7 +1262,28 @@ def handle_routine_batch(
         print(f"      {name}")
 
     try:
-        _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
+        fetch_result = _run(
+            ["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False
+        )
+        if fetch_result.returncode != 0:
+            # `check=False`: the workflow's checkout step already fetched the base
+            # minutes earlier in the same job, so a transient network failure here
+            # must not fail the run -- the checkout below falls back to the cached
+            # `origin/<base_branch>`. But a silently-ignored result means a LATER
+            # checkout failure (if the cache is stale too) gets misattributed, with
+            # no record that the fetch was the first thing to go wrong.
+            print(
+                f"  WARNING: git fetch origin {base_branch} failed (exit "
+                f"{fetch_result.returncode}); continuing from the cached "
+                f"origin/{base_branch}.",
+                file=sys.stderr,
+            )
+            _summary_line(
+                step_summary,
+                f"- WARNING: `git fetch origin {base_branch}` failed (exit "
+                f"{fetch_result.returncode}); continuing from the cached "
+                f"origin/{base_branch}.",
+            )
         _run(
             ["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run
         )
@@ -1216,7 +1335,20 @@ def handle_routine_batch(
                 )
                 stage = "regenerate refused/failed"
                 _summary_line(step_summary, f"- ERROR: `{name}` -- {stage}")
-                _discard_one_fingerprint(entry.get("fingerprint_path"), dry_run=dry_run)
+                fp = entry.get("fingerprint_path")
+                if not _discard_one_fingerprint(fp, dry_run=dry_run):
+                    # The file could not be restored, so the working tree can no
+                    # longer be trusted: the later `git add hvantk/skills` would
+                    # stage this dataset's leftover into the survivors' commit.
+                    # Give up on the whole batch rather than risk that.
+                    return _abort_routine_batch_on_restore_failure(
+                        datasets=datasets,
+                        triggering_name=name,
+                        triggering_note=stage,
+                        fingerprint_path=fp,
+                        dry_run=dry_run,
+                        step_summary=step_summary,
+                    )
                 failed.append((name, stage))
                 continue
 
@@ -1235,7 +1367,16 @@ def handle_routine_batch(
                     "fingerprint disagreed with the drift report's own probe call; "
                     "upstream likely changed between the two. Will retry next run.",
                 )
-                _discard_one_fingerprint(entry.get("fingerprint_path"), dry_run=dry_run)
+                fp = entry.get("fingerprint_path")
+                if not _discard_one_fingerprint(fp, dry_run=dry_run):
+                    return _abort_routine_batch_on_restore_failure(
+                        datasets=datasets,
+                        triggering_name=name,
+                        triggering_note="unstable probe",
+                        fingerprint_path=fp,
+                        dry_run=dry_run,
+                        step_summary=step_summary,
+                    )
                 continue
 
             surviving.append(entry)
