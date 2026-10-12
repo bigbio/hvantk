@@ -128,7 +128,7 @@ def test_the_shipped_template_satisfies_its_own_checker(tmp_path):
     suffixes that whole-line equality rejects, and s 6 / s 9 were bare headings with no
     body to satisfy the content checks.
 
-    That is worse than shipping no template. CLAUDE.md points plugin authors here, an
+    That is worse than shipping no template. New plugin authors are pointed here, an
     agent copying the canonical example produces a spec the checker rejects, and the
     failure is invisible to the author because the file it came from is exempt.
     """
@@ -518,11 +518,11 @@ _UNSEEDED_CLAIMS = (
 def test_no_spec_claims_an_artifact_is_missing_when_it_is_on_disk():
     """Snapshot-status prose must not outlive the snapshots being committed.
 
-    This rot is quiet and it propagates. `hgnc` is the plugin CLAUDE.md names as the
-    canonical reference, and its s 9 said the round-trip test and snapshots were
-    "declared but not yet created" while `test_hgnc_snapshot_round_trip` and both JSON
-    files sat committed beside it -- with a blockquote two lines below saying the
-    opposite. An agent following the canonical example would run
+    This rot is quiet and it propagates. `hgnc` is the plugin this project treats as
+    the canonical reference for new plugins, and its s 9 said the round-trip test and
+    snapshots were "declared but not yet created" while `test_hgnc_snapshot_round_trip`
+    and both JSON files sat committed beside it -- with a blockquote two lines below
+    saying the opposite. An agent following the canonical example would run
     `--regenerate-snapshots` and overwrite committed baselines.
 
     Four specs carried some version of it (`hgnc`, `uniprot_ptm`, `cptac/expression`,

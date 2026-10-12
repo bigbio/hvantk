@@ -212,7 +212,7 @@
                   "publication-only",
                   "unstable-url"
                 ],
-                "description": "Why acquisition cannot be automated. Required when mode is 'byo'. 'unstable-url' covers a source that is public and small but exposes no stable, machine-readable link (CLAUDE.md's downloader framework calls this 'URL structure is complex or fragile'). NOT a statement about testability: a BYO dataset can still ship a fixture (dbnsfp does), so this must never be read as exempting one."
+                "description": "Why acquisition cannot be automated. Required when mode is 'byo'. 'unstable-url' covers a source that is public and small but exposes no stable, machine-readable link (the downloader decision framework in docs_site/guide/data-sources.md#downloader-or-documented-acquisition calls this 'URL structure is complex or fragile'). NOT a statement about testability: a BYO dataset can still ship a fixture (dbnsfp does), so this must never be read as exempting one."
               },
               "instructions": {
                 "type": "string",

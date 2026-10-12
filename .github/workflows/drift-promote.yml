@@ -1,7 +1,7 @@
 name: Monthly drift promotion
 
 # Opens ONE dev -> main PR when the only delta is fingerprints. Never merges: main is
-# the release branch and CLAUDE.md forbids merging to it without review. Exists because
+# the release branch, and it only changes through a reviewed pull request. Exists because
 # main sat 31 commits and 3 weeks behind dev on 2026-08-28, which also left the HPC
 # clone stale on both branches.
 on:

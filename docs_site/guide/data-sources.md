@@ -4,6 +4,32 @@ This page covers all annotation and expression data sources supported by hvantk:
 
 Every build on this page goes through the unified `hvantk reprocess <plugin>:<dataset>` entry point — see the [Usage Guide](usage.md#1-build-a-dataset-with-hvantk-reprocess) for the orchestration pattern, lifecycle flags, and `--plugin-arg KEY=VALUE` conventions used below.
 
+## Downloader or documented acquisition
+
+A dataset's manifest declares one of three acquisition states — per *dataset*, not
+per provider, since a multi-dataset plugin can mix them (`onek-genomes` ships one BYO
+dataset and one auto-downloaded one):
+
+- **`lifecycle.download` is declared** — a real downloader exists; `hvantk download
+  <source>` or `hvantk reprocess <plugin>:<dataset>` fetches the raw file.
+- **`acquisition: {mode: byo, reason: ...}` is declared** — acquisition cannot be
+  automated, so it is documented instead (`reason` is one of `size`, `credentialed`,
+  `license`, `publication-only`, `unstable-url`). The user supplies `--raw-dir`
+  themselves; `byo` and `lifecycle.download` are mutually exclusive — a manifest
+  cannot claim both that fetching is impossible and ship a function that fetches.
+- **Neither block is declared** — automatable in principle, but no downloader has
+  been written yet; `hvantk reprocess` needs `--skip-download` until one lands.
+
+(An explicit `acquisition.mode: download` with no `lifecycle.download` is a schema
+error: it asserts a downloader exists without shipping one.)
+
+The decision between the first two states: build a downloader when the raw file is
+**under 1 GB**, **publicly accessible** (no licence gate), **high-value**, and served
+from a **stable, predictable URL**. Document acquisition instead when the file is
+**over 1 GB**, needs **licence acceptance or manual steps**, or the URL structure is
+**complex or fragile** (FTP directory listings, versioned mirrors). The third state is
+simply unfinished work, tracked per dataset in #386.
+
 ## File format note
 
 Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Pre-convert before building:

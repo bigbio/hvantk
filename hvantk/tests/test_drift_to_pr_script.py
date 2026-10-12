@@ -1623,10 +1623,10 @@ def test_nothing_in_the_drift_pipeline_auto_merges():
 
     Auto-merge was considered and rejected: batching and cadence alone take drift
     volume from ~34 PRs/month to ~2, so auto-merge would only be the step from 2 to 0
-    -- and that step would require carving an exception into CLAUDE.md's "PR must be
-    approved before merging to `dev`". The 2026-08-28 backlog was a visibility failure,
-    not a review-burden one, so auto-merging would route around the problem instead of
-    fixing it.
+    -- and that step would require carving an exception into the project's rule that a
+    PR must be approved before merging to `dev`. The 2026-08-28 backlog was a
+    visibility failure, not a review-burden one, so auto-merging would route around
+    the problem instead of fixing it.
 
     This asserts on the real files rather than on a constant, because the failure mode
     is someone adding `gh pr merge --auto` to a workflow in six months without reading
