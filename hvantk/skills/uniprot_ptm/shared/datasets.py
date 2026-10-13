@@ -216,7 +216,8 @@ class UniProtPTMDataset:
         date provided.
 
         Args:
-            version_date: Date string in YYYY-MM-DD format
+            version_date: Date string in YYYY-MM-DD format; unpadded fields
+                (``2026-5-1``) are accepted and stored zero-padded
 
         Returns:
             UniProtPTMDataset instance
@@ -225,11 +226,14 @@ class UniProtPTMDataset:
             ValueError: If version_date is not in valid format
         """
         try:
-            datetime.strptime(version_date, "%Y-%m-%d")
+            parsed = datetime.strptime(version_date, "%Y-%m-%d")
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
             ) from None
+        # strptime accepts "2026-5-1", but the uniprot-ptm parse stage only looks for
+        # zero-padded dates in the file name, so label with the canonical form.
+        version_date = parsed.strftime("%Y-%m-%d")
 
         file_name = f"uniprot-ptm-human-{version_date}.tsv"
 
