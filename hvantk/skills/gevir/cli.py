@@ -32,22 +32,25 @@ only phenomenon -- empirically (live workbook checked 2026-10-13, cross-
 referenced against HGNC's REST API and the Ensembl GRCh37 archive) the 29
 cells split into five distinct symbol families:
 
-  * MARCHF1-11 (today's HGNC symbol) <- originally ``MARCH<n>``       (23 cells... see below)
-  * SEPTIN1-14  (today's HGNC symbol) <- originally ``SEPT<n>``
-  * MTARC1/MTARC2                     <- originally ``MARC<n>`` (NOT ``MARCH<n>`` --
+  * MARCHF1-11 (today's HGNC symbol) <- originally ``MARCH<n>`` (11 cells, one per family member)
+  * SEPTIN1-14  (today's HGNC symbol) <- originally ``SEPT<n>`` (13 of the 14
+    family members appear this way; the 14th is the SEPT1 duplicate below)
+  * MTARC1/MTARC2 (2 cells)           <- originally ``MARC<n>`` (NOT ``MARCH<n>`` --
     "MARC" alone is close enough to the month name for Excel's parser to
     collide with it too, at a different symbol than the MARCH ring-finger
     family)
-  * SELENOF (no numbered suffix)      <- originally ``SEP15`` (NOT ``SEPT15``;
-    the other classic Excel-gene-mangling example from Ziemann et al. 2016,
-    alongside MARCH/SEPT)
-  * DELEC1 ("deleted in esophageal cancer 1"), approved_symbol blank in this
-    row <- originally ``DEC1``, confirmed via HGNC's live record
+  * SELENOF (1 cell, no numbered suffix) <- originally ``SEP15`` (NOT
+    ``SEPT15``; the other classic Excel-gene-mangling example from Ziemann
+    et al. 2016, alongside MARCH/SEPT)
+  * DELEC1 (1 cell, "deleted in esophageal cancer 1"), approved_symbol blank
+    in this row <- originally ``DEC1``, confirmed via HGNC's live record
     (prev_symbol=["DEC1"], rest.genenames.org/fetch/symbol/DELEC1)
-  * one GRCh37-only retired duplicate gene ID for the septin-1 locus,
+  * one GRCh37-only retired duplicate gene ID for the septin-1 locus (1 cell),
     approved_symbol also blank in this row <- originally ``SEPT1``,
     confirmed via the Ensembl GRCh37 archive (display_name "SEPT1" for
     ENSG00000270466, grch37.rest.ensembl.org)
+
+  11 + 13 + 2 + 1 + 1 + 1 = 29, the full count.
 
 Decoding the serial alone (month + trailing two digits of the decoded year --
 the day is uniformly 1; Excel parsed the typed text as a month+2-digit-year
@@ -73,6 +76,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
@@ -81,6 +85,7 @@ from pathlib import Path
 
 import click
 
+from hvantk.core.plugin.drift_runner import _current_umask
 from hvantk.core.utils.bgzf import BgzfWriter
 from hvantk.core.utils.file_utils import download_file
 from hvantk.skills.gevir.drift_probe import GEVIR_SUPPLEMENTARY_URL
@@ -91,9 +96,9 @@ logger = logging.getLogger(__name__)
 # (hvantk/skills/gevir/catalog/datasets.json, accession GeVIR_v1.0).
 GEVIR_RAW_FILENAME = "gevir_metrics_pmid31873297.tsv.bgz"
 
-# Output TSV column order -- matches the pre-existing derived TSV's header
-# (hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz) and the
-# builder's field names (hvantk/skills/gevir/builder.py).
+# Output TSV column order -- matches the committed synthetic fixture's header
+# (hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297-synthetic.tsv.bgz)
+# and the builder's field names (hvantk/skills/gevir/builder.py).
 _OUTPUT_HEADER = (
     "gnomad_gene_name",
     "gene_id",
@@ -303,6 +308,12 @@ def _cell_text(cell, shared_strings: list):
     numeric (``t`` absent or ``"n"``, value inline under ``<v>``) -- the last
     is what a date-serial cell looks like, which is exactly the case this
     module needs to detect (``is_string=False``).
+
+    Any other ``t`` (``"e"`` error, e.g. ``#N/A``, or ``"b"`` boolean, whose
+    ``<v>`` is just ``"0"``/``"1"``) raises rather than falling through to the
+    numeric branch: neither holds a usable percentile or date serial, and
+    treating one as numeric would silently write a nonsense value (or emit it
+    as a wrong gene-name restoration) instead of failing loudly.
     """
     if cell is None:
         return True, None
@@ -322,6 +333,11 @@ def _cell_text(cell, shared_strings: list):
     if t == "str":
         v = cell.find("m:v", _NS)
         return True, (v.text if v is not None else None)
+    if t not in (None, "n"):
+        raise ValueError(
+            f"cell {cell.get('r')!r} has unsupported type {t!r} (expected a "
+            "string, inline string, formula string, or numeric/date-serial cell)"
+        )
 
     # Numeric: t is absent or "n".
     v = cell.find("m:v", _NS)
@@ -496,6 +512,16 @@ def download_gevir_metrics(output_path: str, overwrite: bool = False) -> str:
                 writer.write("\t".join(_OUTPUT_HEADER) + "\n")
                 for row in rows:
                     writer.write("\t".join(row) + "\n")
+            # mkstemp always creates mode 0600, which would silently tighten
+            # the published file's permissions below whatever a normal file
+            # create gets -- unreadable by other members of a shared raw dir.
+            # Match drift_runner.write_fingerprint's atomic-publish idiom:
+            # copy the existing file's mode when overwriting, else apply a
+            # normal create's mode (0666 masked by the process umask).
+            if output.exists():
+                shutil.copymode(output, tmp_out)
+            else:
+                os.chmod(tmp_out, 0o666 & ~_current_umask())
             os.replace(tmp_out, output_path)
         finally:
             if os.path.exists(tmp_out):
