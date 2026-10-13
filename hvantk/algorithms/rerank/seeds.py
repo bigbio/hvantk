@@ -5,8 +5,8 @@ Every stochastic step in this package carried its own literal ``42``: the CV par
 ``random_state`` in ``_gbm``, the bootstrap generator in ``_boot_ci``, and
 ``SelectionPolicy.seed``. Five copies of one decision is five places to forget it, and the
 consequence is not cosmetic: the CV partition is one of at least three variance components
-in the reported interval (gene resampling, CV partition, best-of-N axis selection) and it
-was the only one no caller could vary.
+in the reported interval (the bootstrap resample, the CV partition, best-of-N axis
+selection) and it was the only one no caller could vary.
 
 ``hvantk/tests/rerank/test_seeds.py`` greps the package and fails if a bare ``42``
 reappears outside this file.
