@@ -150,8 +150,14 @@ def summarize_expression_ad(
     ------
     ImportError
         If scanpy is not installed. It ships in the ``expression`` extra.
+    ValueError
+        If ``adata.var`` is keyed by transcript id, not gene id (see
+        :func:`hvantk.core.models.anndata_utils.require_gene_keyed`).
     """
+    from hvantk.core.models.anndata_utils import require_gene_keyed
+
     sc = require_scanpy()
+    require_gene_keyed(adata, "hvantk expression summarize")
 
     if filter_by:
         adata = filter_by_metadata_ad(adata, filter_by)

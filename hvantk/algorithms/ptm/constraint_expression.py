@@ -58,9 +58,14 @@ def load_gene_by_group_matrix(
     entry_field
         Hail MT entry field holding the expression value. Default ``"x"``.
     gene_key
-        Optional override for the row key used as the gene identifier. If
-        ``None`` the backend's default is used (``var_names`` for AnnData,
-        first row key for Hail MT).
+        Row key used as the gene identifier for the ``hail-mt`` backend only
+        (``None`` uses the MT's first row key). The ``anndata`` backend does
+        not read this parameter -- it always uses ``adata.var_names``, which
+        must already be gene-keyed (see
+        :func:`hvantk.core.models.anndata_utils.require_gene_keyed`; a
+        transcript-keyed AnnData is rejected rather than silently aggregated
+        under the wrong label). The ``tabular`` backend ignores it too (the
+        file is assumed to already be gene-keyed).
 
     Returns
     -------
@@ -178,8 +183,10 @@ def _load_from_anndata(
     """
     from hvantk.core.io.anndata_io import load_anndata
     from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
+    from hvantk.core.models.anndata_utils import require_gene_keyed
 
     adata = load_anndata(path)
+    require_gene_keyed(adata, "hvantk ptm constraint (anndata expression source)")
     if grouping not in adata.obs.columns:
         raise KeyError(
             f"Grouping field '{grouping}' not found in adata.obs. "
@@ -214,6 +221,14 @@ def _aggregate_anndata_direct(
 ) -> pd.DataFrame:
     """Aggregate AnnData cells → groups with median or median_nonzero per gene."""
     import scipy.sparse as sp
+
+    from hvantk.core.models.anndata_utils import require_gene_keyed
+
+    # Guarded again here (not only in _load_from_anndata): this function reads
+    # adata.var_names directly as the gene id, and is a plausible call target on
+    # its own should a future caller reach it without going through
+    # _load_from_anndata first.
+    require_gene_keyed(adata, "hvantk ptm constraint (anndata expression source)")
 
     labels = adata.obs[grouping].astype(str).to_numpy()
     unique_groups = [g for g in sorted(set(labels))]

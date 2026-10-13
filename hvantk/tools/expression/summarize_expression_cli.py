@@ -53,9 +53,15 @@ def describe_expression_cmd(matrix_path):
     adata = load_anndata(matrix_path)
     info = describe_expression_ad(adata)
 
+    # describe only inspects -- it never refuses a transcript-keyed AnnData (that is
+    # markers'/summarize's job via require_gene_keyed) -- but it should not mislabel a
+    # transcript-level Expression Atlas build's var as "genes" either (issue #383).
+    is_transcript_keyed = adata.var.index.name == "transcript_id"
+    var_label = "transcripts" if is_transcript_keyed else "genes"
+
     click.echo(f"\nExpression AnnData: {matrix_path}")
-    click.echo(f"  Observations (cells/samples): {info['n_obs']:,}")
-    click.echo(f"  Variables (genes):            {info['n_vars']:,}")
+    click.echo(f"  {'Observations (cells/samples):':<30s}{info['n_obs']:,}")
+    click.echo(f"  {f'Variables ({var_label}):':<30s}{info['n_vars']:,}")
     click.echo("")
     if info["fields"]:
         click.echo("Metadata fields:")
@@ -202,8 +208,9 @@ def summarize_expression_cmd(
             param_hint="--group-by",
         )
 
-    # Same reasoning as `markers`: summarize_expression_ad reaches for scanpy,
-    # which is optional, so surface a missing extra as a usage error not a crash.
+    # Same reasoning as `markers`: summarize_expression_ad reaches for scanpy, which is
+    # optional, and also refuses a transcript-keyed AnnData (require_gene_keyed) -- both
+    # are usage errors, not crashes.
     try:
         summary = summarize_expression_ad(
             adata,
@@ -211,7 +218,7 @@ def summarize_expression_cmd(
             filter_by=filters,
             min_cells_per_group=min_cells,
         )
-    except ImportError as exc:
+    except (ImportError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     if summary.n_obs == 0:
@@ -333,6 +340,7 @@ def markers_cmd(
         filter_by_metadata_ad,
         require_scanpy,
     )
+    from hvantk.core.models.anndata_utils import require_gene_keyed
     from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
 
     # ClickException so a missing optional extra reads as a usage problem rather
@@ -352,6 +360,10 @@ def markers_cmd(
         raise SystemExit(1)
 
     adata = load_anndata(matrix_path)
+    try:
+        require_gene_keyed(adata, "hvantk expression markers")
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     # Apply pre-filters
     if filter_by:

@@ -20,6 +20,46 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def require_gene_keyed(adata: ad.AnnData, consumer: str) -> None:
+    """Raise if ``adata.var`` is keyed by transcript id rather than gene id.
+
+    A transcript-level Expression Atlas build indexes ``var`` by the transcript
+    id (``create_anndata_from_expression_atlas``, issue #349) and keeps the
+    gene id as a regular ``"Gene ID"`` column instead -- ``var.index.name ==
+    "transcript_id"``. Generic AnnData consumers that read ``var_names``/
+    ``adata.var.index`` as the gene identifier (marker extraction, per-group
+    summarization, the PTM constraint expression loader, the annotation
+    matrix reducer) would otherwise silently emit one row per transcript,
+    labelled as a gene (issue #383).
+
+    Call this at the top of any such consumer's AnnData entry point, before it
+    treats ``var_names``/``adata.var.index`` as gene identifiers.
+
+    Parameters
+    ----------
+    adata : ad.AnnData
+        The AnnData to check. Not modified.
+    consumer : str
+        Human-readable name of the calling command/function, used only to
+        make the error message actionable (e.g. ``"hvantk expression
+        markers"``).
+
+    Raises
+    ------
+    ValueError
+        If ``adata.var.index.name == "transcript_id"``.
+    """
+    if adata.var.index.name == "transcript_id":
+        raise ValueError(
+            f"{consumer}: this AnnData is keyed by transcript id "
+            "(var.index.name == 'transcript_id'), not gene id, so its var_names "
+            "cannot be read as genes here. Rebuild it with `--plugin-arg "
+            "level=gene` (e.g. `hvantk reprocess expression-atlas:dataset "
+            "--raw-dir <dir> --output <out>.h5ad --plugin-arg level=gene`) to "
+            "get a gene-keyed matrix, or use a gene-level export."
+        )
+
+
 def annotate_column_summary_ad(
     adata: ad.AnnData,
     max_levels: int = 100,

@@ -184,6 +184,12 @@ hvantk expression markers \
   -o /out/heart_LV_markers.json
 ```
 
+`summarize` and `markers` read `var_names` as the gene id and refuse an AnnData whose
+`var` is keyed by transcript id instead (e.g. a transcript-level Expression Atlas build
+made without `--plugin-arg level=gene` — see [Data Sources](data-sources.md)). `describe`
+only inspects, so it never refuses; it labels the variable axis "transcripts" rather than
+"genes" in that case.
+
 ## Prepare Custom Gene Sets
 
 Convert plain-text gene panels into `GeneSetCollection` JSON files for use
