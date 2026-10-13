@@ -220,6 +220,9 @@ class PluginRegistry:
         self._schema = _load_schema()
         # CLI entries per plugin, keyed by plugin name.
         self._cli_entries: dict[str, list[dict]] = {}
+        # Who declared each `cli:` command first, as (plugin, entry): a command name
+        # is registry-wide, so a second declaration is refused at load.
+        self._cli_owners: dict[str, tuple[str, dict]] = {}
         # Resolved `cli:` callables and cached failures, keyed by (plugin, command).
         # Filled on demand by `resolve_cli_entries` / `apply_plugin_downloaders`, never
         # at load time (see `resolve_cli_entries`).
@@ -669,8 +672,28 @@ class PluginRegistry:
                 self._failed_datasets[dm.name] = err
                 self._record_load_error(dm.name, err)
 
-        # Cache CLI entries for downloader wiring.
-        cli_entries = manifest.get("cli", [])
+        # Cache CLI entries for downloader wiring. A command name may be declared once
+        # across the whole registry: a second entry would share the first's resolution
+        # (hiding a module of its own that does not import) and, under `hvantk
+        # download`, the first one wired would silently shadow it. The first stays;
+        # each later one is refused with a load error that names both.
+        cli_entries = []
+        for entry in manifest.get("cli", []):
+            command = entry["command"]
+            if command in self._cli_owners:
+                first_plugin, first = self._cli_owners[command]
+                self._record_load_error(
+                    f"{CLI_UNIT_PREFIX}{command}",
+                    PluginLoadError(
+                        f"cli command {command!r} is declared twice: by provider "
+                        f"{first_plugin!r} ({first['module']}.{first['function']}) and "
+                        f"by provider {manifest['name']!r} "
+                        f"({entry['module']}.{entry['function']}); the second is ignored"
+                    ),
+                )
+                continue
+            self._cli_owners[command] = (manifest["name"], entry)
+            cli_entries.append(entry)
         if cli_entries:
             self._cli_entries[manifest["name"]] = cli_entries
 

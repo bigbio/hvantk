@@ -113,8 +113,8 @@ def errors_cmd():
     """List everything that failed to load, and why.
 
     Covers providers, entry points and datasets, and each manifest `cli:` entry whose
-    command does not import, reported as `cli:<command>` (a row about that command
-    alone, which `hvantk drift` ignores). The one plugins command whose exit code
+    command does not import or repeats a command name already declared, reported as
+    `cli:<command>` (a row about that command alone, which `hvantk drift` ignores). The one plugins command whose exit code
     signals load failures: exits 1 when it lists anything, 0 when there is nothing to
     list.
     """
