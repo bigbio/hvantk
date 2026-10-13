@@ -92,6 +92,56 @@ def test_anndata_adapter_contract():
     assert out.index.name == "gene_id"
 
 
+def test_anndata_adapter_mean_aggfunc_pivots_the_aggregated_anndata(
+    tmp_path, monkeypatch
+):
+    """aggfunc='mean' must read summarize_expression_ad's AnnData, not a DataFrame.
+
+    summarize_expression_ad returns an AnnData (groups x genes, layers["mean"]), not a
+    long DataFrame with gene_id/group/mean columns -- `.empty`/`.pivot()` against an
+    AnnData raise AttributeError unconditionally, so this branch could never actually
+    run (#383 review). summarize_expression_ad itself needs the optional scanpy extra
+    (not assumed installed here), so it is stubbed with a hand-built AnnData shaped
+    exactly like its real return; nothing about `_load_from_anndata`'s own logic is
+    mocked.
+    """
+    import anndata as ad
+    from hvantk.algorithms.ptm.constraint_expression import _load_from_anndata
+
+    agg = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame(index=["brain", "liver"]),
+        var=pd.DataFrame(index=["g0", "g1"]),
+        layers={"mean": np.array([[1.0, 2.0], [3.0, 4.0]])},  # groups x genes
+    )
+    monkeypatch.setattr(
+        "hvantk.algorithms.expression.matrix_utils.summarize_expression_ad",
+        lambda *a, **k: agg,
+    )
+
+    n_cells = 4
+    raw = ad.AnnData(
+        X=np.zeros((n_cells, 2), dtype=np.float32),
+        obs=pd.DataFrame(
+            {"tissue": ["liver", "liver", "brain", "brain"]},
+            index=[f"c{i}" for i in range(n_cells)],
+        ),
+        var=pd.DataFrame(index=["g0", "g1"]),
+    )
+    h5ad_path = tmp_path / "raw.h5ad"
+    raw.write_h5ad(h5ad_path)
+
+    out = _load_from_anndata(
+        str(h5ad_path), grouping="tissue", aggfunc="mean", min_cells_per_group=1
+    )
+
+    assert out.index.name == "gene_id"
+    assert list(out.index) == ["g0", "g1"]
+    assert set(out.columns) == {"brain", "liver"}
+    assert out.loc["g0", "brain"] == pytest.approx(1.0)
+    assert out.loc["g1", "liver"] == pytest.approx(4.0)
+
+
 def test_constraint_config_validate():
     from hvantk.algorithms.ptm.constraint import PTMConstraintConfig
 

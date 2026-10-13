@@ -194,16 +194,28 @@ def _load_from_anndata(
         )
 
     if aggfunc == "mean":
-        long_df = summarize_expression_ad(
+        # summarize_expression_ad returns an AnnData (groups x genes, obs=groups,
+        # var=genes, layers["mean"]=the per-group means), NOT a long DataFrame with
+        # "gene_id"/"group"/"mean" columns -- .empty and .pivot() are DataFrame
+        # methods and raised AttributeError against it unconditionally, so this
+        # branch could never actually run.
+        agg = summarize_expression_ad(
             adata,
             group_by=grouping,
             min_cells_per_group=min_cells_per_group,
         )
-        if long_df.empty:
+        if agg.n_obs == 0:
             raise ValueError(
                 f"No groups survived min_cells_per_group={min_cells_per_group}."
             )
-        wide = long_df.pivot(index="gene_id", columns="group", values="mean")
+        mean_layer = agg.layers["mean"]
+        if hasattr(mean_layer, "toarray"):
+            mean_layer = mean_layer.toarray()
+        wide = pd.DataFrame(
+            np.asarray(mean_layer).T,
+            index=pd.Index(agg.var_names, name="gene_id"),
+            columns=list(agg.obs_names),
+        )
         wide.columns.name = None
         return wide
 
