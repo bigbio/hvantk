@@ -119,8 +119,8 @@ def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplo
     """Regression: two source symbols mapping to the same gene_id duplicated
     (locus, alleles, gene_id) within a tissue.
 
-    OLDNAME is a previous symbol of CURRENT's gene. In Colon, CURRENT labels rows too,
-    so OLDNAME defers to it there. In Heart, OLDNAME is the gene's only name, so it
+    OLDNAME and OLDNAME2 are previous symbols of CURRENT's gene. In Colon, CURRENT labels
+    rows too, so both defer to it there. In Heart, OLDNAME is the gene's only name, so it
     keeps the gene_id: rows of different tissues are told apart by ``tissue``, and a
     source can name one protein differently in different tissues. In Colon, OLDB1 (a
     previous symbol) and OLDB2 (an alias) both resolve to GENEB, and TWINA and TWINB
@@ -130,7 +130,12 @@ def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplo
     from hvantk.skills.pqtl.builder import _map_gene_symbols
 
     catalog = _FakeHGNCCatalog(
-        _Gene("HGNC:1", "CURRENT", "ENSG00000000001", previous=("OLDNAME",)),
+        _Gene(
+            "HGNC:1",
+            "CURRENT",
+            "ENSG00000000001",
+            previous=("OLDNAME", "OLDNAME2"),
+        ),
         _Gene(
             "HGNC:2",
             "GENEB",
@@ -145,7 +150,15 @@ def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplo
     mapping = _map_gene_symbols(
         catalog,
         {
-            "Colon": {"CURRENT", "OLDNAME", "OLDB1", "OLDB2", "TWINA", "TWINB"},
+            "Colon": {
+                "CURRENT",
+                "OLDNAME",
+                "OLDNAME2",
+                "OLDB1",
+                "OLDB2",
+                "TWINA",
+                "TWINB",
+            },
             "Heart": {"OLDNAME", "TWINA"},
         },
     )
@@ -158,11 +171,11 @@ def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplo
     # Mapped counts a symbol that keeps its ID in some tissue; colliding, one that
     # keeps it in none.
     assert (
-        "Mapped 3 of 6 pQTL gene symbol(s) to Ensembl gene IDs: 2 approved, "
-        "1 via a previous symbol, 0 via an alias; 0 ambiguous, 3 colliding, 0 unmapped"
+        "Mapped 3 of 7 pQTL gene symbol(s) to Ensembl gene IDs: 2 approved, "
+        "1 via a previous symbol, 0 via an alias; 0 ambiguous, 4 colliding, 0 unmapped"
     ) in caplog.text
     assert (
-        "In tissue Colon, pQTL gene symbol(s) OLDNAME resolve to the same gene "
+        "In tissue Colon, pQTL gene symbol(s) OLDNAME, OLDNAME2 resolve to the same gene "
         "(ENSG00000000001) as the approved symbol 'CURRENT'"
     ) in caplog.text
     assert (
@@ -175,7 +188,8 @@ def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplo
     ) in caplog.text
     assert "In tissue Heart" not in caplog.text
 
-    # A build whose every mapped symbol collides keys its rows by symbol only.
+    # A build whose every mapped symbol collides would key its rows by symbol only,
+    # so it raises.
     with pytest.raises(ValueError, match="None of the 2 pQTL gene symbols mapped"):
         _map_gene_symbols(catalog, {"Liver": {"OLDB1", "OLDB2"}})
 

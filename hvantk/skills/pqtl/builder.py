@@ -310,9 +310,10 @@ def build_pqtl_metrics(
     several source symbols map to goes to the one approved symbol among them, or to
     none of them, and the others keep their source symbol as ``gene_id``
     (``_find_gene_id_collisions``), so two source symbols of one tissue never map to
-    the same Ensembl ID. Unmapped, ambiguous and colliding symbols keep their source
-    symbol as ``gene_id`` and are counted in the log; if no symbol keeps an Ensembl
-    ID, the build raises ``ValueError``. Mapping is **required** because the cascade
+    the same Ensembl ID. Unmapped and ambiguous symbols keep their source symbol as
+    ``gene_id``, and so does a colliding symbol in its tissue; the log counts them and
+    names each collision. If no symbol keeps an Ensembl ID, the build raises
+    ``ValueError``. Mapping is **required** because the cascade
     join uses ``(locus, alleles, gene_id)`` with Ensembl IDs on the eQTL side; raw
     gene symbols would produce zero matches.
 
