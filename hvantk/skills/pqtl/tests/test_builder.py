@@ -113,7 +113,7 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, c
     # it could not map; a bare map_ids call would key SYNTHGENE1 by symbol silently.
     assert (
         "Mapped 3 of 4 pQTL gene symbol(s) to Ensembl gene IDs: 3 approved, "
-        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 1 unmapped"
+        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 0 colliding, 1 unmapped"
     ) in caplog.text
     assert "Examples: SYNTHGENE1" in caplog.text
 

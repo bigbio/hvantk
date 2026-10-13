@@ -105,12 +105,13 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   atomically (#445).
 - **`cosmic-cgc:submissions` kept multi-valued `TISSUE_TYPE` as one string**, so a gene
   tagged `E, M` formed its own tissue group (#442).
-- **`pqtl:metrics` could map two source gene symbols to the same `gene_id`**, duplicating
-  `(locus, alleles, gene_id)` within a tissue when an approved symbol and a previous or
-  alias symbol of the same gene both labelled rows of that tissue. In such a tissue the
-  previous/alias symbol now keeps its source symbol as `gene_id`, with a warning; two
-  colliding previous/alias symbols with no approved symbol there both do. A symbol that
-  collides in one tissue stays mapped in the others (#456).
+- **`pqtl:metrics` could map two source gene symbols of one tissue to the same `gene_id`**,
+  duplicating `(locus, alleles, gene_id)` there: an approved symbol and a previous or alias
+  symbol of the same gene, two previous/alias symbols of one gene, or two approved symbols
+  that HGNC gives one Ensembl ID. Within the tissue, the gene_id now goes to the one approved
+  symbol among them, or to none of them when there is no single one, and the others keep
+  their source symbol as `gene_id`, with a warning. In a tissue where it collides with
+  nothing, a symbol stays mapped (#456).
 - **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
   (#443).
 - **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like
