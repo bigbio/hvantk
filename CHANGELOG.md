@@ -32,7 +32,7 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   paper's Supplementary Table 2 workbook and derives the bgzipped metrics TSV itself
   (stdlib `zipfile`/`xml.etree`, no new dependency), restoring the ~29 gene symbols
   Excel's autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`); `hvantk
-  reprocess gevir:metrics` runs it automatically (#PR).
+  reprocess gevir:metrics` runs it automatically (#457).
 - **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
   field missing from the input header into an error instead of a warning (#443).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
