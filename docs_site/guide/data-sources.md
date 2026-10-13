@@ -453,29 +453,28 @@ URL: https://www.uniprot.org/
 
 This is a live REST query rather than a large or license-gated file, so hvantk ships a
 downloader (`hvantk download uniprot-ptm`; it is also in the built-in-downloader list
-above). The `uniprot-ptm:sites` plugin dataset builds from a *genome-mapped* TSV, not the
-raw UniProt download, so `hvantk reprocess uniprot-ptm:sites` alone cannot complete the
-coordinate-mapping step — use `hvantk ptm build` below, which downloads the raw TSV, maps
-it against the Ensembl GTF, and builds the Hail Table in one command. For pre-download or
-manual acquisition:
-
-**Download** (optional, for offline use):
-
-```bash
-# UniProt PTM TSV via REST API
-hvantk download uniprot-ptm --output-dir data/ptm/
-
-# Ensembl GTF for coordinate mapping (download manually)
-# wget https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.*.gtf.gz -P data/ref/
-```
+above). The `uniprot-ptm:sites` table is built from *genome-mapped* sites, not from the
+raw UniProt download, and `hvantk reprocess uniprot-ptm:sites` runs every step: it
+downloads the raw TSV, fetches the pinned Ensembl GTF into the same `--raw-dir` (kept
+there, so later runs reuse it), maps the sites against it, and builds the Hail Table.
+`hvantk ptm build` runs the same mapping and can add PeptideAtlas and CPTAC phosphosites
+to the table.
 
 **Build**:
 
 ```bash
-# Automatic download and build
-hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
+# Download, map and build (UniProt sites)
+hvantk reprocess uniprot-ptm:sites \
+  --raw-dir data/ptm/ \
+  --output data/ptm/ptm_sites.ht
 
-# With pre-downloaded files
+# From files already in --raw-dir (a UniProt TSV and, optionally, the GTF)
+hvantk reprocess uniprot-ptm:sites \
+  --skip-download \
+  --raw-dir data/ptm/ \
+  --output data/ptm/ptm_sites.ht
+
+# Multi-source build, with pre-downloaded files
 hvantk ptm build \
   --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
   --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
@@ -483,12 +482,18 @@ hvantk ptm build \
   --output-ht data/ptm/ptm_sites.ht
 ```
 
+With `--skip-download`, the newest `uniprot-ptm-human-<YYYY-MM-DD>.tsv` in `--raw-dir`
+is mapped (`hvantk download uniprot-ptm --output-dir data/ptm/` writes one), and the GTF
+is downloaded only if `Homo_sapiens.GRCh38.113.gtf.gz` is not already there. The mapping
+uses GRCh38 coordinates, so `--plugin-arg reference_genome` accepts only `GRCh38`.
+
 ### Ensembl GTF (~50 MB compressed)
 
 Gene annotation with exon coordinates and CDS phases, used by the PTM mapper for residue-to-genomic coordinate mapping.
 URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/
 
-**Download**: Auto-downloaded by `hvantk ptm build`. For manual download:
+**Download**: Auto-downloaded by `hvantk reprocess uniprot-ptm:sites` (into its
+`--raw-dir`) and by `hvantk ptm build`. For manual download:
 
 ```bash
 wget https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz

@@ -25,6 +25,10 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   file, so the plain `--raw-dir` form works (#450).
 - **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
   field missing from the input header into an error instead of a warning (#443).
+- **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the
+  pinned Ensembl GTF into `--raw-dir`, where later runs reuse it, and maps the UniProt
+  download onto it; the command used to download and then fail at the build. `hvantk ptm
+  build` stays the command that adds PeptideAtlas and CPTAC sites (#PR).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
 - **The downloader decision framework is published** in the data-sources guide: when a

@@ -3,7 +3,9 @@ PTM Build Pipeline — pure coordinate-mapping core for PTM data acquisition.
 
 This module exposes the algorithm-only (no skills) build core as a Python API.
 Skill-driven steps (UniProt download, Hail Table build) live in
-:mod:`hvantk.tools.ptm.pipeline`.
+:mod:`hvantk.tools.ptm.pipeline`. :func:`map_uniprot_raw_dir` is the
+``lifecycle.parse`` stage the ``uniprot-ptm:sites`` plugin declares, so that
+``hvantk reprocess`` can map a UniProt download without the tools layer.
 
 Example:
     >>> from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline_core
@@ -19,6 +21,7 @@ import csv
 import gzip
 import logging
 import os
+import re
 import shutil
 import urllib.parse
 
@@ -490,3 +493,114 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
 
     logger.info("PTM core mapping complete: %d sites mapped", result.n_mapped)
     return result
+
+
+#: What ``hvantk download uniprot-ptm`` writes: one TSV per download day, named by the
+#: plugin's ``UniProtPTMDataset.from_date``.
+_UNIPROT_DOWNLOAD_RE = re.compile(r"^uniprot-ptm-human-(\d{4}-\d{2}-\d{2})\.tsv$")
+
+
+def map_uniprot_raw_dir(
+    raw_dir: str,
+    output_path: str,
+    *,
+    reference_genome: str = "GRCh38",
+    **kwargs,
+) -> str:
+    """``lifecycle.parse`` of the ``uniprot-ptm:sites`` plugin dataset.
+
+    Maps the newest UniProt download in ``raw_dir`` to genomic coordinates and writes
+    the mapped TSV the plugin's builder reads to ``output_path``, which is what lets
+    ``hvantk reprocess uniprot-ptm:sites`` run end to end. UniProt sites only:
+    ``hvantk ptm build`` stays the command that adds PeptideAtlas and CPTAC sites.
+
+    The pinned Ensembl GTF is downloaded into ``raw_dir`` once and reused by later
+    runs; its release never changes under a given pin, so delete the file to fetch it
+    again. ``output_path`` is written BGZF when its name ends in ``.bgz`` or ``.gz``
+    and as plain text otherwise, because the builder's ``hl.import_table`` picks the
+    codec from the file name and ``reprocess``'s default intermediate has neither
+    suffix. It is replaced atomically.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory holding ``uniprot-ptm-human-<YYYY-MM-DD>.tsv`` (the download stage's
+        output); the newest date is mapped when there are several.
+    output_path : str
+        Where the mapped TSV goes.
+    reference_genome : str
+        Must be ``"GRCh38"``, the build of the pinned GTF; it is forwarded to the
+        builder too, which would label GRCh38 coordinates with any other build.
+    **kwargs
+        Other ``--plugin-arg`` values meant for the builder; ignored.
+
+    Returns
+    -------
+    str
+        ``output_path``.
+
+    Raises
+    ------
+    ValueError
+        If ``reference_genome`` is not GRCh38, or if no site maps (nothing is written).
+    FileNotFoundError
+        If ``raw_dir`` holds no UniProt download.
+    """
+    if reference_genome != "GRCh38":
+        raise ValueError(
+            f"reference_genome={reference_genome!r}: uniprot-ptm:sites maps against the "
+            "pinned Ensembl GRCh38 GTF, so building its coordinates as another "
+            "reference would mislabel every locus"
+        )
+    downloads = sorted(
+        (m.group(1), name)
+        for name in os.listdir(raw_dir)
+        if (m := _UNIPROT_DOWNLOAD_RE.match(name))
+    )
+    if not downloads:
+        raise FileNotFoundError(
+            f"no UniProt PTM download (uniprot-ptm-human-<YYYY-MM-DD>.tsv) in "
+            f"{raw_dir!r}; run the download stage, or `hvantk download uniprot-ptm "
+            "--output-dir` into it"
+        )
+    ptm_tsv = os.path.join(raw_dir, downloads[-1][1])
+    if len(downloads) > 1:
+        logger.info(
+            "Mapping the newest of %d UniProt downloads: %s", len(downloads), ptm_tsv
+        )
+
+    logger.info("Parsing Ensembl GTF...")
+    gtf_data = parse_ensembl_gtf(download_ensembl_gtf(raw_dir))
+
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(out_dir, exist_ok=True)
+    # Per-process names, created by plain open() calls rather than mkstemp, so the
+    # result gets the caller's umask instead of 0600 in a shared raw directory.
+    tmp = os.path.join(out_dir, f".{os.path.basename(output_path)}.{os.getpid()}")
+    mapped, plain = f"{tmp}.tsv.bgz", f"{tmp}.tsv"
+    try:
+        result = map_ptm_sites(ptm_tsv, gtf_data, mapped)
+        if result.n_mapped == 0:
+            raise ValueError(
+                f"No PTM sites mapped ({result.n_total} read from {ptm_tsv}), so "
+                f"nothing was written to {output_path}. Check that it is the file "
+                "`hvantk download uniprot-ptm` wrote."
+            )
+        if output_path.endswith((".bgz", ".gz")):
+            os.replace(mapped, output_path)
+        else:
+            with gzip.open(mapped, "rb") as src, open(plain, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            os.replace(plain, output_path)
+    finally:
+        for path in (mapped, plain):
+            if os.path.exists(path):
+                os.remove(path)
+
+    logger.info(
+        "Mapped %d of %d UniProt PTM sites to %s",
+        result.n_mapped,
+        result.n_total,
+        output_path,
+    )
+    return output_path
