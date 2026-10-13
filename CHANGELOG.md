@@ -15,6 +15,10 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
 - `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
   `array<struct{name, url}>` (#443).
+- `hvantk expression markers`/`summarize`, the PTM constraint expression loader, and
+  `hvantk annotate --matrix` now refuse a transcript-keyed AnnData (`var.index.name ==
+  "transcript_id"`) instead of silently reading its `var_names` as gene ids; the error
+  names `--plugin-arg level=gene` as the fix (#PR).
 - `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
 
 ### Added
@@ -29,6 +33,10 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
 - **The downloader decision framework is published** in the data-sources guide: when a
   source gets a downloader, and when its acquisition is documented instead (#441).
+- **`--plugin-arg level=gene` for Expression Atlas.** Sums a transcript-level
+  experiment's per-transcript values onto their gene id and keys `var` by the gene id,
+  instead of the default per-transcript matrix (`level=transcript`); a no-op for an
+  already gene-level experiment (#PR).
 
 ### Changed
 
