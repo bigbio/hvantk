@@ -87,7 +87,7 @@ Triggered when the drift probe reports a new preprint version or journal publica
 1. Run `hvantk drift pqtl:metrics` (or wait for the fortnightly automated drift workflow) to check the medRxiv API's `version`/`date`/`published` fields against the committed `tests/drift_fingerprint.json`.
 2. Re-read the drift probe's module docstring (`drift_probe.py`) before acting: it detects a new preprint version or journal publication, but explicitly **cannot** detect an in-place replacement of the supplementary file under an unchanged version — that gap is a property of how the source is published, not a probe bug.
 3. If `published` moves from `"NA"` to a journal DOI, or `version` increments, manually re-download the supplementary allpairs files and diff the column header against `_import_gtex_fang`'s expected columns (`gene_name SNP CHR BP A1 NMISS BETA STAT P`) before rebuilding.
-4. Regenerate the fingerprint with `hvantk drift --regenerate pqtl:metrics` once the change is validated; do not regenerate in the same PR as a behavioral change (`_conventions` § 12).
+4. Regenerate the fingerprint with `hvantk drift --regenerate pqtl:metrics --accepted-in "PR #N"` once the change is validated, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12); do not regenerate in the same PR as a behavioral change.
 
 ## 9. Validation contract
 

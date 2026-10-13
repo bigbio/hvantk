@@ -139,7 +139,7 @@ Triggered by a new AlphaGenome SDK release, which the drift probe detects (`hvan
 1. **Re-check the `tidy_scores()` columns** in the new SDK against `REQUIRED_COLUMNS` in `builder.py`, and against `ontology_curie` for the filter. A renamed column fails the build with `ValueError`; fix the builder, not the data.
 2. **Re-check the scorer list**: compare `str(s)` for every `s` in `variant_scorers.RECOMMENDED_VARIANT_SCORERS.values()` against the keys of `SCORER_FIELDS`. A new or reprinted scorer fails the build with `ValueError` naming it. Map it to a field and bump `schema_id` (`alphagenome-v3`) and the manifest `version`.
 3. **Regenerate the fixture and snapshots** when the format changes: rerun `tests/testdata/raw/alphagenome/make_fixture.py` on a shard written by the new SDK (it takes the source shard as its argument; its docstring records the selection and the AlphaGenome licence constraints), update `NOTICE.md`, then rerun the round trip with `--regenerate-snapshots` and read the diff.
-4. **Regenerate the drift fingerprint** with `hvantk drift --regenerate alphagenome:predictions` once the change is handled, not in the same PR as a behaviour change (`_conventions` § 12).
+4. **Regenerate the drift fingerprint** with `hvantk drift --regenerate alphagenome:predictions --accepted-in "PR #N"` once the change is handled, not in the same PR as a behaviour change, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
 
 What the probe cannot see: a server-side model update shipped without an SDK release. No unauthenticated probe can detect it; record the SDK version and model used when producing scores.
 
