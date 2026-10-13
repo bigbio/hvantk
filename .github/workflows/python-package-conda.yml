@@ -160,8 +160,9 @@ jobs:
         run: |
           python -m pip install pytest
           # --require-round-trips fails the run if a @pytest.mark.round_trip(...) test
-          # (the 4 non-hail ones run in this default selection: cptac's two, expression-atlas,
-          # peptideatlas) ends skipped or xfailed, which a static check cannot see (#432).
+          # (every non-hail-backed dataset's round trip runs in this default selection:
+          # cptac's two, expression-atlas, peptideatlas, ucsc-cellbrowser's three) ends
+          # skipped or xfailed, which a static check cannot see (#432).
           pytest --require-round-trips
 
   # The `hail` marker is deselected by pytest.ini's addopts, so before this job the

@@ -47,6 +47,6 @@ jobs:
       - name: Test with pytest
         run: |
           # --require-round-trips fails the run if a @pytest.mark.round_trip(...) test
-          # (the 4 non-hail ones run in this default selection) ends skipped or xfailed,
-          # which a static check cannot see (#432).
+          # (every non-hail-backed dataset's round trip runs in this default selection)
+          # ends skipped or xfailed, which a static check cannot see (#432).
           pytest --require-round-trips
