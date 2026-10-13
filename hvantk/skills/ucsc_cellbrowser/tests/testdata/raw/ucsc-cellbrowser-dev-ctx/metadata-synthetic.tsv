@@ -1,0 +1,16 @@
+cell_id	Type_v2	n_cells
+Astrocyte	Astrocyte	14044
+Div	Div	13204
+Endothelial	Endothelial	29053
+Excitatory Neuron	Excitatory Neuron	31721
+IPC	IPC	886
+Inhibitory Neuron	Inhibitory Neuron	53936
+Microglia	Microglia	54179
+Newborn Neuron	Newborn Neuron	2841
+OPC	OPC	2158
+OPC.div	OPC.div	40179
+Oligodendrocyte	Oligodendrocyte	12920
+Pericyte	Pericyte	34617
+RG	RG	54449
+RG.div	RG.div	27890
+Red blood cells	Red blood cells	58375

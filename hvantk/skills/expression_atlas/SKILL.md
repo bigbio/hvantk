@@ -111,6 +111,8 @@ Per `_conventions` § 9:
 
 The plugin manifest already declares these paths so the loader contract holds. `tests/test_builder.py` now exercises `build_expression_atlas` end-to-end against the committed fixture and asserts both snapshots plus `n_obs`/`n_vars`; regenerate via `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. No Hail is required — the artifact is AnnData-backed.
 
+The fixture is real E-MTAB-6798 data (CC BY 4.0); see its `THIRD_PARTY_DATA.md` entry.
+
 > **The fixture is production-shaped.** It keeps the real three-column header
 > (`Gene ID`, `Gene Name`, `GeneID`), so the round-trip test exercises the layout an
 > actual download has — not a sanitised one. It previously dropped the `GeneID`

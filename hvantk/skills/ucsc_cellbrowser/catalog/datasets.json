@@ -6746,9 +6746,9 @@
   {
     "accession": "asp_2019_celltype_summary",
     "title": "Asp 2019 Developing Heart (cell-type summary)",
-    "description": "Cell-type-level expression summary derived from Asp et al. 2019 developing human heart scRNA-seq (PMID:31835037). Rows = genes, columns = cell-type meta-cells (e.g. Atrial cardiomyocytes, Capillary endothelium, Cardiac neural crest cells).",
+    "description": "Cell-type-level expression summary derived from Asp et al. 2019 developing human heart scRNA-seq (PMID:31835037). Rows = genes, columns = cell-type meta-cells (e.g. Atrial cardiomyocytes, Capillary endothelium, Cardiac neural crest cells). Source data: Mendeley Data 10.17632/mbvhhf8m62 v2 (CC BY 4.0), not a UCSC Cell Browser accession -- the previous URL here (cells.ucsc.edu/?ds=heart-dev-asp2019) 404s and was corrected in a review round; see THIRD_PARTY_DATA.md.",
     "data_source": "UCSC",
-    "url": "https://cells.ucsc.edu/?ds=heart-dev-asp2019",
+    "url": "https://data.mendeley.com/datasets/mbvhhf8m62/2",
     "last_updated": "2026-05-11",
     "organism": "Homo sapiens",
     "tissue_type": [

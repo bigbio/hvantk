@@ -81,7 +81,7 @@ When UniProt releases a new snapshot (roughly every eight weeks):
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/ptm_sites.tsv` — a real 6-row slice (TP53 and friends), not a placeholder.
+- `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/ptm_sites.tsv` — synthetic, not a real slice (#426): hand-authored to carry the same content `test_plugin_conformance.py`'s round-trip builds inline (#213), using real gene symbols and UniProt accessions (TP53/`P04637`, BRCA2/`P51587`, NEMO-IKBKG/`Q9Y6K9`, MT-ND1/`P03886`) but fabricated residue positions, amino acids and genomic coordinates that do not match the real UniProt features at those accessions.
 - `schema_snapshot`: `hvantk/skills/uniprot_ptm/tests/snapshots/schema.json`
 - `row_snapshot`: `hvantk/skills/uniprot_ptm/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/uniprot_ptm/tests/drift_fingerprint.json`
@@ -92,3 +92,5 @@ When UniProt releases a new snapshot (roughly every eight weeks):
 > Regenerate after an intentional schema change with
 > `pytest hvantk/skills/uniprot_ptm/tests/test_builder.py -m hail --regenerate-snapshots`,
 > then commit the result. Broader integration coverage lives in `hvantk/tests/test_ptm.py`.
+
+The fixture is synthetic: all 6 rows are fabricated (real gene symbols/accessions, invented coordinates and modifications), not a real UniProt excerpt. No `THIRD_PARTY_DATA.md` entry applies.

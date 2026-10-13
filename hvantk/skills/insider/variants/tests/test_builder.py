@@ -16,18 +16,25 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed"
+FIXTURE = (
+    "hvantk/skills/insider/variants/tests/testdata/raw/insider/"
+    "insider_sample-synthetic.bed"
+)
 SNAPSHOT_DIR = Path("hvantk/skills/insider/variants/tests/snapshots")
 
 # `interval` is unique-in-table after .distinct() (per skill §5), so keys are
-# inlined here. Picked from observed fixture rows on chr3 (the first track was
-# chr11 with zero-length intervals that get skipped). Intervals stored as
-# {"start": "<contig>:<pos>", "end": "<contig>:<pos>"} per the new tinterval
-# branch in _snapshot_utils.
+# inlined here. The fixture is synthetic (#426 — no published INSIDER licence was
+# found; see testdata/raw/insider/README.md). Picked from observed fixture rows:
+# chr3:2000301-2000303 is shared across all four SYNTH0003_ppi_* tracks (exercises
+# the multi-PPI-per-interval aggregation), chr11:1000101-1000102 is one of the
+# first track's three surviving rows (its opening row is zero-length and gets
+# skipped), and chr3:2000711-2000713 is from the last track. Intervals stored as
+# {"start": "<contig>:<pos>", "end": "<contig>:<pos>"} per the tinterval branch in
+# _snapshot_utils.
 SAMPLE_KEYS = [
-    {"interval": {"start": "chr3:9801671", "end": "chr3:9801673"}},
-    {"interval": {"start": "chr3:9801704", "end": "chr3:9801706"}},
-    {"interval": {"start": "chr3:9812986", "end": "chr3:9812988"}},
+    {"interval": {"start": "chr3:2000301", "end": "chr3:2000303"}},
+    {"interval": {"start": "chr11:1000101", "end": "chr11:1000102"}},
+    {"interval": {"start": "chr3:2000711", "end": "chr3:2000713"}},
 ]
 
 
