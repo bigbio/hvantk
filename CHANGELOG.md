@@ -69,6 +69,13 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `drift_fingerprint_variants.json` (#444).
 - **Docs:** the README genesets row, the psroc page title, the Expression Atlas licence URI
   and the E-MTAB-6798 organism (#438).
+- **Fixture licences:** audited every plugin's test fixture for real-vs-synthetic status;
+  added `THIRD_PARTY_DATA.md` entries for nine previously-undocumented real fixtures
+  (ClinVar, gnomAD, GTEx, GWAS Catalog, HGNC, UniProt, 1000 Genomes, UCSC Cell Browser,
+  MSigDB); dropped 9 BioCarta/legacy-KEGG sets from the MSigDB fixture that fall outside
+  MSigDB's CC BY 4.0 grant; replaced the INSIDER `variants` fixture with a synthetic one
+  after finding no published licence; and corrected the Human Protein Atlas licence on two
+  Expression Atlas catalog entries from stale CC BY-SA 4.0 to CC BY 4.0 (#426, #420, #PR).
 
 ## 0.4.0 — 2026-10-08
 
