@@ -90,3 +90,5 @@ When UniProt releases a new snapshot (roughly every eight weeks):
 > Regenerate after an intentional schema change with
 > `pytest hvantk/skills/uniprot_ptm/tests/test_builder.py -m hail --regenerate-snapshots`,
 > then commit the result. Broader integration coverage lives in `hvantk/tests/test_ptm.py`.
+
+5 of the 6 fixture rows are real UniProt feature data (CC BY 4.0); the 6th is a fabricated edge-case row. See its `THIRD_PARTY_DATA.md` entry.

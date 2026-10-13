@@ -112,3 +112,5 @@ you — raise `_RANGE_BYTES` rather than trimming what is parsed.
 - `row_snapshot`: `hvantk/skills/clinvar/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/clinvar/tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/clinvar/tests -m hail`
+
+The fixture is a real chromosome-20 slice of the public-domain ClinVar 2022-04-03 release; see its `THIRD_PARTY_DATA.md` entry.

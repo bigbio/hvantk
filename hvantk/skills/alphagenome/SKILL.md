@@ -147,7 +147,7 @@ What the probe cannot see: a server-side model update shipped without an SDK rel
 
 Declared in `plugin.yaml`'s `tests:` block (paths relative to `hvantk/skills/alphagenome/`):
 
-- `fixture`: `tests/testdata/raw/alphagenome` -- `clinvar-subset.parquet`, 150 real rows of the 16.6M-row shard for 3 ClinVar variants (`chr3:39408741:T>C`, `chr6:112216367:C>A`, `chrX:153694448:T>G`), all 19 scorers each. Per (variant, scorer) it keeps the top-|quantile_score| row under the builder's tie-break, the top-|raw_score| row and one random row, so every `top_*` and `max_abs_raw` equals its full-shard value; plus every heart SPLICE_SITE_USAGE row. `make_fixture.py` records the cut. Non-commercial data under the AlphaGenome Output Terms: `NOTICE.md` must stay beside it.
+- `fixture`: `tests/testdata/raw/alphagenome` -- `clinvar-subset.parquet`, 150 real rows of the 16.6M-row shard for 3 ClinVar variants (`chr3:39408741:T>C`, `chr6:112216367:C>A`, `chrX:153694448:T>G`), all 19 scorers each. Per (variant, scorer) it keeps the top-|quantile_score| row under the builder's tie-break, the top-|raw_score| row and one random row, so every `top_*` and `max_abs_raw` equals its full-shard value; plus every heart SPLICE_SITE_USAGE row. `make_fixture.py` records the cut. Non-commercial data under the AlphaGenome Output Terms: `NOTICE.md` must stay beside it. Real data; see its `THIRD_PARTY_DATA.md` entry.
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json` -- all three variants (one row each, so the keys are inlined in `test_builder.py`).
 - `drift_fingerprint`: `tests/drift_fingerprint.json`

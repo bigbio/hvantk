@@ -121,3 +121,5 @@ The plugin manifest declares these paths so the loader contract holds. Downloade
 > **Snapshot status:** seeded. `test_builder.py` asserts the build against both
 > snapshots. Regenerate after an intentional schema change with
 > `pytest hvantk/skills/cptac/expression/tests/test_builder.py --regenerate-snapshots`, then commit.
+
+The fixture is synthetic: a hand-authored 2-sample/2-gene expression + metadata pair, not a CPTAC download excerpt. No `THIRD_PARTY_DATA.md` entry applies.

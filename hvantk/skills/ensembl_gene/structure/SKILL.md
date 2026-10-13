@@ -277,3 +277,5 @@ Hail-free, cross-checks `hvantk.algorithms.ptm.constants`).
 > an intentional schema change with
 > `pytest hvantk/skills/ensembl_gene/structure/tests/test_builder.py -m hail --regenerate-snapshots`,
 > then commit the result.
+
+The fixture is synthetic: a hand-authored `mini.gtf` with invented gene/transcript IDs (`ENSG00000000001`, …), not a real Ensembl GTF excerpt. No `THIRD_PARTY_DATA.md` entry applies.

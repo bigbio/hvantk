@@ -127,6 +127,9 @@ relative to `hvantk/skills/ucsc_cellbrowser/` and match the manifest exactly.
   section previously named `tests/test_builder.py` alone, which disagreed with the
   manifest and silently excluded the drift-probe tests.
 
+All three fixtures are real pseudo-bulk slices of their respective UCSC Cell Browser
+collections; see their `THIRD_PARTY_DATA.md` entries.
+
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 
 When a new collection appears, follow this triage before deciding what to add:

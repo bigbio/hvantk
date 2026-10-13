@@ -97,3 +97,5 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 > build against them. Regenerate after an intentional schema change with
 > `pytest hvantk/skills/hgnc/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result.
+
+The fixture is real HGNC data (6 gene rows including BRCA1/BRCA2), CC0-licensed; see its `THIRD_PARTY_DATA.md` entry.
