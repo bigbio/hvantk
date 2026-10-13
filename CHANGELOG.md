@@ -39,6 +39,12 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   folders, the v11 file layout, the documented `signif_pairs` columns) instead of the
   portal's web-app build tags. Index churn and portal redeploys no longer open
   `drift:schema` PRs (#447).
+- **The drift bot skips a regenerated fingerprint that disagrees with the drift report.**
+  `--regenerate` probes upstream a second time; when that reading differs from the
+  report's `observed` fingerprint, the dataset is skipped for the run instead of
+  committed, so a transiently stale response no longer becomes a flip-flop PR. A failed
+  regenerate in the routine batch is reported for that dataset instead of failing the
+  batch (#448).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
   on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
 - **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
