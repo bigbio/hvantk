@@ -142,13 +142,16 @@ def _map_gene_symbols(gene_catalog, symbols):
     an approved symbol and a previous symbol of the same gene -- which would otherwise
     duplicate ``(locus, alleles, gene_id)`` within a tissue. ``_drop_gene_id_collisions``
     closes that: a previous/alias match whose gene_id is already claimed by another
-    source symbol is demoted to ambiguous (an approved symbol always keeps its claim;
+    source symbol is demoted instead (an approved symbol always keeps its claim;
     between two colliding previous/alias symbols with no approved symbol to arbitrate,
-    neither keeps it).
+    neither keeps it). A demoted symbol is logged and counted separately from
+    "ambiguous": it matched exactly one gene in its list, unlike a genuinely ambiguous
+    symbol, which matched more than one; the only thing it has in common with ambiguous
+    is that it too stays unmapped.
 
-    Returns the symbol -> Ensembl ID mapping. Unmapped and ambiguous symbols (which
-    now includes a collision loser) are left out of it, so they keep their source
-    symbol as ``gene_id``. Raises ``ValueError`` when no symbol maps.
+    Returns the symbol -> Ensembl ID mapping. Unmapped, ambiguous and colliding symbols
+    are all left out of it, so they keep their source symbol as ``gene_id``. Raises
+    ``ValueError`` when no symbol maps.
     """
     # A missing gene_name arrives as None; it cannot be mapped, sorted or printed.
     named = {symbol for symbol in symbols if symbol is not None}
@@ -164,7 +167,7 @@ def _map_gene_symbols(gene_catalog, symbols):
     }
     n_approved = len(mapping)
 
-    resolved, ambiguous = {}, set()
+    resolved, ambiguous, collided = {}, set(), set()
     if not hasattr(gene_catalog, "get_genes_listing_symbols"):
         logger.warning(
             "The gene catalog cannot look up previous symbols or aliases; "
@@ -178,21 +181,22 @@ def _map_gene_symbols(gene_catalog, symbols):
             [s for s in named if s not in mapping and not gene_catalog.is_canonical(s)],
         )
         resolved, collided = _drop_gene_id_collisions(mapping, resolved)
-        ambiguous = ambiguous | collided
     mapping.update({symbol: gene_id for symbol, (_, gene_id) in resolved.items()})
     via = Counter(field for field, _ in resolved.values())
 
-    unmapped = sorted(named - mapping.keys() - ambiguous)
+    unmapped = sorted(named - mapping.keys() - ambiguous - collided)
     logger.log(
-        logging.WARNING if ambiguous or unmapped else logging.INFO,
+        logging.WARNING if ambiguous or collided or unmapped else logging.INFO,
         "Mapped %d of %d pQTL gene symbol(s) to Ensembl gene IDs: %d approved, "
-        "%d via a previous symbol, %d via an alias; %d ambiguous, %d unmapped",
+        "%d via a previous symbol, %d via an alias; %d ambiguous, %d colliding, "
+        "%d unmapped",
         len(mapping),
         len(named),
         n_approved,
         via["prev_symbols"],
         via["alias_symbols"],
         len(ambiguous),
+        len(collided),
         len(unmapped),
     )
     if ambiguous:
@@ -201,6 +205,15 @@ def _map_gene_symbols(gene_catalog, symbols):
             "keeping their source symbol as gene_id. Examples: %s",
             len(ambiguous),
             ", ".join(sorted(ambiguous)[:10]),
+        )
+    if collided:
+        logger.warning(
+            "%d pQTL gene symbol(s) each matched exactly one gene, but a gene_id "
+            "another source symbol already claims, and stay unmapped instead, keeping "
+            "their source symbol as gene_id (see the per-collision warning above for "
+            "which other symbol and gene). Examples: %s",
+            len(collided),
+            ", ".join(sorted(collided)[:10]),
         )
     if unmapped:
         logger.warning(

@@ -74,7 +74,7 @@ def test_gene_symbol_mapping_resolves_outdated_symbols_and_reports_unmapped(capl
     assert mapping == {"OUTDATED": "ENSG00000000001", "NICKNAME": "ENSG00000000002"}
     assert (
         "Mapped 2 of 3 pQTL gene symbol(s) to Ensembl gene IDs: 0 approved, "
-        "1 via a previous symbol, 1 via an alias; 0 ambiguous, 1 unmapped"
+        "1 via a previous symbol, 1 via an alias; 0 ambiguous, 0 colliding, 1 unmapped"
     ) in caplog.text
     assert "NOT_IN_CATALOG" in caplog.text
 
@@ -102,7 +102,7 @@ def test_ambiguous_symbol_stays_unmapped_instead_of_taking_the_first_gene(caplog
     mapping = _map_gene_symbols(catalog, {"GENEA", "SHARED", "OLDB"})
 
     assert mapping == {"GENEA": "ENSG00000000001", "OLDB": "ENSG00000000002"}
-    assert "1 ambiguous, 0 unmapped" in caplog.text
+    assert "1 ambiguous, 0 colliding, 0 unmapped" in caplog.text
     assert "1 pQTL gene symbol(s) match more than one gene" in caplog.text
     assert "Examples: SHARED" in caplog.text
 
@@ -135,13 +135,20 @@ def test_colliding_symbol_defers_to_whichever_approved_symbol_claims_the_gene(ca
     assert mapping == {"CURRENT": "ENSG00000000001"}
     assert (
         "Mapped 1 of 4 pQTL gene symbol(s) to Ensembl gene IDs: 1 approved, "
-        "0 via a previous symbol, 0 via an alias; 3 ambiguous, 0 unmapped"
+        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 3 colliding, 0 unmapped"
     ) in caplog.text
     assert (
         "'OLDNAME' resolves to the same gene (ENSG00000000001) as the " in caplog.text
     )
     assert "approved symbol 'CURRENT'" in caplog.text
     assert "OLDB1, OLDB2" in caplog.text and "ENSG00000000002" in caplog.text
+    # The collision losers are reported under their own label, not folded into
+    # "ambiguous" (which would misdescribe them: each matched exactly one gene).
+    assert (
+        "3 pQTL gene symbol(s) each matched exactly one gene, but a gene_id another "
+        "source symbol already claims" in caplog.text
+    )
+    assert "Examples: OLDB1, OLDB2, OLDNAME" in caplog.text
 
 
 def test_no_mapped_symbol_raises():
