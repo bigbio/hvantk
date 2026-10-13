@@ -90,7 +90,9 @@ def _require_sklearn():
     type=click.Path(exists=True),
     default=None,
     help="HGNC complete-set TSV (symbol/gene_group/status). Switches cross-validation to "
-    "paralogue-blocked folds so a gene family cannot straddle a fold.",
+    "paralogue-blocked folds so a gene family cannot straddle a fold, and switches the "
+    "per-axis bootstrap interval from gene-resampling to block-resampling (whole "
+    "families resampled together) to match.",
 )
 @click.option(
     "--max-block-frac",
