@@ -158,6 +158,7 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
 
 def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
     """A detected transcript column must key `var`, never leave var_names duplicated."""
+    import numpy as np
     import pandas as pd
     from hvantk.skills.expression_atlas.shared.expression_atlas import (
         create_anndata_from_expression_atlas,
@@ -207,6 +208,95 @@ def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
         "ENSMUSG00000000001",
         "ENSMUSG00000000002",
     ]
+
+    # --- level="gene" (#383): same fixture, summed back onto the gene id -------------
+    # Gnai3 (ENSMUSG...0001) has two transcripts -- ERR1: 16+9=25, ERR2: 7+2=9. Cdc45
+    # (ENSMUSG...0002) has one -- unchanged at ERR1=3, ERR2=1.
+    gene_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(path), level="gene"
+    )
+    assert gene_adata.shape == (2, 2), "2 samples x 2 genes -- transcripts summed"
+    assert gene_adata.var.index.name == "gene_id"
+    assert list(gene_adata.var_names) == ["ENSMUSG00000000001", "ENSMUSG00000000002"]
+    assert list(gene_adata.var["Gene Name"]) == ["Gnai3", "Cdc45"]
+    summed = gene_adata.to_df()
+    assert summed.loc["ERR1", "ENSMUSG00000000001"] == pytest.approx(25.0)
+    assert summed.loc["ERR2", "ENSMUSG00000000001"] == pytest.approx(9.0)
+    assert summed.loc["ERR1", "ENSMUSG00000000002"] == pytest.approx(3.0)
+    assert summed.loc["ERR2", "ENSMUSG00000000002"] == pytest.approx(1.0)
+
+    # level="gene" is a no-op against an already gene-level export (no transcript
+    # column detected) -- nothing to sum.
+    gene_level_path = tmp_path / "gene_level.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001"],
+            "Gene Name": ["Gnai3"],
+            "ERR1": [16.0],
+            "ERR2": [7.0],
+        }
+    ).to_csv(gene_level_path, sep="\t", index=False)
+    noop_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(gene_level_path), level="gene"
+    )
+    assert noop_adata.shape == (2, 1)
+    assert list(noop_adata.var_names) == ["ENSMUSG00000000001"]
+
+    # Any other level value is rejected outright.
+    with pytest.raises(ValueError, match="level"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(path), level="bogus"
+        )
+
+    # min_count=1 (#383 review): a gene whose every transcript is NaN in one sample
+    # must sum to NaN, not 0.0 -- "no data" is not "zero expression". ENSMUSG...0001's
+    # two transcripts are both NaN for ERR1 (but not ERR2); ENSMUSG...0002 is untouched.
+    nan_path = tmp_path / "nan_tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": [
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000002",
+            ],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [np.nan, np.nan, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(nan_path, sep="\t", index=False)
+    nan_gene_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(nan_path), level="gene"
+    )
+    nan_summed = nan_gene_adata.to_df()
+    assert np.isnan(nan_summed.loc["ERR1", "ENSMUSG00000000001"])
+    assert nan_summed.loc["ERR2", "ENSMUSG00000000001"] == pytest.approx(9.0)
+    assert nan_summed.loc["ERR1", "ENSMUSG00000000002"] == pytest.approx(3.0)
+
+    # A transcript with no Gene ID cannot be summed onto a gene; groupby would
+    # otherwise drop it silently (#383 review).
+    orphan_path = tmp_path / "orphan_tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", None, "ENSMUSG00000000002"],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [16, 9, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(orphan_path, sep="\t", index=False)
+    with pytest.raises(ValueError, match="ENSMUST00000000003"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(orphan_path), level="gene"
+        )
 
 
 def test_duplicate_transcript_ids_raise_instead_of_corrupting_var(tmp_path):

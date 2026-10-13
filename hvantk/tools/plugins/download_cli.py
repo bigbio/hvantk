@@ -8,6 +8,10 @@ manifest (see hvantk/skills/_conventions/SKILL.md).
 The loader strips the ``-download`` suffix from each ``command`` name to
 derive the subcommand name within this group (e.g. ``clinvar-download``
 becomes the ``clinvar`` subcommand under ``hvantk download``).
+
+An entry whose module does not import is left out of this group and recorded
+as a ``cli:<command>`` load error, which ``hvantk plugins errors`` reports
+whether or not this module has been imported.
 """
 
 import click

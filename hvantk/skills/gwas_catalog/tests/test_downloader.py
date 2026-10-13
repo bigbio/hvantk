@@ -11,9 +11,12 @@ called for a single mocked downloader test, mirroring
 from __future__ import annotations
 
 import io
+import os
+import stat
 import zipfile
 from unittest.mock import MagicMock, patch
 
+from hvantk.core.plugin.drift_runner import _current_umask
 from hvantk.skills.gwas_catalog.cli import (
     GWAS_CATALOG_ASSOCIATIONS_FILENAME,
     download_dataset,
@@ -43,3 +46,8 @@ def test_download_dataset_extracts_the_tsv_under_the_canonical_name(tmp_path):
     assert result == str(expected)
     assert expected.read_bytes() == _TSV_CONTENT
     assert list(tmp_path.iterdir()) == [expected]  # no leftover temp files
+
+    # mkstemp always creates mode 0600; the published file must not keep that --
+    # it should land at whatever a normal file create gets (0666 masked by the
+    # process umask), so a shared raw dir stays group-readable.
+    assert stat.S_IMODE(os.stat(expected).st_mode) == (0o666 & ~_current_umask())

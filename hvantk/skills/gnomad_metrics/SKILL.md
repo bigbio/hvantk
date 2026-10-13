@@ -86,3 +86,5 @@ Declared in `plugin.yaml`'s `tests:` block for dataset `gnomad-metrics:metrics`.
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/gnomad_metrics/tests -m hail`
+
+The fixture is a real chromosome-20 slice of the v2.1.1 by-gene constraint table, released without restriction on use; see its `THIRD_PARTY_DATA.md` entry.

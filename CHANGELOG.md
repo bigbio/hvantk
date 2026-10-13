@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Two new downloaders, drift probes that watch the data they guard, and fixes from the
+Four new downloaders, drift probes that watch the data they guard, and fixes from the
 0.4.0 follow-up issues.
 
 **Upgrade notes.**
@@ -11,10 +11,17 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
 - `hvantk rerank` runs the ablation and the permutation null at `Config.folds` folds, like
   the headline score. A config that sets `folds` to anything but the default 5 gets
   different ablation and null deltas than before (#446).
+- Runs with blocks (`--blocks` or `Config.blocks`) now get a block-bootstrap interval for
+  `d_lo`/`d_md`/`d_hi` (wider under family clustering); runs without blocks are unchanged
+  (#453).
 - Rebuild a `cosmic-cgc:submissions` table built before this release before calling
   `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
 - `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
   `array<struct{name, url}>` (#443).
+- `hvantk expression markers`/`summarize`, the PTM constraint expression loader, and
+  `hvantk annotate prepare`'s matrix source type now refuse a transcript-keyed AnnData
+  (`var.index.name == "transcript_id"`) instead of silently reading its `var_names` as
+  gene ids; the error names `--plugin-arg level=gene` as the fix (#455).
 - `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
 
 ### Added
@@ -23,12 +30,34 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   download insider-interfaces` and `hvantk download gwas-catalog`, which `hvantk reprocess`
   now runs too. The gwas-catalog builder resolves a raw directory to its associations
   file, so the plain `--raw-dir` form works (#450).
+- **A downloader for `cptac:expression`.** `hvantk download cptac-expression
+  --cancer-type <ct>` (or `--all`) fetches the per-cancer-type whole-proteome matrix
+  and clinical-metadata CSV via the `cptac` Python package; `hvantk reprocess
+  cptac:expression` runs it automatically. The clinical-metadata half, previously
+  unverified against a live response, is now confirmed working end to end (#451).
+- **A downloader for `gevir:metrics`.** `hvantk download gevir` fetches the GeVIR
+  paper's Supplementary Table 2 workbook and derives the bgzipped metrics TSV itself
+  (stdlib `zipfile`/`xml.etree`, no new dependency), restoring the ~29 gene symbols
+  Excel's autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`); `hvantk
+  reprocess gevir:metrics` runs it automatically (#457).
 - **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
   field missing from the input header into an error instead of a warning (#443).
+- **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the
+  pinned Ensembl GTF into `--raw-dir`, where later runs reuse it, and maps the UniProt
+  download onto it; the command used to download and then fail at the build. `hvantk ptm
+  build` stays the command that adds PeptideAtlas and CPTAC sites (#454).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
+- **`build_config` exposes `seed`, `seed_sweep`, `nulls` and `blocks`.** Each is a
+  keyword-only parameter defaulting to `Config`'s own default, so a profile-driven rerank
+  config can opt into seed control, the multi-seed sweep, the permutation null and
+  paralogue-blocked CV without constructing `Config` by hand (#453).
 - **The downloader decision framework is published** in the data-sources guide: when a
   source gets a downloader, and when its acquisition is documented instead (#441).
+- **`--plugin-arg level=gene` for Expression Atlas.** Sums a transcript-level
+  experiment's per-transcript values onto their gene id and keys `var` by the gene id,
+  instead of the default per-transcript matrix (`level=transcript`); a no-op for an
+  already gene-level experiment (#455).
 
 ### Changed
 
@@ -55,6 +84,11 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
   plugins validate` already did (#449).
+- **`hvantk plugins errors` also lists downloader modules that fail to import**, as
+  `cli:<command>` rows that `hvantk drift` ignores; such a downloader used to drop out of
+  `hvantk download` with only a log line. It is the one plugins command whose exit code
+  signals load failures: `plugins list` and `plugins describe` stay informational
+  (`describe` exits 1 only for a provider that is unknown or failed to load) (#454).
 
 ### Fixed
 
@@ -85,6 +119,18 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `drift_fingerprint_variants.json` (#444).
 - **Docs:** the README genesets row, the psroc page title, the Expression Atlas licence URI
   and the E-MTAB-6798 organism (#438).
+- **Fixture licences:** audited every plugin's test fixture except GeVIR's (handled in a
+  separate pull request) for real-vs-synthetic status; added `THIRD_PARTY_DATA.md`
+  entries for eight previously-undocumented real fixtures (ClinVar, gnomAD, GTEx, GWAS
+  Catalog, HGNC, 1000 Genomes, UCSC Cell Browser's `default` dataset, MSigDB); dropped 9
+  BioCarta/legacy-KEGG sets from the MSigDB fixture that fall outside MSigDB's CC BY 4.0
+  grant; replaced the INSIDER `variants` and UCSC Cell Browser `adult-ctx`/`dev-ctx`
+  fixtures with synthetic ones after finding no published licence covers them, and
+  corrected the uniprot-ptm fixture's status from real to synthetic; re-sourced the UCSC
+  Cell Browser `default` fixture to its actual origin (a CC BY 4.0 Mendeley Data deposit,
+  not a UCSC accession); and, for Expression Atlas, corrected the Human Protein Atlas
+  licence on E-PROT-3 from stale CC BY-SA 4.0 to CC BY 4.0 and removed E-PROT-13, whose
+  catalog entry did not match the Human Protein Atlas at all (#426, #420, #458).
 
 ## 0.4.0 — 2026-10-08
 

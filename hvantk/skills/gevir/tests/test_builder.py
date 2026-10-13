@@ -24,7 +24,7 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz"
+FIXTURE = "hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297-synthetic.tsv.bgz"
 SNAPSHOT_DIR = Path("hvantk/skills/gevir/tests/snapshots")
 
 # Real keys, taken from an actual build of the fixture -- collect_sample_rows raises

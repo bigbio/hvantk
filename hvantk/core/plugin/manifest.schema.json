@@ -19,7 +19,14 @@
     },
     "name": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "not": {
+        "enum": [
+          "cli",
+          "entry-point"
+        ]
+      },
+      "$comment": "Reserved names (#408): load errors are recorded as `cli:<command>` and `entry-point:<name>`, so a provider called `cli` or `entry-point` would have its `<provider>:<dataset>` keys taken for those units -- dropped from `hvantk drift` and from the `plugins list` summary, or matched to the wrong provider. The loader translates a failure here in `_explain`."
     },
     "version": {
       "type": "string",

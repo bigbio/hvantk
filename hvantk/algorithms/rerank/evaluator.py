@@ -11,7 +11,12 @@ fitting it 5x per fold would multiply the cost of the table by the calibration f
 change in the answer. ``ReRanker.score`` still calibrates, because the SCORES it produces
 are read as probabilities; these deltas are not.
 
-The per-axis interval here resamples GENES only. It is one of at least three variance
+The per-axis interval here resamples GENES independently -- UNLESS the run is blocked
+(``groups``/``Config.blocks``), in which case it resamples whole BLOCKS instead (a cluster
+bootstrap: as many block ids as there are blocks, drawn with replacement, every member gene
+riding along with its block). Resampling genes independently under family clustering would
+silently understate the interval by exactly the amount blocking exists to correct for --
+the same reason the folds themselves are blocked. It is one of at least three variance
 components; the CV partition and the best-of-N axis selection are the other two, and they
 live in ``nulls.py`` and in ``seed_sweep`` below.
 """
@@ -189,7 +194,8 @@ def seed_sweep(
 
 
 def _envelope(boot, spread):
-    """The union of the gene-resampling interval and the across-seed range.
+    """The union of the bootstrap interval (gene- or block-resampling, see ``_boot_ci``)
+    and the across-seed range.
 
     A union, NOT a calibrated interval over both components: the two are not independent
     draws from one distribution and combining them properly needs a nested design nobody has
@@ -209,19 +215,55 @@ def _envelope(boot, spread):
     return min(lo, spread.lo), max(hi, spread.hi)
 
 
-def _boot_ci(y, p1, p0, n=1000, seed=DEFAULT_SEED):
-    """Paired bootstrap over GENES for the delta-AUC of ``p1`` over ``p0``.
+def _boot_ci(y, p1, p0, n=1000, seed=DEFAULT_SEED, groups=None):
+    """Paired bootstrap for the delta-AUC of ``p1`` over ``p0``.
+
+    ``groups is None`` (the default) resamples GENES independently -- this branch is
+    untouched from before blocking existed: the same ``rng.choice`` call, in the same
+    order, so every unblocked interval this produces is bit-identical to every one
+    produced before this function took a ``groups`` argument at all.
+
+    ``groups`` given (one block id per gene, aligned to ``y``/``p1``/``p0`` -- singletons
+    included, see ``blocks.gene_blocks``) switches to a CLUSTER bootstrap: each draw picks
+    as many block ids as there are blocks, uniformly and with replacement, and takes every
+    member gene of each id picked (so a size-4 family is exactly as likely to be drawn as
+    any size-1 singleton, and rides in or out as one unit). The resampled draw's size
+    therefore varies from draw to draw -- it is the number of BLOCKS that is held fixed at
+    the universe's count, not the number of genes -- which is the standard cluster-bootstrap
+    contract and is what lets the interval see the same family structure the blocked folds
+    were built to respect. Resampling genes independently here while the folds are blocked
+    would silently understate the interval by exactly the amount blocking exists to correct
+    for.
 
     Draws that end up single-class are skipped rather than counted: AUC is undefined there,
     and substituting 0.5 would drag the interval toward no-difference.
     """
     rng = np.random.default_rng(seed)
-    idx = np.arange(len(y))
     d = []
-    for _ in range(n):
-        b = rng.choice(idx, len(idx), True)
-        if 0 < y[b].sum() < len(b):
-            d.append(roc_auc_score(y[b], p1[b]) - roc_auc_score(y[b], p0[b]))
+    if groups is None:
+        idx = np.arange(len(y))
+        for _ in range(n):
+            b = rng.choice(idx, len(idx), True)
+            if 0 < y[b].sum() < len(b):
+                d.append(roc_auc_score(y[b], p1[b]) - roc_auc_score(y[b], p0[b]))
+    else:
+        groups = np.asarray(groups)
+        # `inverse[i]` is gene i's block CODE (0..n_blocks-1), built once, not per draw.
+        codes, inverse = np.unique(groups, return_inverse=True)
+        n_blocks = len(codes)
+        gene_idx = np.arange(len(y))
+        for _ in range(n):
+            draw = rng.integers(0, n_blocks, n_blocks)
+            # `np.bincount(draw, minlength=n_blocks)[code]` is how many times block `code`
+            # was picked in this draw; indexing that by `inverse` broadcasts each block's
+            # multiplicity onto every one of its member genes, and `np.repeat` turns that
+            # into the resampled index array -- the same MULTISET `np.concatenate(members[k]
+            # for k in draw)` would build (roc_auc_score reads a (score, label) multiset,
+            # not an order, so a differently-ordered-but-equal multiset scores identically),
+            # without materialising a Python list of per-block member arrays at all.
+            b = np.repeat(gene_idx, np.bincount(draw, minlength=n_blocks)[inverse])
+            if 0 < y[b].sum() < len(b):
+                d.append(roc_auc_score(y[b], p1[b]) - roc_auc_score(y[b], p0[b]))
     return [round(v, 3) for v in np.percentile(d, [2.5, 50, 97.5])]
 
 
@@ -248,6 +290,13 @@ class Evaluator:
         matches the headline score and the permutation null (``nulls.oof_scorer`` is
         built from the same ``Config.folds`` in ``engine._run_nulls``); a direct caller
         that passes none gets ``ABLATION_FOLDS``, the historic fixed value.
+
+        ``groups`` (the block array, or ``None``) does double duty: besides blocking the
+        out-of-fold fits (as everywhere else it is threaded), it also switches ``_boot_ci``
+        from a gene bootstrap to a cluster bootstrap over the same blocks -- reporting a
+        blocked AUC beside a gene-resampled interval would silently understate the one
+        number blocking exists to correct. ``groups=None`` reproduces the gene-only
+        interval exactly, unaffected by this.
         """
         y = np.asarray(y)
         scores = np.asarray(scores)
@@ -298,7 +347,7 @@ class Evaluator:
                 continue
             cc = list(dict.fromkeys(base_cols + cols))
             p = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed, folds=folds)
-            lo, md, hi = _boot_ci(y, p, p_base, seed=seed)
+            lo, md, hi = _boot_ci(y, p, p_base, seed=seed, groups=groups)
             row = {
                 "family": fam,
                 "auc": round(roc_auc_score(y, p), 3),

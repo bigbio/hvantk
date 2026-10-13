@@ -339,7 +339,8 @@ def _echo_unknown_dataset_hint(reg) -> None:
     the provider's real name and got a KeyError with no mention of the load failure
     that explains it.
     """
-    n = len(reg.load_errors())
+    # A `cli:<command>` row is a command that did not import, never a missing dataset.
+    n = sum(1 for unit, _ in reg.load_errors() if not plugin_loader.is_cli_unit(unit))
     if n:
         click.echo(
             f"({n} unit(s) failed to load and may include it; see: hvantk plugins errors)",
@@ -376,12 +377,16 @@ def _relevant_load_errors(
     report -- and fail on -- plugins the caller never asked about, and made every
     unattended `--regenerate` fail whenever any unrelated plugin was broken (#364).
 
-    Units come in three shapes (`loader._record_load_error`): a bare provider name, a
-    `provider:dataset` key, or `entry-point:<name>`. For one dataset, its own key, its
-    provider and its provider's entry point are relevant; for `--all --domain X`, a
-    dataset-level unit whose manifest declares another domain is not, while provider and
-    entry-point units carry no domain and are kept -- dropping them would recreate the
-    silently-smaller sweep #351 exists to stop.
+    Units come in four shapes (`loader._record_load_error`): a bare provider name, a
+    `provider:dataset` key, `entry-point:<name>`, or `cli:<command>`. A `cli:` unit is
+    never relevant: it records a manifest command that did not import, and a dataset
+    that fails with it has a row of its own (the reverted first fix, which filed it
+    under the provider, made `drift` exit 2 with a bogus row in any process that had
+    wired the downloaders, #408). For one dataset, its own key, its provider and its
+    provider's entry point are relevant; for `--all --domain X`, a dataset-level unit
+    whose manifest declares another domain is not, while provider and entry-point units
+    carry no domain and are kept -- dropping them would recreate the silently-smaller
+    sweep #351 exists to stop.
 
     A bare provider-level unit is matched against the requested dataset's provider after
     normalising ``_``/``-`` on both sides: `load_from_skills_root` records the plugin
@@ -393,6 +398,9 @@ def _relevant_load_errors(
     exact comparison -- it is keyed by the installed entry point's own name, which is
     expected to follow the provider's naming convention already.
     """
+    load_errors = [
+        (unit, exc) for unit, exc in load_errors if not plugin_loader.is_cli_unit(unit)
+    ]
     if dataset is not None:
         provider = dataset.split(":", 1)[0]
         wanted = {dataset, f"entry-point:{provider}"}

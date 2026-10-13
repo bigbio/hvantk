@@ -89,3 +89,5 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 > Regenerate after an intentional schema change with
 > `pytest hvantk/skills/gencc/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result.
+
+The fixture is synthetic: hand-authored rows in the real GenCC TSV layout (BRCA1/BRCA2/TP53/… with placeholder `example.com` report URLs and sequential PMIDs), not a download excerpt. No `THIRD_PARTY_DATA.md` entry applies.
