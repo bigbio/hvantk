@@ -275,12 +275,18 @@ def record_regeneration(
     path: Path,
     now: str | None = None,
 ) -> Regeneration:
-    """Record ``dataset``'s row if a regenerate materially changed its baseline.
+    """Record ``dataset``'s row if a regenerate captured an upstream change.
 
     ``previous`` is what `read_baseline` returned before the regenerate; ``regenerated``
     is the fingerprint it wrote. No row is written when:
 
     * there was no earlier baseline (a first capture);
+    * the two declare different ``probe_version`` values. The probe itself changed, so
+      the diff measures the new probe against the old one, not upstream against itself:
+      the v3 -> v4 dbnsfp rewrite moved its release list from ``headers`` to ``extras``
+      while the page still ended at the same release. A probe change that also reveals
+      a real upstream move the old probe could not see gets its row by hand, as the
+      dbnsfp bump in #378 did;
     * nothing changed beyond the keys a drift check ignores (a re-run).
 
     Otherwise the two are diffed exactly as a drift check diffs a baseline against a
@@ -289,6 +295,19 @@ def record_regeneration(
     if previous is None:
         return Regeneration(
             None, "no earlier baseline, and a first capture is not an upstream change"
+        )
+    old_version = previous.get("probe_version")
+    new_version = regenerated.get("probe_version")
+    if (
+        old_version is not None
+        and new_version is not None
+        and old_version != new_version
+    ):
+        return Regeneration(
+            None,
+            f"probe_version changed ({old_version} -> {new_version}), so this rewrite "
+            "is a probe change, not an upstream one; if upstream moved too, add the "
+            "row by hand",
         )
     diff = _compare_fingerprints(dict(previous), dict(regenerated))
     if diff is None:

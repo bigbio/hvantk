@@ -404,8 +404,9 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     tmp_path, monkeypatch
 ):
     """The row has the bot's shape and tier; a re-run that changes nothing records
-    nothing; `--no-ledger-row` (what the bot passes) opts out; other rows survive; an
-    unparseable ledger stops the run before anything is rewritten."""
+    nothing; a probe change records nothing; `--no-ledger-row` (what the bot passes)
+    opts out; other rows survive; an unparseable ledger stops the run before anything
+    is rewritten."""
     from hvantk.tools.plugins import drift_cli
 
     _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
@@ -443,6 +444,12 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     # Nothing material moved (fetched_at is ignored): no new row.
     regenerate({"fetched_at": "2026-02-01T00:00:00Z"}, "--accepted-in", "PR #1")
     assert ledger_now() == ledger
+
+    # A probe change: the old baseline came from probe_version 0, so its columns moving
+    # is the new probe's doing, not upstream's. No row, and the run says why.
+    output = regenerate({"probe_version": 0, "headers": {"a.tsv": ["c0"]}})
+    assert ledger_now() == ledger
+    assert "probe_version changed (0 -> 1)" in output, output
 
     # The bot's flag: the version moved, but the row is left to the bot.
     regenerate({"source_version": "fake-v0"}, "--no-ledger-row")

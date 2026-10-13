@@ -18,8 +18,8 @@
     "signal": "routine"
   },
   "dbnsfp:variants": {
-    "accepted_in": "fix/drift-ledger-dbnsfp-probe",
-    "last_upstream_change": "2026-10-13T18:16:06.352040+00:00",
+    "accepted_in": "PR #378",
+    "last_upstream_change": "2026-09-30T19:33:48+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   },

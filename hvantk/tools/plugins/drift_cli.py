@@ -57,7 +57,8 @@ def _usage_error(message: str) -> None:
     is_flag=True,
     help=(
         "Overwrite drift_fingerprint.json with observed probe output, and record a "
-        "rebuild-ledger row if it materially changed"
+        "rebuild-ledger row if upstream materially changed (not for a first capture "
+        "or a probe_version change)"
     ),
 )
 @click.option(
@@ -429,8 +430,8 @@ def _regenerate_fingerprint(
 def _record_ledger_row(
     dataset_name: str, previous: dict | None, observed: dict, accepted_in: str
 ) -> None:
-    """Record the rebuild-ledger row for a regenerate that changed the baseline, or
-    say why it recorded none (`drift_ledger.record_regeneration` decides).
+    """Record the rebuild-ledger row for a regenerate that captured an upstream change,
+    or say why it recorded none (`drift_ledger.record_regeneration` decides).
 
     The fingerprint is already rewritten when this runs, so a failed ledger write must
     say so: a plain re-run would find the baseline unchanged and record nothing. Any
