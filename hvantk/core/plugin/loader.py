@@ -51,6 +51,17 @@ _ENTRY_POINT_GROUP = "hvantk.providers"
 #: error path can judge a name WITHOUT running the validation that just failed.
 _PROVIDER_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
+#: Load-error unit prefix for a manifest `cli:` entry whose callable will not resolve
+#: (`cli:<command>`). Such a row is about the command alone -- a dataset whose own
+#: callables fail with it is recorded separately, under `provider:dataset` -- so
+#: `hvantk drift` does not count it.
+CLI_UNIT_PREFIX = "cli:"
+
+
+def is_cli_unit(unit: str) -> bool:
+    """True for a load-error unit recorded for a manifest `cli:` entry."""
+    return unit.startswith(CLI_UNIT_PREFIX)
+
 
 def _load_schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
@@ -202,6 +213,11 @@ class PluginRegistry:
         self._schema = _load_schema()
         # CLI entries per plugin, keyed by plugin name.
         self._cli_entries: dict[str, list[dict]] = {}
+        # Resolved `cli:` callables and cached failures, keyed by (plugin, command).
+        # Filled on demand by `resolve_cli_entries` / `apply_plugin_downloaders`, never
+        # at load time (see `resolve_cli_entries`).
+        self._cli_callables: dict[tuple[str, str], Callable[..., Any]] = {}
+        self._failed_cli: dict[tuple[str, str], PluginLoadError] = {}
 
     # --- Public lookup API ---
 
@@ -345,7 +361,9 @@ class PluginRegistry:
         """Collect a load failure AND say so.
 
         ``unit`` is whatever disappeared from the registry -- a plugin directory, an
-        entry point, or a single ``provider:dataset`` key.
+        entry point, or a single ``provider:dataset`` key -- or a ``cli:<command>``
+        entry whose callable did not resolve (`resolve_cli_entries`), which costs that
+        command alone; a dataset that fails with it is recorded under its own key.
 
         Collecting silently is the problem this exists to stop. `plugins list` prints
         the survivors with no "N failed" line, and `drift-health.yml` greps the report
@@ -366,6 +384,12 @@ class PluginRegistry:
         by `load_from_directory` -- one of the two paths already covered.)
         """
         self._load_errors.append((unit, exc))
+        if is_cli_unit(unit):
+            # "NOT registered and will not be drift-checked" would be false here (#408).
+            logger.warning(
+                "%r failed to load; that command is NOT available: %s", unit, exc
+            )
+            return
         logger.warning(
             "%r failed to load; it is NOT registered and will not be drift-checked: %s",
             unit,
@@ -392,6 +416,54 @@ class PluginRegistry:
 
     # --- CLI wiring ---
 
+    def resolve_cli_entries(self) -> None:
+        """Resolve every manifest ``cli:`` entry, recording each failure as a load error.
+
+        A failure is recorded under ``cli:<command>``, not under the provider: the
+        command is lost, while the provider's datasets bind (or fail) on their own, so
+        `hvantk drift` ignores these rows. Before this, a downloader module that would
+        not import was only logged by `apply_plugin_downloaders`, and its subcommand
+        silently vanished from `hvantk download`.
+
+        Called by `hvantk plugins errors`, so the check does not depend on `hvantk
+        download` having run in the same process, and through `apply_plugin_downloaders`
+        by the download CLI, which needs the callables anyway. Never at load time:
+        a `cli:` module need not be one the datasets import, and it may pull heavy
+        dependencies that every other registry consumer would then pay for.
+
+        Idempotent: each entry is resolved once and its outcome cached, so calling this
+        and `apply_plugin_downloaders` in one process records a failure once.
+        """
+        for plugin_name, entries in self._cli_entries.items():
+            for entry in entries:
+                self._resolve_cli_entry(plugin_name, entry)
+
+    def _resolve_cli_entry(
+        self, plugin_name: str, entry: dict
+    ) -> Callable[..., Any] | None:
+        """The callable of one ``cli:`` entry, or None once its failure is recorded."""
+        key = (plugin_name, entry["command"])
+        if key in self._cli_callables:
+            return self._cli_callables[key]
+        if key in self._failed_cli:
+            return None
+        try:
+            fn = self._resolve_callable(entry["module"], entry["function"])
+        except PluginLoadError as exc:
+            err = exc
+        except Exception as exc:  # noqa: BLE001
+            # Same wrapping as the eager dataset pass: a module that raises something
+            # other than ImportError at import time is a load failure too, not a crash
+            # of whichever command happened to resolve it.
+            err = PluginLoadError(str(exc))
+            err.__cause__ = exc
+        else:
+            self._cli_callables[key] = fn
+            return fn
+        self._failed_cli[key] = err
+        self._record_load_error(f"{CLI_UNIT_PREFIX}{entry['command']}", err)
+        return None
+
     def apply_plugin_downloaders(self, click_group: Any) -> None:
         """Wire each plugin's downloader CLI into the given click group.
 
@@ -404,6 +476,9 @@ class PluginRegistry:
         Entries that don't end in ``-download`` are skipped — they're
         reserved for future top-level commands.
 
+        An entry whose callable does not resolve is skipped, and recorded as a
+        ``cli:<command>`` load error (see `resolve_cli_entries`).
+
         Idempotent: skips entries whose short name is already registered.
         """
         for plugin_name, entries in self._cli_entries.items():
@@ -414,15 +489,8 @@ class PluginRegistry:
                 short_name = command[: -len("-download")]
                 if short_name in click_group.commands:
                     continue
-                try:
-                    fn = self._resolve_callable(entry["module"], entry["function"])
-                except PluginLoadError as exc:
-                    logger.warning(
-                        "skipping downloader %r from plugin %r: %s",
-                        short_name,
-                        plugin_name,
-                        exc,
-                    )
+                fn = self._resolve_cli_entry(plugin_name, entry)
+                if fn is None:
                     continue
                 click_group.add_command(fn, name=short_name)
 

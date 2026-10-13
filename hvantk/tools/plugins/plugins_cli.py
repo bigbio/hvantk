@@ -43,8 +43,16 @@ def _echo_load_failure_summary(reg) -> None:
     in the tree), and a human at a terminal sees both streams anyway. Before this the
     table said a provider was fine with zero datasets, and both `list` and `describe`
     exited 0 -- the only signal was a logger.warning, which nothing reads.
+
+    `cli:<command>` rows are left out: a downloader command that does not import
+    removes nothing from this table. `list` does not resolve the `cli:` entries
+    itself, so such rows exist only if something else in this process did.
     """
-    errs = reg.load_errors()
+    errs = [
+        (unit, exc)
+        for unit, exc in reg.load_errors()
+        if not plugin_loader.is_cli_unit(unit)
+    ]
     if errs:
         click.echo(
             f"{len(errs)} unit(s) failed to load and are NOT listed "
@@ -102,12 +110,19 @@ def describe_cmd(provider: str):
 
 @plugins_group.command(name="errors")
 def errors_cmd():
-    """List plugins that failed to load, and why.
+    """List everything that failed to load, and why.
 
-    The one plugins command whose exit code signals load failures: exits 1 when it
-    lists anything, 0 when there is nothing to list.
+    Covers providers, entry points and datasets, and each manifest `cli:` entry whose
+    command does not import, reported as `cli:<command>` (a row about that command
+    alone, which `hvantk drift` ignores). The one plugins command whose exit code
+    signals load failures: exits 1 when it lists anything, 0 when there is nothing to
+    list.
     """
     reg = plugin_loader.get_registry()
+    # Resolved here rather than at load time (import cost), and rather than relying on
+    # `hvantk download` having run in this process, which is what kept a downloader
+    # that would not import out of this list (#408).
+    reg.resolve_cli_entries()
     errs = reg.load_errors()
     if not errs:
         click.echo("(no load errors)")

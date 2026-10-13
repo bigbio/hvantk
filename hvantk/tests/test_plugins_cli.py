@@ -324,3 +324,61 @@ def test_describe_names_a_provider_recorded_under_its_directorys_underscored_nam
     assert result.exit_code != 0
     assert "failed to load" in result.output
     assert "unknown provider" not in result.output
+
+
+def test_a_downloader_that_does_not_import_is_a_cli_row_drift_ignores(
+    tmp_path, monkeypatch, caplog
+):
+    """#408: a `cli:` module that would not import was only a log line from `hvantk
+    download`, whose subcommand silently vanished. `plugins errors` must report it on
+    its own, as `cli:<command>`, while `drift` -- whose dataset still binds -- must not
+    count it (the reverted fix filed it under the provider: exit 2, a bogus row, and a
+    log line saying the dataset would not be drift-checked)."""
+    import json
+    import shutil
+
+    import click
+
+    from hvantk.tools.plugins.drift_cli import drift_cmd
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    manifest = plugin_dir / "plugin.yaml"
+    manifest.write_text(
+        manifest.read_text()
+        + "\ncli:\n  - command: fake-download\n"
+        + "    module: hvantk.nope.missing_downloader\n    function: download_cmd\n"
+    )
+    reg = _registry_with(monkeypatch, plugin_dir)
+    assert reg.load_errors() == []  # not resolved at load time (import cost)
+
+    with caplog.at_level("WARNING", logger="hvantk.core.plugin.loader"):
+        result = _runner().invoke(plugins_group, ["errors"])
+    assert result.exit_code == 1, result.output
+    assert (
+        "cli:fake-download: cannot import module 'hvantk.nope.missing_downloader'"
+        in result.stdout
+    )
+    logged = [r.getMessage() for r in caplog.records]
+    assert any("cli:fake-download" in m for m in logged), logged
+    assert not any("drift-checked" in m for m in logged), logged
+
+    group = click.Group("download")
+    reg.apply_plugin_downloaders(group)
+    assert "fake" not in group.commands
+    assert [u for u, _ in reg.load_errors()] == ["cli:fake-download"]  # once
+
+    # `list` counts what is missing from its table; a lost command removes nothing.
+    listed = _runner().invoke(plugins_group, ["list"])
+    assert listed.exit_code == 0, listed.output
+    assert "failed to load" not in listed.stderr
+
+    for args in (
+        ["--json", "fake:default"],
+        ["--all", "--json"],
+        ["--all", "--domain", "genomics", "--json"],
+    ):
+        drift = _runner().invoke(drift_cmd, args)
+        assert drift.exit_code == 0, (args, drift.output)
+        assert [r["dataset_name"] for r in json.loads(drift.stdout)] == ["fake:default"]
+        assert "cli:" not in drift.stderr

@@ -33,8 +33,9 @@ subcommands:
     outputs: ["stdout: provider details + dataset summary"]
   - name: errors
     description: >-
-      Print every load error with its cause. Exits 1 when it prints any row, 0
-      when there are none.
+      Print every load error with its cause, including `cli:<command>` rows for
+      manifest `cli:` entries whose module does not import. Exits 1 when it
+      prints any row, 0 when there are none.
   - name: validate
     description: Validate a plugin.yaml file against the manifest schema
     inputs:

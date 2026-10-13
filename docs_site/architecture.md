@@ -311,6 +311,10 @@ The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
 
 Downloader CLI commands are wired automatically from the manifest's `cli:`
 block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
+A `cli:` entry whose module does not import is left out of `hvantk download`
+and reported by `hvantk plugins errors` as a `cli:<command>` row, whether or not
+`hvantk download` has run. `hvantk drift` ignores those rows: they describe a
+command, and a dataset that fails along with it has a row of its own.
 
 Of the `hvantk plugins` commands, only `errors` signals load failures through its
 exit code: it exits 1 when it lists anything. `list` and `describe` are

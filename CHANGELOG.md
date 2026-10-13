@@ -45,6 +45,11 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
   plugins validate` already did (#449).
+- **`hvantk plugins errors` also lists downloader modules that fail to import**, as
+  `cli:<command>` rows that `hvantk drift` ignores; such a downloader used to drop out of
+  `hvantk download` with only a log line. It is the one plugins command whose exit code
+  signals load failures: `plugins list` and `plugins describe` stay informational and
+  exit 0 (#PR).
 
 ### Fixed
 
