@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from hvantk.core.plugin import drift_ledger
+
 _SCRIPT = Path(__file__).resolve().parents[2] / ".github" / "scripts" / "drift_to_pr.py"
 
 
@@ -42,7 +44,7 @@ def isolated_ledger(drift_to_pr, monkeypatch, tmp_path):
     """Give every test its own throwaway ledger file, never the real
     ``hvantk/resources/drift_ledger.json``.
 
-    `record_in_ledger` writes straight to `LEDGER_PATH` with `Path.write_text` -- a
+    `record_in_ledger` writes `LEDGER_PATH` through `drift_ledger.record_changes` -- a
     plain file write, not a subprocess call -- so it is invisible to the `_run` /
     `subprocess.run` monkeypatching the rest of this suite already relies on to stay
     side-effect-free (see `_capture_handle_drifted` and `test_exits_nonzero_when_a_pr_
@@ -243,9 +245,9 @@ def test_unparseable_fingerprint_is_never_treated_as_matching(drift_to_pr):
 
 
 def test_ignored_keys_stay_in_sync_with_the_package(drift_to_pr):
-    """The script duplicates PROBE_FINGERPRINT_IGNORED_KEYS because it runs from a
-    checkout where hvantk may not be importable. Duplication needs a guard, or the two
-    drift apart and the bot starts disagreeing with the detector."""
+    """The bot's "materially the same" must ignore exactly the keys the detector does.
+    It used to keep its own copy of PROBE_FINGERPRINT_IGNORED_KEYS; it imports the
+    package's now, and this keeps a reintroduced copy from drifting apart."""
     from hvantk.core.plugin.api import PROBE_FINGERPRINT_IGNORED_KEYS
 
     assert drift_to_pr.FINGERPRINT_IGNORED_KEYS == PROBE_FINGERPRINT_IGNORED_KEYS
@@ -658,6 +660,10 @@ def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_f
         # a:one and b:two still make it all the way to a PR.
         assert any(c.startswith("git commit") for c in joined), joined
         assert any(c.startswith("gh pr create") for c in joined), joined
+        # ...with ledger rows for the two survivors only: the dropped dataset leaves
+        # no row behind in the file the batch commits.
+        ledger = json.loads(drift_to_pr.LEDGER_PATH.read_text())
+        assert sorted(ledger) == ["a:one", "b:two"], ledger
     else:
         # The restore failed: the whole batch is abandoned, not just c:three, and
         # c:three's own entry keeps its original stage plus the restore note.
@@ -673,6 +679,8 @@ def test_routine_batch_restores_only_the_failed_dataset_on_mid_loop_regenerate_f
         # The best-effort blanket discard still runs even though the single-path
         # restore already failed.
         assert "git checkout HEAD -- hvantk/skills" in joined, joined
+        # An abandoned batch records no ledger row for anyone.
+        assert not drift_to_pr.LEDGER_PATH.exists()
 
 
 def test_routine_batch_isolates_a_single_regenerate_failure(
@@ -1254,13 +1262,15 @@ def test_resolve_assignees_rejects_a_malformed_fallback(drift_to_pr, monkeypatch
 # Merging a fingerprint accepts a new baseline; without a ledger, the fact that a built
 # artifact is now stale survives only in git history. ClinVar gained ~408 KB of variants
 # across 2026-08 with nothing recording that a rebuild was due.
+#
+# The row is `hvantk.core.plugin.drift_ledger`'s, shared with `hvantk drift
+# --regenerate`; the bot only decides WHEN to record it (see `record_in_ledger`).
 
 
-def test_ledger_entry_records_the_accepted_change(drift_to_pr):
-    entry = drift_to_pr.ledger_entry(
-        dataset="clinvar:variants",
+def test_ledger_entry_records_the_accepted_change():
+    entry = drift_ledger.ledger_entry(
         diff={"changed": {"headers": {}}, "added": {}, "removed": {}},
-        pr_ref="PR #288",
+        accepted_in="PR #288",
         now="2026-08-23T16:56:29+00:00",
     )
     assert entry == {
@@ -1275,16 +1285,15 @@ def test_ledger_entry_signal_matches_classify_risk(drift_to_pr):
     """The ledger's `signal` must agree with the PR's own classification, or the two
     tell different stories about the same change."""
     diff = {"changed": {"extras": {}}, "added": {}, "removed": {}}
-    entry = drift_to_pr.ledger_entry(
-        dataset="hgnc:lookup",
+    entry = drift_ledger.ledger_entry(
         diff=diff,
-        pr_ref="PR #1",
+        accepted_in="PR #1",
         now="2026-08-01T00:00:00+00:00",
     )
     assert entry["signal"] == drift_to_pr.classify_risk(diff) == "routine"
 
 
-def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
+def test_ledger_update_preserves_rebuilt_at_of_other_datasets():
     """Updating one dataset must not clear another's rebuild record."""
     ledger = {
         "hgnc:lookup": {
@@ -1294,61 +1303,54 @@ def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
             "rebuilt_at": "2026-08-01T00:00:00+00:00",
         }
     }
-    out = drift_to_pr.ledger_update(
+    out = drift_ledger.ledger_update(
         ledger,
         dataset="clinvar:variants",
         diff={"changed": {"extras": {}}, "added": {}, "removed": {}},
-        pr_ref="PR #2",
+        accepted_in="PR #2",
         now="2026-08-23T00:00:00+00:00",
     )
     assert out["hgnc:lookup"]["rebuilt_at"] == "2026-08-01T00:00:00+00:00"
     assert out["clinvar:variants"]["signal"] == "routine"
 
 
-def test_ledger_update_does_not_mutate_its_input(drift_to_pr):
+def test_ledger_update_does_not_mutate_its_input():
     ledger = {}
-    drift_to_pr.ledger_update(
+    drift_ledger.ledger_update(
         ledger,
         dataset="a:b",
         diff={"changed": {}, "added": {}, "removed": {}},
-        pr_ref="PR #1",
+        accepted_in="PR #1",
         now="2026-08-01T00:00:00+00:00",
     )
     assert ledger == {}
 
 
-def test_load_ledger_returns_empty_dict_on_corrupt_file(
-    drift_to_pr, monkeypatch, tmp_path
-):
+def test_load_ledger_returns_empty_dict_on_corrupt_file(tmp_path):
     """A broken ledger must not block a drift PR -- it just starts recording afresh."""
     bad = tmp_path / "drift_ledger.json"
     bad.write_text("{ not json")
-    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", bad)
-    assert drift_to_pr.load_ledger() == {}
+    assert drift_ledger.load_ledger(bad) == {}
 
 
-def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tmp_path):
-    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "nope.json")
-    assert drift_to_pr.load_ledger() == {}
+def test_load_ledger_returns_empty_dict_when_absent(tmp_path):
+    assert drift_ledger.load_ledger(tmp_path / "nope.json") == {}
 
 
-def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(
-    drift_to_pr, monkeypatch, tmp_path
-):
+def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(tmp_path):
     """`json.loads(text) or {}` only substitutes `{}` for FALSY JSON (`[]`, `0`, `""`,
     `null`) -- truthy non-dict JSON (a populated list, a bare string) passes straight
     through unchanged, breaking the docstring's "a missing or corrupt file yields {}"
     promise for exactly the shapes a half-written or hand-edited ledger is likely to
-    produce. `record_in_ledger` then calls `dict(ledger)` on the result, which raises
+    produce. `ledger_update` then calls `dict(ledger)` on the result, which raises
     `TypeError` for a list."""
     non_dict = tmp_path / "drift_ledger.json"
-    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", non_dict)
 
     non_dict.write_text("[1, 2, 3]")
-    assert drift_to_pr.load_ledger() == {}
+    assert drift_ledger.load_ledger(non_dict) == {}
 
     non_dict.write_text('"x"')
-    assert drift_to_pr.load_ledger() == {}
+    assert drift_ledger.load_ledger(non_dict) == {}
 
 
 # --- ledger write ORDERING: staged only after both anti-churn guards ---------------
@@ -1404,6 +1406,14 @@ def test_handle_drifted_stages_the_ledger_only_after_the_emptiness_guard(
     diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
     add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
     assert add_ledger_idx > diff_idx, calls
+    # The regenerate itself must not record the row (`hvantk drift --regenerate` would,
+    # before any guard ran); the bot records it here, through the shared writer.
+    regen = next(
+        c for c in calls if c[:4] == ["python", "-m", "hvantk.hvantk", "drift"]
+    )
+    assert "--no-ledger-row" in regen, regen
+    row = json.loads(drift_to_pr.LEDGER_PATH.read_text())["clinvar:variants"]
+    assert row["accepted_in"] == "drift/clinvar-variants", row
 
 
 def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
@@ -1434,6 +1444,15 @@ def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
     diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
     add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
     assert add_ledger_idx > diff_idx, calls
+    # No regenerate in the loop may write a row: a dataset dropped mid-batch would leave
+    # it behind. The survivors' rows are written once, after the guards.
+    regen = [c for c in calls if c[:4] == ["python", "-m", "hvantk.hvantk", "drift"]]
+    assert regen and all("--no-ledger-row" in c for c in regen), regen
+    ledger = json.loads(drift_to_pr.LEDGER_PATH.read_text())
+    assert {name: row["accepted_in"] for name, row in ledger.items()} == {
+        "a:one": "drift/routine-batch",
+        "b:two": "drift/routine-batch",
+    }, ledger
 
 
 # --- stale-PR escalation ------------------------------------------------------------

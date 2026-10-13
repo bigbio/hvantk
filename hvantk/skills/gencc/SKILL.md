@@ -72,7 +72,7 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 
 1. Re-download: `hvantk download gencc --output-dir <raw_dir> --overwrite`. Capture the new `Content-Length` in the PR description — that is what the drift probe treats as the content signal (see § 2). `Last-Modified` is recorded for reference only.
 2. Diff the new TSV header against the previous fixture header. New columns alone are non-breaking — they will not appear in the built table unless added to `GENCC_SUBMISSION_FIELDS`. Removed/renamed columns require updating `GENCC_SUBMISSION_FIELDS`.
-3. Drift-probe diff: regenerate `hvantk/skills/gencc/tests/drift_fingerprint.json` and inspect for column-list changes or hash changes.
+3. Drift-probe diff: `hvantk drift gencc:submissions` prints any column-list or hash change against `hvantk/skills/gencc/tests/drift_fingerprint.json`. Once it is handled, `hvantk drift --regenerate gencc:submissions` rewrites the baseline and records the rebuild-ledger row; commit both.
 4. If the fixture (`hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv`) is no longer representative (new classification value, new submitter under test), refresh it from a curated sub-sample.
 5. Re-run the snapshot round-trip with `--regenerate-snapshots`; expected diffs: new optional columns, refreshed `submission_date` values. Unexpected diffs (changed key semantics, stripped prefixes leaking back in) require investigation before commit.
 6. Open PR; reviewer checks the snapshot diff narrative.

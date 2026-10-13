@@ -104,7 +104,7 @@ PeptideAtlas releases a new human phospho build once or twice per year. When a n
 2. Update the pinned build coordinates in `hvantk/skills/peptideatlas/phospho/shared/constants.py` (`PEPTIDEATLAS_LATEST_BUILD_DATE`, `PEPTIDEATLAS_LATEST_BUILD_ID`).
 3. Re-download (`hvantk download peptideatlas-phospho -o /data/peptideatlas --overwrite`) and spot-check the row count against the previous build.
 4. If any new modification notation or table appears in the dump, document it in § 4.
-5. Re-regenerate `tests/drift_fingerprint.json` with the new build's filename + headers.
+5. Regenerate `tests/drift_fingerprint.json` with `hvantk drift --regenerate peptideatlas:phospho` to record the new build's filename + headers, and commit the rebuild-ledger row it writes with it.
 6. If a builder snapshot exists (TODO), run `pytest hvantk/skills/peptideatlas/phospho/tests --regenerate-snapshots` and inspect the diff.
 
 ## 9. Validation contract

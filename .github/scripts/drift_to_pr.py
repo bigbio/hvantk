@@ -25,8 +25,10 @@ For each ``status == "drifted"`` entry the script:
 1. Computes a branch name ``drift/<provider>-<dataset>`` (the colon in
    ``provider:dataset`` is replaced with ``-`` so it is a valid ref).
 2. Branches off ``BASE_BRANCH``.
-3. Runs ``hvantk drift --regenerate <provider:dataset>`` to overwrite the
-   committed ``drift_fingerprint.json``.
+3. Runs ``hvantk drift --regenerate --no-ledger-row <provider:dataset>`` to
+   overwrite the committed ``drift_fingerprint.json``. The rebuild-ledger row is
+   recorded by this script instead, through the same ``hvantk.core.plugin.drift_ledger``
+   code the CLI uses, and only once the checks below have passed.
 4. Commits with a plain Conventional Commits message.
 5. Force-pushes with lease (the branch is bot-owned) -- but only if the branch does
    not already propose the same fingerprint. ``--regenerate`` rewrites ``fetched_at``
@@ -88,17 +90,27 @@ try:  # PyYAML ships in the conda env; soft-import so --dry-run still works
 except ImportError:  # pragma: no cover - exercised only in stripped envs
     yaml = None
 
+# The bot runs where drift.yml installed hvantk (`pip install -e`), as its own
+# `python -m hvantk.hvantk drift --regenerate` subprocess requires anyway. A hard import:
+# if the package is missing the bot fails at start-up, rather than with an ignore set or
+# a ledger writer that silently does nothing.
+from hvantk.core.plugin.api import PROBE_FINGERPRINT_IGNORED_KEYS
+from hvantk.core.plugin.drift_ledger import (
+    SCHEMA_KEYS,  # noqa: F401 -- re-exported: probe docstrings cite it from this script
+    classify_risk,
+    record_changes,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
+# The ledger inside THIS checkout -- the file the `git add` below stages -- passed
+# explicitly to the shared writer rather than resolved from wherever hvantk is installed.
 LEDGER_PATH = REPO_ROOT / "hvantk" / "resources" / "drift_ledger.json"
 
-# Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
-# imported because this script runs from a checkout where the package may not be
-# importable, and `_fingerprints_match` must not become a no-op if the import fails --
-# a silently-empty ignore set would make every comparison "different" and restore the
-# exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
-FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
+# The keys the drift comparison itself ignores, so "materially the same" here can never
+# disagree with what `hvantk drift` reports as clean.
+FINGERPRINT_IGNORED_KEYS = PROBE_FINGERPRINT_IGNORED_KEYS
 
 
 # --------------------------------------------------------------------------- #
@@ -122,35 +134,9 @@ def strip_ignored(fingerprint: dict) -> dict:
     return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
 
 
-# Fingerprint keys that carry the SCHEMA signal. `headers` is the column list;
-# `checksums` is a hash of the column-header row for the header-hashing probes
-# (clingen, gencc, hgnc) or of the VCF meta-header (clinvar), so a moved checksum means
-# the columns moved. A probe that puts HTTP metadata here instead makes this tier
-# constant -- see #333, and `extras` for where a pure content signal belongs.
-SCHEMA_KEYS = frozenset({"headers", "checksums"})
-
-
-def classify_risk(diff: dict | None) -> str:
-    """Classify a drift diff as ``"routine"`` or ``"schema"``.
-
-    Routine means the schema signal is unchanged and only content/version moved --
-    safe to batch with other routine datasets into one PR. Schema means the column
-    list or header hash moved, or the fingerprint gained/lost a top-level key, and
-    the plugin's builder.py may need a change.
-
-    Defaults to ``"schema"`` for anything it cannot read. Misclassifying a schema
-    change as routine would bury it in a batch; the reverse just opens one extra PR.
-    """
-    if not isinstance(diff, dict) or not diff:
-        return "schema"
-    if diff.get("added") or diff.get("removed"):
-        return "schema"
-    changed = diff.get("changed") or {}
-    if not isinstance(changed, dict):
-        return "schema"
-    if SCHEMA_KEYS & set(changed):
-        return "schema"
-    return "routine"
+# `classify_risk` (and the `SCHEMA_KEYS` it reads) live in hvantk.core.plugin.drift_ledger
+# and are imported above: the ledger row's `signal` is that same classification, and
+# `hvantk drift --regenerate` records rows too, so the tiering has one implementation.
 
 
 # All routine drift shares one branch, so it becomes one reviewable PR per run rather
@@ -165,40 +151,6 @@ def partition_by_risk(drifted: list[dict]) -> tuple[list[dict], list[dict]]:
         target = routine if classify_risk(entry.get("diff")) == "routine" else schema
         target.append(entry)
     return routine, schema
-
-
-# --------------------------------------------------------------------------- #
-# Rebuild ledger. A fingerprint bump is also the signal that a built artifact may now
-# be stale; without this, that fact survives only in git history. Recorded in the same
-# commit as the fingerprints it describes -- see record_in_ledger below for why it must
-# be written and staged only once handle_drifted / handle_routine_batch have already
-# decided a commit is happening, never earlier.
-# --------------------------------------------------------------------------- #
-
-
-def ledger_entry(*, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
-    """One ledger row. ``rebuilt_at`` starts None and is set by whoever rebuilds;
-    a value older than ``last_upstream_change`` is the stale-artifact condition.
-
-    ``dataset`` is accepted for a call signature symmetric with ``ledger_update``
-    (and to self-document each call site); it is not part of the row itself, since
-    the dataset name is already the ledger's key at the ``ledger_update`` level.
-    """
-    return {
-        "last_upstream_change": now,
-        "accepted_in": pr_ref,
-        "signal": classify_risk(diff),
-        "rebuilt_at": None,
-    }
-
-
-def ledger_update(
-    ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str
-) -> dict:
-    """Return a copy of ``ledger`` with ``dataset`` updated. Never touches other rows."""
-    out = dict(ledger)
-    out[dataset] = ledger_entry(dataset=dataset, diff=diff, pr_ref=pr_ref, now=now)
-    return out
 
 
 def fingerprints_match(a: str, b: str) -> bool:
@@ -533,6 +485,28 @@ def pr_title_for(dataset: str, covers: list[str] | None = None) -> str:
 
 def commit_message_for(dataset: str) -> str:
     return f"chore(drift): regenerate fingerprint for {dataset}"
+
+
+def regenerate_argv(dataset: str) -> list[str]:
+    """The ``hvantk drift --regenerate`` call for ``dataset``, with ``--no-ledger-row``.
+
+    Without that flag the CLI records the dataset's rebuild-ledger row the moment the
+    fingerprint is rewritten -- before the stability check, before either anti-churn
+    guard, and inside the routine batch's loop -- so a skipped or dropped dataset would
+    leave a row behind that `_discard_one_fingerprint` / `_discard_staged_fingerprints`
+    never restore (they cover `hvantk/skills` only). The bot records its own rows in
+    `record_in_ledger` instead. `_stage_for_called_process_error` recognises this
+    command by its first four tokens, so those stay as they are.
+    """
+    return [
+        "python",
+        "-m",
+        "hvantk.hvantk",
+        "drift",
+        "--regenerate",
+        "--no-ledger-row",
+        dataset,
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -872,28 +846,23 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
     )
 
 
-def load_ledger() -> dict:
-    """Read the ledger. A missing or corrupt file yields {} rather than raising --
-    a broken ledger must not block a drift PR, it just starts recording afresh.
-
-    Also yields {} for JSON that parses but is not an object -- e.g. a truthy `[...]`
-    or a bare string. `json.loads(text) or {}` looks like it handles "empty/invalid",
-    but `or` only substitutes on a FALSY parse (`[]`, `0`, `""`, `null`); a populated
-    list or non-empty string is truthy and would pass straight through, and every
-    caller here assumes a dict (`record_in_ledger` does `dict(ledger)`, which raises
-    `TypeError` for a list).
-    """
-    if not LEDGER_PATH.is_file():
-        return {}
-    try:
-        data = json.loads(LEDGER_PATH.read_text())
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
 def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:
-    """Update the ledger for every dataset in ``entries`` and write it back.
+    """Record a rebuild-ledger row for every dataset in ``entries``, accepted in
+    ``pr_ref`` (the bot's branch), and write the ledger back.
+
+    A fingerprint bump is also the signal that a built artifact may now be stale;
+    without the ledger that fact survives only in git history. The row itself, and the
+    read/merge/write of the file, are `hvantk.core.plugin.drift_ledger.record_changes`
+    -- the one implementation `hvantk drift --regenerate` uses too. The bot runs that
+    regenerate with `--no-ledger-row` so the row is written HERE, at the point chosen
+    below, and nowhere earlier.
+
+    That point matters for the routine batch as much as for the guards below. Nothing
+    touches the ledger while the batch's regenerate loop runs, so a dataset dropped
+    mid-loop (a refused regenerate, or an unstable probe; `_discard_one_fingerprint`
+    restores only its fingerprint file) cannot leave a row behind, and there is no
+    shared ledger file to restore that could clobber another dataset's row. Only the
+    datasets that survived the loop reach this call, in one write.
 
     Callers must invoke this only once they have already decided a commit is
     happening -- i.e. AFTER both anti-churn guards in handle_drifted /
@@ -916,17 +885,11 @@ def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None
     if dry_run:
         print(f"  [dry-run] would record {len(entries)} ledger entries")
         return
-    now = datetime.now(timezone.utc).isoformat()
-    ledger = load_ledger()
-    for entry in entries:
-        ledger = ledger_update(
-            ledger,
-            dataset=entry["dataset_name"],
-            diff=entry.get("diff"),
-            pr_ref=pr_ref,
-            now=now,
-        )
-    LEDGER_PATH.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    record_changes(
+        [(entry["dataset_name"], entry.get("diff")) for entry in entries],
+        accepted_in=pr_ref,
+        path=LEDGER_PATH,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -1015,10 +978,7 @@ def handle_drifted(
 
     # 2) regenerate fingerprint via the CLI we already ship
     try:
-        _run(
-            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
-            dry_run=dry_run,
-        )
+        _run(regenerate_argv(dataset), dry_run=dry_run)
     except Exception:
         # A failed regenerate can still leave THIS dataset's fingerprint dirty in the
         # working tree (partially written, or left over from a prior attempt). `main()`
@@ -1318,10 +1278,7 @@ def handle_routine_batch(
         for entry in entries:
             name = entry["dataset_name"]
             try:
-                _run(
-                    ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
-                    dry_run=dry_run,
-                )
+                _run(regenerate_argv(name), dry_run=dry_run)
             except subprocess.CalledProcessError as exc:
                 # Per-dataset and independent: dataset N's regenerate being refused
                 # must not discard datasets 1..N-1's ALREADY-regenerated files sitting

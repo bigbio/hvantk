@@ -56,7 +56,8 @@ hvantk/
 │   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
 │   │   ├── run_builder.py # run_builder_for_spec() — build orchestrator
-│   │   └── drift_runner.py# Drift probe execution
+│   │   ├── drift_runner.py# Drift probe execution
+│   │   └── drift_ledger.py# Rebuild-ledger rows (shared by drift --regenerate and the drift bot)
 │   ├── utils/             # Cross-cutting utilities
 │   │   ├── hail_context.py   # Idempotent Hail init
 │   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
@@ -128,7 +129,7 @@ hvantk/
 ├── resources/             # Data catalog and schemas
 │   ├── schemas/           # JSON schema definitions
 │   ├── ensembl_release.py # pinned Ensembl release / GTF URL
-│   ├── drift_ledger.json  # committed drift fingerprints
+│   ├── drift_ledger.json  # rebuild ledger: one row per accepted fingerprint bump
 │   └── unified_registry.py# Aggregates the per-plugin catalog/datasets.json files
 │
 └── tests/                 # Test suite
