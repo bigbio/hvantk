@@ -147,17 +147,25 @@ hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 ### Expression Atlas
 
 ```bash
-# Download bulk RNA-seq experiments
-hvantk download expression-atlas --download_path data/expression_atlas
+# Download one accession's bulk RNA-seq experiment
+hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/expression_atlas
+
+# Download + build in one call (reprocess forwards --plugin-arg accession=... to the
+# download stage; the build stage ignores it and locates the two input files by name
+# within --raw-dir)
+hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
+  --output E-MTAB-6798.h5ad --plugin-arg accession=E-MTAB-6798
 ```
 
-A transcript-level experiment builds with `var` keyed by the transcript id by default
-(`hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas --output <out>.h5ad`).
+A transcript-level experiment builds with `var` keyed by the transcript id by default.
 Pass `--plugin-arg level=gene` to sum transcript-level values per gene
 instead and key `var` by the gene id — needed before the result can be used with
-`hvantk expression markers`/`summarize`, the PTM constraint expression loader, or
-`hvantk annotate prepare`'s matrix source type, which all read `var_names` as the gene id
-and refuse a transcript-keyed matrix.
+`hvantk expression markers`/`summarize` or the PTM constraint expression loader, which
+read `var_names` as the gene id and refuse a transcript-keyed matrix. `hvantk annotate
+prepare`'s matrix source type refuses a transcript-keyed matrix too, but needs more than
+`level=gene`: it resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an
+Expression Atlas build (gene- or transcript-level) needs a symbol-keyed summary before
+it is usable there.
 
 ## Manual download sources
 
