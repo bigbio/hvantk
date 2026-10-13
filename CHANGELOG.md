@@ -11,8 +11,9 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
 - `hvantk rerank` runs the ablation and the permutation null at `Config.folds` folds, like
   the headline score. A config that sets `folds` to anything but the default 5 gets
   different ablation and null deltas than before (#446).
-- Runs with `--blocks` now get a block-bootstrap interval for `d_lo`/`d_md`/`d_hi` (wider
-  under family clustering); runs without `--blocks` are unchanged (#PR).
+- Runs with blocks (`--blocks` or `Config.blocks`) now get a block-bootstrap interval for
+  `d_lo`/`d_md`/`d_hi` (wider under family clustering); runs without blocks are unchanged
+  (#PR).
 - Rebuild a `cosmic-cgc:submissions` table built before this release before calling
   `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
 - `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
