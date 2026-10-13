@@ -248,17 +248,20 @@ def _boot_ci(y, p1, p0, n=1000, seed=DEFAULT_SEED, groups=None):
                 d.append(roc_auc_score(y[b], p1[b]) - roc_auc_score(y[b], p0[b]))
     else:
         groups = np.asarray(groups)
-        # One entry per DISTINCT block id, built once (not per draw): `members[k]` is the
-        # array of gene positions belonging to the k-th block, in ascending position order.
+        # `inverse[i]` is gene i's block CODE (0..n_blocks-1), built once, not per draw.
         codes, inverse = np.unique(groups, return_inverse=True)
-        members: list = [[] for _ in range(len(codes))]
-        for position, code in enumerate(inverse):
-            members[code].append(position)
-        members = [np.asarray(m, dtype=int) for m in members]
-        n_blocks = len(members)
+        n_blocks = len(codes)
+        gene_idx = np.arange(len(y))
         for _ in range(n):
             draw = rng.integers(0, n_blocks, n_blocks)
-            b = np.concatenate([members[k] for k in draw])
+            # `np.bincount(draw, minlength=n_blocks)[code]` is how many times block `code`
+            # was picked in this draw; indexing that by `inverse` broadcasts each block's
+            # multiplicity onto every one of its member genes, and `np.repeat` turns that
+            # into the resampled index array -- the same MULTISET `np.concatenate(members[k]
+            # for k in draw)` would build (roc_auc_score reads a (score, label) multiset,
+            # not an order, so a differently-ordered-but-equal multiset scores identically),
+            # without materialising a Python list of per-block member arrays at all.
+            b = np.repeat(gene_idx, np.bincount(draw, minlength=n_blocks)[inverse])
             if 0 < y[b].sum() < len(b):
                 d.append(roc_auc_score(y[b], p1[b]) - roc_auc_score(y[b], p0[b]))
     return [round(v, 3) for v in np.percentile(d, [2.5, 50, 97.5])]
