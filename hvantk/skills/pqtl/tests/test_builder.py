@@ -70,6 +70,7 @@ class _StubGeneCatalog:
         return {s: self._KNOWN.get(s) for s in symbols}
 
 
+@pytest.mark.round_trip("pqtl:metrics")
 @pytest.mark.hail
 def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, caplog):
     """Build pQTL metrics from the synthetic Liver fixture; assert schema/row stability.

@@ -106,6 +106,9 @@ def _build_for_snapshot(expression_matrix_path, **call_kwargs):
     ("expr_fixture", "meta_fixture", "snapshot_dir", "dataset_name", "builder_kwargs"),
     _UCSC_CASES,
 )
+@pytest.mark.round_trip("ucsc-cellbrowser:adult-ctx")
+@pytest.mark.round_trip("ucsc-cellbrowser:default")
+@pytest.mark.round_trip("ucsc-cellbrowser:dev-ctx")
 def test_ucsc_cellbrowser_round_trip(
     tmp_path,
     regenerate_snapshots,

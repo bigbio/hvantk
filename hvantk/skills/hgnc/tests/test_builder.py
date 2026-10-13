@@ -38,6 +38,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("hgnc:lookup")
 @pytest.mark.hail
 def test_hgnc_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build HGNC from fixture; assert schema and sample-row stability."""

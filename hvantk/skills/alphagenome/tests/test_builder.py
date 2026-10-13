@@ -62,6 +62,7 @@ HEART_SPLICE_SITE_USAGE = {
 }
 
 
+@pytest.mark.round_trip("alphagenome:predictions")
 @pytest.mark.hail
 def test_alphagenome_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build the real-subset fixture; check snapshots, the oracle and a heart build."""

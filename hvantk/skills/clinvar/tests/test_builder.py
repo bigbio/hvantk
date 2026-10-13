@@ -35,6 +35,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("clinvar:variants")
 @pytest.mark.hail
 def test_clinvar_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build ClinVar from fixture; assert schema and sample-row stability."""

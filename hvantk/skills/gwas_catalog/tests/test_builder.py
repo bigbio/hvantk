@@ -36,6 +36,7 @@ def test_a_raw_directory_resolves_to_its_associations_file(tmp_path):
     assert _resolve_gwas_catalog_path(tmp_path) == str(tsv)
 
 
+@pytest.mark.round_trip("gwas-catalog:associations")
 @pytest.mark.hail
 def test_gwas_catalog_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GWAS Catalog from fixture; assert schema and sample-row stability."""

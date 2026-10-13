@@ -111,6 +111,7 @@ def _build_for_snapshot(expression_matrix_path, **call_kwargs):
     return artifact.to_anndata()
 
 
+@pytest.mark.round_trip("expression-atlas:dataset")
 def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     """Build Expression Atlas from fixture; assert schema and sample-row stability."""
     if regenerate_snapshots:

@@ -78,6 +78,7 @@ def _assert_or_regenerate(rows_table, schema_obj, stem: str, regenerate: bool) -
     assert rows == load_snapshot(rows_path), f"{stem} sample rows drifted from snapshot"
 
 
+@pytest.mark.round_trip("onek-genomes:variants")
 @pytest.mark.hail
 def test_onek_genomes_variants_snapshot_round_trip(
     hail_session, tmp_path, regenerate_snapshots
@@ -98,6 +99,7 @@ def test_onek_genomes_variants_snapshot_round_trip(
         pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots.")
 
 
+@pytest.mark.round_trip("onek-genomes:samples")
 @pytest.mark.hail
 def test_onek_genomes_samples_snapshot_round_trip(
     hail_session, tmp_path, regenerate_snapshots
