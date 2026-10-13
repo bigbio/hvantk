@@ -57,7 +57,7 @@ hvantk --help
 | **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Usage Guide](docs_site/guide/usage.md#gene-level-annotation-matrices) |
 | **Cohort** | Validate and attach external cohorts | `hvantk cohort` | [Usage Guide](docs_site/guide/usage.md#external-cohorts) |
 | **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Example](examples/rerank/README.md) |
-| **Gene sets** | Extract or prepare gene set collections (ClinGen, GenCC, COSMIC) | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
+| **Gene sets** | Extract or prepare GeneSetCollection files from curated tables | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
 
 Plus the registry and operational commands: `hvantk plugins` and `hvantk tools` (inspect the
 plugin and tool registries), `hvantk catalog` (search the aggregated dataset catalog),
