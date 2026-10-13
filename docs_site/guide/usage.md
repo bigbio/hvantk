@@ -20,6 +20,10 @@ hvantk plugins list
 
 # Show one plugin's manifest in detail
 hvantk plugins describe clinvar
+
+# Name anything that failed to load; exits 1 if there is anything
+# (`list` and `describe` exit 0 regardless)
+hvantk plugins errors
 ```
 
 ### Build a dataset end-to-end (download → parse → build)

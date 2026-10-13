@@ -18,7 +18,12 @@ def plugins_group():
 
 @plugins_group.command(name="list")
 def list_cmd():
-    """List loaded provider plugins."""
+    """List loaded provider plugins.
+
+    Informational: exits 0 even when something failed to load. A one-line summary on
+    stderr then counts what is missing from the table; `hvantk plugins errors` names it,
+    and is the plugins command whose exit code signals load failures.
+    """
     reg = plugin_loader.get_registry()
     providers = reg.list_providers()
     if not providers:
@@ -51,7 +56,13 @@ def _echo_load_failure_summary(reg) -> None:
 @plugins_group.command(name="describe")
 @click.argument("provider")
 def describe_cmd(provider: str):
-    """Show full details for one provider."""
+    """Show full details for one provider.
+
+    Informational: a dataset that failed to load is listed as FAILED TO LOAD and the
+    command still exits 0. It exits 1 only when PROVIDER is unknown or failed to load
+    as a whole. `hvantk plugins errors` is the plugins command whose exit code signals
+    load failures.
+    """
     reg = plugin_loader.get_registry()
     errors = reg.load_errors()
     try:
@@ -91,7 +102,11 @@ def describe_cmd(provider: str):
 
 @plugins_group.command(name="errors")
 def errors_cmd():
-    """List plugins that failed to load and why. Exits 1 when there is anything to list."""
+    """List plugins that failed to load, and why.
+
+    The one plugins command whose exit code signals load failures: exits 1 when it
+    lists anything, 0 when there is nothing to list.
+    """
     reg = plugin_loader.get_registry()
     errs = reg.load_errors()
     if not errs:

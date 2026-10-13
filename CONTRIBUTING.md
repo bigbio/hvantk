@@ -13,7 +13,7 @@ Each external data source ships as a self-contained plugin under `hvantk/skills/
 5. Implement the drift probe — a zero-arg function returning the fingerprint dict described in `hvantk/skills/_conventions/SKILL.md` § 12. Commit the expected fingerprint at `tests/drift_fingerprint.json`.
 6. Add the round-trip test under `tests/` and snapshot the schema and a small set of rows. `hvantk/tests/test_plugin_contract_artifacts.py` requires, for each dataset, a `test_*round_trip*` function in the files its `tests.command` runs, with no `skip`/`skipif` marker, and marked `@pytest.mark.hail` when the dataset's `backend` is `hail` (mark it too whenever the test needs Hail). That check is static: it does not catch a `pytest.skip()` call in the test body or `pytest.importorskip`; a run-time check is tracked in #432.
 7. Write `SKILL.md` following the nine-section template in `_conventions/SKILL.md` § 2.
-8. Verify: `hvantk plugins validate` should accept the manifest; `hvantk plugins describe <provider>` should list the new dataset; the round-trip test must pass; `hvantk drift <provider:dataset>` must match the committed fingerprint.
+8. Verify: `hvantk plugins validate` should accept the manifest; `hvantk plugins describe <provider>` should list the new dataset without a `FAILED TO LOAD` mark, and `hvantk plugins errors` should report `(no load errors)` (it exits 1 when anything failed to load, while `describe` exits 0 either way); the round-trip test must pass; `hvantk drift <provider:dataset>` must match the committed fingerprint.
 
 Read `hvantk/skills/_conventions/SKILL.md` for the full contract (registry keys, drift-probe shape, lifecycle stages, validation paths, hard guardrails).
 

@@ -12,12 +12,19 @@ purpose:
     The plugins tool surfaces the plugin registry's contents. Each subcommand
     targets one inspection task: list every loaded provider, describe one
     in detail, dump per-plugin load errors, or validate a manifest offline.
+    `errors` is the one whose exit code signals load failures; `list` and
+    `describe` are informational and exit 0 when some units failed to load.
 subcommands:
   - name: list
-    description: Tabular list of loaded providers
+    description: >-
+      Tabular list of loaded providers. Exits 0 even when something failed to
+      load; a stderr line then counts what is missing (see `errors`).
     outputs: ["stdout: NAME / VERSION / DATASETS columns"]
   - name: describe
-    description: Full details for one provider
+    description: >-
+      Full details for one provider. A dataset that failed to load shows as
+      FAILED TO LOAD and the command still exits 0; exits 1 only for a provider
+      that is unknown or failed to load as a whole.
     inputs:
       - name: provider
         type: str
@@ -25,7 +32,9 @@ subcommands:
         description: Provider name (e.g., clinvar, cptac)
     outputs: ["stdout: provider details + dataset summary"]
   - name: errors
-    description: Print all plugin load errors with cause
+    description: >-
+      Print every load error with its cause. Exits 1 when it prints any row, 0
+      when there are none.
   - name: validate
     description: Validate a plugin.yaml file against the manifest schema
     inputs:
