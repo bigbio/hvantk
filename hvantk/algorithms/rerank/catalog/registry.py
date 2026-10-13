@@ -4,6 +4,7 @@ from hvantk.algorithms.rerank.audit import (
     CaseControlArchitectureAudit,
     has_architecture_columns,
 )
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 AXES = {}
 
@@ -45,8 +46,43 @@ def _default_audit(profile):
 
 
 def build_config(
-    profile, axes, *, audit=None, calibration="isotonic", folds=5, tiers=5
+    profile,
+    axes,
+    *,
+    audit=None,
+    calibration="isotonic",
+    folds=5,
+    tiers=5,
+    seed=DEFAULT_SEED,
+    seed_sweep=1,
+    nulls=None,
+    blocks=None,
 ):
+    """Assemble a ``Config`` from a ``DiseaseProfile`` and a list of axis names/instances.
+
+    ``audit``/``calibration``/``folds``/``tiers`` were the original surface; ``seed``,
+    ``seed_sweep``, ``nulls`` and ``blocks`` (#390/#408) are later additions threaded
+    straight through to the matching ``Config`` field with no transformation. Every one of
+    them defaults to that field's OWN default (``seed=DEFAULT_SEED``, ``seed_sweep=1``,
+    ``nulls=None``, ``blocks=None``) rather than a value re-typed here, so a caller who
+    builds a ``Config`` through this registry and one who constructs ``Config`` directly
+    start from the identical, single source of truth for what "default" means.
+
+    seed
+        The one CV/estimator/bootstrap/null seed (``Config.seed``).
+    seed_sweep
+        How many CV seeds the ablation interval is swept over (``Config.seed_sweep``).
+    nulls
+        Permutation-null settings, or ``None`` to skip the multiplicity correction
+        (``Config.nulls``, a ``NullConfig`` when set).
+    blocks
+        Paralogue-blocked cross-validation policy, or ``None`` for unblocked folds
+        (``Config.blocks``, a ``BlockPolicy`` when set).
+
+    None of the four is validated here: ``Config.__post_init__`` already rejects a
+    wrong-typed ``nulls``/``blocks``/``seed``/``seed_sweep``, and duplicating that check in
+    two places would only give it two chances to drift apart.
+    """
     if profile.prior is None:
         raise ValueError("DiseaseProfile.prior is required for rerank (build_config)")
     feats = [AXES[a](profile) if isinstance(a, str) else a for a in axes]
@@ -63,4 +99,8 @@ def build_config(
         calibration=calibration,
         folds=folds,
         tiers=tiers,
+        seed=seed,
+        seed_sweep=seed_sweep,
+        nulls=nulls,
+        blocks=blocks,
     )

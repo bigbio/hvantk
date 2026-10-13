@@ -29,6 +29,10 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   field missing from the input header into an error instead of a warning (#443).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
+- **`build_config` exposes `seed`, `seed_sweep`, `nulls` and `blocks`.** Each is a
+  keyword-only parameter defaulting to `Config`'s own default, so a profile-driven rerank
+  config can opt into seed control, the multi-seed sweep, the permutation null and
+  paralogue-blocked CV without constructing `Config` by hand (#PR).
 - **The downloader decision framework is published** in the data-sources guide: when a
   source gets a downloader, and when its acquisition is documented instead (#441).
 
