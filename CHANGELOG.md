@@ -80,7 +80,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   Cell Browser `default` fixture to its actual origin (a CC BY 4.0 Mendeley Data deposit,
   not a UCSC accession); and, for Expression Atlas, corrected the Human Protein Atlas
   licence on E-PROT-3 from stale CC BY-SA 4.0 to CC BY 4.0 and removed E-PROT-13, whose
-  catalog entry did not match the Human Protein Atlas at all (#426, #420, #PR).
+  catalog entry did not match the Human Protein Atlas at all (#426, #420, #458).
 
 ## 0.4.0 — 2026-10-08
 
