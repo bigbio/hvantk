@@ -21,11 +21,13 @@ import csv
 import logging
 import os
 import re
+import shutil
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from hvantk.core.plugin.drift_runner import _current_umask
 from hvantk.skills.cptac.shared.constants import (
     CPTAC_CANCER_TYPES,
     CPTAC_CANCER_CLASS_MAP,
@@ -666,6 +668,18 @@ class CPTACExpressionDataset:
         try:
             long_df.to_csv(matrix_tmp, index=False)
             write_metadata_csv(clinical_copy, ct, metadata_tmp)
+            # mkstemp always creates mode 0600; match what a normal file
+            # create (or the existing file, on overwrite) would get, so a
+            # shared raw dir stays group-readable. Mirrors
+            # drift_runner.write_fingerprint's atomic-publish idiom.
+            for tmp, final in (
+                (matrix_tmp, matrix_path),
+                (metadata_tmp, metadata_path),
+            ):
+                if os.path.exists(final):
+                    shutil.copymode(final, tmp)
+                else:
+                    os.chmod(tmp, 0o666 & ~_current_umask())
             os.replace(matrix_tmp, matrix_path)
             os.replace(metadata_tmp, metadata_path)
         finally:
