@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 import urllib.parse
+import uuid
 
 import requests
 from collections import defaultdict
@@ -134,8 +135,23 @@ class PTMBuildResult:
     source_counts: Dict[str, int] = field(default_factory=dict)
 
 
+def _private_sibling(path: str) -> str:
+    """A temporary name beside ``path`` that no concurrent writer will pick.
+
+    The PID alone is not enough: jobs on two cluster nodes can share a PID and a
+    directory on a shared filesystem.
+    """
+    head, tail = os.path.split(path)
+    return os.path.join(head, f".{tail}.{os.getpid()}.{uuid.uuid4().hex[:8]}")
+
+
 def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
     """Download the Ensembl GTF file if not already cached.
+
+    The file appears under its final name only once complete: an interrupted
+    download used to leave a truncated GTF there, which every later run reused
+    ("Using cached GTF") and failed on, and which a second job sharing the
+    directory could read half-written.
 
     Parameters
     ----------
@@ -170,10 +186,18 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
         )
 
     logger.info("Downloading Ensembl GTF to %s...", gtf_path)
-    with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
-        resp.raise_for_status()
-        with open(gtf_path, "wb") as fout:
-            shutil.copyfileobj(resp.raw, fout)
+    # A plain open() rather than mkstemp, so the published file gets the
+    # umask-masked mode and not 0600.
+    tmp_path = _private_sibling(gtf_path)
+    try:
+        with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
+            resp.raise_for_status()
+            with open(tmp_path, "xb") as fout:
+                shutil.copyfileobj(resp.raw, fout)
+        os.replace(tmp_path, gtf_path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
     logger.info("Downloaded: %s", gtf_path)
     return gtf_path
 
@@ -570,26 +594,34 @@ def map_uniprot_raw_dir(
         )
 
     logger.info("Parsing Ensembl GTF...")
-    gtf_data = parse_ensembl_gtf(download_ensembl_gtf(raw_dir))
+    gtf_path = download_ensembl_gtf(raw_dir)
+    try:
+        gtf_data = parse_ensembl_gtf(gtf_path)
+    except (EOFError, OSError) as exc:  # a truncated or corrupt gzip
+        raise ValueError(
+            f"cannot read the Ensembl GTF {gtf_path} ({exc}); delete it so the next "
+            "run downloads it again"
+        ) from exc
 
     out_dir = os.path.dirname(os.path.abspath(output_path))
     os.makedirs(out_dir, exist_ok=True)
-    # Per-process names, created by plain open() calls rather than mkstemp, so the
+    # Private names, created by plain open() calls rather than mkstemp, so the
     # result gets the caller's umask instead of 0600 in a shared raw directory.
-    tmp = os.path.join(out_dir, f".{os.path.basename(output_path)}.{os.getpid()}")
+    tmp = _private_sibling(os.path.join(out_dir, os.path.basename(output_path)))
     mapped, plain = f"{tmp}.tsv.bgz", f"{tmp}.tsv"
     try:
         result = map_ptm_sites(ptm_tsv, gtf_data, mapped)
         if result.n_mapped == 0:
             raise ValueError(
-                f"No PTM sites mapped ({result.n_total} read from {ptm_tsv}), so "
-                f"nothing was written to {output_path}. Check that it is the file "
-                "`hvantk download uniprot-ptm` wrote."
+                f"No PTM sites mapped ({result.n_total} read from {ptm_tsv}, against "
+                f"the GTF {gtf_path}), so nothing was written to {output_path}. "
+                "Check that the TSV is the file `hvantk download uniprot-ptm` wrote, "
+                "and that the GTF is complete (delete it to download it again)."
             )
         if output_path.endswith((".bgz", ".gz")):
             os.replace(mapped, output_path)
         else:
-            with gzip.open(mapped, "rb") as src, open(plain, "wb") as dst:
+            with gzip.open(mapped, "rb") as src, open(plain, "xb") as dst:
                 shutil.copyfileobj(src, dst)
             os.replace(plain, output_path)
     finally:
