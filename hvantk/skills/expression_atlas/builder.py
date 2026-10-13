@@ -23,6 +23,7 @@ def build_expression_atlas(
     gene_column: str = "Gene ID",
     gene_name_column: str = "Gene Name",
     transcript_id_column: str = "GeneID",
+    level: str = "transcript",
     delimiter: str = "\t",
     extra_annotation_columns: tuple[str, ...] | list[str] | None = None,
 ):
@@ -35,14 +36,24 @@ def build_expression_atlas(
         and ``sdrf`` (path to SDRF metadata file).
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
+    level : str
+        ``"transcript"`` (default) or ``"gene"``. Forwarded verbatim to
+        ``create_anndata_from_expression_atlas`` -- see there for what each
+        value does. Set via ``--plugin-arg level=gene`` on `hvantk reprocess`
+        when a gene-keyed matrix is needed (e.g. for `hvantk expression
+        markers`/`summarize`, the PTM constraint loader, or `hvantk annotate
+        --matrix`, none of which understand a transcript-keyed `var`).
 
     Returns
     -------
     hvantk.core.models.ExpressionMatrix
         AnnData-backed ExpressionMatrix wrapped with Provenance. For a
-        transcript-level export, ``var`` is keyed by the transcript id (see
+        transcript-level export with the default ``level="transcript"``,
+        ``var`` is keyed by the transcript id (see
         ``create_anndata_from_expression_atlas``); ``gene_column`` is kept as a
-        ``var`` column rather than being dropped.
+        ``var`` column rather than being dropped. With ``level="gene"``, a
+        transcript-level export is summed onto the gene id instead, and
+        ``var`` is keyed by the gene id like a gene-level build.
     """
     from hvantk.core.models import ExpressionMatrix
     from hvantk.core.models.anndata_utils import annotate_column_summary_ad
@@ -61,6 +72,7 @@ def build_expression_atlas(
         gene_id_column=gene_column,
         gene_name_column=gene_name_column,
         transcript_id_column=transcript_id_column,
+        level=level,
         delimiter=delimiter,
         extra_annotation_columns=extra_annotation_columns,
     )

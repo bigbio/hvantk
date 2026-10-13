@@ -207,6 +207,45 @@ def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
         "ENSMUSG00000000002",
     ]
 
+    # --- level="gene" (#383): same fixture, summed back onto the gene id -------------
+    # Gnai3 (ENSMUSG...0001) has two transcripts -- ERR1: 16+9=25, ERR2: 7+2=9. Cdc45
+    # (ENSMUSG...0002) has one -- unchanged at ERR1=3, ERR2=1.
+    gene_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(path), level="gene"
+    )
+    assert gene_adata.shape == (2, 2), "2 samples x 2 genes -- transcripts summed"
+    assert gene_adata.var.index.name == "gene_id"
+    assert list(gene_adata.var_names) == ["ENSMUSG00000000001", "ENSMUSG00000000002"]
+    assert list(gene_adata.var["Gene Name"]) == ["Gnai3", "Cdc45"]
+    summed = gene_adata.to_df()
+    assert summed.loc["ERR1", "ENSMUSG00000000001"] == pytest.approx(25.0)
+    assert summed.loc["ERR2", "ENSMUSG00000000001"] == pytest.approx(9.0)
+    assert summed.loc["ERR1", "ENSMUSG00000000002"] == pytest.approx(3.0)
+    assert summed.loc["ERR2", "ENSMUSG00000000002"] == pytest.approx(1.0)
+
+    # level="gene" is a no-op against an already gene-level export (no transcript
+    # column detected) -- nothing to sum.
+    gene_level_path = tmp_path / "gene_level.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001"],
+            "Gene Name": ["Gnai3"],
+            "ERR1": [16.0],
+            "ERR2": [7.0],
+        }
+    ).to_csv(gene_level_path, sep="\t", index=False)
+    noop_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(gene_level_path), level="gene"
+    )
+    assert noop_adata.shape == (2, 1)
+    assert list(noop_adata.var_names) == ["ENSMUSG00000000001"]
+
+    # Any other level value is rejected outright.
+    with pytest.raises(ValueError, match="level"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(path), level="bogus"
+        )
+
 
 def test_duplicate_transcript_ids_raise_instead_of_corrupting_var(tmp_path):
     """A repeated id in the column that keys `var` must raise, not just warn.
