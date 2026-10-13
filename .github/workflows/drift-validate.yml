@@ -62,7 +62,14 @@ jobs:
 
       - name: Plugin and drift contract tests
         run: |
+          # The default `-m` (pytest.ini's addopts) deselects `round_trip_contract`: the
+          # slow per-manifest round-trip collection check in
+          # test_plugin_contract_artifacts.py (see that file's module docstring, #432).
+          # This job is one of the two places that opts back into it, since a drift PR
+          # is exactly the kind of change that can silently break a dataset's
+          # tests.command.
           pytest -q \
+            -m '(not slow and not network and not hail and not integration) or round_trip_contract' \
             hvantk/tests/test_drift_runner.py \
             hvantk/tests/test_drift_cli.py \
             hvantk/tests/test_drift_to_pr_script.py \
