@@ -20,6 +20,16 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+class TranscriptKeyedError(ValueError):
+    """Raised by :func:`require_gene_keyed` for a transcript-keyed AnnData.
+
+    A distinct type (rather than a bare ``ValueError``) so a CLI can catch
+    exactly this usage error and report it cleanly, without also swallowing an
+    unrelated ``ValueError`` raised deeper in the same call (e.g. a numpy
+    broadcasting failure) as if it were the same kind of problem.
+    """
+
+
 def require_gene_keyed(adata: ad.AnnData, consumer: str) -> None:
     """Raise if ``adata.var`` is keyed by transcript id rather than gene id.
 
@@ -46,17 +56,19 @@ def require_gene_keyed(adata: ad.AnnData, consumer: str) -> None:
 
     Raises
     ------
-    ValueError
+    TranscriptKeyedError
         If ``adata.var.index.name == "transcript_id"``.
     """
     if adata.var.index.name == "transcript_id":
-        raise ValueError(
+        raise TranscriptKeyedError(
             f"{consumer}: this AnnData is keyed by transcript id "
             "(var.index.name == 'transcript_id'), not gene id, so its var_names "
             "cannot be read as genes here. Rebuild it with `--plugin-arg "
             "level=gene` (e.g. `hvantk reprocess expression-atlas:dataset "
-            "--raw-dir <dir> --output <out>.h5ad --plugin-arg level=gene`) to "
-            "get a gene-keyed matrix, or use a gene-level export."
+            "--raw-dir <dir> --output <out>.h5ad --plugin-arg "
+            "accession=<ACCESSION> --plugin-arg level=gene`, or `--skip-download` "
+            "if <dir> already holds the raw files) to get a gene-keyed matrix, "
+            "or use a gene-level export."
         )
 
 

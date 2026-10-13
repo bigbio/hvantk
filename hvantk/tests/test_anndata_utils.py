@@ -109,9 +109,10 @@ class TestSaveLoadAnndata:
 # (var.index.name == "transcript_id"); every generic AnnData consumer that reads
 # var_names as the gene id must refuse one outright rather than silently emitting
 # per-transcript results labelled as per-gene. One fixture shape per consumer --
-# `hvantk annotate --matrix` consumes an already-summarized (groups x genes) AnnData,
-# the other three consume raw (cells x genes) AnnData -- but all share the same
-# transcript-keyed var index that require_gene_keyed is supposed to catch.
+# `hvantk annotate prepare`'s matrix source type consumes an already-summarized
+# (groups x genes) AnnData, the other three consume raw (cells x genes) AnnData --
+# but all share the same transcript-keyed var index that require_gene_keyed is
+# supposed to catch.
 
 
 def _transcript_keyed_cells_adata() -> ad.AnnData:
@@ -201,7 +202,7 @@ def _run_annotate_matrix(tmp_path, monkeypatch):
         ("hvantk expression markers", _run_markers),
         ("hvantk expression summarize", _run_summarize),
         ("ptm constraint (anndata source)", _run_ptm_constraint),
-        ("hvantk annotate --matrix", _run_annotate_matrix),
+        ("hvantk annotate prepare (matrix source)", _run_annotate_matrix),
     ],
 )
 def test_require_gene_keyed_rejects_transcript_keyed_adata_everywhere(
@@ -210,8 +211,12 @@ def test_require_gene_keyed_rejects_transcript_keyed_adata_everywhere(
     """Every gene-level consumer refuses a transcript-keyed AnnData, naming the fix.
 
     `click.ClickException` covers the CLI consumers (markers/summarize), which catch
-    `require_gene_keyed`'s `ValueError` and re-raise it as one; its `str()` is the same
-    message either way.
+    `require_gene_keyed`'s `TranscriptKeyedError` and re-raise it as one; its `str()`
+    is the same message either way.
     """
-    with pytest.raises((ValueError, click.ClickException), match="level=gene"):
+    from hvantk.core.models.anndata_utils import TranscriptKeyedError
+
+    with pytest.raises(
+        (TranscriptKeyedError, click.ClickException), match="level=gene"
+    ):
         run(tmp_path, monkeypatch)

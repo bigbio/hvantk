@@ -50,7 +50,7 @@ def _layer_genes_by_group(adata, name, keep_idx, groups):
     # Guarded here too, not only in reduce_matrix_to_gene: this is the function that
     # actually reads adata.var.index as the gene id, and a defensive check at the one
     # caller does not help a future direct caller of this one.
-    require_gene_keyed(adata, "hvantk annotate --matrix")
+    require_gene_keyed(adata, "hvantk annotate prepare (matrix source)")
 
     m = adata.layers[name]
     m = m.toarray() if hasattr(m, "toarray") else np.asarray(m)
@@ -70,7 +70,7 @@ def reduce_matrix_to_gene(adata, mspec):
 
     from hvantk.core.models.anndata_utils import require_gene_keyed
 
-    require_gene_keyed(adata, "hvantk annotate --matrix")
+    require_gene_keyed(adata, "hvantk annotate prepare (matrix source)")
 
     groups = [str(g).strip() for g in adata.obs.index]
     drop = {str(g).strip() for g in mspec.drop_groups}
