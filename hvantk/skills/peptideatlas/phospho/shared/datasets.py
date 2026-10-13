@@ -244,6 +244,7 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
             "peptide_instance.tsv",
             "peptide_mapping.tsv",
             "modified_peptide_instance.tsv",
+            "protein_identification.tsv",
         ]
         missing = [t for t in required_tables if _find_table_in_zip(zf, t) is None]
         if missing:
@@ -256,25 +257,17 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         # presence_level_id=1 is "canonical" in PeptideAtlas
         logger.info("Indexing canonical proteins...")
         canonical_bs_ids: set = set()
-        has_canonical_table = (
-            _find_table_in_zip(zf, "protein_identification.tsv") is not None
-        )
-        if has_canonical_table:
-            for row in _iter_tsv_from_zip(
-                zf,
-                "protein_identification.tsv",
-                ("biosequence_id", "presence_level_id"),
-            ):
-                if row.get("presence_level_id") == "1":
-                    canonical_bs_ids.add(row["biosequence_id"])
-            if not canonical_bs_ids:
-                raise ValueError(
-                    "protein_identification.tsv contains no canonical proteins "
-                    "(presence_level_id == '1')"
-                )
-        else:
-            logger.warning(
-                "protein_identification.tsv not found; parsing without canonical filtering"
+        for row in _iter_tsv_from_zip(
+            zf,
+            "protein_identification.tsv",
+            ("biosequence_id", "presence_level_id"),
+        ):
+            if row.get("presence_level_id") == "1":
+                canonical_bs_ids.add(row["biosequence_id"])
+        if not canonical_bs_ids:
+            raise ValueError(
+                "protein_identification.tsv contains no canonical proteins "
+                "(presence_level_id == '1')"
             )
         logger.info("Found %d canonical proteins", len(canonical_bs_ids))
 
@@ -298,7 +291,7 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
             acc = row.get("biosequence_accession", "")
             if acc.startswith("DECOY_") or acc.startswith("CONTAM_"):
                 continue
-            if has_canonical_table and bs_id not in canonical_bs_ids:
+            if bs_id not in canonical_bs_ids:
                 continue
             bioseq_by_id[bs_id] = (
                 acc,
@@ -319,7 +312,9 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         logger.info("Indexed %d peptide instances", len(pi_ids))
 
         # Step 3: Stream peptide_mapping (15M rows) — build a compact index
-        # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]}
+        # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]},
+        # deduplicated per peptide_instance_id so a (protein, start) pair repeated
+        # across rows for a kept protein is only ever counted once (#432).
         logger.info("Streaming peptide mappings...")
         mapping_by_pi: Dict[str, List[tuple]] = defaultdict(list)
         n_mappings = 0
@@ -337,7 +332,9 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
             bs_id = row.get("matched_biosequence_id", "")
             if bs_id in bioseq_by_id:  # Only keep mappings to non-decoy proteins
                 start = int(row["start_in_biosequence"])
-                mapping_by_pi[pi_id].append((bs_id, start))
+                key = (bs_id, start)
+                if key not in mapping_by_pi[pi_id]:
+                    mapping_by_pi[pi_id].append(key)
             if n_mappings % 5_000_000 == 0:
                 logger.info(
                     "  ...processed %dM peptide mappings", n_mappings // 1_000_000

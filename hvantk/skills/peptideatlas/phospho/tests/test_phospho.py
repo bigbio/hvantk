@@ -57,6 +57,12 @@ def mock_pa_zip(tmp_path):
     actually has a phospho site to remove. Without this mapping, DECOY_Q99999
     carries no peptide at all and `test_decoy_sequences_filtered`'s assertion
     passes vacuously regardless of whether the prefix filter exists.
+
+    Includes a protein_identification.tsv marking both biosequences canonical
+    (presence_level_id "1"), so DECOY_Q99999 is dropped by the accession-prefix
+    filter rather than the canonical filter -- exercising the two filters
+    independently, the way a real build does (every biosequence_id referenced
+    by a peptide mapping gets its own protein_identification row).
     """
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
@@ -88,6 +94,25 @@ def mock_pa_zip(tmp_path):
                 "biosequence_gene_name": "FOO",
                 "biosequence_seq": "M" * 100,
                 "organism_id": "9606",
+            },
+        ],
+    )
+
+    # protein_identification table -- both biosequences are canonical, so
+    # DECOY_Q99999 is excluded by the accession-prefix filter, not this one.
+    _write_tsv(
+        tables_dir / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id", "protein_identification_id"],
+        [
+            {
+                "biosequence_id": "100",
+                "presence_level_id": "1",
+                "protein_identification_id": "1",
+            },
+            {
+                "biosequence_id": "200",
+                "presence_level_id": "1",
+                "protein_identification_id": "2",
             },
         ],
     )
@@ -175,21 +200,21 @@ def mock_pa_zip(tmp_path):
             {
                 "modified_peptide_instance_id": "1001",
                 "peptide_instance_id": "1",
-                "modified_peptide_sequence": "AAAAAS[167]AAAAA",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "50",
             },
             {
                 "modified_peptide_instance_id": "1002",
                 "peptide_instance_id": "2",
-                "modified_peptide_sequence": "AAS[167]AAAAAAAAA",
+                "modified_peptide_sequence": "AAS[Phospho]AAAAAAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "30",
             },
             {
                 "modified_peptide_instance_id": "1003",
                 "peptide_instance_id": "3",
-                "modified_peptide_sequence": "AAAAAS[167]AAAAAAAAA",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAAAAAA",
                 "modification_mass": "79.9663",
                 "n_observations": "10",
             },
@@ -236,11 +261,20 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     assert by_pos[6]["n_observations"] == 10
 
 
-def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=None):
+def _two_form_zip(
+    tmp_path,
+    form_counts,
+    unmodified_count="80",
+    unmapped_count=None,
+    repeat_mapping=False,
+):
     """Peptide 1, seen 100 times, mapped to P04637: a phospho form per count in
     ``form_counts`` plus its unmodified form (``unmodified_count``). With
     ``unmapped_count``, peptide 2 (no mapping to a kept protein) adds one phospho
-    form with that count."""
+    form with that count. With ``repeat_mapping``, the single kept
+    peptide_mapping row (peptide 1 -> biosequence 100 at offset 310) is written
+    twice: the site's count must still be read once per peptide, not once per
+    mapping row (#432)."""
     tables = tmp_path / "two_forms"
     tables.mkdir()
     _write_tsv(
@@ -261,6 +295,11 @@ def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=N
         ],
     )
     _write_tsv(
+        tables / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id"],
+        [{"biosequence_id": "100", "presence_level_id": "1"}],
+    )
+    _write_tsv(
         tables / "peptide_instance.tsv",
         ["peptide_instance_id", "n_observations"],
         [
@@ -268,16 +307,15 @@ def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=N
             {"peptide_instance_id": "2", "n_observations": "5"},
         ],
     )
+    mapping_row = {
+        "peptide_instance_id": "1",
+        "matched_biosequence_id": "100",
+        "start_in_biosequence": "310",
+    }
     _write_tsv(
         tables / "peptide_mapping.tsv",
         ["peptide_instance_id", "matched_biosequence_id", "start_in_biosequence"],
-        [
-            {
-                "peptide_instance_id": "1",
-                "matched_biosequence_id": "100",
-                "start_in_biosequence": "310",
-            }
-        ],
+        [mapping_row, mapping_row] if repeat_mapping else [mapping_row],
     )
     _write_tsv(
         tables / "modified_peptide_instance.tsv",
@@ -328,15 +366,24 @@ def _two_form_zip(tmp_path, form_counts, unmodified_count="80", unmapped_count=N
     return str(zip_path)
 
 
-def test_site_counts_sum_each_forms_own_observations(tmp_path):
+@pytest.mark.parametrize("repeat_mapping", [False, True])
+def test_site_counts_sum_each_forms_own_observations(tmp_path, repeat_mapping):
     """#425: phospho forms seen 12 and 8 times give the site 20: not the peptide's
     100 once per form, and not its 100 over all forms (the unmodified form, 80,
-    does not carry the site)."""
+    does not carry the site).
+
+    #432: with ``repeat_mapping=True`` the one kept peptide_mapping row is
+    written twice; the expected count is unchanged -- a repeated
+    (biosequence_id, start_in_biosequence) row for a kept protein must be
+    counted once, not once per row.
+    """
     from hvantk.skills.peptideatlas.phospho.shared.datasets import (
         parse_peptideatlas_zip,
     )
 
-    sites = parse_peptideatlas_zip(_two_form_zip(tmp_path, ["12", "8"]))
+    sites = parse_peptideatlas_zip(
+        _two_form_zip(tmp_path, ["12", "8"], repeat_mapping=repeat_mapping)
+    )
     assert [(s["position"], s["n_observations"]) for s in sites] == [(315, 20)]
 
 
@@ -508,19 +555,46 @@ def test_extract_phospho_offsets(mod_seq, expected):
 # ---------- Test 6: Missing tables ----------
 
 
-def test_parse_raises_when_required_tables_missing(tmp_path):
-    """Missing required tables should raise FileNotFoundError."""
+@pytest.mark.parametrize(
+    "missing_table",
+    [None, "protein_identification.tsv"],
+    ids=["only-biosequence-present", "protein_identification-missing"],
+)
+def test_parse_raises_when_required_tables_missing(
+    tmp_path, mock_pa_zip, missing_table
+):
+    """Missing required tables raise FileNotFoundError naming them.
+
+    ``None`` is the original minimal case: an archive with only
+    ``biosequence.tsv`` present, so every other required table is missing too.
+    ``"protein_identification.tsv"`` starts from an otherwise-valid
+    ``mock_pa_zip`` archive with only that one table dropped, so dropping it
+    from ``required_tables`` again (#416) cannot pass this suite vacuously --
+    the error must name the table.
+    """
     from hvantk.skills.peptideatlas.phospho.shared.datasets import (
         parse_peptideatlas_zip,
     )
 
-    zip_path = tmp_path / "missing_tables.zip"
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.writestr(
-            "biosequence.tsv", "biosequence_id\tbiosequence_accession\n1\tP12345\n"
-        )
+    if missing_table is None:
+        zip_path = tmp_path / "missing_tables.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(
+                "biosequence.tsv", "biosequence_id\tbiosequence_accession\n1\tP12345\n"
+            )
+        match = None
+    else:
+        zip_path = tmp_path / "missing_one_table.zip"
+        with (
+            zipfile.ZipFile(mock_pa_zip) as source,
+            zipfile.ZipFile(zip_path, "w") as target,
+        ):
+            for name in source.namelist():
+                if name != missing_table:
+                    target.writestr(name, source.read(name))
+        match = missing_table
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError, match=match):
         parse_peptideatlas_zip(str(zip_path))
 
 
@@ -802,7 +876,7 @@ def test_parse_raises_when_no_phospho_sites(mock_pa_zip, tmp_path):
         mock_pa_zip,
         tmp_path,
         "modified_peptide_instance.tsv",
-        [("[Phospho]", "[Oxidation]"), ("[167]", "[Oxidation]")],
+        [("[Phospho]", "[Oxidation]")],
     )
     with pytest.raises(ValueError, match="No phospho sites found"):
         parse_peptideatlas_zip(str(path))
