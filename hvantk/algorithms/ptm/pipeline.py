@@ -540,10 +540,12 @@ def map_uniprot_raw_dir(
 
     The pinned Ensembl GTF is downloaded into ``raw_dir`` once and reused by later
     runs; its release never changes under a given pin, so delete the file to fetch it
-    again. ``output_path`` is written BGZF when its name ends in ``.bgz`` or ``.gz``
-    and as plain text otherwise, because the builder's ``hl.import_table`` picks the
-    codec from the file name and ``reprocess``'s default intermediate has neither
-    suffix. It is replaced atomically.
+    again. ``output_path`` is written block-gzipped when its name ends in ``.bgz`` and
+    as plain text otherwise, because the builder's ``hl.import_table`` picks the codec
+    from the file name and ``reprocess``'s default intermediate has no suffix. A
+    ``.gz`` name is refused before any work: ``hl.import_table`` will not read a
+    ``.gz`` file in parallel without ``force_bgz``, which the builder does not pass.
+    The file is replaced atomically.
 
     Parameters
     ----------
@@ -551,7 +553,7 @@ def map_uniprot_raw_dir(
         Directory holding ``uniprot-ptm-human-<YYYY-MM-DD>.tsv`` (the download stage's
         output); the newest date is mapped when there are several.
     output_path : str
-        Where the mapped TSV goes.
+        Where the mapped TSV goes; must not end in ``.gz``.
     reference_genome : str
         Must be ``"GRCh38"``, the build of the pinned GTF; it is forwarded to the
         builder too, which would label GRCh38 coordinates with any other build.
@@ -566,7 +568,8 @@ def map_uniprot_raw_dir(
     Raises
     ------
     ValueError
-        If ``reference_genome`` is not GRCh38, or if no site maps (nothing is written).
+        If ``reference_genome`` is not GRCh38, if ``output_path`` ends in ``.gz``, or
+        if no site maps (nothing is written).
     FileNotFoundError
         If ``raw_dir`` holds no UniProt download.
     """
@@ -575,6 +578,12 @@ def map_uniprot_raw_dir(
             f"reference_genome={reference_genome!r}: uniprot-ptm:sites maps against the "
             "pinned Ensembl GRCh38 GTF, so building its coordinates as another "
             "reference would mislabel every locus"
+        )
+    if output_path.endswith(".gz"):
+        raise ValueError(
+            f"intermediate {output_path!r} ends in .gz, which the builder's "
+            "hl.import_table refuses to read in parallel; name it *.bgz for "
+            "block-gzipped output, or give it no compression suffix for plain text"
         )
     downloads = sorted(
         (m.group(1), name)
@@ -618,7 +627,7 @@ def map_uniprot_raw_dir(
                 "Check that the TSV is the file `hvantk download uniprot-ptm` wrote, "
                 "and that the GTF is complete (delete it to download it again)."
             )
-        if output_path.endswith((".bgz", ".gz")):
+        if output_path.endswith(".bgz"):
             os.replace(mapped, output_path)
         else:
             with gzip.open(mapped, "rb") as src, open(plain, "xb") as dst:
