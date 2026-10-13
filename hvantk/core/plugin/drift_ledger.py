@@ -16,20 +16,31 @@ This module is the one implementation of that row, used by both writers:
 
 The bot regenerates with ``--no-ledger-row`` and keeps recording at its own point, so a
 dataset it skips or drops mid-batch never leaves a row behind.
+
+Every write is a strict read-modify-write: under an exclusive lock on a sibling lock
+file, from a ledger that must parse as a JSON object (`LedgerError` otherwise -- writing
+back what a lenient read made of a conflicted file would erase every other row), and
+replaced atomically, so a concurrent reader never sees a truncated file.
 """
 
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Iterator, Mapping, NamedTuple
 
 # The comparator the drift check itself uses, so "materially changed" here means
 # exactly what "drifted" means there: equal once fetched_at / probe_version /
 # informational are dropped, with the same {added, removed, changed} diff shape the
 # drift report carries.
-from .drift_runner import _compare_fingerprints
+from .drift_runner import _compare_fingerprints, atomic_write_text
+
+try:  # POSIX. Where fcntl does not exist the ledger is still written, just unlocked.
+    import fcntl
+except ImportError:  # pragma: no cover - exercised only off POSIX
+    fcntl = None
 
 # hvantk/core/plugin/drift_ledger.py -> parents[2] is hvantk/.
 LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.json"
@@ -97,31 +108,91 @@ def ledger_update(
     return out
 
 
-def load_ledger(path: Path) -> dict:
-    """Read the ledger. A missing or corrupt file -- or JSON that parses but is not an
-    object -- yields {} rather than raising: a broken ledger must not block a drift PR
-    or a regenerate, it just starts recording afresh.
+class LedgerError(Exception):
+    """The ledger file exists but cannot be read as a JSON object: a merge conflict left
+    in it, a truncated write, a hand edit gone wrong. A writer must stop there, because
+    writing back what a lenient read made of it ({}) plus one row erases every other row.
+    """
 
+
+def load_ledger(path: Path, *, strict: bool = False) -> dict:
+    """Read the ledger.
+
+    Lenient by default, for readers (``hvantk drift --ledger``): a missing or corrupt
+    file -- or JSON that parses but is not an object -- yields {} rather than raising.
     `json.loads(text) or {}` looks like it covers "empty/invalid", but `or` only
     substitutes on a FALSY parse (`[]`, `0`, `""`, `null`); a populated list or a
     non-empty string is truthy and would pass straight through to callers that all
     assume a dict.
+
+    ``strict=True`` is for every caller that will write the ledger back: a file that
+    exists but cannot be read as a JSON object raises `LedgerError` instead. A missing
+    file is {} either way: there is nothing to lose, and the first write creates it.
     """
     path = Path(path)
-    if not path.is_file():
+    if not strict:
+        if not path.is_file():
+            return {}
+        try:
+            data = json.loads(path.read_text())
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+    if not path.exists():
         return {}
     try:
         data = json.loads(path.read_text())
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    except (OSError, ValueError) as exc:
+        raise LedgerError(
+            f"the rebuild ledger at {path} cannot be read as JSON "
+            f"({type(exc).__name__}: {exc}); a merge conflict or a partial write?"
+        ) from exc
+    if not isinstance(data, dict):
+        raise LedgerError(
+            f"the rebuild ledger at {path} is not a JSON object "
+            f"(got {type(data).__name__})"
+        )
+    return data
 
 
-def write_ledger(ledger: Mapping[str, Any], path: Path) -> None:
-    """Write the whole ledger back, in the byte format every writer has always used
-    (indent 2, sorted keys, trailing newline), so rows never churn on re-serialisation.
+@contextmanager
+def _exclusive_lock(path: Path) -> Iterator[None]:
+    """Hold an exclusive ``flock`` for a whole read-modify-write of the ledger.
+
+    The lock is taken on a sibling (``.drift_ledger.json.lock``), never on the ledger:
+    the atomic write replaces the ledger's inode, so a writer queued on the old one would
+    wake up holding a lock on a file nobody reads any more. Without a lock, two writers
+    that both read before either writes lose one of their rows.
     """
-    Path(path).write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    if fcntl is None:  # pragma: no cover - exercised only off POSIX
+        yield
+        return
+    with open(path.with_name(f".{path.name}.lock"), "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def update_ledger(path: Path, change: Callable[[dict], dict]) -> dict:
+    """Apply ``change`` to the ledger at ``path`` and write the result back, as one step.
+
+    Under `_exclusive_lock`; the read is strict (`LedgerError` leaves the file untouched);
+    the write is atomic (`atomic_write_text`), in the byte format every writer has always
+    used (indent 2, sorted keys, trailing newline) so rows never churn on
+    re-serialisation. An exception from ``change`` also leaves the file untouched.
+    Returns the ledger as written.
+
+    ``path`` is required rather than defaulting to `LEDGER_PATH`: the bot resolves the
+    ledger inside the checkout it commits from, and tests point every writer at a
+    temporary file, so no caller should reach the tracked ledger by omission.
+    """
+    path = Path(path)
+    with _exclusive_lock(path):
+        ledger = change(load_ledger(path, strict=True))
+        atomic_write_text(path, json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    return ledger
 
 
 def record_changes(
@@ -131,22 +202,39 @@ def record_changes(
     path: Path,
     now: str | None = None,
 ) -> dict:
-    """Record one row per ``(dataset, diff)`` pair, all stamped with the same ``now``,
-    and write the ledger back. Rows for every other dataset are copied through
-    untouched. Returns the ledger as written.
-
-    ``path`` is required rather than defaulting to `LEDGER_PATH`: the bot resolves the
-    ledger inside the checkout it commits from, and tests point every writer at a
-    temporary file, so no caller should reach the tracked ledger by omission.
+    """Record one row per ``(dataset, diff)`` pair, all stamped with the same ``now``.
+    Rows for every other dataset are copied through untouched. Returns the ledger as
+    written; raises `LedgerError`, writing nothing, if the existing file is unreadable.
     """
     now = now or datetime.now(timezone.utc).isoformat()
-    ledger = load_ledger(path)
-    for dataset, diff in changes:
-        ledger = ledger_update(
-            ledger, dataset=dataset, diff=diff, accepted_in=accepted_in, now=now
-        )
-    write_ledger(ledger, path)
-    return ledger
+    changes = list(changes)
+
+    def _record(ledger: dict) -> dict:
+        for dataset, diff in changes:
+            ledger = ledger_update(
+                ledger, dataset=dataset, diff=diff, accepted_in=accepted_in, now=now
+            )
+        return ledger
+
+    return update_ledger(path, _record)
+
+
+def mark_rebuilt(dataset: str, *, path: Path, now: str | None = None) -> dict:
+    """Set ``dataset``'s ``rebuilt_at`` to ``now`` (UTC, ISO-8601) and return its row.
+
+    Raises ``KeyError``, writing nothing, if ``dataset`` has no row: rows are written only
+    when a dataset's baseline actually moves, so a name absent from the ledger never had
+    a pending-rebuild signal to clear. Fabricating a row instead would turn a typo'd
+    dataset name into a phantom entry while the dataset the caller meant stays stale.
+    """
+    now = now or datetime.now(timezone.utc).isoformat()
+
+    def _mark(ledger: dict) -> dict:
+        if dataset not in ledger:
+            raise KeyError(dataset)
+        return {**ledger, dataset: {**ledger[dataset], "rebuilt_at": now}}
+
+    return update_ledger(path, _mark)[dataset]
 
 
 def read_baseline(path: Path) -> dict | None:
@@ -171,6 +259,13 @@ def read_baseline(path: Path) -> dict | None:
     return data if isinstance(data, dict) else {}
 
 
+class Regeneration(NamedTuple):
+    """What `record_regeneration` did: the row it recorded, or why it recorded none."""
+
+    row: dict | None
+    skipped: str | None
+
+
 def record_regeneration(
     dataset: str,
     *,
@@ -179,22 +274,28 @@ def record_regeneration(
     accepted_in: str,
     path: Path,
     now: str | None = None,
-) -> dict | None:
+) -> Regeneration:
     """Record ``dataset``'s row if a regenerate materially changed its baseline.
 
     ``previous`` is what `read_baseline` returned before the regenerate; ``regenerated``
-    is the fingerprint it wrote. They are diffed exactly as a drift check diffs a
-    baseline against a live probe, so the row's ``signal`` is the tier the bot would
-    have given the same change. Returns the recorded row, or None when no row was
-    written: no earlier baseline, or nothing changed beyond the ignored keys (a re-run,
-    or a ``probe_version`` bump whose output is otherwise identical).
+    is the fingerprint it wrote. No row is written when:
+
+    * there was no earlier baseline (a first capture);
+    * nothing changed beyond the keys a drift check ignores (a re-run).
+
+    Otherwise the two are diffed exactly as a drift check diffs a baseline against a
+    live probe, so the row's ``signal`` is the tier the bot would give the same change.
     """
     if previous is None:
-        return None
+        return Regeneration(
+            None, "no earlier baseline, and a first capture is not an upstream change"
+        )
     diff = _compare_fingerprints(dict(previous), dict(regenerated))
     if diff is None:
-        return None
+        return Regeneration(
+            None, "nothing changed beyond fetched_at, probe_version and informational"
+        )
     ledger = record_changes(
         [(dataset, diff)], accepted_in=accepted_in, path=path, now=now
     )
-    return ledger[dataset]
+    return Regeneration(ledger[dataset], None)

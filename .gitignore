@@ -189,6 +189,10 @@ hail-*.log
 # next to a baseline if the process is SIGKILLed mid-write; the scheduled drift bot
 # stages hvantk/skills wholesale, so an orphaned one would otherwise get committed.
 hvantk/skills/**/tests/.drift_fingerprint*.tmp
+# hvantk/core/plugin/drift_ledger.py serialises ledger writers on a sibling lock file,
+# which persists by design, and writes through a temp sibling the same way.
+hvantk/resources/.drift_ledger.json.lock
+hvantk/resources/.drift_ledger.json.*.tmp
 
 # Temporary development files
 temp_*

@@ -1326,11 +1326,30 @@ def test_ledger_update_does_not_mutate_its_input():
     assert ledger == {}
 
 
-def test_load_ledger_returns_empty_dict_on_corrupt_file(tmp_path):
-    """A broken ledger must not block a drift PR -- it just starts recording afresh."""
+def test_load_ledger_returns_empty_dict_on_corrupt_file(drift_to_pr, tmp_path):
+    """A broken ledger must not block a drift PR: a reader sees {}. But nothing may
+    write back what that read made of it -- a conflicted ledger replaced by a one-row
+    ledger loses every other row -- so the strict writer refuses, and the bot records
+    no row, says so, and leaves the file as it found it."""
     bad = tmp_path / "drift_ledger.json"
-    bad.write_text("{ not json")
+    conflicted = '{\n<<<<<<< HEAD\n  "a:b": {}\n=======\n>>>>>>> other\n}\n'
+    bad.write_text(conflicted)
     assert drift_ledger.load_ledger(bad) == {}
+
+    with pytest.raises(drift_ledger.LedgerError):
+        drift_ledger.record_changes([("c:d", {})], accepted_in="PR #1", path=bad)
+
+    # `isolated_ledger` already points the bot at this tmp_path file.
+    assert drift_to_pr.LEDGER_PATH == bad
+    summary = tmp_path / "summary.md"
+    drift_to_pr.record_in_ledger(
+        [{"dataset_name": "c:d", "diff": {}}],
+        pr_ref="drift/c-d",
+        dry_run=False,
+        step_summary=summary,
+    )
+    assert bad.read_text() == conflicted
+    assert "no row recorded for `c:d`" in summary.read_text()
 
 
 def test_load_ledger_returns_empty_dict_when_absent(tmp_path):

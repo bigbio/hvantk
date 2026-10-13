@@ -213,6 +213,13 @@ def test_ledger_flag_survives_a_truthy_non_dict_ledger_file(tmp_path, monkeypatc
     assert result.exit_code == 0, result.output
     assert "no datasets pending rebuild" in result.output
 
+    # A WRITER must not read it that way. --mark-rebuilt refuses with exit 2 -- not
+    # "dataset not in ledger", which a lenient read would claim -- and leaves the
+    # file untouched.
+    marked = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "a:b"])
+    assert marked.exit_code == drift_cli.EXIT_PROBE_FAILED, marked.output
+    assert ledger.read_text() == "[1, 2, 3]"
+
 
 # --- _stale_datasets timestamp comparison ---------------------------------------------
 #
@@ -397,7 +404,8 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     tmp_path, monkeypatch
 ):
     """The row has the bot's shape and tier; a re-run that changes nothing records
-    nothing; `--no-ledger-row` (what the bot passes) opts out; other rows survive."""
+    nothing; `--no-ledger-row` (what the bot passes) opts out; other rows survive; an
+    unparseable ledger stops the run before anything is rewritten."""
     from hvantk.tools.plugins import drift_cli
 
     _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
@@ -411,14 +419,18 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     }
     drift_cli.LEDGER_PATH.write_text(json.dumps({"other:ds": other}))
 
-    def regenerate(stale: dict, *extra: str) -> dict:
+    def regenerate(stale: dict, *extra: str, exit_code: int = 0) -> str:
         fp_path.write_text(json.dumps({**live, **stale}))
         result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default", *extra])
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == exit_code, result.output
+        return result.output
+
+    def ledger_now() -> dict:
         return json.loads(drift_cli.LEDGER_PATH.read_text())
 
     # A moved column list: the bot would open a drift:schema PR for this diff.
-    ledger = regenerate({"headers": {"a.tsv": ["col1"]}})
+    regenerate({"headers": {"a.tsv": ["col1"]}})
+    ledger = ledger_now()
     row = ledger["fake:default"]
     assert set(row) == {"last_upstream_change", "accepted_in", "signal", "rebuilt_at"}
     assert (row["accepted_in"], row["signal"], row["rebuilt_at"]) == (
@@ -428,24 +440,29 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     )
     assert ledger["other:ds"] == other
 
-    # Nothing material moved (fetched_at and probe_version are ignored): no new row.
-    assert (
-        regenerate(
-            {"fetched_at": "2026-02-01T00:00:00Z", "probe_version": 0},
-            "--accepted-in",
-            "PR #1",
-        )
-        == ledger
-    )
+    # Nothing material moved (fetched_at is ignored): no new row.
+    regenerate({"fetched_at": "2026-02-01T00:00:00Z"}, "--accepted-in", "PR #1")
+    assert ledger_now() == ledger
 
     # The bot's flag: the version moved, but the row is left to the bot.
-    assert regenerate({"source_version": "fake-v0"}, "--no-ledger-row") == ledger
+    regenerate({"source_version": "fake-v0"}, "--no-ledger-row")
+    assert ledger_now() == ledger
 
     # A version-only move tiers routine, and --accepted-in names the PR.
-    row = regenerate({"source_version": "fake-v0"}, "--accepted-in", "PR #1")[
-        "fake:default"
-    ]
+    regenerate({"source_version": "fake-v0"}, "--accepted-in", "PR #1")
+    row = ledger_now()["fake:default"]
     assert (row["accepted_in"], row["signal"]) == ("PR #1", "routine")
+
+    # A ledger that does not parse (a merge conflict left in it) stops the regenerate
+    # before the probe rewrites anything: exit 2, both files exactly as they were.
+    conflicted = drift_cli.LEDGER_PATH.read_text().replace(
+        '"other:ds"', '<<<<<<< HEAD\n"other:ds"', 1
+    )
+    drift_cli.LEDGER_PATH.write_text(conflicted)
+    output = regenerate({"source_version": "fake-v0"}, exit_code=2)
+    assert "cannot be read as JSON" in output, output
+    assert drift_cli.LEDGER_PATH.read_text() == conflicted
+    assert json.loads(fp_path.read_text())["source_version"] == "fake-v0"
 
     # The ledger options qualify --regenerate only; alone they are a usage error.
     result = CliRunner().invoke(drift_cmd, ["--accepted-in", "PR #2", "fake:default"])

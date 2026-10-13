@@ -97,6 +97,7 @@ except ImportError:  # pragma: no cover - exercised only in stripped envs
 from hvantk.core.plugin.api import PROBE_FINGERPRINT_IGNORED_KEYS
 from hvantk.core.plugin.drift_ledger import (
     SCHEMA_KEYS,  # noqa: F401 -- re-exported: probe docstrings cite it from this script
+    LedgerError,
     classify_risk,
     record_changes,
 )
@@ -846,7 +847,13 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
     )
 
 
-def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:
+def record_in_ledger(
+    entries: list[dict],
+    *,
+    pr_ref: str,
+    dry_run: bool,
+    step_summary: Path | None = None,
+) -> None:
     """Record a rebuild-ledger row for every dataset in ``entries``, accepted in
     ``pr_ref`` (the bot's branch), and write the ledger back.
 
@@ -881,15 +888,33 @@ def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None
     `branch_needs_update`). Calling it here, right before the commit, still gets the
     ledger change into the SAME commit as the fingerprints it describes -- just via
     its own `git add` rather than the earlier one.
+
+    A ledger that cannot be parsed (a merge conflict left in it) does not block the
+    PR, but it is never written back either: `record_changes` reads strictly, and
+    writing back what a lenient read made of it would erase every other row. The
+    rows are reported as missing instead, and the commit goes ahead without them.
     """
     if dry_run:
         print(f"  [dry-run] would record {len(entries)} ledger entries")
         return
-    record_changes(
-        [(entry["dataset_name"], entry.get("diff")) for entry in entries],
-        accepted_in=pr_ref,
-        path=LEDGER_PATH,
-    )
+    try:
+        record_changes(
+            [(entry["dataset_name"], entry.get("diff")) for entry in entries],
+            accepted_in=pr_ref,
+            path=LEDGER_PATH,
+        )
+    except LedgerError as exc:
+        names = ", ".join(str(entry["dataset_name"]) for entry in entries)
+        print(
+            f"  WARNING: {exc}; no rebuild-ledger row recorded for {names}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- WARNING: rebuild ledger unreadable, no row recorded for `{names}` "
+            f"-- repair `hvantk/resources/drift_ledger.json` and add the rows by hand "
+            f"({exc})",
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -1088,7 +1113,7 @@ def handle_drifted(
     # only now, after both guards above have passed, so its ever-moving
     # `last_upstream_change` timestamp cannot defeat either of them. See
     # record_in_ledger's docstring.
-    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run)
+    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run, step_summary=step_summary)
     _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
@@ -1411,7 +1436,7 @@ def handle_routine_batch(
     # See the matching comment in handle_drifted: the ledger is written and staged in
     # its own `git add` only after both anti-churn guards above have passed, never
     # before, or its ever-changing `last_upstream_change` timestamp would defeat them.
-    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run)
+    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run, step_summary=step_summary)
     _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     # From here on, every dataset still in `entries` shares ONE fate: one commit, one
