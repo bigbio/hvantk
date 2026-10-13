@@ -141,10 +141,15 @@ def _run_markers(tmp_path, monkeypatch):
     import hvantk.algorithms.expression.matrix_utils as matrix_utils_mod
     import hvantk.tools.expression.summarize_expression_cli as cli_mod
 
-    # markers_cmd does `from ...matrix_utils import require_scanpy` INSIDE the function
-    # body, so the patch target is the source module, not this one -- the guard must
-    # fire before scanpy is ever touched, and stubbing it out means the test does not
-    # need the optional 'expression' extra installed to exercise that ordering.
+    # markers_cmd checks require_scanpy() FIRST, deliberately: it avoids reading a
+    # possibly large file for a command that cannot run at all without the optional
+    # extra. The guard runs only after that succeeds, before any scanpy call that
+    # would read var_names as genes. It does `from ...matrix_utils import
+    # require_scanpy` INSIDE the function body, so the patch target is the source
+    # module, not this one. Stubbing it here is only so this test does not need the
+    # optional 'expression' extra installed; with scanpy actually present,
+    # require_scanpy() succeeds for real and the guard still fires second, same as
+    # here.
     monkeypatch.setattr(matrix_utils_mod, "require_scanpy", lambda: MagicMock())
     h5ad_path = tmp_path / "transcript.h5ad"
     _transcript_keyed_cells_adata().write_h5ad(h5ad_path)
@@ -164,6 +169,11 @@ def _run_summarize(tmp_path, monkeypatch):
     import hvantk.algorithms.expression.matrix_utils as matrix_utils_mod
     import hvantk.tools.expression.summarize_expression_cli as cli_mod
 
+    # Unlike markers_cmd, summarize_expression_ad checks require_gene_keyed() BEFORE
+    # require_scanpy() (so a transcript-keyed file is reported as such even without
+    # the optional extra installed) -- this stub is not even reached on the failure
+    # path, but is kept so the test does not depend on that ordering remaining this
+    # way.
     monkeypatch.setattr(matrix_utils_mod, "require_scanpy", lambda: MagicMock())
     h5ad_path = tmp_path / "transcript.h5ad"
     _transcript_keyed_cells_adata().write_h5ad(h5ad_path)
