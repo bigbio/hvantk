@@ -34,12 +34,15 @@ def test_transcriptomics_loaded_from_per_plugin_catalogs():
 def test_proteomics_loaded_from_per_plugin_catalogs():
     reg = _fresh_registry()
     entries = reg.list_proteomics_datasets()
-    # The two HPA E-PROT entries live in the expression-atlas catalog but
-    # have proteomics shape (abundance_unit / protein_database / E-PROT-*
-    # accession), so the registry routes them to the proteomics bucket.
-    assert len(entries) >= 2, (
-        f"expected at least 2 proteomics entries, got {len(entries)}"
-    )
+    # The one real HPA E-PROT entry (E-PROT-3) lives in the expression-atlas
+    # catalog but has proteomics shape (abundance_unit / protein_database /
+    # E-PROT-* accession), so the registry routes it to the proteomics
+    # bucket. A review round found the catalog's second E-PROT entry
+    # (E-PROT-13) was not actually Human Protein Atlas data -- the live
+    # Expression Atlas accession is an unrelated mouse phospho-proteomics
+    # experiment -- and removed it (#420), so there is exactly one entry now.
+    assert len(entries) == 1, f"expected exactly 1 proteomics entry, got {len(entries)}"
+    assert entries[0].get("accession") == "E-PROT-3"
 
 
 def test_genomics_loaded_from_per_plugin_catalogs():
