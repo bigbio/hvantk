@@ -50,7 +50,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   run — it is marked `round_trip_contract` and runs via CI's `plugin-contract` job
   instead. A `--require-round-trips` pytest hook additionally fails the run if a
   round-trip test ends skipped or xfailed, including a `pytest.skip()` call raised from
-  inside the test body (#PR).
+  inside the test body (#456).
 - **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
@@ -76,7 +76,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   alias symbol of the same gene both appeared as source symbols. A colliding
   previous/alias symbol now stays unmapped instead: it defers to an approved symbol's
   claim, or, with no approved symbol to arbitrate, two colliding previous/alias symbols
-  both stay unmapped (#PR).
+  both stay unmapped (#456).
 - **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
   (#443).
 - **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like
