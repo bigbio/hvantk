@@ -22,7 +22,8 @@ hvantk plugins list
 hvantk plugins describe clinvar
 
 # Name anything that failed to load; exits 1 if there is anything
-# (`list` and `describe` exit 0 regardless)
+# (`list` exits 0 regardless; `describe` exits 1 only for a provider that is
+# unknown or failed to load as a whole, not for one failed dataset)
 hvantk plugins errors
 ```
 

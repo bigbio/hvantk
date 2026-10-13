@@ -13,7 +13,8 @@ purpose:
     targets one inspection task: list every loaded provider, describe one
     in detail, dump per-plugin load errors, or validate a manifest offline.
     `errors` is the one whose exit code signals load failures; `list` and
-    `describe` are informational and exit 0 when some units failed to load.
+    `describe` are informational (`describe` exits 1 only for a provider that
+    is unknown or failed to load as a whole).
 subcommands:
   - name: list
     description: >-
