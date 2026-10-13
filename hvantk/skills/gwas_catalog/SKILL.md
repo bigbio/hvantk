@@ -118,4 +118,4 @@ Per conventions §9:
 
 Round-trip test (`tests/test_builder.py`) asserts: the materialized schema matches `schema.json`; the row slice for the keys in `sample_keys.json` matches `sample_rows.json`. The test drives the builder through `phase_b_snapshot_adapter`, which materializes the returned `AnnotationTable` to a temp `.ht`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.
 
-The fixture is a real 59-row slice of the `e115_r2026-04-27` full-associations release, CC0-licensed; see its `THIRD_PARTY_DATA.md` entry.
+The fixture is a real 59-row slice of the `e115_r2026-04-27` full-associations release, under the EBI Services Terms of Use (CC0 at this source covers only the separate summary-statistics product, not this curated associations file); see its `THIRD_PARTY_DATA.md` entry.

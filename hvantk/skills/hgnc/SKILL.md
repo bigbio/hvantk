@@ -98,4 +98,4 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 > `pytest hvantk/skills/hgnc/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result.
 
-The fixture is real HGNC data (6 gene rows including BRCA1/BRCA2), CC0-licensed; see its `THIRD_PARTY_DATA.md` entry.
+The fixture is 5 real HGNC rows (including BRCA1/BRCA2) plus 1 fabricated row (`HGNC:99999`/`FAKE1`), CC0-licensed; see its `THIRD_PARTY_DATA.md` entry.

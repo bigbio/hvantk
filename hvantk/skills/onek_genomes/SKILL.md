@@ -116,4 +116,4 @@ Declared in `plugin.yaml`'s `tests:` block, one per dataset, both under a **plug
 
 Per `_conventions` § 12, these two datasets deliberately do **not** share one drift fingerprint: each has its own probe function (`fetch_variants_fingerprint` vs `fetch_samples_fingerprint`) and its own baseline file, because they are independent upstream signals (a VCF release vs. a samples panel) rather than one provider-wide signal fanned out to variants.
 
-Both fixtures are real 1000 Genomes / IGSR data, available without embargo; see the `THIRD_PARTY_DATA.md` entry.
+Both fixtures are real 1000 Genomes / IGSR data, available without embargo but requiring NIGMS/Coriell and NHGRI-grant acknowledgement on reuse; see the `THIRD_PARTY_DATA.md` entry.

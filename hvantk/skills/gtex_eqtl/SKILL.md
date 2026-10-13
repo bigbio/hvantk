@@ -158,4 +158,4 @@ Regenerate via `--regenerate-snapshots` when:
 - The shared transform in `build_eqtl_associations` adds / removes / renames fields.
 - A new GTEx release is anchored that changes the input schema (per § 8).
 
-The fixture is a real 800-row slice of the v11 Liver `signif_pairs` release (open-access summary statistics, no restriction on use); see its `THIRD_PARTY_DATA.md` entry.
+The fixture is a real 800-row slice of the v11 Liver `signif_pairs` release (open-access summary statistics; no post-release embargo, but GTEx's own licence requires a dated acknowledgement and a data-currency notice when redistributing — see `testdata/raw/gtex-eqtl/README.md`); see its `THIRD_PARTY_DATA.md` entry.
