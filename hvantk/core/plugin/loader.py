@@ -54,7 +54,8 @@ _PROVIDER_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 #: Load-error unit prefix for a manifest `cli:` entry whose callable will not resolve
 #: (`cli:<command>`). Such a row is about the command alone -- a dataset whose own
 #: callables fail with it is recorded separately, under `provider:dataset` -- so
-#: `hvantk drift` does not count it.
+#: `hvantk drift` does not count it. `cli` (like `entry-point`) is a reserved provider
+#: name in manifest.schema.json, so no dataset key can start with this prefix.
 CLI_UNIT_PREFIX = "cli:"
 
 
@@ -172,6 +173,12 @@ def _explain(exc: jsonschema.ValidationError, content: Any = None) -> str:
             "acquisition.mode is 'byo' but lifecycle.download is declared. A dataset "
             "either fetches its own inputs or it cannot -- drop the downloader, or set "
             "acquisition.mode to 'download'."
+        )
+    elif exc.validator == "not" and path == ["name"]:
+        message = (
+            f"provider name {exc.instance!r} is reserved: load errors are recorded as "
+            "'cli:<command>' and 'entry-point:<name>', and this provider's "
+            "'<name>:<dataset>' keys would be taken for them. Choose another name."
         )
     elif exc.validator == "required" and (
         exc.validator_value == ["lifecycle"]
