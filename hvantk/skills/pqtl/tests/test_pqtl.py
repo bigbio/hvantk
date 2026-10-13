@@ -107,6 +107,43 @@ def test_ambiguous_symbol_stays_unmapped_instead_of_taking_the_first_gene(caplog
     assert "Examples: SHARED" in caplog.text
 
 
+def test_colliding_symbol_defers_to_whichever_approved_symbol_claims_the_gene(caplog):
+    """Regression: two source symbols resolving to the same gene_id duplicated
+    (locus, alleles, gene_id) within a tissue.
+
+    OLDNAME is GENEA's previous symbol, but CURRENT -- GENEA's approved symbol -- is
+    also a source symbol, so both would resolve to GENEA's gene_id: OLDNAME must
+    defer to the approved symbol instead of also mapping there. OLDB1 (a previous
+    symbol) and OLDB2 (an alias) both resolve to GENEB, which has no approved-symbol
+    row in this data at all to arbitrate between them, so neither keeps the gene_id.
+    """
+    from hvantk.skills.pqtl.builder import _map_gene_symbols
+
+    catalog = _FakeHGNCCatalog(
+        _Gene("HGNC:1", "CURRENT", "ENSG00000000001", previous=("OLDNAME",)),
+        _Gene(
+            "HGNC:2",
+            "GENEB",
+            "ENSG00000000002",
+            previous=("OLDB1",),
+            aliases=("OLDB2",),
+        ),
+    )
+
+    mapping = _map_gene_symbols(catalog, {"CURRENT", "OLDNAME", "OLDB1", "OLDB2"})
+
+    assert mapping == {"CURRENT": "ENSG00000000001"}
+    assert (
+        "Mapped 1 of 4 pQTL gene symbol(s) to Ensembl gene IDs: 1 approved, "
+        "0 via a previous symbol, 0 via an alias; 3 ambiguous, 0 unmapped"
+    ) in caplog.text
+    assert (
+        "'OLDNAME' resolves to the same gene (ENSG00000000001) as the " in caplog.text
+    )
+    assert "approved symbol 'CURRENT'" in caplog.text
+    assert "OLDB1, OLDB2" in caplog.text and "ENSG00000000002" in caplog.text
+
+
 def test_no_mapped_symbol_raises():
     from hvantk.skills.pqtl.builder import _map_gene_symbols
 
