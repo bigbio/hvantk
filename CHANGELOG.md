@@ -28,7 +28,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
 - **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the
   pinned Ensembl GTF into `--raw-dir`, where later runs reuse it, and maps the UniProt
   download onto it; the command used to download and then fail at the build. `hvantk ptm
-  build` stays the command that adds PeptideAtlas and CPTAC sites (#PR).
+  build` stays the command that adds PeptideAtlas and CPTAC sites (#454).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
 - **The downloader decision framework is published** in the data-sources guide: when a
@@ -53,7 +53,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `cli:<command>` rows that `hvantk drift` ignores; such a downloader used to drop out of
   `hvantk download` with only a log line. It is the one plugins command whose exit code
   signals load failures: `plugins list` and `plugins describe` stay informational
-  (`describe` exits 1 only for a provider that is unknown or failed to load) (#PR).
+  (`describe` exits 1 only for a provider that is unknown or failed to load) (#454).
 
 ### Fixed
 
