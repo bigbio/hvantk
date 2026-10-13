@@ -18,7 +18,7 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
 - `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
 - `hvantk drift --regenerate` also updates `hvantk/resources/drift_ledger.json` when
   upstream materially changed: pass `--accepted-in "PR #N"` and commit that change with
-  the fingerprint (#PR).
+  the fingerprint (#459).
 
 ### Added
 
@@ -55,13 +55,13 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `manual`); a first capture or a `probe_version` change records none. The drift bot
   passes `--no-ledger-row` and records its rows through the same code once its checks
   pass, and a refused commit no longer leaves its rows staged for the next PR. Ledger
-  writes refuse a file that does not parse, and are atomic and locked (#PR).
+  writes refuse a file that does not parse, and are atomic and locked (#459).
 - **The dbNSFP drift probe reads the release's column list.** It follows the releases
   page's link to the latest academic release's `variant.columns.txt` and fingerprints its
   column names under `headers` and `checksums`, so a release with unchanged columns is
   routine and a column change opens a `drift:schema` PR. A release counts as academic
   when it links an academic README, not when its title lacks a `c`, and both requests
-  send hvantk's User-Agent instead of `python-requests` (#PR).
+  send hvantk's User-Agent instead of `python-requests` (#459).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
   on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
 - **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
