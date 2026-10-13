@@ -152,12 +152,12 @@ hvantk download expression-atlas --download_path data/expression_atlas
 ```
 
 A transcript-level experiment builds with `var` keyed by the transcript id by default
-(`hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas --output
-<out>.h5ad`). Pass `--plugin-arg level=gene` to sum transcript-level values per gene
+(`hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas --output <out>.h5ad`).
+Pass `--plugin-arg level=gene` to sum transcript-level values per gene
 instead and key `var` by the gene id — needed before the result can be used with
 `hvantk expression markers`/`summarize`, the PTM constraint expression loader, or
-`hvantk annotate --matrix`, which all read `var_names` as the gene id and refuse a
-transcript-keyed matrix.
+`hvantk annotate prepare`'s matrix source type, which all read `var_names` as the gene id
+and refuse a transcript-keyed matrix.
 
 ## Manual download sources
 
