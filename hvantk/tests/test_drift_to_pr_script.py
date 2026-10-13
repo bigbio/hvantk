@@ -83,23 +83,36 @@ GROUPED = {
 }
 
 
+#: A drifted entry whose `headers` moved: `classify_risk` tiers it schema, so `main()`
+#: routes it through `handle_drifted` rather than the routine batch.
+SCHEMA_DRIFTED = {
+    **DRIFTED,
+    "dataset_name": "hgnc:lookup",
+    "diff": {"added": {}, "removed": {}, "changed": {"headers": {}}},
+}
+
+
 @pytest.mark.parametrize(
-    "failing_cmd,stderr_msg",
+    "failing_cmd,stderr_msg,entry",
     [
         (
             ["gh", "pr", "create"],
             "GitHub Actions is not permitted to create or approve "
             "pull requests (createPullRequest)",
+            DRIFTED,
         ),
         (
             ["git", "checkout", "-B"],
             "fatal: a branch named 'drift/routine-batch' is already checked out",
+            DRIFTED,
         ),
+        (["git", "commit"], "fatal: unable to write new index file", DRIFTED),
+        (["git", "commit"], "fatal: unable to write new index file", SCHEMA_DRIFTED),
     ],
-    ids=["gh-pr-create", "git-checkout-B"],
+    ids=["gh-pr-create", "git-checkout-B", "git-commit-routine", "git-commit-schema"],
 )
 def test_exits_nonzero_when_a_pr_cannot_be_opened(
-    drift_to_pr, tmp_path, monkeypatch, failing_cmd, stderr_msg
+    drift_to_pr, tmp_path, monkeypatch, failing_cmd, stderr_msg, entry
 ):
     """The regression: drift detected, branch pushed, `gh pr create` refused, exit 0
     (now exit 1). Reproduces the exact stderr the repository setting produced in run
@@ -112,8 +125,14 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(
     refusal there used to escape as an UNCAUGHT exception -- this test would error
     instead of asserting `rc == 1` -- rather than being caught and reported like
     every other failure in the batch.
+
+    And over a refused `git commit` on both paths (#408 review): it left the
+    fingerprints AND the ledger rows staged, and the next schema dataset's `git
+    checkout -B` committed them onto its own branch. Both paths must restore
+    everything the run staged once the commit fails.
     """
-    report = _write_report(tmp_path, [DRIFTED])
+    report = _write_report(tmp_path, [entry])
+    calls: list[list[str]] = []
 
     def _explode(cmd, **kwargs):
         """Succeed for every call except ``failing_cmd``.
@@ -128,6 +147,7 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(
         the `git-checkout-B` case, which fails before that check is ever reached, but
         harmless there too.
         """
+        calls.append(list(cmd))
         if cmd[: len(failing_cmd)] == failing_cmd:
             raise subprocess.CalledProcessError(1, cmd, output="", stderr=stderr_msg)
         if cmd == ["git", "diff", "--cached", "--quiet"]:
@@ -136,18 +156,30 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(
 
     monkeypatch.setattr(drift_to_pr, "_run", _explode)
     monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
     # `handle_drifted`'s own emptiness check shells out to `subprocess.run` directly
     # (rather than `_run`); the branch under test is what happens after a commit was
     # made, so it also must see "something is staged" (nonzero).
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1),
-    )
+    def _staged(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 1)
+
+    monkeypatch.setattr(subprocess, "run", _staged)
 
     rc = drift_to_pr.main(["--report", str(report), "--base-branch", "dev"])
 
     assert rc == 1
+    if failing_cmd == ["git", "commit"]:
+        commit = next(i for i, c in enumerate(calls) if c[:2] == ["git", "commit"])
+        restores = [
+            " ".join(c)
+            for c in calls[commit + 1 :]
+            if c[:3] == ["git", "checkout", "HEAD"]
+        ]
+        assert restores == [
+            "git checkout HEAD -- hvantk/skills",
+            "git checkout HEAD -- hvantk/resources/drift_ledger.json",
+        ], calls
 
 
 def test_exits_zero_when_nothing_drifted(drift_to_pr, tmp_path):
@@ -765,7 +797,10 @@ def test_handle_drifted_discards_working_tree_when_regenerate_fails(
         )
 
     joined = [" ".join(c) for c in calls]
-    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
+    assert joined[-2:] == [
+        "git checkout HEAD -- hvantk/skills",
+        "git checkout HEAD -- hvantk/resources/drift_ledger.json",
+    ], joined
     assert not any(c.startswith("git add") for c in joined), joined
 
 

@@ -552,8 +552,13 @@ def remote_branch_exists(branch: str, *, dry_run: bool) -> bool:
     return bool((result.stdout or "").strip())
 
 
+#: What a drift run writes and stages: the fingerprints under hvantk/skills, and the
+#: rebuild ledger `record_in_ledger` writes.
+_RUN_WRITTEN_PATHS = ("hvantk/skills", "hvantk/resources/drift_ledger.json")
+
+
 def _discard_staged_fingerprints(*, dry_run: bool) -> None:
-    """Return index AND working tree for ``hvantk/skills`` to HEAD.
+    """Return index AND working tree for ``hvantk/skills`` and the ledger to HEAD.
 
     Every early return out of `handle_drifted` after `git add` must call this. The
     regeneration is per-dataset but the checkout is not isolated: the next iteration
@@ -565,26 +570,34 @@ def _discard_staged_fingerprints(*, dry_run: bool) -> None:
 
     `git checkout HEAD -- <path>` rather than `git reset`: reset alone unstages but
     leaves the modified file in the working tree, where the next `git add` re-stages it.
+
+    The ledger is restored too. A failure after `record_in_ledger` -- a refused
+    `git commit` in either handler -- leaves its rows staged beside the fingerprints,
+    and the next schema dataset's `git checkout -B` carries both into ITS commit. One
+    call per path, so a ledger HEAD does not have cannot stop the fingerprints from
+    being restored.
     """
     if dry_run:
-        print("[dry-run] (would discard staged fingerprint changes)")
+        print("[dry-run] (would discard staged fingerprint and ledger changes)")
         return
-    result = subprocess.run(
-        ["git", "checkout", "HEAD", "--", "hvantk/skills"],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        # `check=False` keeps one failed cleanup from aborting the whole run, but
-        # swallowing the output would hide the exact state this function exists to
-        # prevent: the fingerprint stays staged and the next dataset commits it onto
-        # ITS branch. Surface it so the job log names the contaminating run.
-        print(
-            "  WARNING: could not discard staged fingerprints; the next dataset may "
-            f"commit them onto its branch: {(result.stderr or '').strip()}",
-            file=sys.stderr,
+    for path in _RUN_WRITTEN_PATHS:
+        result = subprocess.run(
+            ["git", "checkout", "HEAD", "--", path],
+            check=False,
+            text=True,
+            capture_output=True,
         )
+        if result.returncode != 0:
+            # `check=False` keeps one failed cleanup from aborting the whole run, but
+            # swallowing the output would hide the exact state this function exists to
+            # prevent: the change stays staged and the next dataset commits it onto
+            # ITS branch. Surface it so the job log names the contaminating run.
+            print(
+                f"  WARNING: could not discard staged changes to {path}; the next "
+                "dataset may commit them onto its branch: "
+                f"{(result.stderr or '').strip()}",
+                file=sys.stderr,
+            )
 
 
 def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> bool:
@@ -1493,6 +1506,10 @@ def handle_routine_batch(
                 dry_run=dry_run,
             )
     except subprocess.CalledProcessError as exc:
+        # A refused `git commit` leaves the fingerprints AND the ledger rows staged,
+        # and the schema loop's next `git checkout -B` would carry them into another
+        # dataset's commit. After a successful commit this restores nothing.
+        _discard_staged_fingerprints(dry_run=dry_run)
         stage = _stage_for_called_process_error(exc)
         label = ", ".join(datasets)
         print(
@@ -1748,6 +1765,10 @@ def main(argv: list[str] | None = None) -> int:
                 step_summary=step_summary,
             )
         except subprocess.CalledProcessError as exc:
+            # Whatever stage failed, nothing this dataset staged -- its fingerprint,
+            # its ledger row after a refused `git commit` -- may reach the next
+            # dataset's branch, whose `git checkout -B` keeps the index as it is.
+            _discard_staged_fingerprints(dry_run=args.dry_run)
             # One drifted dataset failing to PR shouldn't stop the others, but it
             # must not vanish either: collected here and re-raised as a nonzero
             # exit once every dataset has had its turn.
