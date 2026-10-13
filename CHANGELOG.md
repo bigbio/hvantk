@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Two new downloaders, drift probes that watch the data they guard, and fixes from the
+Four new downloaders, drift probes that watch the data they guard, and fixes from the
 0.4.0 follow-up issues.
 
 **Upgrade notes.**
@@ -30,6 +30,16 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   download insider-interfaces` and `hvantk download gwas-catalog`, which `hvantk reprocess`
   now runs too. The gwas-catalog builder resolves a raw directory to its associations
   file, so the plain `--raw-dir` form works (#450).
+- **A downloader for `cptac:expression`.** `hvantk download cptac-expression
+  --cancer-type <ct>` (or `--all`) fetches the per-cancer-type whole-proteome matrix
+  and clinical-metadata CSV via the `cptac` Python package; `hvantk reprocess
+  cptac:expression` runs it automatically. The clinical-metadata half, previously
+  unverified against a live response, is now confirmed working end to end (#451).
+- **A downloader for `gevir:metrics`.** `hvantk download gevir` fetches the GeVIR
+  paper's Supplementary Table 2 workbook and derives the bgzipped metrics TSV itself
+  (stdlib `zipfile`/`xml.etree`, no new dependency), restoring the ~29 gene symbols
+  Excel's autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`); `hvantk
+  reprocess gevir:metrics` runs it automatically (#457).
 - **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
   field missing from the input header into an error instead of a warning (#443).
 - **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the

@@ -17,11 +17,13 @@ verified ``get_proteomics(source=..., tissue_type=...)`` / ``get_clinical
 from __future__ import annotations
 
 import os
+import stat
 
 import pandas as pd
 import pytest
 
 import hvantk.skills.cptac.shared.datasets as shared_datasets
+from hvantk.core.plugin.drift_runner import _current_umask
 
 # Wide proteomics frame get_proteomics() would return: 2 samples x 3 genes, with
 # one blank Database_ID (MYC) so melt_proteomics_wide_to_long's fall-back-to-Name
@@ -121,6 +123,13 @@ def test_download_writes_atomically(case, tmp_path, monkeypatch):
     )
     assert paths == {"matrix": str(matrix_path), "metadata": str(metadata_path)}
     assert not _temp_files(raw), "no temp file should be left behind"
+
+    # mkstemp always creates mode 0600; the published files must not keep that --
+    # they should land at whatever a normal file create gets (0666 masked by the
+    # process umask), so a shared raw dir stays group-readable.
+    expected_mode = 0o666 & ~_current_umask()
+    for p in (matrix_path, metadata_path):
+        assert stat.S_IMODE(os.stat(p).st_mode) == expected_mode
 
     matrix_df = pd.read_csv(matrix_path)
     assert list(matrix_df.columns) == [

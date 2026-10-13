@@ -168,9 +168,9 @@ def test_byo_datasets_are_not_exempt_from_the_validation_contract():
 
 #: Datasets whose downloader belongs here but is not written yet (#386). That state is
 #: spelled by OMITTING the acquisition block; this set pins which datasets are in it.
-DOWNLOADER_NOT_WRITTEN_YET = {
-    "gevir:metrics",
-}
+#: gevir:metrics shipped its downloader (hvantk/skills/gevir/cli.py) and now declares
+#: acquisition.mode: download explicitly, so it left this set.
+DOWNLOADER_NOT_WRITTEN_YET: set[str] = set()
 
 
 def test_every_dataset_without_a_downloader_has_been_classified():

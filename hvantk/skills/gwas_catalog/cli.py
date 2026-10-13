@@ -22,6 +22,7 @@ from pathlib import Path
 import click
 import requests
 
+from hvantk.core.plugin.drift_runner import _current_umask
 from hvantk.skills.gwas_catalog.drift_probe import GWAS_CATALOG_FULL_URL
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,13 @@ def _stream_to_file(url: str, dest: Path, timeout: int = _DOWNLOAD_TIMEOUT_S) ->
                 for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
                     if chunk:
                         fh.write(chunk)
+        # mkstemp always creates mode 0600; match what a normal file create
+        # (or the existing file, on overwrite) would get, mirroring
+        # drift_runner.write_fingerprint's atomic-publish idiom.
+        if dest.exists():
+            shutil.copymode(dest, tmp_name)
+        else:
+            os.chmod(tmp_name, 0o666 & ~_current_umask())
         os.replace(tmp_name, dest)
         done = True
     finally:
@@ -92,6 +100,10 @@ def _extract_single_member(zip_path: Path, dest: Path) -> None:
         try:
             with zf.open(member) as src, open(tmp_name, "wb") as out:
                 shutil.copyfileobj(src, out, length=_CHUNK_SIZE)
+            if dest.exists():
+                shutil.copymode(dest, tmp_name)
+            else:
+                os.chmod(tmp_name, 0o666 & ~_current_umask())
             os.replace(tmp_name, dest)
             done = True
         finally:

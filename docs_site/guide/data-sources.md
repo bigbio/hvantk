@@ -27,8 +27,11 @@ The decision between the first two states: build a downloader when the raw file 
 **under 1 GB**, **publicly accessible** (no licence gate), **high-value**, and served
 from a **stable, predictable URL**. Document acquisition instead when the file is
 **over 1 GB**, needs **licence acceptance or manual steps**, or the URL structure is
-**complex or fragile** (FTP directory listings, versioned mirrors). The third state is
-simply unfinished work, tracked per dataset in #386.
+**complex or fragile** (FTP directory listings, versioned mirrors). The third state
+means a downloader could be written in principle but has not been yet; nothing on
+this page is currently in that state (the last four -- `insider:interfaces`,
+`gwas-catalog:associations`, `cptac:expression`, `gevir:metrics` -- shipped their
+downloaders in #386's follow-up work).
 
 ## File format note
 
@@ -56,6 +59,7 @@ hvantk utils convert-bgz input.gz
 | PeptideAtlas phospho | `hvantk download peptideatlas-phospho` | ~549 MB |
 | INSIDER interfaces | `hvantk download insider-interfaces` | ~49 MB |
 | GWAS Catalog | `hvantk download gwas-catalog` | ~70 MB zip (~601 MB unzipped TSV) |
+| GeVIR gene metrics | `hvantk download gevir` | ~10.3 MB xlsx (~0.6 MB derived TSV) |
 | 1000 Genomes sample panel | *(no standalone command; see [1000 Genomes](#1000-genomes-nygcccdg-high-coverage-callset))* | ~55 KB |
 
 ### ClinVar
@@ -339,21 +343,31 @@ https://static-content.springer.com/esm/art%3A10.1038%2Fs41588-019-0560-2/MediaO
 ```
 
 That is a ~10.3 MB `.xlsx` workbook (only MOESM3 of the six supplementary slots is
-public; the rest return 403). The builder reads a bgzipped TSV, so extract sheet
-`table_2` and BGZF-compress it before building.
+public; the rest return 403), not a thin URL fetch: the builder reads a bgzipped TSV,
+so the downloader (`hvantk download gevir`; it is also in the built-in-downloader list
+above) extracts sheet `table_2` itself (stdlib `zipfile` + `xml.etree`, no openpyxl
+dependency) and BGZF-compresses it, including restoring the ~29 gene symbols Excel's
+autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`; see
+`hvantk/skills/gevir/cli.py`'s module docstring for the full, externally-verified
+restoration rule).
 
 > **Note:** the authors' repository at https://github.com/gevirank/gevir ships the
 > **analysis code only** — its `tables/` directory holds a placeholder file — so it
 > is not a source for the metric table. Earlier revisions of this guide pointed
 > there.
 
-A real downloader would have to do the extract-and-convert step, not just fetch the
-URL, so it is more than the usual thin wrapper — tracked as a follow-up in #386.
-
-**Build**:
+**Download + build** (end-to-end, fetches and derives the TSV automatically):
 
 ```bash
-# Place gevir_metrics.tsv.bgz in data/gevir/ then:
+hvantk reprocess gevir:metrics \
+  --raw-dir data/gevir/ \
+  --output gevir.ht
+```
+
+**Manual download**: an already-derived `gevir_metrics_pmid31873297.tsv.bgz` placed in
+`data/gevir/`, then built with `--skip-download`:
+
+```bash
 hvantk reprocess gevir:metrics \
   --raw-dir data/gevir/ \
   --output gevir.ht \
