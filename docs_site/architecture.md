@@ -488,9 +488,12 @@ checklist:
 3. CLI downloader command is wired from the manifest's `cli:` block.
 4. Add a conformance test using the `run_builder_for_spec` orchestrator
    (see `hvantk/tests/test_plugin_conformance.py` for the template), and a
-   round-trip test named `test_*round_trip*`, with no `skip`/`skipif` marker
-   and marked `hail` for a `backend: hail` dataset
-   (`hvantk/tests/test_plugin_contract_artifacts.py` checks this).
+   round-trip test tagged `@pytest.mark.round_trip("<provider>:<dataset>")`
+   (one id per collected test item), with no `skip`/`skipif` marker and
+   marked `hail` for a `backend: hail` dataset
+   (`hvantk/tests/test_plugin_contract_artifacts.py` replays the manifest's
+   `tests.command` to check this; `--require-round-trips` also fails a run
+   on a real skip/xfail that collection cannot see).
 5. Run `hvantk plugins list` — your plugin should appear.
 
 See `hvantk/skills/_conventions/SKILL.md` for the full contract.
