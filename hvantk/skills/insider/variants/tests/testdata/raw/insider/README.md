@@ -9,19 +9,21 @@ rows; see `hvantk/skills/insider/catalog/datasets.json`, accession `INSIDER_v1.0
 The previous fixture (`insider_sample.bed`, removed here) was a real excerpt, sliced
 from the live BED by a track-aware sub-sampler. #426 asked for a licence audit of every
 real fixture without a `THIRD_PARTY_DATA.md` entry. For INSIDER (Yu lab / Interactome
-Insider, Wei et al. 2017), no published licence or terms-of-use statement could be
+Insider, Meyer MJ et al. 2018), no published licence or terms-of-use statement could be
 found, checked on 2026-10-13:
 
-- `http://interactomeinsider.yulab.org/` carries no About/Downloads/Terms page with a
-  licence statement (the nav's "About" and "Downloads" items are in-page JS tabs, not
-  separate URLs; no `/download.html` or similar page exists — confirmed 404).
+- `http://interactomeinsider.yulab.org/about.html` and `.../downloads.html` both exist
+  (confirmed HTTP 200, not the earlier-reported 404 for a guessed `/download.html`) and
+  were read in full: `about.html` has a Citation section (confirming the correct paper
+  below) but no licence or terms-of-use statement anywhere on either page.
 - The underlying paper (Meyer MJ et al., "Interactome INSIDER: a structural
-  interactome browser for genomic studies", *Nat Methods* 15, 290-298 (2018), PMID
-  29355848, DOI 10.1038/nmeth.4540) carries no open licence tag in Europe PMC
-  (`license: None`); the project's own `SKILL.md` citation of PMID 29036289 for this
-  paper is itself wrong (that PMID belongs to an unrelated Bioinformatics paper,
-  "VICTOR: genome-based phylogeny and classification of prokaryotic viruses" — a
-  separate, pre-existing documentation defect, not fixed here).
+  interactome browser for genomic studies", *Nature Methods* 15(2):107-114 (2018), PMID
+  29355848, DOI 10.1038/nmeth.4540 — verified against Europe PMC and the site's own
+  Citation section) carries no open licence tag in Europe PMC (`license: None`). This
+  project's `SKILL.md` and `catalog/datasets.json` previously cited PMID 29036289 for
+  this paper, which actually belongs to an unrelated Bioinformatics paper, "VICTOR:
+  genome-based phylogeny and classification of prokaryotic viruses"; both are now
+  corrected to PMID 29355848 / DOI 10.1038/nmeth.4540.
 - The closest formal licence signal found is the bioRxiv preprint of the same work
   (DOI 10.1101/126862), tagged **CC BY-NC-ND** in Europe PMC — non-commercial, no
   derivatives, and in any case a licence on the preprint text, not a stated licence for
@@ -60,9 +62,9 @@ rather than a real excerpt.
 ## Generation
 
 1. Verified the absence of a published licence as described above (2026-10-13).
-2. Hand-authored 5 tracks / 20 data rows reproducing the real file's block structure
-   (one zero-length-opening track, one multi-row track, and three tracks sharing one
-   interval to exercise the multi-PPI-per-interval aggregation), replacing all
+2. Hand-authored 5 tracks / 19 data rows reproducing the real file's block structure
+   (one zero-length-opening track, and four more tracks that all include a row at
+   `chr3:2000300` to exercise the multi-PPI-per-interval aggregation), replacing all
    accessions and coordinates with placeholders.
 3. Regenerated `../../snapshots/schema.json` and `../../snapshots/sample_rows.json` via
    `pytest hvantk/skills/insider/variants/tests/test_builder.py -m hail

@@ -26,9 +26,9 @@ SNAPSHOT_DIR = Path("hvantk/skills/insider/variants/tests/snapshots")
 # inlined here. The fixture is synthetic (#426 — no published INSIDER licence was
 # found; see testdata/raw/insider/README.md). Picked from observed fixture rows:
 # chr3:2000301-2000303 is shared across all four SYNTH0003_ppi_* tracks (exercises
-# the multi-PPI-per-interval aggregation), chr11:1000101-1000102 is from the first
-# track's lone surviving row (its opening row is zero-length and gets skipped), and
-# chr3:2000711-2000713 is from the last track. Intervals stored as
+# the multi-PPI-per-interval aggregation), chr11:1000101-1000102 is one of the
+# first track's three surviving rows (its opening row is zero-length and gets
+# skipped), and chr3:2000711-2000713 is from the last track. Intervals stored as
 # {"start": "<contig>:<pos>", "end": "<contig>:<pos>"} per the tinterval branch in
 # _snapshot_utils.
 SAMPLE_KEYS = [

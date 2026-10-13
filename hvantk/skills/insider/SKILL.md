@@ -23,12 +23,12 @@ This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 dec
 
 ## 2. Source identity
 
-- **Provider:** Yu lab (Cornell). Wei et al., *Nat Methods* 2017, PMID 29036289.
+- **Provider:** Yu lab (Cornell). Meyer MJ et al., "Interactome INSIDER: a structural interactome browser for genomic studies", *Nature Methods* 15(2):107–114 (2018), PMID 29355848, DOI 10.1038/nmeth.4540. (Corrected #426/review round — PMID 29036289 previously cited here belongs to an unrelated paper, "VICTOR: genome-based phylogeny and classification of prokaryotic viruses".)
 - **Distribution:** the download page carries no links in its markup, but both
   products have stable, directly addressable paths. Per `_conventions` § 2 the
   catalog owns them: see `catalog/datasets.json`, or run
   `hvantk catalog show INSIDER_v1.0`. Both are what the drift probes pin.
-- **License:** Academic use (per the existing catalog entry).
+- **License:** not stated — no licence or terms-of-use statement is published anywhere for INSIDER (checked 2026-10-13; see `variants/tests/testdata/raw/insider/README.md`). The catalog's previous "Academic use" value was unsupported and has been corrected to "Not stated".
 - **Catalog entry:** `INSIDER_v1.0` in `hvantk/skills/insider/catalog/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
 Stable note (not in catalog): INSIDER releases two complementary products from one source. This skill originally anchored the genomic BED only; the protein-residue TXT has since been onboarded as the `insider:interfaces` second dataset — see § 9b.
@@ -115,7 +115,7 @@ INSIDER updates are irregular. To onboard a new release:
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample-synthetic.bed` (manifest value: `variants/tests/testdata/raw/insider`). 5 PPI tracks (20 data rows; 19 valid after zero-length filtering). **Synthetic** (#426): no published licence or terms-of-use statement could be found for INSIDER (checked 2026-10-13; see `testdata/raw/insider/README.md` for the full audit), so the fixture that used to be a real track-aware slice of the live BED is now hand-authored, with fabricated PPI-accession placeholders (`SYNTH0001`-`SYNTH0007`) and arbitrary GRCh38-valid coordinates, preserving the real file's block structure (`browser` directive, `track name=<P1>_ppi_<P2> description=... visibility=dense itemRgb="On"` headers each paired with data rows, and an interval shared across several tracks to exercise the multi-PPI-per-interval aggregation). No `THIRD_PARTY_DATA.md` entry applies.
+- **fixture:** `hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample-synthetic.bed` (manifest value: `variants/tests/testdata/raw/insider`). 5 PPI tracks (19 data rows; 18 valid after zero-length filtering, with 4 tracks sharing one interval, `chr3:2000300-2000302`). **Synthetic** (#426): no published licence or terms-of-use statement could be found for INSIDER (checked 2026-10-13; see `testdata/raw/insider/README.md` for the full audit), so the fixture that used to be a real track-aware slice of the live BED is now hand-authored, with fabricated PPI-accession placeholders (`SYNTH0001`-`SYNTH0007`) and arbitrary GRCh38-valid coordinates, preserving the real file's block structure (`browser` directive, `track name=<P1>_ppi_<P2> description=... visibility=dense itemRgb="On"` headers each paired with data rows, and an interval shared across several tracks to exercise the multi-PPI-per-interval aggregation). No `THIRD_PARTY_DATA.md` entry applies.
 - **schema_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **command:** `pytest hvantk/skills/insider/variants/tests -m hail`.
