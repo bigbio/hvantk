@@ -28,6 +28,10 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   file, so the plain `--raw-dir` form works (#450).
 - **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
   field missing from the input header into an error instead of a warning (#443).
+- **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the
+  pinned Ensembl GTF into `--raw-dir`, where later runs reuse it, and maps the UniProt
+  download onto it; the command used to download and then fail at the build. `hvantk ptm
+  build` stays the command that adds PeptideAtlas and CPTAC sites (#454).
 - **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
   `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
 - **`build_config` exposes `seed`, `seed_sweep`, `nulls` and `blocks`.** Each is a
@@ -52,6 +56,11 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
   plugins validate` already did (#449).
+- **`hvantk plugins errors` also lists downloader modules that fail to import**, as
+  `cli:<command>` rows that `hvantk drift` ignores; such a downloader used to drop out of
+  `hvantk download` with only a log line. It is the one plugins command whose exit code
+  signals load failures: `plugins list` and `plugins describe` stay informational
+  (`describe` exits 1 only for a provider that is unknown or failed to load) (#454).
 
 ### Fixed
 

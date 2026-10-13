@@ -30,6 +30,12 @@ datasets:
       download:
         module: hvantk.skills.uniprot_ptm.cli
         function: download_dataset
+      # Maps the download onto the pinned Ensembl GTF, producing the TSV the builder
+      # reads. The mapper lives in algorithms/, which no module under skills/ may
+      # import (test_dependency_directions.py), so the manifest names it directly.
+      parse:
+        module: hvantk.algorithms.ptm.pipeline
+        function: map_uniprot_raw_dir
 
 cli:
   - command: uniprot-ptm-download
