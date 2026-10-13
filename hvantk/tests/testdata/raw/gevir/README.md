@@ -27,10 +27,18 @@ fingerprint) and parsed with `hvantk/skills/gevir/cli.py`'s own extractor:
 - Output header is exactly `gnomad_gene_name	gene_id	canonical_transcript
   gevir_pct	virlof_pct` (tab-separated), matching the pre-existing (pre-#386)
   derived TSV's header.
-- `gevir_pct`/`virlof_pct` are plain decimal strings (no scientific notation seen
-  in columns F/H of the live file), full IEEE-754 double precision as Excel stored
-  them (e.g. `6.7455193429999998`) -- this fixture mirrors that precision
-  convention rather than the pre-#386 11-character-rounded one.
+- `gevir_pct`/`virlof_pct` in the real file are the cell's raw, unrounded `<v>`
+  text at full IEEE-754 double precision -- not the pre-#386 11-character-rounded
+  convention. Most are plain decimals, but 38 `gevir_pct`/`virlof_pct` cells (19
+  in each column, spread across 36 of the 19,361 rows -- 2 rows have it in both
+  columns) store scientific (E) notation instead (shaped like `4.13E-2`, not a
+  literal from the paper); Hail parses both shapes and the downloader passes either
+  through verbatim. This fixture does **not** reproduce that variability --
+  every percentile here is a fabricated, fixed 10-decimal-place value, a
+  deliberate simplification rather than a claim about the real file's format.
+  The full-precision passthrough itself (both plain-decimal and scientific
+  notation) is exercised directly, not via this TSV, by
+  `hvantk/skills/gevir/tests/test_downloader.py`'s own synthetic workbook.
 - 29 of 19,361 `gnomad_gene_name` cells are Excel date serials, not strings (see
   `hvantk/skills/gevir/cli.py`'s module docstring for the five distinct gene
   families this covers, confirmed against the live workbook plus HGNC's and

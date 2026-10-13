@@ -27,8 +27,11 @@ The decision between the first two states: build a downloader when the raw file 
 **under 1 GB**, **publicly accessible** (no licence gate), **high-value**, and served
 from a **stable, predictable URL**. Document acquisition instead when the file is
 **over 1 GB**, needs **licence acceptance or manual steps**, or the URL structure is
-**complex or fragile** (FTP directory listings, versioned mirrors). The third state is
-simply unfinished work, tracked per dataset in #386.
+**complex or fragile** (FTP directory listings, versioned mirrors). The third state
+means a downloader could be written in principle but has not been yet; nothing on
+this page is currently in that state (the last four -- `insider:interfaces`,
+`gwas-catalog:associations`, `cptac:expression`, `gevir:metrics` -- shipped their
+downloaders in #386's follow-up work).
 
 ## File format note
 

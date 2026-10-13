@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Two new downloaders, drift probes that watch the data they guard, and fixes from the
+Four new downloaders, drift probes that watch the data they guard, and fixes from the
 0.4.0 follow-up issues.
 
 **Upgrade notes.**
