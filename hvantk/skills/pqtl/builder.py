@@ -76,59 +76,62 @@ def _resolve_by_symbol_lists(gene_catalog, symbols):
     return resolved, ambiguous
 
 
-def _drop_gene_id_collisions(mapping, resolved):
-    """Demote a previous/alias match whose gene_id is already claimed elsewhere.
+def _drop_gene_id_collisions(approved, resolved, symbols_by_tissue):
+    """Find, tissue by tissue, the previous/alias matches that would share a gene_id.
 
     Two different source symbols can resolve to the same Ensembl ``gene_id``: an
     approved symbol and a previous symbol of the same gene (``_resolve_by_symbol_lists``
     only checks a symbol against *other* symbols in the *same* list, so it cannot see
     that an approved symbol already claims the gene), or two previous/alias symbols of
-    a gene that has no approved-symbol row in this data at all. Left alone, both would
-    merge into ``mapping`` and duplicate ``(locus, alleles, gene_id)`` within a tissue.
+    one gene. Rows of one tissue labelled by both would share ``(locus, alleles,
+    gene_id)``. Rows of different tissues are told apart by ``tissue``, so a source
+    that names a protein by an old symbol in one tissue and by its approved symbol in
+    another duplicates nothing, and both stay mapped.
 
-    An approved symbol (already in ``mapping``) always keeps its claim; a
-    previous/alias symbol that collides with it is demoted, as if it were ambiguous.
-    When two previous/alias symbols collide with each other and no approved symbol
-    arbitrates, neither keeps the gene_id -- both are demoted.
+    Within a tissue, an approved symbol always keeps its claim and a previous/alias
+    symbol that collides with it is demoted; previous/alias symbols that collide with
+    each other, with no approved symbol in that tissue to arbitrate, are all demoted.
 
-    Returns ``(resolved, collided)``: ``resolved`` with every demoted symbol removed,
-    and the set of demoted symbols (the caller folds this into ``ambiguous``).
+    Returns ``{tissue: demoted symbols}`` for the tissues with a collision. A demoted
+    symbol keeps its source symbol as ``gene_id`` in that tissue only.
     """
-    claimed_by_approved = {gene_id: symbol for symbol, gene_id in mapping.items()}
-    by_gene_id: dict[str, list[str]] = {}
-    for symbol, (_, gene_id) in resolved.items():
-        by_gene_id.setdefault(gene_id, []).append(symbol)
-
-    collided: set[str] = set()
-    for gene_id, symbols in by_gene_id.items():
-        approved_symbol = claimed_by_approved.get(gene_id)
-        if approved_symbol is not None:
-            collided.update(symbols)
-            for symbol in symbols:
+    demoted: dict[str, set[str]] = {}
+    for tissue, present in sorted(symbols_by_tissue.items()):
+        claimed = {approved[s]: s for s in present if s in approved}
+        by_gene_id: dict[str, list[str]] = {}
+        for symbol in sorted(present & resolved.keys()):
+            by_gene_id.setdefault(resolved[symbol][1], []).append(symbol)
+        for gene_id, symbols in by_gene_id.items():
+            approved_symbol = claimed.get(gene_id)
+            if approved_symbol is not None:
                 logger.warning(
-                    "pQTL gene symbol %r resolves to the same gene (%s) as the "
-                    "approved symbol %r already does; %r stays unmapped",
-                    symbol,
+                    "In tissue %s, pQTL gene symbol(s) %s resolve to the same gene "
+                    "(%s) as the approved symbol %r and keep their source symbol as "
+                    "gene_id there",
+                    tissue,
+                    ", ".join(symbols),
                     gene_id,
                     approved_symbol,
-                    symbol,
                 )
-        elif len(symbols) > 1:
-            collided.update(symbols)
-            logger.warning(
-                "pQTL gene symbols %s all resolve to the same gene (%s) with no "
-                "approved symbol to arbitrate between them; all stay unmapped",
-                ", ".join(sorted(symbols)),
-                gene_id,
-            )
+            elif len(symbols) > 1:
+                logger.warning(
+                    "In tissue %s, pQTL gene symbols %s all resolve to the same gene "
+                    "(%s) with no approved symbol there to arbitrate; all keep their "
+                    "source symbol as gene_id there",
+                    tissue,
+                    ", ".join(symbols),
+                    gene_id,
+                )
+            else:
+                continue
+            demoted.setdefault(tissue, set()).update(symbols)
+    return demoted
 
-    if not collided:
-        return resolved, collided
-    return {s: v for s, v in resolved.items() if s not in collided}, collided
 
+def _map_gene_symbols(gene_catalog, symbols_by_tissue):
+    """Map each tissue's pQTL gene symbols to Ensembl gene IDs and log how they resolved.
 
-def _map_gene_symbols(gene_catalog, symbols):
-    """Map pQTL gene symbols to Ensembl gene IDs and log how they resolved.
+    ``symbols_by_tissue`` maps each tissue to the gene symbols its rows carry.
 
     Approved symbols are mapped first, with ``map_ids``. If the catalog can list the
     genes behind a symbol (``get_genes_listing_symbols``, as the HGNC catalog can),
@@ -138,24 +141,21 @@ def _map_gene_symbols(gene_catalog, symbols):
     list there is ambiguous and stays unmapped, instead of going to whichever of
     those genes comes first.
 
-    Two different source symbols can still resolve to the same gene_id -- typically
-    an approved symbol and a previous symbol of the same gene -- which would otherwise
-    duplicate ``(locus, alleles, gene_id)`` within a tissue. ``_drop_gene_id_collisions``
-    closes that: a previous/alias match whose gene_id is already claimed by another
-    source symbol is demoted instead (an approved symbol always keeps its claim;
-    between two colliding previous/alias symbols with no approved symbol to arbitrate,
-    neither keeps it). A demoted symbol is logged and counted separately from
-    "ambiguous": it matched exactly one gene in its list, unlike a genuinely ambiguous
-    symbol, which matched more than one; the only thing it has in common with ambiguous
-    is that it too stays unmapped.
+    Two source symbols can still resolve to the same gene_id -- typically an approved
+    symbol and a previous symbol of the same gene. Where both label rows of one tissue,
+    those rows would share ``(locus, alleles, gene_id)``, so in that tissue the
+    previous/alias symbol keeps its source symbol instead (``_drop_gene_id_collisions``).
+    In a tissue where it collides with nothing, it stays mapped.
 
-    Returns the symbol -> Ensembl ID mapping. Unmapped, ambiguous and colliding symbols
-    are all left out of it, so they keep their source symbol as ``gene_id``. Raises
-    ``ValueError`` when no symbol maps.
+    Returns ``{(tissue, symbol): Ensembl ID}``. Unmapped and ambiguous symbols, and a
+    colliding symbol in its tissue, are left out of it, so they keep their source
+    symbol as ``gene_id``. Raises ``ValueError`` when no symbol maps.
     """
     # A missing gene_name arrives as None; it cannot be mapped, sorted or printed.
-    named = {symbol for symbol in symbols if symbol is not None}
-    if len(named) < len(symbols):
+    named = {
+        s for present in symbols_by_tissue.values() for s in present if s is not None
+    }
+    if any(None in present for present in symbols_by_tissue.values()):
         logger.warning("Some pQTL rows have no gene name; their gene_id stays missing")
 
     mapping = {
@@ -165,9 +165,9 @@ def _map_gene_symbols(gene_catalog, symbols):
         ).items()
         if gene_id
     }
-    n_approved = len(mapping)
+    approved = dict(mapping)
 
-    resolved, ambiguous, collided = {}, set(), set()
+    resolved, ambiguous = {}, set()
     if not hasattr(gene_catalog, "get_genes_listing_symbols"):
         logger.warning(
             "The gene catalog cannot look up previous symbols or aliases; "
@@ -180,23 +180,20 @@ def _map_gene_symbols(gene_catalog, symbols):
             gene_catalog,
             [s for s in named if s not in mapping and not gene_catalog.is_canonical(s)],
         )
-        resolved, collided = _drop_gene_id_collisions(mapping, resolved)
     mapping.update({symbol: gene_id for symbol, (_, gene_id) in resolved.items()})
     via = Counter(field for field, _ in resolved.values())
 
-    unmapped = sorted(named - mapping.keys() - ambiguous - collided)
+    unmapped = sorted(named - mapping.keys() - ambiguous)
     logger.log(
-        logging.WARNING if ambiguous or collided or unmapped else logging.INFO,
+        logging.WARNING if ambiguous or unmapped else logging.INFO,
         "Mapped %d of %d pQTL gene symbol(s) to Ensembl gene IDs: %d approved, "
-        "%d via a previous symbol, %d via an alias; %d ambiguous, %d colliding, "
-        "%d unmapped",
+        "%d via a previous symbol, %d via an alias; %d ambiguous, %d unmapped",
         len(mapping),
         len(named),
-        n_approved,
+        len(approved),
         via["prev_symbols"],
         via["alias_symbols"],
         len(ambiguous),
-        len(collided),
         len(unmapped),
     )
     if ambiguous:
@@ -205,15 +202,6 @@ def _map_gene_symbols(gene_catalog, symbols):
             "keeping their source symbol as gene_id. Examples: %s",
             len(ambiguous),
             ", ".join(sorted(ambiguous)[:10]),
-        )
-    if collided:
-        logger.warning(
-            "%d pQTL gene symbol(s) each matched exactly one gene, but a gene_id "
-            "another source symbol already claims, and stay unmapped instead, keeping "
-            "their source symbol as gene_id (see the per-collision warning above for "
-            "which other symbol and gene). Examples: %s",
-            len(collided),
-            ", ".join(sorted(collided)[:10]),
         )
     if unmapped:
         logger.warning(
@@ -231,7 +219,14 @@ def _map_gene_symbols(gene_catalog, symbols):
             "symbol-keyed table, build without the catalog and pass "
             "--plugin-arg no_gene_map=true."
         )
-    return mapping
+
+    demoted = _drop_gene_id_collisions(approved, resolved, symbols_by_tissue)
+    return {
+        (tissue, symbol): mapping[symbol]
+        for tissue, present in symbols_by_tissue.items()
+        for symbol in present
+        if symbol in mapping and symbol not in demoted.get(tissue, ())
+    }
 
 
 def _import_gtex_fang(input_path, tissue):
@@ -296,17 +291,15 @@ def build_pqtl_metrics(
     Gene symbols are mapped to Ensembl gene IDs through ``gene_catalog``, normally
     the HGNC lookup table: approved symbols first, then previous symbols, then
     aliases, accepting a previous symbol or alias only when exactly one gene lists
-    it in that list (``_map_gene_symbols``). A previous/alias symbol that would
-    resolve to a gene_id another source symbol already claims is demoted to
-    ambiguous instead -- an approved symbol always keeps its claim, and two
-    colliding previous/alias symbols with no approved symbol to arbitrate both stay
-    unmapped (``_drop_gene_id_collisions``) -- so two source symbols never produce
-    the same ``(locus, alleles, gene_id)`` within a tissue. Unmapped and ambiguous
-    symbols keep their source symbol as ``gene_id`` and are counted in the log; if
-    no symbol maps, the build raises ``ValueError``. Mapping is **required** because
-    the cascade join uses
-    ``(locus, alleles, gene_id)`` with Ensembl IDs on the eQTL side; raw gene
-    symbols would produce zero matches.
+    it in that list (``_map_gene_symbols``). Within one tissue, a previous/alias
+    symbol whose gene_id another source symbol of that tissue also resolves to keeps
+    its source symbol instead (an approved symbol always keeps its claim;
+    ``_drop_gene_id_collisions``), so two source symbols never produce the same
+    ``(locus, alleles, gene_id)`` within a tissue. Unmapped and ambiguous symbols
+    keep their source symbol as ``gene_id`` and are counted in the log; if no symbol
+    maps, the build raises ``ValueError``. Mapping is **required** because the
+    cascade join uses ``(locus, alleles, gene_id)`` with Ensembl IDs on the eQTL
+    side; raw gene symbols would produce zero matches.
 
     Pass ``no_gene_map=True`` to opt out of mapping for non-cascade use cases
     (the table will be keyed by raw gene symbol and will NOT join with eQTL
@@ -341,12 +334,19 @@ def build_pqtl_metrics(
 
     if gene_catalog is not None:
         logger.info("Mapping gene symbols → Ensembl IDs via gene catalog")
-        symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        ensembl_mapping = _map_gene_symbols(gene_catalog, symbols)
+        symbols_by_tissue = ht.aggregate(
+            hl.agg.group_by(ht.tissue, hl.agg.collect_as_set(ht.gene_symbol))
+        )
+        ensembl_mapping = _map_gene_symbols(gene_catalog, symbols_by_tissue)
         # Typed, because Hail cannot impute the type of an empty mapping (no rows).
-        mapping_literal = hl.literal(ensembl_mapping, hl.tdict(hl.tstr, hl.tstr))
+        mapping_literal = hl.literal(
+            ensembl_mapping, hl.tdict(hl.ttuple(hl.tstr, hl.tstr), hl.tstr)
+        )
         ht = ht.annotate(
-            gene_id=hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)
+            gene_id=hl.or_else(
+                mapping_literal.get(hl.tuple([ht.tissue, ht.gene_symbol])),
+                ht.gene_symbol,
+            )
         )
     else:
         logger.warning(

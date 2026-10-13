@@ -107,10 +107,10 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   tagged `E, M` formed its own tissue group (#442).
 - **`pqtl:metrics` could map two source gene symbols to the same `gene_id`**, duplicating
   `(locus, alleles, gene_id)` within a tissue when an approved symbol and a previous or
-  alias symbol of the same gene both appeared as source symbols. A colliding
-  previous/alias symbol now stays unmapped instead: it defers to an approved symbol's
-  claim, or, with no approved symbol to arbitrate, two colliding previous/alias symbols
-  both stay unmapped (#456).
+  alias symbol of the same gene both labelled rows of that tissue. In such a tissue the
+  previous/alias symbol now keeps its source symbol as `gene_id`, with a warning; two
+  colliding previous/alias symbols with no approved symbol there both do. A symbol that
+  collides in one tissue stays mapped in the others (#456).
 - **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
   (#443).
 - **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like
