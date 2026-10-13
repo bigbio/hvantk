@@ -157,15 +157,24 @@ hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
   --output E-MTAB-6798.h5ad --plugin-arg accession=E-MTAB-6798
 ```
 
-A transcript-level experiment builds with `var` keyed by the transcript id by default.
-Pass `--plugin-arg level=gene` to sum transcript-level values per gene
-instead and key `var` by the gene id — needed before the result can be used with
+`reprocess` builds the **gene-level** matrix when the experiment's raw dir has one —
+the common case for the unfiltered download above, since it fetches every file in the
+experiment's FTP directory and an experiment that ships a transcript-level TPM file
+usually ships the gene-level one too (confirmed live: E-MTAB-6798's directory has both).
+It falls back to the **transcript-level** matrix (`var` keyed by the transcript id)
+only when the experiment shipped no gene-level file, or a `--plugin-arg config_path=...`
+download filtered to just the transcript-level one.
+
+A transcript-level build needs `--plugin-arg level=gene` to sum its values per gene and
+key `var` by the gene id instead — before the result can be used with
 `hvantk expression markers`/`summarize` or the PTM constraint expression loader, which
-read `var_names` as the gene id and refuse a transcript-keyed matrix. `hvantk annotate
-prepare`'s matrix source type refuses a transcript-keyed matrix too, but needs more than
-`level=gene`: it resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an
-Expression Atlas build (gene- or transcript-level) needs a symbol-keyed summary before
-it is usable there.
+read `var_names` as the gene id and refuse a transcript-keyed matrix. A gene-level build
+(the common case above) already works there without it. `hvantk annotate prepare`'s
+matrix source type refuses a transcript-keyed matrix too, but needs more than
+`level=gene` either way: it
+resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an Expression Atlas
+build (gene- or transcript-level) needs a symbol-keyed summary before it is usable
+there.
 
 ## Manual download sources
 

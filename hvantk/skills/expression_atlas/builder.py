@@ -34,36 +34,65 @@ def _resolve_expression_atlas_inputs(parsed_input):
       build with ``TypeError: string indices must be integers`` (issue #383).
 
     The SDRF is matched by ``*.condensed-sdrf.tsv`` (the only file of that shape
-    the downloader writes) and the expression matrix by ``*-tpms.tsv``. The latter
-    deliberately also matches ``*-transcripts-tpms.tsv`` -- a raw download
-    directory can hold BOTH the gene-level and transcript-level TPM file for one
-    accession, and there is no way to prefer one over the other from the filename
-    alone, so finding more than one candidate raises rather than silently picking
-    one (same reasoning as UCSC's "found in multiple locations" guard).
+    the downloader writes); exactly one must be present.
+
+    **The expression matrix prefers the gene-level file.** A plain
+    ``--plugin-arg accession=...`` download (no ``config_path`` filter) fetches
+    every file in the experiment's FTP directory via ``ftp.nlst()``
+    (``hvantk/skills/expression_atlas/cli.py``), and an experiment that ships a
+    transcript-level TPM file usually ships the gene-level ``<accession>-tpms.tsv``
+    alongside it -- so requiring exactly one ``*-tpms.tsv`` match (as this function
+    first did) could never build from an unfiltered download. When exactly one
+    gene-level file (``*-tpms.tsv``, NOT ``*-transcripts-tpms.tsv``) is present, it
+    is used and any transcript-level file is ignored. Otherwise, when exactly one
+    ``*-transcripts-tpms.tsv`` is present (the experiment shipped only a
+    transcript-level matrix, or a ``config_path`` download filtered to just that
+    file), that one is used instead -- the result is transcript-keyed and needs
+    ``--plugin-arg level=gene`` before the generic gene-level consumers (``hvantk
+    expression markers``/``summarize``, the PTM constraint loader) can read it. The
+    file actually chosen is logged at INFO. This raises only when the choice is
+    still ambiguous (e.g. more than one accession's files mixed into one
+    directory) or nothing matches.
     """
     if isinstance(parsed_input, dict):
         return str(parsed_input["expression_matrix"]), str(parsed_input["sdrf"])
 
     root = str(parsed_input)
     sdrf_candidates = sorted(glob.glob(os.path.join(root, "*.condensed-sdrf.tsv")))
-    tpm_candidates = sorted(glob.glob(os.path.join(root, "*-tpms.tsv")))
-
     if len(sdrf_candidates) != 1:
         raise FileNotFoundError(
             f"Expression Atlas builder: expected exactly one *.condensed-sdrf.tsv "
             f"under {root!r}, found {sdrf_candidates}. Point --raw-dir at a single "
             "accession's download directory."
         )
-    if len(tpm_candidates) != 1:
-        raise FileNotFoundError(
-            f"Expression Atlas builder: expected exactly one *-tpms.tsv under "
-            f"{root!r}, found {tpm_candidates}. A download directory can hold both "
-            "a gene-level <accession>-tpms.tsv and a transcript-level "
-            "<accession>-transcripts-tpms.tsv; move the one you do not want to "
-            "build out of --raw-dir, or call build_expression_atlas directly with "
-            "parsed_input={'expression_matrix': ..., 'sdrf': ...}."
+
+    all_tpm = sorted(glob.glob(os.path.join(root, "*-tpms.tsv")))
+    transcript_tpm = [f for f in all_tpm if f.endswith("-transcripts-tpms.tsv")]
+    gene_tpm = [f for f in all_tpm if f not in transcript_tpm]
+
+    if len(gene_tpm) == 1:
+        tpm_path = gene_tpm[0]
+        logger.info(
+            "Expression Atlas builder: using gene-level expression matrix %s",
+            tpm_path,
         )
-    return tpm_candidates[0], sdrf_candidates[0]
+    elif len(transcript_tpm) == 1:
+        tpm_path = transcript_tpm[0]
+        logger.info(
+            "Expression Atlas builder: using transcript-level expression matrix "
+            "%s (pass --plugin-arg level=gene for a gene-keyed result)",
+            tpm_path,
+        )
+    else:
+        raise FileNotFoundError(
+            f"Expression Atlas builder: could not find exactly one gene-level "
+            f"*-tpms.tsv or exactly one transcript-level *-transcripts-tpms.tsv "
+            f"under {root!r}; found gene-level candidates {gene_tpm} and "
+            f"transcript-level candidates {transcript_tpm}. Point --raw-dir at a "
+            "single accession's download directory, or call build_expression_atlas "
+            "directly with parsed_input={'expression_matrix': ..., 'sdrf': ...}."
+        )
+    return tpm_path, sdrf_candidates[0]
 
 
 def build_expression_atlas(
@@ -86,17 +115,24 @@ def build_expression_atlas(
     parsed_input : dict or str
         Either a mapping with ``expression_matrix`` (path to gene x sample TSV)
         and ``sdrf`` (path to SDRF metadata file) keys, or a raw download
-        directory containing exactly one of each (see
+        directory. The SDRF must be unambiguous; the expression matrix prefers
+        the experiment's gene-level TPM file when exactly one is present, falling
+        back to the transcript-level one otherwise (see
         ``_resolve_expression_atlas_inputs``).
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
     level : str
         ``"transcript"`` (default) or ``"gene"``. Forwarded verbatim to
         ``create_anndata_from_expression_atlas`` -- see there for what each
-        value does. Set via ``--plugin-arg level=gene`` on `hvantk reprocess`
-        when a gene-keyed matrix is needed (e.g. for `hvantk expression
+        value does. Only relevant when the resolved input is transcript-level
+        (the experiment shipped no gene-level file, or a ``config_path``
+        download filtered to just the transcript-level one): set
+        ``--plugin-arg level=gene`` on `hvantk reprocess` to make that build
+        usable by the generic gene-level consumers (e.g. `hvantk expression
         markers`/`summarize` or the PTM constraint loader, neither of which
-        understands a transcript-keyed `var`).
+        understands a transcript-keyed `var`). A no-op when the input is
+        already gene-level, which is the common case for an unfiltered
+        download (see ``_resolve_expression_atlas_inputs``).
     accession, config_path : str, optional
         Accepted and otherwise ignored by the build stage. ``hvantk reprocess``
         forwards every ``--plugin-arg`` to all three lifecycle stages (download,

@@ -156,6 +156,8 @@ def test_reprocess_cli_builds_from_the_raw_fixture_with_and_without_level_gene(
     tmp_path,
 ):
     """`hvantk reprocess expression-atlas:dataset --skip-download` must actually build."""
+    import shutil
+
     import anndata as ad
     from click.testing import CliRunner
 
@@ -200,6 +202,48 @@ def test_reprocess_cli_builds_from_the_raw_fixture_with_and_without_level_gene(
     built_gene = ad.read_h5ad(out_gene)
     assert built_gene.var.index.name == "gene_id"
     assert built_gene.n_vars == 20, "21 transcripts collapse onto 20 distinct genes"
+
+    # --- gene-level file preferred when both are present (#383 review follow-up) ---
+    # A plain `--plugin-arg accession=...` download fetches every file in the
+    # experiment's FTP directory (hvantk/skills/expression_atlas/cli.py, ftp.nlst()).
+    # Confirmed live against E-MTAB-6798 itself: its directory ships BOTH
+    # E-MTAB-6798-tpms.tsv (gene-level) and E-MTAB-6798-transcripts-tpms.tsv
+    # (transcript-level), so the documented, unfiltered `reprocess ... --plugin-arg
+    # accession=E-MTAB-6798` must build from the gene-level one without needing
+    # level=gene at all -- not raise on finding two "*-tpms.tsv" candidates.
+    import pandas as pd
+
+    raw_dir = tmp_path / "both_files"
+    raw_dir.mkdir()
+    shutil.copy(EXPRESSION, raw_dir / "E-MTAB-6798-transcripts-tpms.tsv")
+    shutil.copy(SDRF, raw_dir / "E-MTAB-6798.condensed-sdrf.tsv")
+    # Fabricate the gene-level file the real accession also ships: one row per
+    # distinct gene (dropping the transcript id column and the duplicate Cdc45 row).
+    transcripts_df = pd.read_csv(EXPRESSION, sep="\t")
+    gene_level_df = transcripts_df.drop(columns=["GeneID"]).drop_duplicates(
+        subset=["Gene ID"], keep="first"
+    )
+    gene_level_df.to_csv(raw_dir / "E-MTAB-6798-tpms.tsv", sep="\t", index=False)
+
+    out_preferred = tmp_path / "preferred.h5ad"
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "expression-atlas:dataset",
+            "--raw-dir",
+            str(raw_dir),
+            "--output",
+            str(out_preferred),
+            "--skip-download",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    built_preferred = ad.read_h5ad(out_preferred)
+    assert built_preferred.var.index.name == "gene_id"
+    assert built_preferred.n_vars == 20, (
+        "picked the gene-level file, not the transcript one"
+    )
 
 
 # --- Regression: issues #342 and #349 ------------------------------------------
