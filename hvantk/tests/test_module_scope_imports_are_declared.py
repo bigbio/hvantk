@@ -71,8 +71,9 @@ def _declared_distributions(*, include_extras: bool) -> set[str]:
 _BASE_ONLY_LAYERS = ("core", "skills", "tools", "resources")
 
 #: Top-level modules (siblings of the layer packages, not inside any of them) that are
-#: also reachable from a base install: the console script and `python -m hvantk`.
-_BASE_ONLY_MODULES = ("hvantk.py", "__main__.py")
+#: also reachable from a base install: the console script, `python -m hvantk`, and the
+#: package `__init__.py`, which every `import hvantk.<anything>` executes first.
+_BASE_ONLY_MODULES = ("hvantk.py", "__main__.py", "__init__.py")
 
 
 def _requires_base_only(path: Path) -> bool:
