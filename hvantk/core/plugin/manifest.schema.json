@@ -171,7 +171,9 @@
             "additionalProperties": false,
             "properties": {
               "command": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "description": "The pytest invocation that reaches this dataset's round-trip test, e.g. 'pytest hvantk/skills/<provider>/tests -m hail'. An empty string satisfied 'required' while leaving the dataset invisible to the round-trip contract checks in hvantk/tests/test_plugin_contract_artifacts.py (#432)."
               },
               "fixture": {
                 "type": "string"

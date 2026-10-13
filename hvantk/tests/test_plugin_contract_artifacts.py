@@ -53,13 +53,21 @@ because that only fires once the test actually runs, not at collection time. The
 it fails the run if a ``round_trip``-marked test ends skipped or xfailed, and is wired
 into the CI jobs that actually execute the round trips.
 
+Nor does replaying ``tests.command`` faithfully prove CI can reach it: a command that
+collects cleanly on its own can still run in no actual CI job, if its ``-m``/``-k``
+differs from what CI's own invocations use, or its path sits outside ``hvantk/skills``
+(``plugin-contract`` only walks that directory). ``test_tests_command_matches_how_ci_actually_invokes_it``
+closes that with a fast, string-only check of the command's shape -- no subprocess, so
+it runs in the default selection rather than behind ``round_trip_contract``.
+
 Each subprocess costs a few seconds regardless of what it collects (pytest/Hail-adjacent
-import time dominates), so across ~25 distinct ``tests.command`` strings this check takes
-on the order of a couple of minutes -- too slow for the default ``pytest -q`` inner loop.
-It is marked ``round_trip_contract``, a marker pytest.ini deselects by default alongside
-slow/network/hail/integration; the CI jobs that need it select it back in with ``-m``
-(see ``.github/workflows/python-package-conda.yml``'s ``plugin-contract`` job and
-``.github/workflows/drift-validate.yml``).
+import time dominates), so across ~25 distinct ``tests.command`` strings the collection
+check (not the fast shape check above) takes on the order of 30-40 seconds locally --
+CI timing may differ, but either way it is too slow for the default ``pytest -q`` inner
+loop. It is marked ``round_trip_contract``, a marker pytest.ini deselects by default
+alongside slow/network/hail/integration; ``.github/workflows/python-package-conda.yml``'s
+``plugin-contract`` job, the one CI job that actually runs the hail round trips, selects
+it back in with ``-m``.
 """
 
 from __future__ import annotations
@@ -157,32 +165,135 @@ def _declared_artifact_gaps() -> dict[str, tuple[str, ...]]:
 
 
 def _manifest_datasets() -> list[dict[str, str]]:
-    """Flatten every manifest dataset into its id, backend and ``tests.command``."""
+    """Flatten every manifest dataset into its id, backend and ``tests.command``.
+
+    Includes a dataset whose ``tests.command`` is empty (the schema requires the key
+    but, before ``minLength: 1`` was added, not a non-empty value) instead of silently
+    dropping it: an empty command used to make a dataset invisible to every check here.
+    """
     datasets = []
     for manifest_path in sorted(SKILLS_DIR.glob("*/plugin.yaml")):
         manifest = yaml.safe_load(manifest_path.read_text())
         provider = manifest.get("name") or manifest_path.parent.name
         for dataset in manifest.get("datasets", []):
-            command = (dataset.get("tests") or {}).get("command")
-            if not command:
-                continue
             datasets.append(
                 {
                     "id": f"{provider}:{dataset['name']}",
                     "backend": dataset.get("backend", ""),
-                    "command": command,
+                    "command": (dataset.get("tests") or {}).get("command") or "",
+                    "provider_dir": manifest_path.parent.name,
                 }
             )
     return datasets
 
 
-def _collect_round_trip_state(command: str, repo_root: Path) -> list[dict]:
+def _command_shape_problem(entry: dict[str, str]) -> str | None:
+    """Flag a ``tests.command`` shaped differently from how CI actually invokes it.
+
+    The collection check below replays a dataset's own ``tests.command`` faithfully --
+    which means it cannot tell a command CI can reach from one that merely collects
+    cleanly. ``plugin-contract`` (``.github/workflows/python-package-conda.yml``) only
+    ever discovers a round trip by walking ``hvantk/skills`` with ``-m hail``; the
+    default ``pytest`` selection walks the whole tree with no ``-m``/``-k`` override.
+    Two commands pass this file's other checks while running in neither:
+
+    * a non-hail dataset marked ``slow`` with ``command: ... -m 'slow or not slow'``
+      collects its round trip cleanly, but the default addopts deselect ``slow`` and
+      ``plugin-contract``'s ``-m hail`` was never going to select a non-hail test
+      either, so it runs nowhere;
+    * a command pointed at a path under ``hvantk/tests`` with ``-m hail`` collects
+      cleanly on its own, but ``plugin-contract`` only walks ``hvantk/skills``, so it
+      is never even considered there.
+
+    Requiring the exact shape ``pytest hvantk/skills/<this dataset's own provider
+    folder>/...`` plus, only when ``backend: hail``, exactly ``-m hail`` and nothing
+    else, closes both: neither example matches it.
+    """
+    command = entry["command"]
+    if not command:
+        return "tests.command is empty"
+    tokens = shlex.split(command)
+    if not tokens or tokens[0] != "pytest":
+        return f"must start with `pytest`, got {command!r}"
+    # -m/-k each take the following token as their value, not a second path; everything
+    # else that starts with "-" is a standalone flag (none of the current 26 commands
+    # use one, but a bare boolean flag would otherwise misparse as a path).
+    paths, flags, rest = [], [], tokens[1:]
+    i = 0
+    while i < len(rest):
+        token = rest[i]
+        if token in ("-m", "-k"):
+            if i + 1 >= len(rest):
+                return f"`{token}` with no value, got {command!r}"
+            flags.extend([token, rest[i + 1]])
+            i += 2
+        elif token.startswith("-"):
+            flags.append(token)
+            i += 1
+        else:
+            paths.append(token)
+            i += 1
+    if len(paths) != 1:
+        return f"must name exactly one path, got {command!r}"
+    prefix = f"hvantk/skills/{entry['provider_dir']}/"
+    if not paths[0].startswith(prefix):
+        return f"path {paths[0]!r} is not under {prefix!r} (its own provider folder)"
+    if entry["backend"] == "hail":
+        if flags != ["-m", "hail"]:
+            return (
+                "a hail-backend dataset's command must end with exactly `-m hail`, "
+                f"got {command!r}"
+            )
+    elif flags:
+        return (
+            f"a non-hail dataset's command must carry no extra flags, got {command!r}"
+        )
+    return None
+
+
+def test_tests_command_matches_how_ci_actually_invokes_it():
+    """Each dataset's ``tests.command`` must be shaped like a real CI invocation.
+
+    Fast and string-only (no subprocess), so it runs in the default selection rather
+    than behind ``round_trip_contract``. See ``_command_shape_problem`` for the two
+    commands this specifically closes.
+    """
+    problems = []
+    for entry in _manifest_datasets():
+        problem = _command_shape_problem(entry)
+        if problem is not None:
+            problems.append(f"{entry['id']}: {problem}")
+    assert not problems, (
+        "Every dataset's tests.command must be `pytest hvantk/skills/<its own "
+        "provider folder>/...`, with exactly `-m hail` appended when backend is hail "
+        "and no other flags otherwise -- anything else can collect cleanly while "
+        "running in no CI job:\n" + "\n".join(f"  {p}" for p in problems)
+    )
+
+
+# pytest's own exit codes (_pytest.config.ExitCode) that mean "collection happened
+# without error", even though the second isn't 0: 5 (NO_TESTS_COLLECTED) is the normal
+# outcome of e.g. a `-k`/`-m` filter matching nothing, which the "0 matches" check below
+# already reports more specifically. Anything else -- 2 (INTERRUPTED), most often a
+# collection error in a sibling file -- means the report this run produced cannot be
+# trusted: a broken neighbour does not stop pytest from still finding and reporting the
+# round_trip item in the file that imports fine, so relying on "N matches" alone missed
+# it (verified: a broken sibling under hvantk/skills/pqtl/tests left pqtl:metrics's row
+# intact in the JSON report while pytest exited 2).
+_OK_COLLECT_EXIT_CODES = (0, 5)
+
+
+def _collect_round_trip_state(command: str, repo_root: Path) -> dict:
     """Run a manifest's own ``tests.command`` with ``--collect-only`` in a subprocess.
 
-    Returns one dict per item carrying a ``round_trip`` marker that pytest would
-    actually run (i.e. after that command's own ``-k``/``-m`` deselection), as
-    reported by ``_round_trip_introspection`` (loaded with ``-p``, so nothing about
-    this repo's normal conftest chain has to change to make this observable).
+    Returns ``{"rows": [...], "returncode": int, "diagnostics": str}``. ``rows`` has
+    one dict per item carrying a ``round_trip`` marker that pytest would actually run
+    (i.e. after that command's own ``-k``/``-m`` deselection), as reported by
+    ``_round_trip_introspection`` (loaded with ``-p``, so nothing about this repo's
+    normal conftest chain has to change to make this observable). ``diagnostics`` is
+    the last lines of stdout and stderr combined: pytest's own "ERROR collecting ..."
+    report for a collection error -- the main reason to look at this -- goes to
+    stdout, not stderr, so stderr alone is usually empty (verified).
     """
     args = [token for token in shlex.split(command) if token != "pytest"]
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -209,7 +320,12 @@ def _collect_round_trip_state(command: str, repo_root: Path) -> list[dict]:
                 f"`{command} --collect-only` produced no report (exit "
                 f"{result.returncode}):\n{result.stdout}\n{result.stderr}"
             )
-        return json.loads(report_path.read_text())
+        tail_lines = (result.stdout + result.stderr).splitlines()[-20:]
+        return {
+            "rows": json.loads(report_path.read_text()),
+            "returncode": result.returncode,
+            "diagnostics": "\n".join(tail_lines),
+        }
 
 
 def test_no_new_dataset_declares_a_missing_artifact():
@@ -289,13 +405,19 @@ def test_dataset_round_trips_are_selected_and_unskipped():
     """
     repo_root = Path(__file__).resolve().parents[2]
     by_command: dict[str, list[dict[str, str]]] = {}
+    problems = []
     for entry in _manifest_datasets():
+        if not entry["command"]:
+            # An empty command has nothing to run as a subprocess (shelling out with no
+            # path args would instead collect pytest.ini's whole testpaths), so this is
+            # reported directly rather than joining by_command below.
+            problems.append(f"{entry['id']}: tests.command is empty")
+            continue
         by_command.setdefault(entry["command"], []).append(entry)
 
-    problems = []
     for command, entries in sorted(by_command.items()):
         try:
-            rows = _collect_round_trip_state(command, repo_root)
+            collected = _collect_round_trip_state(command, repo_root)
         except subprocess.TimeoutExpired:
             problems.append(f"`{command}`: collection timed out")
             continue
@@ -303,8 +425,16 @@ def test_dataset_round_trips_are_selected_and_unskipped():
             problems.append(str(exc))
             continue
 
+        if collected["returncode"] not in _OK_COLLECT_EXIT_CODES:
+            problems.append(
+                f"`{command} --collect-only` exited {collected['returncode']}, which "
+                "usually means a collection error (e.g. a broken sibling test file) "
+                "that a clean round_trip match would not otherwise reveal:\n"
+                f"{collected['diagnostics']}"
+            )
+
         matches: dict[str, list[dict]] = {}
-        for row in rows:
+        for row in collected["rows"]:
             if len(row["round_trip"]) > 1:
                 problems.append(
                     f"{row['nodeid']}: carries {len(row['round_trip'])} round_trip "

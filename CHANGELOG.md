@@ -41,12 +41,16 @@ Two new downloaders, drift probes that watch the data they guard, and fixes from
   `drift:schema` PRs (#447).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
   on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
-- **The plugin-contract check now ties each round trip to its dataset.** It collects a
-  dataset's own `tests.command` in a subprocess and checks that its `round_trip`-marked
-  item is selected and clean of skip/xfail, replacing a decorator source scan that could
-  not tell whose round trip was whose. A `--require-round-trips` pytest hook additionally
-  fails the run if a round-trip test ends skipped or xfailed, including a `pytest.skip()`
-  call raised from inside the test body (#PR).
+- **The plugin-contract check now ties each round trip to its dataset.** A fast check
+  confirms each dataset's `tests.command` is shaped like a real CI invocation (`pytest
+  hvantk/skills/<provider>/...`, with `-m hail` exactly when the backend is hail); a
+  slower one replays that command in a subprocess and checks its `round_trip`-marked
+  item is selected and clean of skip/xfail, replacing a decorator source scan that
+  could not tell whose round trip was whose. The slower check left the default `pytest`
+  run — it is marked `round_trip_contract` and runs via CI's `plugin-contract` job
+  instead. A `--require-round-trips` pytest hook additionally fails the run if a
+  round-trip test ends skipped or xfailed, including a `pytest.skip()` call raised from
+  inside the test body (#PR).
 - **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
