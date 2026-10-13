@@ -529,7 +529,9 @@ def map_uniprot_raw_dir(
     output_path: str,
     *,
     reference_genome: str = "GRCh38",
-    **kwargs,
+    overwrite: bool = False,
+    flanking_codons: int = 5,
+    fields=None,
 ) -> str:
     """``lifecycle.parse`` of the ``uniprot-ptm:sites`` plugin dataset.
 
@@ -547,6 +549,11 @@ def map_uniprot_raw_dir(
     ``.gz`` file in parallel without ``force_bgz``, which the builder does not pass.
     The file is replaced atomically.
 
+    ``hvantk reprocess`` forwards every ``--plugin-arg`` to all three stages of the
+    dataset, so this stage also names the download stage's and the builder's
+    arguments and ignores them. They are named rather than swallowed by ``**kwargs``,
+    so a misspelt ``--plugin-arg`` still fails.
+
     Parameters
     ----------
     raw_dir : str
@@ -557,8 +564,10 @@ def map_uniprot_raw_dir(
     reference_genome : str
         Must be ``"GRCh38"``, the build of the pinned GTF; it is forwarded to the
         builder too, which would label GRCh38 coordinates with any other build.
-    **kwargs
-        Other ``--plugin-arg`` values meant for the builder; ignored.
+    overwrite : bool
+        The download stage's; ignored here (the cached GTF is reused either way).
+    flanking_codons, fields
+        The builder's; ignored here.
 
     Returns
     -------
