@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import anndata as ad
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -167,12 +168,80 @@ def convert_sdrf_to_dataframe(sdrf_file: str, **kwargs) -> pd.DataFrame:
     return df_wide
 
 
+def _sum_transcript_values_to_genes(
+    X: "np.ndarray",
+    var: pd.DataFrame,
+    *,
+    gene_id_column: str,
+    gene_name_column: str,
+) -> "tuple[np.ndarray, pd.DataFrame]":
+    """Collapse transcript-level columns of ``X`` onto their gene, by summation.
+
+    ``var`` is the transcript-keyed frame built by ``create_anndata_from_expression_atlas``
+    (index = transcript id, already checked unique) and must carry ``gene_id_column`` as a
+    regular column -- the transcript -> gene map. ``X`` is samples x transcripts.
+
+    Summation (not mean) is the correct roll-up for the abundance units Expression Atlas
+    ships -- TPM, FPKM, counts -- all linear, so a gene's total abundance is the sum of
+    its transcripts'. A log-scaled unit would need to be exponentiated first; Expression
+    Atlas baseline bulk-RNA-seq exports do not ship one.
+
+    Returns a new ``(X, var)`` pair: ``X`` is samples x genes, and ``var`` is indexed by
+    the gene id (index name ``"gene_id"``, matching a gene-level build), with
+    ``gene_name_column`` carried over (first value seen per gene) when present.
+
+    Raises
+    ------
+    ValueError
+        If ``gene_id_column`` has a missing value for any transcript: a transcript
+        with no gene cannot be summed onto one, and ``groupby`` would otherwise
+        drop it from the output silently rather than raising.
+    """
+    gene_ids_per_col = var[gene_id_column]
+    missing = gene_ids_per_col.isna()
+    if missing.any():
+        orphan_transcripts = sorted(map(str, var.index[missing]))[:5]
+        raise ValueError(
+            f"level='gene': {int(missing.sum())} transcript(s) have no "
+            f"{gene_id_column!r} (e.g. {orphan_transcripts}), so they cannot be "
+            "summed onto a gene. pandas groupby silently drops rows with a missing "
+            "key, which would otherwise discard these transcripts' values rather "
+            "than raising. Fix the source file's gene id column."
+        )
+    gene_of_col = pd.Index(gene_ids_per_col.to_numpy())
+
+    # Group columns (transcripts) by their gene id and sum within each group. sort=False
+    # preserves first-seen order, so the gene order matches the source file rather than
+    # being alphabetised. min_count=1 (not the default 0) makes a group of all-NaN
+    # inputs sum to NaN rather than 0.0 -- "no data" must not read as "zero
+    # expression". Hits two real shapes: an entire sample column that is all-missing
+    # (the SKILL.md-documented, load-bearing all-NaN-sample case) summed with other
+    # genes' real values, and a single gene whose every transcript happens to be NaN
+    # in one particular sample while other genes/samples have data.
+    summed = (
+        pd.DataFrame(X, columns=gene_of_col)
+        .T.groupby(level=0, sort=False)
+        .sum(min_count=1)
+        .T
+    )
+    new_gene_ids = summed.columns.to_numpy()
+    new_X = summed.to_numpy(dtype=X.dtype)
+
+    new_var = pd.DataFrame(index=pd.Index(new_gene_ids, name="gene_id"))
+    if gene_name_column in var.columns:
+        name_by_gene = var.groupby(gene_of_col, sort=False)[gene_name_column].first()
+        new_var[gene_name_column] = name_by_gene.reindex(new_gene_ids).to_numpy()
+
+    return new_X, new_var
+
+
 def create_anndata_from_expression_atlas(
     expression_matrix_path: str,
     metadata_df: pd.DataFrame = None,
     gene_id_column: str = "Gene ID",
     gene_name_column: str = "Gene Name",
     transcript_id_column: str = "GeneID",
+    level: str = "transcript",
     delimiter: str = "\t",
     extra_annotation_columns: "list[str] | None" = None,
 ) -> "ad.AnnData":
@@ -214,6 +283,32 @@ def create_anndata_from_expression_atlas(
     (no ``transcript_id_column`` present) are unaffected and keep indexing ``var`` by
     the gene id, as before.
 
+    **``level="gene"`` collapses a transcript-level export back to one row per gene.**
+    ``hvantk expression markers``/``summarize`` and the PTM constraint expression
+    loader read ``var_names`` as the gene id with no way to ask for anything else;
+    after the transcript-keying above they would silently emit per-transcript
+    results labelled as per-gene (issue #383). Passing ``level="gene"`` (e.g.
+    ``--plugin-arg level=gene`` on `hvantk reprocess`) sums the transcript-level
+    values of every sample onto their shared ``gene_id_column`` value and re-keys
+    ``var`` by the gene id (index name ``"gene_id"``, matching a gene-level
+    build), carrying ``gene_name_column`` along. Summation is the correct roll-up
+    for the abundance units Expression Atlas ships (TPM, FPKM, counts): a gene's
+    total abundance is the sum of its transcripts'; ``min_count=1`` keeps a
+    group of all-missing inputs ``NaN`` rather than reading "no data" as "zero
+    expression", and a transcript with no ``gene_id_column`` value raises rather
+    than being dropped. For a gene-level export (no transcript column detected)
+    ``level="gene"`` is a harmless no-op -- the data is already one row per gene.
+    The default, ``level="transcript"``, is unchanged from the behaviour above.
+    Any other value raises ``ValueError``.
+
+    ``level="gene"`` does **not** make a build usable by ``hvantk annotate
+    prepare``'s matrix source type: that consumer resolves ``var_names`` as HGNC
+    gene *symbols* (``key: symbol``), not Ensembl gene ids, so an Expression
+    Atlas build -- gene- or transcript-level -- needs a symbol-keyed reduction
+    first regardless of ``level``. It still refuses a transcript-keyed ``var``
+    like the other consumers (defense in depth), just not for a reason
+    ``level="gene"`` alone resolves.
+
     Parameters
     ----------
     expression_matrix_path : str
@@ -229,6 +324,11 @@ def create_anndata_from_expression_atlas(
         Name of the per-row transcript identifier column in a transcript-level
         export (default ``"GeneID"``, matching real Expression Atlas headers).
         When present, it becomes the ``var`` index instead of ``gene_id_column``.
+    level : str
+        ``"transcript"`` (default) keeps a transcript-level export keyed by the
+        transcript id. ``"gene"`` sums transcript-level values onto the gene id
+        instead (a no-op for an already gene-level export). Any other value
+        raises ``ValueError``.
     delimiter : str
         Column delimiter (default tab).
     extra_annotation_columns : list of str, optional
@@ -238,15 +338,24 @@ def create_anndata_from_expression_atlas(
     Returns
     -------
     ad.AnnData
-        Expression AnnData with genes (or, for a transcript-level export,
-        transcripts) in ``var`` and samples in ``obs``.
+        Expression AnnData with genes (or, for a transcript-level export with
+        the default ``level="transcript"``, transcripts) in ``var`` and samples
+        in ``obs``.
 
     Raises
     ------
     ValueError
-        If no sample columns remain after annotation columns are set aside.
+        If no sample columns remain after annotation columns are set aside; if
+        ``level`` is not one of ``"transcript"``/``"gene"``; or, with
+        ``level="gene"``, if any transcript has no ``gene_id_column`` value (see
+        ``_sum_transcript_values_to_genes``).
     """
-    import numpy as np
+    if level not in ("transcript", "gene"):
+        raise ValueError(
+            f"level={level!r} is not supported; use 'transcript' (default, keep "
+            "each row's native grain) or 'gene' (sum transcript-level values onto "
+            "their gene; a no-op for an already gene-level export)."
+        )
 
     df = pd.read_csv(expression_matrix_path, sep=delimiter)
 
@@ -394,6 +503,14 @@ def create_anndata_from_expression_atlas(
             f"unique (e.g. {dup_ids}). If this is a transcript-level export, "
             "pass transcript_id_column=<the per-row id column> so var is keyed "
             "by the transcript id instead."
+        )
+
+    # level="gene": collapse the just-validated (unique) transcript-level var/X back
+    # onto the gene id, so a transcript-level export can still produce a gene-keyed
+    # AnnData on request (issue #383). A gene-level export has nothing to collapse.
+    if level == "gene" and is_transcript_level:
+        X, var = _sum_transcript_values_to_genes(
+            X, var, gene_id_column=gene_id_column, gene_name_column=gene_name_column
         )
 
     # obs DataFrame (samples)
