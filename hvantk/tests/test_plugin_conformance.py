@@ -350,7 +350,8 @@ def test_insider_variants_round_trip(tmp_path):
     assert spec.schema_id == "insider-variants-v1"
 
     fixture = Path(
-        "hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed"
+        "hvantk/skills/insider/variants/tests/testdata/raw/insider/"
+        "insider_sample-synthetic.bed"
     )
     assert fixture.exists()
 
