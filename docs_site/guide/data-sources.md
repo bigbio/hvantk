@@ -157,13 +157,16 @@ hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
   --output E-MTAB-6798.h5ad --plugin-arg accession=E-MTAB-6798
 ```
 
-`reprocess` builds the **gene-level** matrix when the experiment's raw dir has one —
-the common case for the unfiltered download above, since it fetches every file in the
-experiment's FTP directory and an experiment that ships a transcript-level TPM file
-usually ships the gene-level one too (confirmed live: E-MTAB-6798's directory has both).
-It falls back to the **transcript-level** matrix (`var` keyed by the transcript id)
-only when the experiment shipped no gene-level file, or a `--plugin-arg config_path=...`
-download filtered to just the transcript-level one.
+`reprocess` scopes the expression matrix to the accession named by the raw dir's SDRF
+file and raises if no TPM file matches it (an older raw dir's leftover file, or two
+downloads merged by hand, must not silently combine mismatched expression + metadata).
+Among that accession's files, it builds the **gene-level** matrix when exactly one is
+present — the common case for the unfiltered download above, since it fetches every
+file in the experiment's FTP directory and an experiment that ships a transcript-level
+TPM file usually ships the gene-level one too (confirmed live: E-MTAB-6798's directory
+has both). It falls back to the **transcript-level** matrix (`var` keyed by the
+transcript id) only when there is no gene-level candidate at all — several gene-level
+candidates raise rather than silently preferring the transcript-level file.
 
 A transcript-level build needs `--plugin-arg level=gene` to sum its values per gene and
 key `var` by the gene id instead — before the result can be used with

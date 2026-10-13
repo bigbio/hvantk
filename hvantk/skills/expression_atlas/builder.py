@@ -34,25 +34,35 @@ def _resolve_expression_atlas_inputs(parsed_input):
       build with ``TypeError: string indices must be integers`` (issue #383).
 
     The SDRF is matched by ``*.condensed-sdrf.tsv`` (the only file of that shape
-    the downloader writes); exactly one must be present.
+    the downloader writes); exactly one must be present. Its filename encodes the
+    accession (``<accession>.condensed-sdrf.tsv``), which scopes every candidate
+    expression matrix: SDRF and TPM candidates used to be counted independently,
+    so a ``--raw-dir`` holding one accession's SDRF and a *different* accession's
+    TPM file (e.g. a reused directory, or two downloads merged by hand) silently
+    passed and combined mismatched accessions. A TPM candidate not named for the
+    SDRF's accession is ignored for counting purposes, and if none remain this
+    raises naming the mismatch.
 
-    **The expression matrix prefers the gene-level file.** A plain
-    ``--plugin-arg accession=...`` download (no ``config_path`` filter) fetches
-    every file in the experiment's FTP directory via ``ftp.nlst()``
-    (``hvantk/skills/expression_atlas/cli.py``), and an experiment that ships a
-    transcript-level TPM file usually ships the gene-level ``<accession>-tpms.tsv``
-    alongside it -- so requiring exactly one ``*-tpms.tsv`` match (as this function
-    first did) could never build from an unfiltered download. When exactly one
-    gene-level file (``*-tpms.tsv``, NOT ``*-transcripts-tpms.tsv``) is present, it
-    is used and any transcript-level file is ignored. Otherwise, when exactly one
-    ``*-transcripts-tpms.tsv`` is present (the experiment shipped only a
+    **Among same-accession TPM files, the expression matrix prefers the
+    gene-level one.** A plain ``--plugin-arg accession=...`` download (no
+    ``config_path`` filter) fetches every file in the experiment's FTP directory
+    via ``ftp.nlst()`` (``hvantk/skills/expression_atlas/cli.py``), and an
+    experiment that ships a transcript-level TPM file usually ships the
+    gene-level ``<accession>-tpms.tsv`` alongside it -- so requiring exactly one
+    ``*-tpms.tsv`` match (as this function first did) could never build from an
+    unfiltered download. When exactly one gene-level file (``*-tpms.tsv``, NOT
+    ``*-transcripts-tpms.tsv``) is present, it is used and any transcript-level
+    file is ignored. The transcript-level file is used instead ONLY when there
+    is no gene-level candidate at all (the experiment shipped only a
     transcript-level matrix, or a ``config_path`` download filtered to just that
-    file), that one is used instead -- the result is transcript-keyed and needs
-    ``--plugin-arg level=gene`` before the generic gene-level consumers (``hvantk
-    expression markers``/``summarize``, the PTM constraint loader) can read it. The
-    file actually chosen is logged at INFO. This raises only when the choice is
-    still ambiguous (e.g. more than one accession's files mixed into one
-    directory) or nothing matches.
+    file) and exactly one transcript-level candidate exists; several gene-level
+    candidates do not fall through to it -- that would silently prefer an
+    unrelated transcript file over an ambiguous gene-level set. A
+    transcript-level pick is transcript-keyed and needs ``--plugin-arg
+    level=gene`` before the generic gene-level consumers (``hvantk expression
+    markers``/``summarize``, the PTM constraint loader) can read it. The file
+    actually chosen is logged at INFO. This raises when the choice is still
+    ambiguous or nothing matches.
     """
     if isinstance(parsed_input, dict):
         return str(parsed_input["expression_matrix"]), str(parsed_input["sdrf"])
@@ -65,10 +75,24 @@ def _resolve_expression_atlas_inputs(parsed_input):
             f"under {root!r}, found {sdrf_candidates}. Point --raw-dir at a single "
             "accession's download directory."
         )
+    sdrf_path = sdrf_candidates[0]
+    accession = os.path.basename(sdrf_path)[: -len(".condensed-sdrf.tsv")]
 
     all_tpm = sorted(glob.glob(os.path.join(root, "*-tpms.tsv")))
-    transcript_tpm = [f for f in all_tpm if f.endswith("-transcripts-tpms.tsv")]
-    gene_tpm = [f for f in all_tpm if f not in transcript_tpm]
+    accession_tpm = [
+        f for f in all_tpm if os.path.basename(f).startswith(accession + "-")
+    ]
+    if not accession_tpm:
+        raise FileNotFoundError(
+            f"Expression Atlas builder: the SDRF {sdrf_path!r} is for accession "
+            f"{accession!r}, but no *-tpms.tsv under {root!r} is named for that "
+            f"accession (found {all_tpm} for other accessions, or none at all). "
+            "The SDRF and expression matrix must be for the same accession -- "
+            "point --raw-dir at a single accession's download directory."
+        )
+
+    transcript_tpm = [f for f in accession_tpm if f.endswith("-transcripts-tpms.tsv")]
+    gene_tpm = [f for f in accession_tpm if f not in transcript_tpm]
 
     if len(gene_tpm) == 1:
         tpm_path = gene_tpm[0]
@@ -76,7 +100,7 @@ def _resolve_expression_atlas_inputs(parsed_input):
             "Expression Atlas builder: using gene-level expression matrix %s",
             tpm_path,
         )
-    elif len(transcript_tpm) == 1:
+    elif len(gene_tpm) == 0 and len(transcript_tpm) == 1:
         tpm_path = transcript_tpm[0]
         logger.info(
             "Expression Atlas builder: using transcript-level expression matrix "
@@ -86,13 +110,13 @@ def _resolve_expression_atlas_inputs(parsed_input):
     else:
         raise FileNotFoundError(
             f"Expression Atlas builder: could not find exactly one gene-level "
-            f"*-tpms.tsv or exactly one transcript-level *-transcripts-tpms.tsv "
-            f"under {root!r}; found gene-level candidates {gene_tpm} and "
-            f"transcript-level candidates {transcript_tpm}. Point --raw-dir at a "
+            f"*-tpms.tsv (found {gene_tpm}), nor -- failing that -- exactly one "
+            f"transcript-level *-transcripts-tpms.tsv (found {transcript_tpm}), "
+            f"for accession {accession!r} under {root!r}. Point --raw-dir at a "
             "single accession's download directory, or call build_expression_atlas "
             "directly with parsed_input={'expression_matrix': ..., 'sdrf': ...}."
         )
-    return tpm_path, sdrf_candidates[0]
+    return tpm_path, sdrf_path
 
 
 def build_expression_atlas(
@@ -115,9 +139,10 @@ def build_expression_atlas(
     parsed_input : dict or str
         Either a mapping with ``expression_matrix`` (path to gene x sample TSV)
         and ``sdrf`` (path to SDRF metadata file) keys, or a raw download
-        directory. The SDRF must be unambiguous; the expression matrix prefers
-        the experiment's gene-level TPM file when exactly one is present, falling
-        back to the transcript-level one otherwise (see
+        directory. The SDRF must be unambiguous; the expression matrix is scoped
+        to the SDRF's accession and prefers that accession's gene-level TPM file
+        when exactly one is present, falling back to the transcript-level one
+        only when there is no gene-level candidate at all (see
         ``_resolve_expression_atlas_inputs``).
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
