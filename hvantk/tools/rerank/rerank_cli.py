@@ -79,9 +79,10 @@ def _require_sklearn():
     default=1,
     show_default=True,
     help="Recompute each axis's interval over this many CV seeds (seed, seed+1, ...) and "
-    "report the envelope (the union of the gene-bootstrap interval and the across-seed "
-    "range; never narrower) beside the gene-resampling interval. 1 leaves the reported "
-    "interval blind to which genes landed in which fold.",
+    "report the envelope (the union of the bootstrap interval and the across-seed "
+    "range; never narrower) beside the bootstrap interval itself (gene-resampling, or "
+    "block-resampling when --blocks is set). 1 leaves the reported interval blind to "
+    "which genes landed in which fold.",
 )
 @click.option(
     "--blocks",

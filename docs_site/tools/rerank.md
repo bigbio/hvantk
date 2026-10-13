@@ -152,6 +152,8 @@ Two further mechanics worth knowing about: the grouped splitter is a **correctly
 
 Blocking is threaded everywhere a fold boundary matters: the outer cross-validation of both the headline score and the ablation, the multi-seed sweep, and -- as described above -- the permutation null. There are three documented exceptions to this blocking: `CalibratedClassifierCV`'s own inner calibration split, which takes only an integer fold count and so cannot see the blocks; a family can therefore straddle *that* split within one already-blocked outer training fold. Similarly, with a selection policy that uses the RFECV wrapper (`SelectionPolicy(wrapper="rfecv")`), RFECV's inner `StratifiedKFold` inside each training fold is likewise unblocked (it is opt-in). The third applies only when a fit sees more than 10,000 rows: the estimator leaves `HistGradientBoostingClassifier`'s `early_stopping="auto"`, which scikit-learn (1.7.2) switches on for `n_samples > 10,000`, and each fit then holds out a class-stratified random 10% validation split drawn with the run's seed and blind to the blocks -- a family can straddle *that* split too, and `--seed-sweep` then also varies which rows every fit holds out, on top of the fold assignment. The estimator is left as is deliberately (changing it would change every historic result); below that size no such split exists. The per-axis deltas that are the scientific claim never go through the first two -- they use the uncalibrated, fully-blocked scorer in `evaluator.py` (fully blocked below 10,000 rows; the early-stopping split applies to it exactly as to the headline). Custom API scorers passed directly to `permutation_deltas` that carry no `.groups` attribute are not checked against `blocks=` at all -- only scorers built by the library's own `oof_scorer` declare one.
 
+The per-axis bootstrap interval (`d_lo`/`d_md`/`d_hi`) is blocked the same way, and for the same reason. With `--blocks` set, `_boot_ci` resamples whole paralogue blocks instead of genes: each draw picks as many block ids as there are blocks, uniformly and with replacement, and takes every member gene of the ids it picked (a cluster bootstrap) -- a size-6 family rides in or out of a draw as one unit, exactly as it rides into one fold or the other. Resampling genes independently here while the folds are blocked would silently understate the interval by exactly the amount blocking exists to correct for, which is why this is not a separate flag: it follows `--blocks` automatically. Without `--blocks`, the interval is unchanged -- genes resampled independently, bit-identical to every run before this.
+
 The console's `Blocks:` line (shown whenever `--blocks` did not abort) reports the blocking, including the matched-gene count that catches a silent key mismatch:
 
 ```text
@@ -168,17 +170,19 @@ Doubling as the null's base seed has one consequence worth knowing before you re
 hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt --seed-sweep 3
 ```
 
-(Shown with `--blocks` because the tables on this page all come from one blocked run; the
-envelope works the same way without it.)
+(Shown with `--blocks` because the envelope and the block bootstrap are both best
+illustrated together on blocked folds; the envelope works the same way without blocking
+too. This table's synthetic data was regenerated separately from the rest of this page's
+running example, specifically to show the block bootstrap below on real output.)
 
-The gene-resampling bootstrap (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the gene *sample* moved. It cannot see a second variance component: which genes land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
+The bootstrap interval (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the *sample* moved -- genes resampled independently when unblocked, or whole paralogue blocks resampled together when `--blocks` is set (see **Blocked CV** above). Either way it cannot see a second variance component: which genes (or blocks) land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
 
 ```text
 Per-axis ablation (delta-AUC over constraint):
       family   auc   d_lo   d_md  d_hi  d_lo_env  d_hi_env  n_seeds
-  constraint 0.659  0.000  0.000 0.000     0.000     0.000        3
-  expression 0.693 -0.028  0.034 0.091    -0.028     0.091        3
-conservation 0.633 -0.071 -0.027 0.014    -0.071     0.014        3
+  constraint 0.763  0.000  0.000 0.000     0.000     0.000        3
+  expression 0.778 -0.023  0.017 0.058    -0.023     0.058        3
+conservation 0.740 -0.050 -0.022 0.007    -0.050     0.007        3
 ```
 
 The envelope is a **union, not a calibrated interval** over both components: the two are not independent draws from one distribution, and combining them properly would need a nested design nobody has run. `d_lo_env`/`d_hi_env` are that union rounded to 3 decimal places, exactly like `d_lo`/`d_hi`. The union is guaranteed never to be narrower than the bootstrap interval alone, but **not** guaranteed to be strictly wider -- that depends on the data: when the across-seed range happens to fall entirely inside `[d_lo, d_hi]`, `d_lo_env == d_lo` and `d_hi_env == d_hi` and no widening is visible, which is itself informative (it says the CV partition was not, on this data, a meaningful source of extra spread), not a sign that the sweep did nothing. It exists so a reader cannot mistake one lucky (or unlucky) partition for a measured effect -- a single cross-validation partition can land anywhere within that spread. With the default `--seed-sweep 1`, the three extra columns are **absent** from the ablation table entirely, so a plain `hvantk rerank` run is byte-for-byte what it always was.
@@ -209,7 +213,7 @@ The permutation null (`--n-perm`, above) already recomputes the stratified parti
 |---|---|
 | `family` | The axis name, or the baseline axis (always `d_lo`/`d_md`/`d_hi` `== 0.0` there, by construction). |
 | `auc` | Out-of-fold AUC of baseline+axis (uncalibrated). |
-| `d_lo`, `d_md`, `d_hi` | 2.5th/50th/97.5th percentile of a paired, gene-resampling bootstrap on the delta-AUC of this axis over the baseline alone. |
+| `d_lo`, `d_md`, `d_hi` | 2.5th/50th/97.5th percentile of a paired bootstrap on the delta-AUC of this axis over the baseline alone: genes resampled independently when unblocked, or whole paralogue blocks resampled together (a cluster bootstrap) whenever `--blocks` is set. |
 | `d_lo_env`, `d_hi_env` | *Only when `--seed-sweep > 1`.* The envelope described above: the union of `[d_lo, d_hi]` and the across-seed delta range, rounded to 3 decimal places. Never narrower than `[d_lo, d_hi]`; not guaranteed to be strictly wider (depends on the data). |
 | `n_seeds` | *Only when `--seed-sweep > 1`.* The sweep width actually used -- the same count as the CLI's `--seed-sweep`, `Config.seed_sweep` and `Evaluator.evaluate`'s `n_seeds` parameter. |
 
