@@ -127,8 +127,17 @@ relative to `hvantk/skills/ucsc_cellbrowser/` and match the manifest exactly.
   section previously named `tests/test_builder.py` alone, which disagreed with the
   manifest and silently excluded the drift-probe tests.
 
-All three fixtures are real pseudo-bulk slices of their respective UCSC Cell Browser
-collections; see their `THIRD_PARTY_DATA.md` entries.
+`default`'s fixture is real (CC BY 4.0, re-sourced to the underlying Mendeley Data
+deposit after a review round found the original UCSC-accession citation pointed at a
+404; see its `THIRD_PARTY_DATA.md` entry). `adult-ctx` and `dev-ctx` are **synthetic**
+(review round): no licence or rights field is published for either Cell Browser
+dataset (`genome.ucsc.edu/license/` covers Genome Browser data, not Cell Browser; each
+dataset's own `dataset.json` carries no `license`/`rights` field and pools third-party
+studies — 16 for `adult-ctx`, 7 for `dev-ctx`), so their fixtures were replaced with
+hand-authored ones that keep the real `Class` / `Type_v2` group labels and gene
+identifiers but fabricate every expression value and `n_cells` count; see
+`expression_matrix-synthetic.tsv` / `metadata-synthetic.tsv` in each dataset's fixture
+directory. No `THIRD_PARTY_DATA.md` entry applies to either.
 
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 
