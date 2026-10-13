@@ -688,6 +688,8 @@ def ptm_constraint(
         click.echo(result.summary())
         click.echo(f"Output: {config.output_dir}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"PTM constraint failed: {e}")
         click.echo(f"Error: {e}", err=True)

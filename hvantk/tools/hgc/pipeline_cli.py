@@ -320,6 +320,8 @@ def pipeline(
             click.echo(f"⏱️  Duration: {state.start_time} → {state.end_time}")
             click.echo("")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"Pipeline failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)

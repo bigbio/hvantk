@@ -39,6 +39,7 @@ def test_vds2mt_cli_validation_failure():
         )
 
         assert result.exit_code == 1
+        assert "Error: 1" not in result.output  # no catch-all report
         assert "Input file validation failed" in result.output
         assert "VDS not found" in result.output
 
@@ -109,6 +110,7 @@ def test_mt2vcf_cli_validation_failure():
         )
 
         assert result.exit_code == 1
+        assert "Error: 1" not in result.output  # no catch-all report
         assert "Input file validation failed" in result.output
         assert "MT not found" in result.output
 
