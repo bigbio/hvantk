@@ -36,6 +36,7 @@ def test_gvcf_combine_cli_missing_inputs():
     )
 
     assert result.exit_code == 1
+    assert "Error: 1" not in result.output  # no catch-all report
     assert "Either --gvcf-dir or --vds-paths must be provided" in result.output
 
 
@@ -269,6 +270,7 @@ def test_vds_combine_cli_missing_input_dir():
     )
 
     assert result.exit_code == 1
+    assert "Error: 1" not in result.output  # no catch-all report
     assert "Input directory not found" in result.output
 
 

@@ -64,6 +64,7 @@ def test_pipeline_cli_validation_failure():
             )
 
             assert result.exit_code == 1
+            assert "Error: 1" not in result.output  # no catch-all report
             assert "Configuration validation failed" in result.output
             assert "Missing required parameter" in result.output
 
