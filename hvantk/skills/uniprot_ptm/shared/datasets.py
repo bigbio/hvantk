@@ -17,7 +17,7 @@ Example usage:
 import csv
 import logging
 import os
-import tempfile
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -301,10 +301,16 @@ class UniProtPTMDataset:
         # Write to a sibling temp file and rename into place atomically, so a
         # crash or interrupt mid-download never leaves a partial file under
         # `output_path` for a later run to mistake for a complete, reusable
-        # download.
-        fd, tmp_path = tempfile.mkstemp(dir=output_dir, prefix=f".{self.file_name}.")
+        # download. The temp is private (PID plus a random token: jobs on two
+        # cluster nodes can share a PID and a directory) and created with a plain
+        # open() rather than mkstemp, so the published file gets the umask-masked
+        # mode instead of 0600, which another user's `reprocess --skip-download`
+        # in a shared raw directory could not read.
+        tmp_path = os.path.join(
+            output_dir, f".{self.file_name}.{os.getpid()}.{uuid.uuid4().hex[:8]}"
+        )
         try:
-            with os.fdopen(fd, "w", newline="") as fh:
+            with open(tmp_path, "x", newline="") as fh:
                 writer = csv.DictWriter(
                     fh, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n"
                 )
