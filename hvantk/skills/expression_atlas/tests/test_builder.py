@@ -142,6 +142,66 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     )
 
 
+# --- Regression: #383 review, "the documented reprocess command cannot build" ---------
+# With no lifecycle.parse declared, `hvantk reprocess expression-atlas:dataset
+# --skip-download` passed the bare --raw-dir STRING to build_expression_atlas, which
+# indexed it like a dict (`parsed_input["expression_matrix"]`) and crashed with
+# "string indices must be integers": the documented `--plugin-arg level=gene` route
+# was unreachable through the real CLI. This drives the REAL plugin registry and REAL
+# builder (nothing mocked) against the committed fixture; only network is avoided,
+# via --skip-download, since the fixture's files are already on disk.
+
+
+def test_reprocess_cli_builds_from_the_raw_fixture_with_and_without_level_gene(
+    tmp_path,
+):
+    """`hvantk reprocess expression-atlas:dataset --skip-download` must actually build."""
+    import anndata as ad
+    from click.testing import CliRunner
+
+    from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
+
+    runner = CliRunner()
+
+    out_transcript = tmp_path / "transcript.h5ad"
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "expression-atlas:dataset",
+            "--raw-dir",
+            str(FIXTURE_DIR),
+            "--output",
+            str(out_transcript),
+            "--skip-download",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    built = ad.read_h5ad(out_transcript)
+    assert built.var.index.name == "transcript_id"
+    assert built.n_vars == 21, "21 transcripts in the fixture, default level=transcript"
+
+    out_gene = tmp_path / "gene.h5ad"
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "expression-atlas:dataset",
+            "--raw-dir",
+            str(FIXTURE_DIR),
+            "--output",
+            str(out_gene),
+            "--skip-download",
+            "--no-check-drift",
+            "--plugin-arg",
+            "level=gene",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    built_gene = ad.read_h5ad(out_gene)
+    assert built_gene.var.index.name == "gene_id"
+    assert built_gene.n_vars == 20, "21 transcripts collapse onto 20 distinct genes"
+
+
 # --- Regression: issues #342 and #349 ------------------------------------------
 # The real upstream header carries THREE leading metadata columns, the third being
 # `GeneID` (transcript id, distinct from `Gene ID` by one space). Classifying it as a
@@ -157,6 +217,7 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
 
 def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
     """A detected transcript column must key `var`, never leave var_names duplicated."""
+    import numpy as np
     import pandas as pd
     from hvantk.skills.expression_atlas.shared.expression_atlas import (
         create_anndata_from_expression_atlas,
@@ -244,6 +305,56 @@ def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
     with pytest.raises(ValueError, match="level"):
         create_anndata_from_expression_atlas(
             expression_matrix_path=str(path), level="bogus"
+        )
+
+    # min_count=1 (#383 review): a gene whose every transcript is NaN in one sample
+    # must sum to NaN, not 0.0 -- "no data" is not "zero expression". ENSMUSG...0001's
+    # two transcripts are both NaN for ERR1 (but not ERR2); ENSMUSG...0002 is untouched.
+    nan_path = tmp_path / "nan_tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": [
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000002",
+            ],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [np.nan, np.nan, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(nan_path, sep="\t", index=False)
+    nan_gene_adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=str(nan_path), level="gene"
+    )
+    nan_summed = nan_gene_adata.to_df()
+    assert np.isnan(nan_summed.loc["ERR1", "ENSMUSG00000000001"])
+    assert nan_summed.loc["ERR2", "ENSMUSG00000000001"] == pytest.approx(9.0)
+    assert nan_summed.loc["ERR1", "ENSMUSG00000000002"] == pytest.approx(3.0)
+
+    # A transcript with no Gene ID cannot be summed onto a gene; groupby would
+    # otherwise drop it silently (#383 review).
+    orphan_path = tmp_path / "orphan_tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", None, "ENSMUSG00000000002"],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [16, 9, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(orphan_path, sep="\t", index=False)
+    with pytest.raises(ValueError, match="ENSMUST00000000003"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(orphan_path), level="gene"
         )
 
 
