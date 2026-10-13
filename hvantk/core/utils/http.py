@@ -32,6 +32,13 @@ logger = logging.getLogger(__name__)
 # these probes hit answer overload with a bare 500 rather than a 503.
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
+#: The User-Agent hvantk identifies itself with -- the value the ClinGen, GenCC, ClinVar
+#: and UniProt downloaders send. A probe that leaves requests' default
+#: (``python-requests/<version>``) in place presents as a generic scraper to a site behind
+#: bot protection (dbnsfp.org sits behind Cloudflare), and a challenge served to the CI
+#: runner would fail that probe closed on every scheduled run (#408).
+USER_AGENT = "hvantk/1.0"
+
 DEFAULT_ATTEMPTS = 4
 DEFAULT_BACKOFF_S = 2.0
 DEFAULT_MAX_SLEEP_S = 30.0
