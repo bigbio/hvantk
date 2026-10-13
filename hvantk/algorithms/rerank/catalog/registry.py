@@ -62,19 +62,30 @@ def build_config(
 
     ``audit``/``calibration``/``folds``/``tiers`` were the original surface; ``seed``,
     ``seed_sweep``, ``nulls`` and ``blocks`` (#390/#408) are later additions threaded
-    straight through to the matching ``Config`` field with no transformation. Every one of
-    them defaults to that field's OWN default (``seed=DEFAULT_SEED``, ``seed_sweep=1``,
-    ``nulls=None``, ``blocks=None``) rather than a value re-typed here, so a caller who
-    builds a ``Config`` through this registry and one who constructs ``Config`` directly
-    start from the identical, single source of truth for what "default" means.
+    straight through to the matching ``Config`` field with no transformation. Each
+    defaults to that field's own default: ``seed`` via the shared ``DEFAULT_SEED``
+    constant -- the same one ``Config.seed`` itself defaults to, so neither copy re-types
+    the literal -- while ``seed_sweep=1``, ``nulls=None`` and ``blocks=None`` simply match
+    ``Config``'s own defaults by hand; there is no equivalent shared constant for a bare
+    ``1`` or ``None`` to import instead, so those three are not single-sourced the way
+    ``seed`` is.
 
     seed
-        The one CV/estimator/bootstrap/null seed (``Config.seed``).
+        The CV/estimator/bootstrap seed (``Config.seed``). This is NOT the permutation
+        seed: ``NullConfig`` carries its own, separate ``seed`` field (also defaulting to
+        ``DEFAULT_SEED``, but independently), and ``build_config`` does not tie the two
+        together -- unlike ``hvantk rerank``, whose CLI builds its ``NullConfig`` with
+        ``seed=`` the same value ``--seed`` was given. A caller who wants that coupling
+        must pass it explicitly: ``build_config(..., seed=7, nulls=NullConfig(seed=7,
+        n_perm=200))`` matches ``--seed 7 --n-perm 200``, but
+        ``build_config(..., seed=7, nulls=NullConfig(n_perm=200))`` leaves the null at
+        ``NullConfig``'s own default seed and so does not.
     seed_sweep
         How many CV seeds the ablation interval is swept over (``Config.seed_sweep``).
     nulls
         Permutation-null settings, or ``None`` to skip the multiplicity correction
-        (``Config.nulls``, a ``NullConfig`` when set).
+        (``Config.nulls``, a ``NullConfig`` when set). See ``seed`` above: its seed field
+        is independent of this function's own ``seed`` parameter.
     blocks
         Paralogue-blocked cross-validation policy, or ``None`` for unblocked folds
         (``Config.blocks``, a ``BlockPolicy`` when set).
