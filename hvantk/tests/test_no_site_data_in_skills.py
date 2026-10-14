@@ -66,7 +66,7 @@ _SBATCH_SITE_DIRECTIVE = re.compile(
     r"#SBATCH\s+--(?:partition|account|mail-user|qos)\b"
 )
 _LITERAL_PARTITION = re.compile(r"--(?:partition|account|qos)=(?!['\"]?[$<{])\S+")
-_MAIL_USER = re.compile(r"--mail-user")
+_MAIL_USER = re.compile(r"--mail-user[= ](?!['\"]?[$<])\S+")
 _HOST = re.compile(
     r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
     r"(?:ac\.uk|de|edu|org|com|net|eu|uk|io|fr|ch|nl|it|es)\b"
@@ -129,7 +129,7 @@ def scanned_files() -> list[Path]:
         ("#SBATCH --mail-user=x", "sbatch-site-directive"),
         ("sbatch --partition=batch job.sbatch", "literal-site-flag"),
         ("sbatch --account=proj123 job.sbatch", "literal-site-flag"),
-        ("--mail-user", "mail-user"),
+        ("--mail-user=someone@institute.example.net", "mail-user"),
         ("copy to login.cluster.institute.de", "host"),
     ],
 )
@@ -150,6 +150,7 @@ def test_each_rule_fires_on_its_shape(text, rule):
         "https://storage.googleapis.com/public-download-files/x",
         "hgnc.ht and hgnc.ht.provenance.json",
         "site-profile.local.sh",
+        '--mail-user="$SLURM_EMAIL_NOTIFICATION"',
     ],
 )
 def test_placeholder_forms_are_clean(text):
