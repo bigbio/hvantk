@@ -8,6 +8,8 @@
 # Runs ONE command inside the hvantk container image with Hail in Spark local mode:
 #   node-local scratch for Spark spill and Hail temp, Spark pinned to the allocation,
 #   driver memory at 80 percent of the request, the work root bound into the image.
+# PYTHONPATH points at the checkout, so the job runs the checkout's code inside the
+# image's environment: the commit is what runs, the image is what it runs on.
 # The command is the positional arguments and starts with `hvantk` or `python`.
 set -euo pipefail
 
@@ -57,4 +59,5 @@ exec "$CONTAINER_BIN" exec "${BINDS[@]}" \
   --env SPARK_LOCAL_DIRS="$SCRATCH" --env TMPDIR="$SCRATCH" --env HAIL_TMPDIR="$SCRATCH" \
   --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
   --env JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
+  --env PYTHONPATH="$HVANTK_REPO" \
   "$HVANTK_SIF" "$@"

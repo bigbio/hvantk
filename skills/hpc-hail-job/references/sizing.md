@@ -45,3 +45,4 @@ once, then adjust.
 | `PYSPARK_SUBMIT_ARGS` | `--master local[<cpus>] --driver-memory <80% of mem> --conf spark.local.dir=<scratch> pyspark-shell` | rules 1 and 2; hvantk starts Hail with defaults and PySpark reads this variable |
 | `OMP_NUM_THREADS` and the BLAS equivalents | `<cpus>` | libraries otherwise size their pools to the node |
 | `JAVA_TOOL_OPTIONS` | `-Duser.language=en -Duser.country=US` | decimal separators in exported text |
+| `PYTHONPATH` | the checkout (`HVANTK_REPO`) | the checkout's code runs inside the image's environment |

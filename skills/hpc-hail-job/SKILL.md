@@ -36,7 +36,10 @@ run fine through the same template, with a small request).
    ask the user for it. Never guess a partition, a path or an image.
 2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`.
    Compare with the commit the user expects. A clone that is behind runs old code with
-   no error of any kind; if it is behind, say so before submitting anything.
+   no error of any kind; if it is behind, say so before submitting anything. The job
+   runs the checkout's code inside the image's environment (the template exports
+   `PYTHONPATH`), so the commit decides what runs; the image only has to carry the
+   dependencies, and needs rebuilding only when the lock file changes.
 3. Image: `readlink -f "$HVANTK_SIF"` (the configured path is often a symlink to a
    versioned image) and its digest: `$HVANTK_SIF_SHA256` if the profile has it, else
    `sha256sum "$(readlink -f "$HVANTK_SIF")"` (about ten seconds). Record both.
