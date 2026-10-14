@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Source the site profile named by HVANTK_SITE_PROFILE and report every required
+# value that is missing. Exit 1 if any is. Used by every template before it submits.
+set -euo pipefail
+
+: "${HVANTK_SITE_PROFILE:?export HVANTK_SITE_PROFILE=/path/to/site-profile.local.sh (copy skills/_site/site-profile.example.sh)}"
+[[ -r "$HVANTK_SITE_PROFILE" ]] || { echo "ERROR: site profile not readable: $HVANTK_SITE_PROFILE" >&2; exit 1; }
+# shellcheck disable=SC1090
+source "$HVANTK_SITE_PROFILE"
+
+required=(HVANTK_REPO HVANTK_SIF HVANTK_CPU_PARTITION HVANTK_NODE_CPUS HVANTK_NODE_MEM_GB HVANTK_WORK)
+missing=()
+for v in "${required[@]}"; do
+  [[ -n "${!v:-}" ]] || missing+=("$v")
+done
+if (( ${#missing[@]} )); then
+  echo "ERROR: site profile $HVANTK_SITE_PROFILE leaves required values empty:" >&2
+  printf '  %s\n' "${missing[@]}" >&2
+  echo "Fill them in (see skills/_site/SITE-PROFILE.md); do not guess them." >&2
+  exit 1
+fi
+[[ -d "$HVANTK_REPO" ]] || { echo "ERROR: HVANTK_REPO is not a directory: $HVANTK_REPO" >&2; exit 1; }
+[[ -e "$HVANTK_SIF" ]]  || { echo "ERROR: HVANTK_SIF not found: $HVANTK_SIF" >&2; exit 1; }
+[[ "$HVANTK_NODE_CPUS" =~ ^[0-9]+$ && "$HVANTK_NODE_MEM_GB" =~ ^[0-9]+$ ]] \
+  || { echo "ERROR: HVANTK_NODE_CPUS and HVANTK_NODE_MEM_GB must be integers" >&2; exit 1; }
+echo "site profile OK: $HVANTK_SITE_PROFILE"
