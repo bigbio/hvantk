@@ -35,6 +35,7 @@ while (( $# )); do
   esac
 done
 (( $# > 0 )) || { echo "ERROR: no command after --" >&2; exit 2; }
+PARTITION="${PARTITION:-$HVANTK_CPU_PARTITION}"   # an empty fat-partition value falls back
 case "$1" in hvantk|python|python3) ;; *) echo "ERROR: command must start with hvantk or python, got '$1'" >&2; exit 2 ;; esac
 if [[ "$PARTITION" == "$HVANTK_CPU_PARTITION" ]]; then
   (( CPUS <= HVANTK_NODE_CPUS )) || { echo "ERROR: --cpus $CPUS exceeds the CPU partition's $HVANTK_NODE_CPUS per node" >&2; exit 2; }
@@ -66,10 +67,15 @@ echo "$JOB_ID"
 # Wait on accounting, not on squeue: an empty squeue answer can also be a transient
 # RPC failure, and accounting is the record the verdict is graded from.
 TERMINAL='^(COMPLETED|FAILED|CANCELLED|TIMEOUT|OUT_OF_MEMORY|NODE_FAIL|PREEMPTED|BOOT_FAIL|DEADLINE|REVOKED)'
-STATE=""
+STATE=""; UNKNOWN=0
 until [[ "$STATE" =~ $TERMINAL ]]; do
   sleep 30
   STATE="$(sacct -j "$JOB_ID" -X -n -o State 2>/dev/null | head -1 | tr -d ' ' || true)"
+  if [[ -z "$STATE" && -z "$(squeue -j "$JOB_ID" -h -o %T 2>/dev/null)" ]]; then
+    (( ++UNKNOWN < 10 )) || { echo "ERROR: job $JOB_ID is unknown to both sacct and squeue; is accounting enabled?" >&2; exit 1; }
+  else
+    UNKNOWN=0
+  fi
 done
 sacct -j "$JOB_ID" -X -o JobID,JobName%30,State,ExitCode,Elapsed,ReqMem,AllocCPUS >&2
 echo "log: $LOG_DIR/${NAME}_${JOB_ID}.out" >&2

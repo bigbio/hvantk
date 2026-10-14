@@ -34,7 +34,7 @@ SCHEMA_SNAPSHOT = REPO_ROOT / "hvantk/skills/hgnc/tests/snapshots/schema.json"
 SCHEMA_ID = "hgnc-lookup-v1"
 BUDGET = {"max_cpus": 8, "max_mem_gb": 32, "max_minutes": 30}
 SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
-TERMINAL_STATES = ("COMPLETED",)
+SUCCESS_STATES = ("COMPLETED",)
 
 _COMMIT = re.compile(r"^commit:\s*([0-9a-f]{7,40})\s*$", re.M)
 _CONTAINER = re.compile(r"^container:\s*([0-9a-f]{64})\s*$", re.M)
@@ -152,7 +152,7 @@ def grade_slurm(
         within.append(ok)
     m2 = bool(jobs) and all(within)
     all_ids = {j["id"] for j in rows}
-    m3 = any(j["state"].startswith(TERMINAL_STATES) for j in jobs) and all(
+    m3 = any(j["state"].startswith(SUCCESS_STATES) for j in jobs) and all(
         n in all_ids for n in notes["jobs"]
     )
     return m2, m3, {"jobs": jobs, "within_budget": within}

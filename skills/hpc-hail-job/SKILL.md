@@ -59,7 +59,7 @@ run fine through the same template, with a small request).
    ```bash
    "${HVANTK_CONTAINER_BIN:-singularity}" exec -B "$HVANTK_WORK:$HVANTK_WORK" \
      -B "$HVANTK_REPO:$HVANTK_REPO" --env PYTHONPATH="$HVANTK_REPO" "$HVANTK_SIF" \
-     hvantk download <source> --output "$HVANTK_WORK/raw/<source>/<file>"
+     hvantk download <source> --help   # each source has its own output option; put raw files under "$HVANTK_WORK/raw/<source>/"
    ```
 6. Once per image and node type, prove the stack works:
    `bash skills/hpc-hail-job/templates/submit-hail-job.sh --name <run>-check --cpus 4 --mem-gb 16 --time 0-00:20:00 --wait -- hvantk utils check-install`
@@ -107,7 +107,7 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
 
 - Bigger input means more memory on one node, not more nodes. Go to the fat partition
   with the node's full size, which the submit script does not cap there:
-  `--partition "$HVANTK_FAT_PARTITION" --exclusive --cpus <its cores> --mem-gb <its memory>`.
+  `--partition "${HVANTK_FAT_PARTITION:-$HVANTK_CPU_PARTITION}" --exclusive --cpus <its cores> --mem-gb <its memory>`.
   The template keeps the Spark driver at 80 percent of the request so the kernel's
   memory cgroup does not kill it.
 - Time: ask for the time the job needs plus half. A time-limit kill loses everything;

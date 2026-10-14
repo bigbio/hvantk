@@ -51,6 +51,7 @@ bind_outside_work "$HVANTK_REPO"
 [[ -n "${HVANTK_EVAL_DATA:-}" ]] && bind_outside_work "$HVANTK_EVAL_DATA"
 [[ -n "${HVANTK_BIND:-}" ]] && BINDS+=(-B "$HVANTK_BIND")
 
+[[ -d "$HVANTK_REPO/hvantk" ]] || { echo "ERROR: checkout $HVANTK_REPO is not visible on $(hostname); the job would silently run the image's own copy" >&2; exit 2; }
 cd "$LOG_DIR"
 echo "== hvantk hail job =="
 echo "date:      $(date -Is)"
@@ -69,7 +70,7 @@ echo "====================="
   --env SPARK_LOCAL_DIRS="$SCRATCH" --env TMPDIR="$SCRATCH" --env HAIL_TMPDIR="$SCRATCH" \
   --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
   --env JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
-  --env PYTHONPATH="$HVANTK_REPO" \
+  --env PYTHONPATH="$HVANTK_REPO" --env HAIL_LOG_DIR="$LOG_DIR" \
   --env OMP_NUM_THREADS="$CPUS" --env OPENBLAS_NUM_THREADS="$CPUS" \
   --env MKL_NUM_THREADS="$CPUS" --env NUMEXPR_NUM_THREADS="$CPUS" \
   "$HVANTK_SIF" "$@"

@@ -27,12 +27,15 @@ INPUT_SHA="$(cut -d' ' -f1 "$STAGE/staged.sha256")"
 OUT="$STAGE/control/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT/pos" "$OUT/neg"
 RUN_ID="ctl-hhj-$(date -u +%H%M%S)"
-SINCE="$(date -u +%Y-%m-%dT%H:%M:%S)"
+SINCE="$(date +%Y-%m-%dT%H:%M:%S)"   # local time: sacct -S reads the node's clock, not UTC
 COMMIT="$(git -C "$R" rev-parse HEAD)"
 SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"   # always the resolved file
-CHECK="$HERE/check.py"
-REFERENCE="$HERE/reference.json"
-FIXTURE_DIR="$R/hvantk/skills/hgnc/tests/testdata/raw/hgnc"
+# Paths handed to jobs use the profile's spelling of the checkout, which is what the
+# job binds; the resolved path above is only for the containment test.
+REL="${HERE#"$R"/}"
+CHECK="$HVANTK_REPO/$REL/check.py"
+REFERENCE="$HVANTK_REPO/$REL/reference.json"
+FIXTURE_DIR="$HVANTK_REPO/hvantk/skills/hgnc/tests/testdata/raw/hgnc"
 SACCT_FIELDS="JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 
 capture_sacct() { sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$1"; }
@@ -40,6 +43,15 @@ ref_field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['p
 verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v[sys.argv[2]])" "$1" "$2"; }
 
 echo "control run $RUN_ID -> $OUT (commit $COMMIT)"
+( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) || { echo "ERROR: staged input does not match staged.sha256; delete it and run eval/stage.sh again" >&2; exit 1; }
+if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" ]]; then
+  REF_INPUT="$(ref_field input_sha256)"
+  if [[ "$REF_INPUT" != "$INPUT_SHA" ]]; then
+    echo "ERROR: the staged input ($INPUT_SHA) differs from the one the reference was produced from ($REF_INPUT)." >&2
+    echo "       HGNC changed upstream. Delete the staged file, run eval/stage.sh again, then rerun with WRITE_REFERENCE=1 to re-baseline." >&2
+    exit 1
+  fi
+fi
 
 # --- positive: the skill's procedure, no agent ---
 JOB_POS="$("$SUBMIT" --name "$RUN_ID-build" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
@@ -53,12 +65,6 @@ if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
   echo "reference written: $REFERENCE"
 fi
 [[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
-REF_INPUT="$(ref_field input_sha256)"
-if [[ "$REF_INPUT" != "$INPUT_SHA" ]]; then
-  echo "ERROR: the staged input ($INPUT_SHA) differs from the one the reference was produced from ($REF_INPUT)." >&2
-  echo "       HGNC changed upstream. Re-stage deliberately and rerun with WRITE_REFERENCE=1 to re-baseline." >&2
-  exit 1
-fi
 
 capture_sacct "$OUT/pos/sacct.psv"
 "$SUBMIT" --name "$RUN_ID-check" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
@@ -66,6 +72,7 @@ capture_sacct "$OUT/pos/sacct.psv"
     --reference "$REFERENCE" --run-id "$RUN_ID" --expect-commit "$COMMIT" \
     --expect-sif-sha256 "$SIF_SHA" --site-profile "$HVANTK_SITE_PROFILE" \
     --sacct-file "$OUT/pos/sacct.psv" >/dev/null
+for s in M1 M2 M3; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true (accounting capture or run notes broken)" >&2; exit 1; }; done
 echo "positive control: PASS (M1..M5 = $(for s in M1 M2 M3 M4 M5; do verdict_stage "$OUT/pos/verdict.json" $s; done | tr '\n' ' '))"
 
 # --- negative: same schema, wrong content ---

@@ -13,7 +13,7 @@ HVANTK_NODE_MEM_GB=""       # memory on one node of that partition, e.g. 240
 HVANTK_WORK=""              # project/work root, writable from compute nodes
 
 # --- optional ---------------------------------------------------------------
-HVANTK_SIF_SHA256=""        # digest of the image; computed when empty
+HVANTK_SIF_SHA256=""        # cached digest of the image; skills recompute and verify it
 HVANTK_FAT_PARTITION=""     # partition for exclusive high-memory jobs; defaults to CPU
 HVANTK_ACCOUNT=""           # Slurm account, if your site requires one
 HVANTK_QOS=""               # Slurm QOS, if your site requires one

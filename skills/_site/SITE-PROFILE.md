@@ -24,7 +24,7 @@ that meets an empty value stops and asks the user. It never guesses.
 
 | variable | meaning | default |
 | --- | --- | --- |
-| `HVANTK_SIF_SHA256` | digest of the image, so run notes do not recompute it | computed with `sha256sum` when empty |
+| `HVANTK_SIF_SHA256` | a cached digest of the image; skills recompute the digest from the resolved file and treat this as a cache that must match | recomputed when empty |
 | `HVANTK_FAT_PARTITION` | partition for exclusive high-memory jobs | the CPU partition |
 | `HVANTK_ACCOUNT`, `HVANTK_QOS` | passed to `sbatch` when set | unset |
 | `HVANTK_MAX_TIME` | the partition's time limit, `D-HH:MM:SS` | unknown; `sinfo` shows it |
