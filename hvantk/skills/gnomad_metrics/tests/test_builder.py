@@ -37,7 +37,7 @@ def test_build_raises_when_raw_dir_holds_multiple_constraint_files(tmp_path):
 
     (tmp_path / "gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz").write_text("x")
     (tmp_path / "gnomad.v4.0.constraint_metrics.tsv").write_text("x")
-    with pytest.raises(ValueError, match="exactly one gnomAD constraint file"):
+    with pytest.raises(ValueError, match="expected exactly one file matching"):
         build_gnomad_metrics_metrics(str(tmp_path), None)
 
 

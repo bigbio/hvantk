@@ -26,11 +26,20 @@ from hvantk.core.utils.table_utils import (
     filter_min_classification,
 )
 from hvantk.core.utils.file_utils import resolve_compression
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 
 if TYPE_CHECKING:
     from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 logger = logging.getLogger(__name__)
+
+# cosmic-cgc is bring-your-own (credentialed), so `hvantk reprocess` hands this
+# builder the raw directory the user placed their COSMIC export in (see
+# resolve_raw_file). The real export is a `.tsv.gz` (standard gzip, not BGZF -- see
+# the force_bgz handling below); the committed fixture is also a .tsv.gz. This
+# builder reads tab-delimited only (`delimiter="\t"` below), so a `.csv` export
+# would not import correctly even once resolved -- it is not matched here.
+_RAW_FILE_PATTERNS = ("*.tsv.gz", "*.tsv")
 
 
 def _header_generation(row_fields: set[str]) -> str:
@@ -81,7 +90,10 @@ def build_cosmic_cgc_submissions(
     ----------
     parsed_input : str | Path
         Path to the COSMIC CGC TSV file (e.g.
-        Cosmic_CancerGeneCensus_v10x_GRCh38.tsv.gz).
+        Cosmic_CancerGeneCensus_v10x_GRCh38.tsv.gz), or the raw directory holding
+        it -- cosmic-cgc is bring-your-own, so ``hvantk reprocess`` hands the
+        builder the raw directory as-is; ``resolve_raw_file`` picks the one
+        matching file out of it.
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
     **params
@@ -116,7 +128,9 @@ def build_cosmic_cgc_submissions(
             f"{COSMIC_CGC_CLASSIFICATION_LEVELS}, got: {min_classification}"
         )
 
-    resolved_path, force_bgz = resolve_compression(str(parsed_input))
+    resolved_path, force_bgz = resolve_compression(
+        resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS)
+    )
 
     # 1. Import
     import_kwargs = dict(

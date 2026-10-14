@@ -48,6 +48,35 @@ class TestGenCCSubmissionsDataset:
         assert "12+" in meta["description"]
 
 
+def test_raw_dir_resolves_to_the_latest_export_and_refuses_to_guess(tmp_path):
+    """A second day's download leaves two dated exports in the raw directory: the
+    builder must pick the newer one, and raise rather than guess when a name's date
+    is not a real date or a dated file is not the same export."""
+    from hvantk.core.utils.raw_inputs import resolve_raw_file
+    from hvantk.skills.gencc.builder import _RAW_FILE_PATTERNS
+    from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
+
+    def resolve(case, *names):
+        raw_dir = tmp_path / case
+        raw_dir.mkdir()
+        for name in names:
+            (raw_dir / name).write_text("x")
+        return resolve_raw_file(
+            str(raw_dir), patterns=_RAW_FILE_PATTERNS, latest_dated=True
+        )
+
+    older = GenCCSubmissionsDataset.from_date("2026-10-13").file_name
+    newer = GenCCSubmissionsDataset.from_date("2026-10-14").file_name
+    assert resolve("two_days", older, newer) == str(tmp_path / "two_days" / newer)
+
+    for case, other in [
+        ("invalid_date", "gencc-submissions-2026-13-45.tsv"),
+        ("other_export", "gencc-other-report-2026-10-14.tsv"),
+    ]:
+        with pytest.raises(ValueError, match="expected exactly one file matching"):
+            resolve(case, newer, other)
+
+
 # --- Streamer tests (require Hail) ---
 
 TEST_DIR = Path(__file__).parent / "testdata"

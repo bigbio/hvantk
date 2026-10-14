@@ -162,9 +162,9 @@ DataFrame to `gene_biotype == "protein_coding"` rows before the Hail Table is bu
 - **Downloader:** `download_dataset(raw_dir, **params)` / Click command `download_cmd`
   in `hvantk/skills/ensembl_gene/structure/cli.py`, wired via `plugin.yaml`'s
   `lifecycle.download` and the `cli:` block (command `ensembl-structure-download`).
-  Fetches `ENSEMBL_GTF_URL` into `raw_dir/ENSEMBL_GTF_FILENAME` via
-  `urllib.request.urlretrieve`; skips the download if the target already exists unless
-  `--overwrite` is passed.
+  Fetches `ENSEMBL_GTF_URL` into `raw_dir/ENSEMBL_GTF_FILENAME` via the shared
+  `stream_to_file` (`hvantk/core/utils/http.py`); skips the download if the target
+  already exists unless `--overwrite` is passed.
 - **Drift probe:** `fetch_fingerprint` in
   `hvantk/skills/ensembl_gene/structure/drift_probe.py`, `PROBE_VERSION = 2`. HEADs
   `ENSEMBL_GTF_URL` (no payload download -- the docstring notes the GTF is ~64 MB; note `catalog/datasets.json` records `size_bytes: 800000000` for the same file, so one of the two is wrong and neither should be trusted for capacity planning) and

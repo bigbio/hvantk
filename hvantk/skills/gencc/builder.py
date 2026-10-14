@@ -15,6 +15,7 @@ from hvantk.skills.gencc.shared.constants import (
     GENCC_CLASSIFICATION_LEVELS,
     GENCC_SUBMISSION_FIELDS,
 )
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.core.utils.table_utils import (
     get_row_fields,
     strip_curie_prefix,
@@ -23,6 +24,13 @@ from hvantk.core.utils.table_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# gencc declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
+# download directory (see resolve_raw_file). The downloader writes
+# <prefix>-<date>.tsv; the committed test fixture is also a .tsv. `latest_dated=True`
+# below: a second day's download leaves yesterday's dated file next to today's, so
+# resolve_raw_file picks the latest instead of raising "found 2" on every refresh.
+_RAW_FILE_PATTERNS = ("*.tsv",)
 
 
 def build_gencc_submissions(
@@ -50,7 +58,9 @@ def build_gencc_submissions(
         )
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=resolve_raw_file(
+            parsed_input, patterns=_RAW_FILE_PATTERNS, latest_dated=True
+        ),
         delimiter="\t",
         impute=False,
         min_partitions=10,

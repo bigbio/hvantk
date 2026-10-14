@@ -36,6 +36,9 @@ def test_download_dataset_extracts_the_tsv_under_the_canonical_name(tmp_path):
     response = MagicMock()
     response.raise_for_status.return_value = None
     response.iter_content.return_value = [buf.getvalue()]
+    # No Content-Length: an unconfigured MagicMock would hand stream_to_file's
+    # short-read check a bogus declared length.
+    response.headers = {}
     response.__enter__.return_value = response
     response.__exit__.return_value = False
 

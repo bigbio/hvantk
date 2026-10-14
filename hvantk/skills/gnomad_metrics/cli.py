@@ -18,6 +18,7 @@ from pathlib import Path
 
 import click
 
+from hvantk.core.utils.http import stream_to_file
 from hvantk.skills.gnomad_metrics.shared.constants import (
     DEFAULT_VERSION,
     GNOMAD_CONSTRAINT_TABLES,
@@ -27,6 +28,10 @@ from hvantk.skills.gnomad_metrics.shared.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# urlretrieve had no timeout; 30s matches this codebase's other short-request
+# conventions (clinvar/clingen/gencc's version checks).
+_DOWNLOAD_TIMEOUT_S = 30
 
 
 def download_gnomad_metrics(
@@ -63,8 +68,7 @@ def download_gnomad_metrics(
     RuntimeError
         If the download or write fails.
     """
-    import urllib.error
-    import urllib.request
+    import requests
 
     url = constraint_url(version, table)  # validates version/table first
     resolved_table = resolve_table(version, table)
@@ -81,10 +85,10 @@ def download_gnomad_metrics(
             resolved_table,
             url,
         )
-        urllib.request.urlretrieve(url, output)
+        stream_to_file(url, str(output), timeout=_DOWNLOAD_TIMEOUT_S)
         logger.info("Downloaded to %s", output_path)
         return str(output)
-    except urllib.error.URLError as e:
+    except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to download gnomAD constraint: {e}") from e
     except OSError as e:
         raise RuntimeError(f"Failed to write file: {e}") from e

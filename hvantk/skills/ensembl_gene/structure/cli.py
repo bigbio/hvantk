@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import logging
 import os
-import urllib.request
 
 import click
 
+from hvantk.core.utils.http import stream_to_file
 from hvantk.resources.ensembl_release import (
     ENSEMBL_GTF_FILENAME,
     ENSEMBL_GTF_URL,
 )
 
 logger = logging.getLogger(__name__)
+
+# urlretrieve had no timeout; 30s matches this codebase's other short-request
+# conventions (clinvar/clingen/gencc's version checks).
+_DOWNLOAD_TIMEOUT_S = 30
 
 
 def download_dataset(raw_dir: str, **params) -> str:
@@ -26,7 +30,7 @@ def download_dataset(raw_dir: str, **params) -> str:
         return target
 
     logger.info("Downloading %s -> %s", ENSEMBL_GTF_URL, target)
-    urllib.request.urlretrieve(ENSEMBL_GTF_URL, target)
+    stream_to_file(ENSEMBL_GTF_URL, target, timeout=_DOWNLOAD_TIMEOUT_S)
     return target
 
 

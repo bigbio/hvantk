@@ -10,7 +10,14 @@ import logging
 
 import hail as hl
 
+from hvantk.core.utils.raw_inputs import resolve_raw_file
+
 logger = logging.getLogger(__name__)
+
+# gnomad-metrics declares no lifecycle.parse, so `hvantk reprocess` hands the builder
+# the raw download directory (see resolve_raw_file). The downloader writes a .bgz or
+# .tsv depending on version/table; the committed fixtures are also .bgz.
+_RAW_FILE_PATTERNS = ("*.bgz", "*.tsv")
 
 
 def build_gnomad_metrics_metrics(
@@ -32,8 +39,6 @@ def build_gnomad_metrics_metrics(
     **params
         Optional: fields (list of str) to select from the table.
     """
-    from pathlib import Path
-
     from hvantk.core.models import AnnotationTable
 
     fields = params.get("fields", None)
@@ -41,31 +46,8 @@ def build_gnomad_metrics_metrics(
     # gene_id column (per-transcript rows), so callers pass e.g. key="transcript".
     key = params.get("key", "gene_id")
 
-    # `hvantk reprocess` hands a download-only plugin's builder the raw_dir (no
-    # parse stage); resolve the constraint file inside it. An explicit file path
-    # (run_builder_for_spec / tests) is used as-is.
-    src = Path(parsed_input)
-    if src.is_dir():
-        candidates = sorted(src.glob("*.bgz")) + sorted(src.glob("*.tsv"))
-        if not candidates:
-            raise FileNotFoundError(
-                f"No gnomAD constraint file (*.bgz/*.tsv) found in {src}"
-            )
-        if len(candidates) > 1:
-            # Do not silently pick the first: a raw dir holding more than one constraint
-            # file (e.g. v2.1.1 + v4.0, or by_gene + by_transcript) would build the wrong
-            # table. Mirror the sibling gevir builder and fail loud. (PR #222 review.)
-            raise ValueError(
-                f"expected exactly one gnomAD constraint file in {src}, found "
-                f"{len(candidates)}: {[c.name for c in candidates]}. Point --raw-dir at a "
-                f"directory holding a single version's constraint file, or pass an explicit "
-                f"file path."
-            )
-        src = candidates[0]
-        logger.info("Resolved gnomAD constraint file: %s", src)
-
     ht = hl.import_table(
-        paths=str(src),
+        paths=resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         impute=True,
         min_partitions=100,
         key=key,

@@ -11,8 +11,8 @@ import zipfile
 import zlib
 
 import requests
-from tqdm import tqdm
 from hvantk.core.utils.bgzf import BGZF_BLOCK_SIZE, make_bgzf_block
+from hvantk.core.utils.http import stream_to_file
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,12 @@ def download_file(url: str, out_dir: str, file_name: str):
 
     Validates that the file name does not contain path traversal components. Creates the output directory if it does not exist. Raises an exception if the download fails or if the file name is invalid.
 
+    Delegates the transfer to ``hvantk.core.utils.http.stream_to_file``, which writes
+    through a sibling temp file and ``os.replace``s it into place only once the whole
+    body has arrived, so a failed, interrupted or short download leaves ``local_path``
+    as it was. A failure therefore must not delete ``local_path``: on a re-download it
+    still holds the previous good copy.
+
     Returns:
         str: The local filesystem path to the downloaded file on success.
     """
@@ -40,39 +46,11 @@ def download_file(url: str, out_dir: str, file_name: str):
     local_path = os.path.join(out_dir, file_name)
     logger.debug(f"Downloading {url} to {local_path}")
     try:
-        response = requests.get(url, stream=True, timeout=30)  # Add timeout
-        response.raise_for_status()  # Raises exception for 4XX/5XX responses
-        logger.debug(f"Download response status code: {response.status_code}")
-
-        total_size = int(response.headers.get("content-length", 0))
-
-        # Optional: Add file size check
-        max_size = 1024 * 1024 * 1024  # 1GB
-        if total_size > max_size:
-            logger.warning(
-                f"File is very large ({total_size / 1024 / 1024:.1f} MB), exceeding recommended size of {max_size / 1024 / 1024:.1f} MB"
-            )
-
-        with (
-            open(local_path, "wb") as f,
-            tqdm(
-                desc=file_name,
-                total=total_size,
-                unit="B",
-                unit_scale=True,
-                unit_divisor=1024,
-            ) as bar,
-        ):
-            for chunk in response.iter_content(chunk_size=8192):
-                size = f.write(chunk)
-                bar.update(size)
+        stream_to_file(url, local_path, timeout=30, progress_label=file_name)
         logger.info(f"Download completed: {local_path}")
         return local_path
 
     except requests.exceptions.RequestException as e:
-        # Clean up partial download if it exists
-        if os.path.exists(local_path):
-            os.remove(local_path)
         logger.exception(f"Failed to download {url}: {str(e)}")
         raise Exception(f"Failed to download {url}: {str(e)}")
 
@@ -80,13 +58,26 @@ def download_file(url: str, out_dir: str, file_name: str):
 def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
     """Sanitize a delimited text file in-place for Hail compatibility.
 
-    Handles two common problems that ``hl.import_table`` cannot deal with:
+    Handles three common problems that ``hl.import_table`` cannot deal with:
 
     1. **Blank lines** — removed entirely.
     2. **Multiline quoted fields** — newlines inside quoted values are
        replaced with spaces so every logical record occupies exactly one line.
+    3. **Delimiters inside quoted values** — replaced with spaces. Without a
+       ``quote`` argument, ``hl.import_table`` splits on every delimiter, so one
+       quoted tab shifts every later column of its row.
 
-    The file is rewritten atomically (write to temp, then rename).
+    The output is unquoted, the form ``hl.import_table`` reads without a ``quote``
+    argument: a value that contains a quote character is written as it is, never
+    wrapped in quotes with its own quotes doubled, which would reach the table
+    verbatim. The file is rewritten atomically (write to temp, then rename).
+
+    A data row whose field count differs from the header's is FATAL (``ValueError``),
+    not a pad/truncate-with-a-warning: an unclosed quote can swallow one or more later
+    records into a single oversized cell (``csv.reader`` keeps consuming lines inside
+    an open quote), and a row that is then truncated or padded back to the header's
+    width would silently paper over data that is not where the column headers say it
+    is, rather than surfacing the malformed input.
 
     Parameters
     ----------
@@ -99,6 +90,11 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
     -------
     int
         Number of data rows in the cleaned file (excluding header).
+
+    Raises
+    ------
+    ValueError
+        If a data row's field count differs from the header's.
     """
     logger.info("Sanitizing %s (delimiter=%r)", filepath, delimiter)
     tmp_path = filepath + ".sanitized.tmp"
@@ -110,7 +106,8 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
         writer = csv.writer(
             fh_out,
             delimiter=delimiter,
-            quotechar='"',
+            quoting=csv.QUOTE_NONE,
+            quotechar=None,
             lineterminator="\n",
         )
         for row_index, row in enumerate(reader):
@@ -119,27 +116,22 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
 
             if n_cols is None:
                 n_cols = len(row)
-
-            # Pad or truncate to match header column count
-            if len(row) < n_cols:
-                logger.warning(
-                    "sanitize_tsv: row %d has %d columns, expected %d; padding",
-                    row_index,
-                    len(row),
-                    n_cols,
+            elif len(row) != n_cols:
+                os.remove(tmp_path)
+                raise ValueError(
+                    f"sanitize_tsv: row {row_index} of {filepath} has {len(row)} "
+                    f"field(s), expected {n_cols} (from the header). An unclosed "
+                    "quote can swallow later records into one cell -- padding or "
+                    "truncating back to the header width would hide that rather "
+                    "than surface it."
                 )
-                row = row + [""] * (n_cols - len(row))
-            elif len(row) > n_cols:
-                logger.warning(
-                    "sanitize_tsv: row %d has %d columns, expected %d; truncating",
-                    row_index,
-                    len(row),
-                    n_cols,
-                )
-                row = row[:n_cols]
 
-            # Flatten embedded newlines within cells
-            cleaned = [cell.replace("\n", " ").replace("\r", " ") for cell in row]
+            # Flatten embedded newlines and delimiters within cells, so the unquoted
+            # writer never needs to quote or escape anything.
+            cleaned = [
+                cell.replace("\n", " ").replace("\r", " ").replace(delimiter, " ")
+                for cell in row
+            ]
             writer.writerow(cleaned)
             n_data += 1
 

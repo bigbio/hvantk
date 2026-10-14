@@ -23,6 +23,7 @@ import click
 import requests
 
 from hvantk.core.plugin.drift_runner import _current_umask
+from hvantk.core.utils.http import stream_to_file
 from hvantk.skills.gwas_catalog.drift_probe import GWAS_CATALOG_FULL_URL
 
 logger = logging.getLogger(__name__)
@@ -31,46 +32,13 @@ logger = logging.getLogger(__name__)
 # upstream member name recorded in hvantk/skills/gwas_catalog/catalog/datasets.json
 # (files[0].path), so the raw directory mirrors what SKILL.md documents. Used both by
 # the bare CLI (as a sensible default output name in the docstring/examples above) and
-# by the lifecycle ``download_dataset`` wrapper, so the gevir-style directory resolver
-# in builder.py (``_resolve_gwas_catalog_path``) finds exactly one file there.
+# by the lifecycle ``download_dataset`` wrapper, so the shared directory resolver
+# (``hvantk.core.utils.raw_inputs.resolve_raw_file``, called from builder.py) finds
+# exactly one file there.
 GWAS_CATALOG_ASSOCIATIONS_FILENAME = "gwas-catalog-download-associations-v1.0-full.tsv"
 
 _DOWNLOAD_TIMEOUT_S = 120
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB
-
-
-def _stream_to_file(url: str, dest: Path, timeout: int = _DOWNLOAD_TIMEOUT_S) -> None:
-    """Stream *url* to *dest* through a sibling temp file, then ``os.replace``.
-
-    A plain ``open(dest, "wb")`` would leave a truncated file at *dest* if the
-    network drops mid-download. Writing to a temp file in the same directory
-    first and renaming it into place only on success keeps the write atomic --
-    *dest* either does not exist or holds the complete download, never a
-    partial one.
-    """
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name + ".")
-    os.close(fd)
-    done = False
-    try:
-        with requests.get(url, stream=True, timeout=timeout) as response:
-            response.raise_for_status()
-            with open(tmp_name, "wb") as fh:
-                for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
-                    if chunk:
-                        fh.write(chunk)
-        # mkstemp always creates mode 0600; match what a normal file create
-        # (or the existing file, on overwrite) would get, mirroring
-        # drift_runner.write_fingerprint's atomic-publish idiom.
-        if dest.exists():
-            shutil.copymode(dest, tmp_name)
-        else:
-            os.chmod(tmp_name, 0o666 & ~_current_umask())
-        os.replace(tmp_name, dest)
-        done = True
-    finally:
-        if not done and os.path.exists(tmp_name):
-            os.remove(tmp_name)
 
 
 def _extract_single_member(zip_path: Path, dest: Path) -> None:
@@ -157,7 +125,7 @@ def download_gwas_catalog_associations(
                 "Downloading GWAS Catalog full-associations release from %s",
                 GWAS_CATALOG_FULL_URL,
             )
-            _stream_to_file(GWAS_CATALOG_FULL_URL, zip_path)
+            stream_to_file(GWAS_CATALOG_FULL_URL, zip_path, timeout=_DOWNLOAD_TIMEOUT_S)
             logger.info("Extracting associations TSV to %s", output_path)
             _extract_single_member(zip_path, output)
     except requests.exceptions.RequestException as e:
@@ -178,7 +146,7 @@ def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
     directory. For gwas-catalog there is exactly one artifact after
     extraction, the full-associations TSV, written as
     ``<raw_dir>/gwas-catalog-download-associations-v1.0-full.tsv`` -- the one
-    file ``_resolve_gwas_catalog_path`` (``builder.py``) expects to find
+    file ``resolve_raw_file`` (called from ``builder.py``) expects to find
     there.
 
     Parameters

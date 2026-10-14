@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import urllib.request
 from pathlib import Path
 
 import pytest
@@ -47,19 +46,21 @@ def test_unknown_version_or_table_raises(version, table):
 # Lifecycle download_dataset (mocked network)
 # --------------------------------------------------------------------------- #
 
+# These mock `gnomad_cli.stream_to_file`, the name as imported into cli.py, not its
+# defining module (hvantk/core/utils/http.py).
 
-def _fake_urlretrieve(recorder):
-    def _inner(url, filename):
-        Path(filename).write_bytes(b"fake gnomad constraint payload")
-        recorder.append((url, str(filename)))
-        return filename, None
+
+def _fake_stream_to_file(recorder):
+    def _inner(url, dest, *, timeout=None, headers=None, progress_label=None):
+        Path(dest).write_bytes(b"fake gnomad constraint payload")
+        recorder.append((url, str(dest)))
 
     return _inner
 
 
 def test_download_dataset_default_writes_by_gene(tmp_path, monkeypatch):
     calls: list = []
-    monkeypatch.setattr(urllib.request, "urlretrieve", _fake_urlretrieve(calls))
+    monkeypatch.setattr(gnomad_cli, "stream_to_file", _fake_stream_to_file(calls))
 
     out = gnomad_cli.download_dataset(str(tmp_path))
 
@@ -72,7 +73,7 @@ def test_download_dataset_default_writes_by_gene(tmp_path, monkeypatch):
 
 def test_download_dataset_v40(tmp_path, monkeypatch):
     calls: list = []
-    monkeypatch.setattr(urllib.request, "urlretrieve", _fake_urlretrieve(calls))
+    monkeypatch.setattr(gnomad_cli, "stream_to_file", _fake_stream_to_file(calls))
 
     out = gnomad_cli.download_dataset(str(tmp_path), version="v4.0")
 
@@ -82,7 +83,7 @@ def test_download_dataset_v40(tmp_path, monkeypatch):
 
 def test_download_dataset_no_overwrite(tmp_path, monkeypatch):
     calls: list = []
-    monkeypatch.setattr(urllib.request, "urlretrieve", _fake_urlretrieve(calls))
+    monkeypatch.setattr(gnomad_cli, "stream_to_file", _fake_stream_to_file(calls))
     gnomad_cli.download_dataset(str(tmp_path))  # first write
     with pytest.raises(FileExistsError):
         gnomad_cli.download_dataset(str(tmp_path))  # second without overwrite
@@ -99,7 +100,7 @@ def test_cli_download_cmd(tmp_path, monkeypatch):
     from click.testing import CliRunner
 
     calls: list = []
-    monkeypatch.setattr(urllib.request, "urlretrieve", _fake_urlretrieve(calls))
+    monkeypatch.setattr(gnomad_cli, "stream_to_file", _fake_stream_to_file(calls))
 
     target = tmp_path / "out.bgz"
     result = CliRunner().invoke(gnomad_cli.download_cmd, ["--output", str(target)])
@@ -118,8 +119,10 @@ def test_cli_download_cmd(tmp_path, monkeypatch):
 def test_gnomad_constraint_urls_reachable(version):
     import urllib.request as _r
 
+    from hvantk.core.utils.http import tls_context
+
     url = C.constraint_url(version)
     req = _r.Request(url, method="HEAD")
-    with _r.urlopen(req, timeout=30) as resp:
+    with _r.urlopen(req, timeout=30, context=tls_context()) as resp:
         assert resp.status == 200
         assert int(resp.headers.get("Content-Length", "0")) > 0

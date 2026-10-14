@@ -68,7 +68,7 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 ## 7. Workflow steps
 
 1. **Resolve raw path.** `parsed_input` is the unzipped `.gmt` path (resolved by the reprocess runner from `--raw-dir`). Acquire from <https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp> (login required).
-2. **Import.** `hl.import_lines(paths=str(parsed_input), min_partitions=4)` — yields one row per line with `text: str`.
+2. **Import.** `parsed_input` is resolved first via the shared `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`, pattern `*.gmt`) -- msigdb has no `lifecycle.parse`, so `hvantk reprocess` hands the builder the raw directory as-is. `hl.import_lines(paths=<resolved path>, min_partitions=4)` then yields one row per line with `text: str`.
 3. **Transform** (inline in `build_msigdb_genesets`):
    - `parts = ht.text.split("\t")`.
    - `set_name = parts[0]`, `source_url = parts[1]`, `genes = parts[2:]` (Hail array slice).

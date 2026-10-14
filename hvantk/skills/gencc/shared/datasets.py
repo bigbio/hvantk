@@ -112,17 +112,31 @@ class GenCCSubmissionsDataset:
                 out_dir=output_dir,
                 file_name=self.file_name,
             )
-            # GenCC TSV may contain multiline quoted fields and blank lines
-            # that hl.import_table cannot handle — sanitize in-place.
+        except Exception as e:
+            raise RuntimeError(f"Failed to download GenCC dataset: {e!s}") from e
+
+        # GenCC TSV may contain multiline quoted fields, delimiters inside quoted
+        # values, and blank lines that hl.import_table cannot handle -- sanitize
+        # in-place. If that fails, remove the export: left under its final dated
+        # name, it would block a same-day retry (FileExistsError), and a later
+        # --skip-download build would pick it up as the newest file and fail inside
+        # Hail.
+        try:
             n_rows = sanitize_tsv(output_path)
             if n_rows == 0:
                 raise RuntimeError(
                     f"GenCC TSV at {output_path} is empty after sanitization"
                 )
-            logger.info(f"Downloaded GenCC dataset to {output_path}")
-            return output_path
         except Exception as e:
-            raise RuntimeError(f"Failed to download GenCC dataset: {e!s}") from e
+            if os.path.exists(output_path):
+                os.remove(output_path)
+            raise RuntimeError(
+                f"GenCC export at {output_path} was rejected during sanitization "
+                f"and has been removed: {e!s}"
+            ) from e
+
+        logger.info(f"Downloaded GenCC dataset to {output_path}")
+        return output_path
 
     def get_metadata(self) -> Dict[str, str]:
         """Get metadata about this dataset."""
@@ -156,6 +170,8 @@ def get_available_versions() -> List[str]:
         import urllib.request
         from urllib.parse import urlparse
 
+        from hvantk.core.utils.http import tls_context
+
         logger.info(f"Checking GenCC download endpoint: {GENCC_BASE_URL}")
 
         parsed = urlparse(GENCC_BASE_URL)
@@ -169,7 +185,7 @@ def get_available_versions() -> List[str]:
             headers={"User-Agent": "hvantk/1.0"},
         )
 
-        with urllib.request.urlopen(req, timeout=30) as response:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=30, context=tls_context()) as response:  # noqa: S310
             if response.status == 200:
                 today = datetime.now().strftime("%Y-%m-%d")
                 logger.info(

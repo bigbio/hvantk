@@ -18,6 +18,8 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
 - `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
   `array<struct{name, url}>` (#443).
+- Re-download and rebuild a `gencc:submissions` table built before this release: values
+  that contained a quote reached it wrapped in quotes (#460).
 - `hvantk expression markers`/`summarize`, the PTM constraint expression loader, and
   `hvantk annotate prepare`'s matrix source type now refuse a transcript-keyed AnnData
   (`var.index.name == "transcript_id"`) instead of silently reading its `var_names` as
@@ -155,6 +157,33 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   not a UCSC accession); and, for Expression Atlas, corrected the Human Protein Atlas
   licence on E-PROT-3 from stale CC BY-SA 4.0 to CC BY 4.0 and removed E-PROT-13, whose
   catalog entry did not match the Human Protein Atlas at all (#426, #420, #458).
+- **`hvantk reprocess` failed for datasets with no parse stage whose builder reads one
+  file**: reprocess hands such a builder the `--raw-dir` directory, which `hgnc:lookup`,
+  `clinvar:variants`, `clingen:gene-disease`, `gencc:submissions` and `msigdb:genesets`
+  (Hail's `FileNotFoundException: … is a directory`) and `insider:variants`,
+  `dbnsfp:variants` and `cosmic-cgc:submissions` (`IsADirectoryError`) tried to read as a
+  file; `gevir:metrics` failed whenever its raw directory held a second file. A shared
+  `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`) now resolves the directory to
+  its one matching file. For `clingen` and `gencc`, whose downloads carry the date in
+  their name, it picks the newest when the directory holds the same export from several
+  days (#460).
+- **Three downloaders failed TLS verification on some Python builds**: `hgnc`,
+  `gnomad-metrics` and `ensembl-gene:structure` called `urllib.request` without a CA
+  bundle, so on a Python whose default SSL context has none (such as the python.org macOS
+  installer) they failed with `CERTIFICATE_VERIFY_FAILED`, as did `clinvar`'s
+  `--verify-md5`, the `clingen` and `gencc` `--list-versions` and `uniprot-ptm`'s version
+  listing. Downloaders that write one file now share an atomic, `requests`-based
+  `stream_to_file()` (`hvantk/core/utils/http.py`), so a failed or truncated download
+  leaves no partial file and keeps a previous copy; the checks use `tls_context()`, which
+  adds certifi's bundle to the system trust store (#460).
+- **`gencc:submissions` failed to build from the current GenCC export, and mangled values
+  containing quotes**: `sanitize_tsv` wrote quoted values back quoted, but
+  `hl.import_table` reads without quote handling, so a tab inside a quoted value (100 rows
+  of the 2026-10-14 export) became an extra column, and about 600 values containing a
+  quote reached the table wrapped in quotes, their own quotes doubled. The sanitized TSV
+  is now written unquoted, with tabs and line breaks inside a value replaced by spaces. A
+  row whose field count still differs from the header's fails the download, and the
+  rejected file is removed (#460).
 
 ## 0.4.0 — 2026-10-08
 

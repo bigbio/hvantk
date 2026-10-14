@@ -13,6 +13,7 @@ from hvantk.core.utils.file_utils import (
     is_bgzf,
     is_gzipped,
     resolve_compression,
+    sanitize_tsv,
     _get_conversion_backend,
     _is_bgzf_header,
     _make_bgzf_block,
@@ -328,3 +329,31 @@ class TestResolveCompression:
         path, force = resolve_compression(plain_text_file)
         assert path == plain_text_file
         assert force is False
+
+
+def test_sanitize_tsv_writes_rows_hail_splits_correctly(tmp_path):
+    """Regression: a quoted value holding a tab (live GenCC ships 100 such rows) was
+    written back quoted, and ``hl.import_table``, which reads without a ``quote``
+    argument, split it into an extra column and failed the build. A value holding a
+    quote character came back wrapped in quotes, with its own quotes doubled.
+    """
+    path = tmp_path / "sample.tsv"
+    path.write_text(
+        'id\tname\tnotes\n1\t"\tLeading tab"\tsays "hi"\n\n2\t"two\nlines"\tplain\n'
+    )
+
+    assert sanitize_tsv(str(path)) == 2
+    lines = path.read_text().splitlines()
+    assert [len(line.split("\t")) for line in lines] == [3, 3, 3]
+    assert lines[1] == '1\t Leading tab\tsays "hi"'
+    assert lines[2] == "2\ttwo lines\tplain"
+
+    # A data row whose field count still differs from the header's is fatal, not
+    # padded/truncated with a warning: an unclosed quote can swallow a later record
+    # into one oversized cell (csv.reader keeps consuming lines inside an open
+    # quote), and a pad/truncate back to the header width would hide that rather
+    # than surface it. Today's live GenCC export has no such rows.
+    bad_path = tmp_path / "bad.tsv"
+    bad_path.write_text("id\tname\tnotes\n1\tok\tfine\n2\tshort\n")
+    with pytest.raises(ValueError, match=r"row 2 of .* has 2 field\(s\), expected 3"):
+        sanitize_tsv(str(bad_path))

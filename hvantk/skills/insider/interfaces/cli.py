@@ -17,28 +17,27 @@ Examples:
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 import click
 import requests
 
+from hvantk.core.utils.http import stream_to_file
 from hvantk.skills.insider.interfaces.builder import DEFAULT_FILENAME
 from hvantk.skills.insider.interfaces.drift_probe import INSIDER_INTERFACES_URL
 
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_S = 30
-_CHUNK_SIZE = 1 << 16  # 64 KiB
 
 
 def download_insider_interfaces(output_path: str, overwrite: bool = False) -> str:
     """
     Download the INSIDER per-protein-pair interface table.
 
-    Streams the response to disk and writes it atomically: the body lands in a
-    sibling ``<name>.tmp`` file first, which is only renamed onto *output_path*
-    (``os.replace``) once the transfer completes, so a failed or interrupted
+    Delegates the transfer to ``hvantk.core.utils.http.stream_to_file``, which
+    writes through a sibling temp file and only ``os.replace``s it onto
+    *output_path* once the whole body has arrived, so a failed or interrupted
     download never leaves a half-written file where the builder expects one.
 
     Parameters
@@ -65,28 +64,17 @@ def download_insider_interfaces(output_path: str, overwrite: bool = False) -> st
     if output.exists() and not overwrite:
         raise FileExistsError(f"File already exists: {output_path}")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = output.with_name(output.name + ".tmp")
-
     try:
         logger.info(
             "Downloading INSIDER interfaces table from %s", INSIDER_INTERFACES_URL
         )
-        response = requests.get(INSIDER_INTERFACES_URL, stream=True, timeout=_TIMEOUT_S)
-        response.raise_for_status()
-        with open(tmp_path, "wb") as fh:
-            for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
-                if chunk:
-                    fh.write(chunk)
-        os.replace(tmp_path, output)
+        stream_to_file(INSIDER_INTERFACES_URL, output, timeout=_TIMEOUT_S)
         logger.info("Downloaded to %s", output_path)
         return str(output)
 
-    except requests.RequestException as e:
-        tmp_path.unlink(missing_ok=True)
+    except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to download INSIDER interfaces table: {e}") from e
     except OSError as e:
-        tmp_path.unlink(missing_ok=True)
         raise RuntimeError(f"Failed to write file: {e}") from e
 
 

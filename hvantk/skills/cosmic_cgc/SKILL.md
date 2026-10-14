@@ -64,6 +64,10 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
   every column plus extra ones builds and keeps the extras, with a warning that names
   them; an extra column that the other generation's map knows is renamed (and
   `Hallmark` is cast to bool).
+- Raw input: cosmic-cgc has no `lifecycle.parse`, so `hvantk reprocess` hands the
+  builder the raw directory as-is; the shared `resolve_raw_file`
+  (`hvantk/core/utils/raw_inputs.py`, patterns `*.tsv.gz`/`*.tsv`) resolves it to the
+  one matching export before compression detection runs.
 - Compression: the real `.tsv.gz` is **standard gzip, not BGZF** — confirmed from its
   magic bytes (`FLG=0x08`/FNAME set; no BGZF `"BC"` extra-field subfield).
   `resolve_compression()` (`hvantk/core/utils/file_utils.py`) correctly classifies it as
@@ -118,13 +122,14 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 ## 7. Workflow steps
 
 1. Obtain the raw COSMIC CGC export manually — requires a COSMIC account/login at `cancer.sanger.ac.uk/census`. No in-repo downloader exists.
-2. Build: `hvantk reprocess cosmic-cgc:submissions --raw-dir <dir> --intermediate <dir>/<file>.tsv.gz --skip-parse --skip-download --output <out.ht>`, optionally with `--plugin-arg mutation_context=somatic|germline|both`, `--plugin-arg min_classification=<level>`, `--plugin-arg fields=<comma-list>`, `--plugin-arg hgnc_ht=<hgnc-lookup.ht>` (see step 3).
-   `--intermediate <file> --skip-parse` is required: the dataset declares no
-   `lifecycle.parse`, so without it `hvantk reprocess` hands the `--raw-dir` directory
-   to the builder, which needs the file itself and fails with `IsADirectoryError`.
-   Unlike `gwas-catalog:associations` (`hvantk/skills/gwas_catalog/SKILL.md` § 6), this
-   builder has no directory-resolving helper, so the workaround stays required here. On
-   the committed synthetic fixture this builds a 5-row table keyed by `gene_symbol`.
+2. Build: `hvantk reprocess cosmic-cgc:submissions --raw-dir <dir> --skip-download --output <out.ht>`, optionally with `--plugin-arg mutation_context=somatic|germline|both`, `--plugin-arg min_classification=<level>`, `--plugin-arg fields=<comma-list>`, `--plugin-arg hgnc_ht=<hgnc-lookup.ht>` (see step 3).
+   The dataset declares no `lifecycle.parse`, so `hvantk reprocess` hands the builder
+   the `--raw-dir` directory as-is; the shared `resolve_raw_file`
+   (`hvantk/core/utils/raw_inputs.py`, patterns `*.tsv.gz`/`*.tsv`) resolves it to the
+   single matching export inside, the same way `gwas-catalog:associations`
+   (`hvantk/skills/gwas_catalog/SKILL.md` § 6) does — no `--intermediate`/`--skip-parse`
+   needed. On the committed synthetic fixture this builds a 5-row table keyed by
+   `gene_symbol`.
 3. To resolve `hgnc_id`, add `--plugin-arg hgnc_ht=<path-to-hgnc-lookup.ht>` (or
    `hgnc_path=<path>`): `hvantk reprocess` builds an `HGNCGeneCatalogStreamer` from it
    and passes it to the builder as `gene_catalog`, as for `pqtl`. From Python, pass any
