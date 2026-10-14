@@ -2,7 +2,8 @@
 
 ## Where things are
 
-- Job log: `$HVANTK_LOG_DIR/<name>_<id>.out` (stdout and stderr together).
+- Job log: `${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}/<name>_<id>.out` (stdout and stderr
+  together). Hail's own `hail-<timestamp>.log` is written to the same directory.
 - Accounting: `sacct -j <id> -X -o JobID,JobName%30,State,ExitCode,Elapsed,Timelimit,ReqMem,AllocCPUS,NodeList`.
 - While it runs: `squeue -j <id> -o "%i %j %T %M %L %R"` (state, elapsed, time left, reason).
 - Details of the request: `scontrol show job <id>`.
@@ -31,7 +32,7 @@
 | `java.lang.OutOfMemoryError: Java heap space` | driver heap too small for the input | raise `--mem-gb` |
 | `Executor heartbeat timed out` | Spark oversubscribed the node | pin cores (the template does) |
 | `UnsupportedClassVersionError` or a Java version warning from Hail | host Java leaked in | no modules around the container |
-| `No such file or directory` on an input that exists on the login node | path not visible on compute nodes, or a bind is missing | check the mount from a job; set `HVANTK_BIND` |
+| `No such file or directory` on an input that exists on the login node | path not visible on compute nodes, or a bind is missing | check the mount from a job; set `HVANTK_BIND` in the site profile (a shell export is overwritten when the job sources the profile) |
 | `Read-only file system` | the output mount is read-only on compute nodes | write under `$HVANTK_WORK` |
 | `HTTP` or `URLError` during `reprocess` | compute node has no internet | stage on the login node; `--skip-download --no-check-drift` |
 | `is already initialized` from Hail | a second Hail start in one process | run one hvantk command per job |

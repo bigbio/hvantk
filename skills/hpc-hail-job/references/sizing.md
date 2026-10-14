@@ -13,7 +13,7 @@ once, then adjust.
 2. **Cores equal the allocation.** `local[<cpus-per-task>]`, never `local[*]` on a
    shared node. On an `--exclusive` node both are the same.
 3. **Scratch is node-local.** Spark spill and Hail temporary files go to the node's
-   local disk (`$SLURM_TMPDIR` on most sites), never to home or to the parallel
+   local disk (`$SLURM_TMPDIR` where the site sets it; otherwise `HVANTK_SCRATCH_ROOT` in the site profile), never to home or to the parallel
    filesystem.
 
 ## Starting points
@@ -34,7 +34,7 @@ once, then adjust.
 - `TIMEOUT`: the elapsed time is in `sacct -j <id> -X -o Elapsed,Timelimit`; ask for
   what it needed plus half. Hail does not write partial tables; a timeout wastes the
   whole run.
-- Slow but finishing: check the scratch was node-local (`SPARK_LOCAL_DIRS` in the log
+- Slow but finishing: check the scratch was node-local (the `scratch:` line of the job
   banner) before adding cores.
 
 ## What the template exports
