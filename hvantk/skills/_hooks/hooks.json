@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'hvantk/skills/_hooks/check-hail.sh'",
+            "command": "bash -lc '\"${CLAUDE_PLUGIN_ROOT:-.}/hvantk/skills/_hooks/check-hail.sh\"'",
             "async": false
           }
         ]
