@@ -159,7 +159,16 @@ def drift_cmd(
                 "--ledger cannot be combined with --all, --regenerate, --json, or a "
                 "dataset argument"
             )
-        stale = _stale_datasets(_load_ledger())
+        # Strict, like --mark-rebuilt and --regenerate: a lenient read turned a merge
+        # conflict or a wrong-shaped ledger into {}, so this used to report "no datasets
+        # pending rebuild" for a file the writers already refuse to touch. A missing
+        # file is still {} under strict=True, so a fresh checkout stays a clean sweep.
+        try:
+            ledger = drift_ledger.load_ledger(LEDGER_PATH, strict=True)
+        except drift_ledger.LedgerError as exc:
+            click.echo(str(exc), err=True)
+            raise SystemExit(EXIT_PROBE_FAILED)
+        stale = _stale_datasets(ledger)
         if not stale:
             click.echo("no datasets pending rebuild")
             return

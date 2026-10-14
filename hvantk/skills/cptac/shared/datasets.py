@@ -468,7 +468,7 @@ class CPTACPhosphoDataset:
         matrix_path = os.path.join(output_dir, f"cptac-phospho-{ct}-matrix.csv")
         metadata_path = os.path.join(output_dir, f"cptac-phospho-{ct}-metadata.csv")
 
-        if os.path.exists(tsv_path) and not overwrite:
+        if os.path.exists(tsv_path) and os.path.exists(metadata_path) and not overwrite:
             logger.info("Output files exist for %s, skipping", ct)
             return {
                 "tsv": tsv_path,

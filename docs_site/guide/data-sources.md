@@ -155,8 +155,8 @@ hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/expression_atlas
 
 # Download + build in one call (reprocess forwards --plugin-arg accession=... to the
-# download stage; the build stage ignores it and locates the two input files by name
-# within --raw-dir)
+# download stage; the build stage ignores it and locates the two input files within
+# --raw-dir)
 hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
   --output E-MTAB-6798.h5ad --plugin-arg accession=E-MTAB-6798
 ```
@@ -164,19 +164,18 @@ hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
 `reprocess` scopes the expression matrix to the accession named by the raw dir's SDRF
 file and raises if no TPM file matches it (an older raw dir's leftover file, or two
 downloads merged by hand, must not silently combine mismatched expression + metadata).
-Among that accession's files, it builds the **gene-level** matrix when exactly one is
-present — the common case for the unfiltered download above, since it fetches every
-file in the experiment's FTP directory and an experiment that ships a transcript-level
-TPM file usually ships the gene-level one too (confirmed live: E-MTAB-6798's directory
-has both). It falls back to the **transcript-level** matrix (`var` keyed by the
-transcript id) only when there is no gene-level candidate at all — several gene-level
-candidates raise rather than silently preferring the transcript-level file.
+The unfiltered download above fetches every file in the experiment's FTP directory, so
+the gene-level and the transcript-level TPM file can both be present. `reprocess` builds
+from the one whose columns are the SDRF's runs, or from the **gene-level** one when both
+qualify. For E-MTAB-6798 that is the **transcript-level** file (`var` keyed by the
+transcript id): its gene-level file has one column per assay group (`g1` … `g94`), not
+per run. It raises when no file has the runs as columns.
 
 A transcript-level build needs `--plugin-arg level=gene` to sum its values per gene and
 key `var` by the gene id instead — before the result can be used with
 `hvantk expression markers`/`summarize` or the PTM constraint expression loader, which
 read `var_names` as the gene id and refuse a transcript-keyed matrix. A gene-level build
-(the common case above) already works there without it. `hvantk annotate prepare`'s
+already works there without it. `hvantk annotate prepare`'s
 matrix source type refuses a transcript-keyed matrix too, but needs more than
 `level=gene` either way: it
 resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an Expression Atlas
@@ -188,9 +187,9 @@ there.
 Most of these sources need manual acquisition — too large, license-gated, or a fragile URL
 — and for those, follow the instructions below, place the raw file(s) in a per-source
 directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
-members of this section ship a downloader instead (gnomAD constraint, Ensembl gene
-annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho, INSIDER interfaces,
-the GWAS Catalog and the 1000 Genomes sample metadata); they are grouped here because
+members of this section ship a downloader instead (GeVIR, gnomAD constraint, Ensembl gene
+annotations, UniProt PTM sites, CPTAC phospho and expression, PeptideAtlas phospho,
+INSIDER interfaces, the GWAS Catalog and the 1000 Genomes sample metadata); they are grouped here because
 they carry a license, size, versioning or build-path caveat worth reading before relying
 on them.
 
@@ -327,7 +326,7 @@ hvantk reprocess ensembl-gene:structure \
   --skip-download
 ```
 
-### GeVIR (~1-2 MB)
+### GeVIR (~10 MB workbook)
 
 Gene-level intolerance-to-variation ranks (GeVIR and VIRLoF percentiles) for
 19,361 protein-coding genes, keyed by Ensembl gene_id. Not a variant-level

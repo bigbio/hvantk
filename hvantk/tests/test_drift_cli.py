@@ -199,9 +199,10 @@ def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(tmp_path, monkey
     assert drift_cli._load_ledger() == {}
 
 
-def test_ledger_flag_survives_a_truthy_non_dict_ledger_file(tmp_path, monkeypatch):
-    """`drift --ledger` against a ledger file containing a JSON list must exit 0 with
-    "no datasets pending rebuild" rather than crash calling `.items()` on a list."""
+def test_ledger_flag_also_refuses_a_truthy_non_dict_ledger_file(tmp_path, monkeypatch):
+    """`drift --ledger` against a ledger file containing a JSON list must refuse like
+    `--mark-rebuilt` does (exit 2, the reason on stderr), not silently report "no
+    datasets pending rebuild" for a file that is not a usable ledger."""
     from hvantk.tools.plugins import drift_cli
 
     ledger = tmp_path / "drift_ledger.json"
@@ -209,13 +210,11 @@ def test_ledger_flag_survives_a_truthy_non_dict_ledger_file(tmp_path, monkeypatc
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
 
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
+    assert result.exit_code == drift_cli.EXIT_PROBE_FAILED, result.output
+    assert "is not a JSON object" in result.stderr
 
-    assert result.exit_code == 0, result.output
-    assert "no datasets pending rebuild" in result.output
-
-    # A WRITER must not read it that way. --mark-rebuilt refuses with exit 2 -- not
-    # "dataset not in ledger", which a lenient read would claim -- and leaves the
-    # file untouched.
+    # A WRITER refuses it the same way -- not "dataset not in ledger", which a lenient
+    # read would claim -- and leaves the file untouched.
     marked = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "a:b"])
     assert marked.exit_code == drift_cli.EXIT_PROBE_FAILED, marked.output
     assert ledger.read_text() == "[1, 2, 3]"
@@ -406,7 +405,8 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     """The row has the bot's shape and tier; a re-run that changes nothing records
     nothing; a probe change records nothing; `--no-ledger-row` (what the bot passes)
     opts out; other rows survive; an unparseable ledger stops the run before anything
-    is rewritten."""
+    is rewritten -- and `--ledger` refuses the same file rather than reporting a clean
+    sweep over it."""
     from hvantk.tools.plugins import drift_cli
 
     _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
@@ -470,6 +470,13 @@ def test_regenerate_records_a_ledger_row_only_when_the_baseline_moved(
     assert "cannot be read as JSON" in output, output
     assert drift_cli.LEDGER_PATH.read_text() == conflicted
     assert json.loads(fp_path.read_text())["source_version"] == "fake-v0"
+
+    # --ledger must not paper over the same unreadable file with "nothing pending":
+    # a lenient read treated the conflict markers as an empty ledger and exited 0.
+    ledger_result = CliRunner().invoke(drift_cmd, ["--ledger"])
+    assert ledger_result.exit_code == drift_cli.EXIT_PROBE_FAILED, ledger_result.output
+    assert "cannot be read as JSON" in ledger_result.stderr
+    assert drift_cli.LEDGER_PATH.read_text() == conflicted
 
     # The ledger options qualify --regenerate only; alone they are a usage error.
     result = CliRunner().invoke(drift_cmd, ["--accepted-in", "PR #2", "fake:default"])

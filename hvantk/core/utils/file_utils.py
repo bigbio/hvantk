@@ -28,10 +28,11 @@ def download_file(url: str, out_dir: str, file_name: str):
     Validates that the file name does not contain path traversal components. Creates the output directory if it does not exist. Raises an exception if the download fails or if the file name is invalid.
 
     Delegates the transfer to ``hvantk.core.utils.http.stream_to_file``, which writes
-    through a sibling temp file and ``os.replace``s it into place only once the whole
-    body has arrived, so a failed, interrupted or short download leaves ``local_path``
-    as it was. A failure therefore must not delete ``local_path``: on a re-download it
-    still holds the previous good copy.
+    through a sibling temp file and never leaves a partial download at ``local_path``.
+    A failed download removes ``local_path`` (if present) before raising, so a refresh
+    that fails leaves nothing stale behind for a later build to pick up, and paired
+    downloads -- a VCF plus its ``.tbi``, a matrix plus its metadata -- never end up
+    mixing files from two different releases.
 
     Returns:
         str: The local filesystem path to the downloaded file on success.
@@ -51,6 +52,8 @@ def download_file(url: str, out_dir: str, file_name: str):
         return local_path
 
     except requests.exceptions.RequestException as e:
+        if os.path.exists(local_path):
+            os.remove(local_path)
         logger.exception(f"Failed to download {url}: {str(e)}")
         raise Exception(f"Failed to download {url}: {str(e)}")
 

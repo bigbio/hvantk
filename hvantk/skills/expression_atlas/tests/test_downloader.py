@@ -152,3 +152,66 @@ def test_download_file_with_retry_progress_bar(download_path, monkeypatch):
     # Verify FTP methods were called
     mock_ftp.voidcmd.assert_called_once_with("TYPE I")
     mock_ftp.size.assert_called_once_with("test_file.txt")
+
+
+def test_broken_transfer_fails_the_download_and_leaves_no_partial_file(
+    download_path, monkeypatch, caplog
+):
+    """A transfer that breaks off on every attempt fails the download.
+
+    Each attempt delivers half the file and then the connection resets. The
+    download must fail (``reprocess`` would otherwise build from half a TSV) and
+    leave nothing under the file's name, nor a temp file beside it.
+    """
+    name = "E-MTAB-6798-transcripts-tpms.tsv"
+    payload = b"x" * 1000
+
+    class FakeFTP:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+        def login(self):
+            pass
+
+        def set_pasv(self, value):
+            pass
+
+        def connect(self, host):
+            pass
+
+        def quit(self):
+            pass
+
+        def cwd(self, path):
+            pass
+
+        def nlst(self):
+            return [name]
+
+        def voidcmd(self, cmd):
+            pass
+
+        def size(self, remote_file):
+            return len(payload)
+
+        def retrbinary(self, cmd, callback):
+            callback(payload[: len(payload) // 2])
+            raise ConnectionResetError("connection reset by peer")
+
+    monkeypatch.setattr(expression_atlas_downloader.ftplib, "FTP", FakeFTP)
+    monkeypatch.setattr(expression_atlas_downloader.time, "sleep", lambda s: None)
+
+    with pytest.raises(SystemExit):
+        expression_atlas_downloader.download_dataset(
+            raw_dir=download_path, accession="E-MTAB-6798"
+        )
+
+    assert f"Failed to download {name} after 3 attempts" in caplog.text
+    assert not os.path.exists(os.path.join(download_path, name))
+    assert os.listdir(download_path) == []
