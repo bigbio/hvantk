@@ -26,6 +26,7 @@ from hvantk.skills.clingen.shared.constants import (
     CLINGEN_GENE_DISEASE_FIELDS,
 )
 from hvantk.core.utils.hail_helpers import cleanup_temp_file
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.core.utils.table_utils import (
     get_row_fields,
     strip_curie_prefix,
@@ -34,6 +35,13 @@ from hvantk.core.utils.table_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# clingen declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
+# download directory (see resolve_raw_file). The downloader writes
+# <prefix>-<date>.csv; the committed test fixture is also a .csv. `latest_dated=True`
+# below: a second day's download leaves yesterday's dated file next to today's, so
+# resolve_raw_file picks the latest instead of raising "found 2" on every refresh.
+_RAW_FILE_PATTERNS = ("*.csv",)
 
 
 def build_clingen_gene_disease(
@@ -60,7 +68,10 @@ def build_clingen_gene_disease(
     # Preprocess CSV (skip metadata + separator rows; isolate the GENE SYMBOL header)
     tmp_path = hl.utils.new_temp_file(prefix="clingen_", extension=".csv")
     try:
-        with hl.hadoop_open(str(parsed_input), "r") as f:
+        source_path = resolve_raw_file(
+            parsed_input, patterns=_RAW_FILE_PATTERNS, latest_dated=True
+        )
+        with hl.hadoop_open(source_path, "r") as f:
             with hl.hadoop_open(tmp_path, "w") as out:
                 found_header = False
                 for line in f:
@@ -74,7 +85,7 @@ def build_clingen_gene_disease(
                     out.write(line)
                 if not found_header:
                     raise RuntimeError(
-                        f'ClinGen header "GENE SYMBOL" not found in {parsed_input}'
+                        f'ClinGen header "GENE SYMBOL" not found in {source_path}'
                     )
 
         ht = hl.import_table(

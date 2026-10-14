@@ -6,41 +6,20 @@ TSV keyed by ``gene_id`` and wraps with Provenance.
 
 from __future__ import annotations
 
-import glob
 import logging
-import os
 
 import hail as hl
 
+from hvantk.core.utils.raw_inputs import resolve_raw_file
+
 logger = logging.getLogger(__name__)
 
-
-def _resolve_gevir_path(parsed_input) -> str:
-    """Resolve the builder's input to the GeVIR table file itself.
-
-    gevir declares no ``lifecycle.parse``, so ``hvantk reprocess`` hands the builder the raw
-    *directory* (reprocess forwards ``raw_dir`` verbatim as ``parsed_input`` for no-parse
-    datasets), not the file inside it. ``hl.import_table`` cannot read a directory, so resolve
-    a directory to the single raw file it contains. A path that already points at a file is
-    returned unchanged, which keeps the direct ``build(<file>)`` calls (tests, snapshots)
-    working. The GeVIR catalog does not reliably name the file, so glob for the one file
-    rather than joining a fixed name (this is why it differs from structure's
-    ``_resolve_gtf_path``).
-    """
-    path = str(parsed_input)
-    if not os.path.isdir(path):
-        return path
-    candidates = sorted(
-        f
-        for f in glob.glob(os.path.join(path, "*"))
-        if os.path.isfile(f) and not os.path.basename(f).startswith(".")
-    )
-    if len(candidates) != 1:
-        raise ValueError(
-            f"expected exactly one raw file in directory {path!r}, found "
-            f"{len(candidates)}: {[os.path.basename(c) for c in candidates]}"
-        )
-    return candidates[0]
+# gevir declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
+# download directory (see resolve_raw_file). The downloader writes
+# gevir_metrics_pmid31873297.tsv.bgz; the committed fixture directory also holds a
+# README.md alongside its (differently-named but same-extension) .tsv.bgz fixture, so
+# the pattern must pick the data file out and leave the README behind.
+_RAW_FILE_PATTERNS = ("*.tsv.bgz",)
 
 
 def build_gevir_metrics(
@@ -67,7 +46,7 @@ def build_gevir_metrics(
     fields = params.get("fields", None)
 
     ht = hl.import_table(
-        paths=_resolve_gevir_path(parsed_input),
+        paths=resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         impute=True,
         min_partitions=100,
         key="gene_id",

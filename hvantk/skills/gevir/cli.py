@@ -538,8 +538,8 @@ def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
     ``download_fn`` accepts ``raw_dir=<path>`` and writes the raw upstream
     file(s) under that directory. gevir declares no ``lifecycle.parse``, so
     the single file written here (``GEVIR_RAW_FILENAME``) is handed straight
-    to the builder via ``_resolve_gevir_path`` (``hvantk/skills/gevir/
-    builder.py``), mirroring ``hgnc``.
+    to the builder via the shared ``resolve_raw_file``
+    (``hvantk/core/utils/raw_inputs.py``), mirroring ``hgnc``.
 
     Parameters
     ----------

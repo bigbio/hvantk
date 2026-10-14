@@ -14,8 +14,15 @@ import hail as hl
 
 from hvantk.core.utils.table_utils import get_row_fields
 from hvantk.core.utils.file_utils import resolve_compression
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 
 logger = logging.getLogger(__name__)
+
+# dbnsfp is bring-your-own (size: ~45 GB), so `hvantk reprocess` hands this builder the
+# raw directory the user placed the combined BGZF file in (see resolve_raw_file). The
+# data-sources.md-documented pre-processing step always produces a `.bgz`; the
+# committed fixture is also a .bgz.
+_RAW_FILE_PATTERNS = ("*.bgz",)
 
 
 def build_dbnsfp_variants(
@@ -32,7 +39,9 @@ def build_dbnsfp_variants(
     Parameters
     ----------
     parsed_input : str | Path
-        Path to the dbNSFP TSV/BGZ input file.
+        Path to the dbNSFP TSV/BGZ input file, or the raw directory holding it --
+        dbnsfp is bring-your-own, so ``hvantk reprocess`` hands the builder the raw
+        directory as-is; ``resolve_raw_file`` picks the one ``.bgz`` out of it.
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
     **params
@@ -52,9 +61,10 @@ def build_dbnsfp_variants(
     group_prefixes = params.get("group_prefixes", None)
     auto_convert_bgz = params.get("auto_convert_bgz", False)
 
-    # Resolve compression: detect gz vs bgzf, optionally convert
+    # Resolve a raw directory to the single bgz file it holds (no lifecycle.parse), then
+    # detect gz vs bgzf, optionally converting.
     input_path_resolved, force_bgz = resolve_compression(
-        str(parsed_input),
+        resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         force_bgz=force_bgz,
         auto_convert=auto_convert_bgz,
     )

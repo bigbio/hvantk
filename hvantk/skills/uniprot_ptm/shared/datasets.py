@@ -176,10 +176,12 @@ def _fetch_json(url: str) -> tuple:
         import json
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         req = urllib.request.Request(
             url, headers={"Accept": "application/json", "User-Agent": "hvantk/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=120, context=tls_context()) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data, resp
 
@@ -386,6 +388,8 @@ def get_available_versions() -> List[str]:
     try:
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         test_url = _build_search_url(
             UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1
         )
@@ -397,7 +401,7 @@ def get_available_versions() -> List[str]:
             headers={"User-Agent": "hvantk/1.0"},
         )
 
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=30, context=tls_context()) as response:
             if response.status == 200:
                 today = datetime.now().strftime("%Y-%m-%d")
                 logger.info(

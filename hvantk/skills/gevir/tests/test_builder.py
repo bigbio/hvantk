@@ -24,6 +24,10 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
+# The exact patterns `build_gevir_metrics` passes the shared `resolve_raw_file`
+# (hvantk/core/utils/raw_inputs.py), used by the tests below.
+from hvantk.skills.gevir.builder import _RAW_FILE_PATTERNS
+
 FIXTURE = "hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297-synthetic.tsv.bgz"
 SNAPSHOT_DIR = Path("hvantk/skills/gevir/tests/snapshots")
 
@@ -74,27 +78,30 @@ def test_gevir_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots)
 
 
 def test_resolve_gevir_path_returns_a_file_unchanged(tmp_path):
-    from hvantk.skills.gevir.builder import _resolve_gevir_path
+    from hvantk.core.utils.raw_inputs import resolve_raw_file
 
     f = tmp_path / "gevir.tsv"
     f.write_text("gene_id\n")
-    assert _resolve_gevir_path(str(f)) == str(f)
+    assert resolve_raw_file(str(f), patterns=_RAW_FILE_PATTERNS) == str(f)
 
 
 def test_resolve_gevir_path_resolves_a_directory_to_its_single_file(tmp_path):
-    from hvantk.skills.gevir.builder import _resolve_gevir_path
+    from hvantk.core.utils.raw_inputs import resolve_raw_file
 
     f = tmp_path / "gevir_metrics_pmid31873297.tsv.bgz"
     f.write_bytes(b"x")
-    assert _resolve_gevir_path(str(tmp_path)) == str(f)
+    # A README committed alongside the real fixture (as in the shipped fixture
+    # directory) must not count as a candidate.
+    (tmp_path / "README.md").write_text("not data")
+    assert resolve_raw_file(str(tmp_path), patterns=_RAW_FILE_PATTERNS) == str(f)
 
 
 def test_resolve_gevir_path_raises_when_a_directory_is_ambiguous(tmp_path):
     import pytest
 
-    from hvantk.skills.gevir.builder import _resolve_gevir_path
+    from hvantk.core.utils.raw_inputs import resolve_raw_file
 
-    (tmp_path / "a.tsv").write_text("x")
-    (tmp_path / "b.tsv").write_text("y")
-    with pytest.raises(ValueError, match="exactly one raw file"):
-        _resolve_gevir_path(str(tmp_path))
+    (tmp_path / "a.tsv.bgz").write_text("x")
+    (tmp_path / "b.tsv.bgz").write_text("y")
+    with pytest.raises(ValueError, match="expected exactly one file matching"):
+        resolve_raw_file(str(tmp_path), patterns=_RAW_FILE_PATTERNS)

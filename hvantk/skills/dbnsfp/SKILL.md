@@ -58,7 +58,7 @@ The schema snapshot is the source of truth: `hvantk/skills/dbnsfp/tests/snapshot
 - Plugin manifest: `hvantk/skills/dbnsfp/plugin.yaml`. Resolved as `get_registry().get_dataset("dbnsfp:variants")`; drives `hvantk drift dbnsfp:variants`.
 - Builder: `build_dbnsfp_variants` in `hvantk/skills/dbnsfp/builder.py`, signature `(parsed_input, ctx, **params) -> AnnotationTable`. Params: `reference_genome` (default `"GRCh38"`), `min_partitions` (200), `force_bgz` (True), `parse_transcript_scores` (True), `group_prefixes` (list of str), `auto_convert_bgz` (False).
 - CLI: `hvantk reprocess dbnsfp:variants --raw-dir <dir> --output <out>.ht [--plugin-arg reference_genome=GRCh38]`. Builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
-- Helpers used: `resolve_compression` (`hvantk/core/utils/file_utils.py`), `get_row_fields` (`hvantk/core/utils/table_utils.py`).
+- Helpers used: `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`, pattern `*.bgz` -- dbnsfp has no `lifecycle.parse`, so `hvantk reprocess` hands the builder the raw directory as-is), `resolve_compression` (`hvantk/core/utils/file_utils.py`), `get_row_fields` (`hvantk/core/utils/table_utils.py`).
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/dbnsfp/drift_probe.py` (see § 8).
 - Training provenance: the `scores:` block in `plugin.yaml` (see § 10).
 - Downstream consumers (read-only): `hvantk/algorithms/psroc/`, `hvantk/algorithms/rerank/`. The shared fixture is also read by `hvantk/tests/test_plugin_conformance.py` and a psroc integration test.

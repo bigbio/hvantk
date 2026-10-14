@@ -14,7 +14,14 @@ from hvantk.skills.hgnc.shared.constants import (
     HGNC_GENE_FIELDS,
     HGNC_PIPE_SEPARATED_FIELDS,
 )
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.core.utils.table_utils import get_row_fields
+
+# hgnc declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
+# download directory (see resolve_raw_file). The real downloader writes
+# hgnc_complete_set.txt; the committed test fixture is a differently-named .tsv -- both
+# patterns are needed so a real raw dir and the fixture dir resolve alike.
+_RAW_FILE_PATTERNS = ("*.txt", "*.tsv")
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +99,7 @@ def build_hgnc_gene_lookup(
     from hvantk.core.models import AnnotationTable
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         impute=False,
         min_partitions=10,
         missing="",
