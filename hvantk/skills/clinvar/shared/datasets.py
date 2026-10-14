@@ -31,6 +31,7 @@ from hvantk.skills.clinvar.shared.constants import (
     CLINVAR_FTP_BASE_GRCh37,
 )
 from hvantk.core.utils.file_utils import download_file
+from hvantk.core.utils.http import tls_context
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +182,9 @@ class ClinVarDataset:
 
         try:
             req = urllib.request.Request(md5_url, headers={"User-Agent": "hvantk/1.0"})
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(
+                req, timeout=30, context=tls_context()
+            ) as response:
                 md5_content = response.read().decode("utf-8").strip()
         except Exception as e:
             raise RuntimeError(f"Failed to fetch MD5 checksum: {e}") from e

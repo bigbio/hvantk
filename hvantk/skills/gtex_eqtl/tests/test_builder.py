@@ -34,6 +34,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("gtex-eqtl:eqtls")
 @pytest.mark.hail
 def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GTEx v11 eQTL from Liver fixture; assert schema and sample-row stability."""
@@ -71,3 +72,23 @@ def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
     assert actual_rows == expected_rows, "GTEx eQTL sample rows drifted from snapshot"
+
+
+def test_eqtlgen_imports_the_file_inside_its_raw_directory(tmp_path, monkeypatch):
+    """`hvantk reprocess` hands the builder the raw directory; eQTLGen must import
+    the one file inside it, not the directory (Hail fails on a directory)."""
+    from hvantk.skills.gtex_eqtl import builder
+
+    eqtlgen = tmp_path / "cis-eQTLs_full.txt.gz"
+    eqtlgen.write_bytes(b"")
+    (tmp_path / "README.md").write_text("where the file came from")
+    imported = []
+
+    def _stop_at_import(path, **kwargs):
+        imported.append(path)
+        raise RuntimeError("stop after the import")
+
+    monkeypatch.setattr(builder.hl, "import_table", _stop_at_import)
+    with pytest.raises(RuntimeError, match="stop after the import"):
+        builder._import_eqtlgen(str(tmp_path), "GRCh38")
+    assert imported == [str(eqtlgen)]

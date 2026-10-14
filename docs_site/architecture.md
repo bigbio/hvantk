@@ -9,7 +9,7 @@ strict one-way dependency rule enforced by
 [`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
 <p align="center">
-  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ imports skills/, algorithms/ and core/; skills/ and algorithms/ import only core/ and never each other; resources/ sits at the substrate level alongside core/. Imports never flow upward." width="860">
 </p>
 
 `resources/` is a peer of `core/` (not a layer above it): both are
@@ -23,13 +23,13 @@ full rule.
 
 Design priorities:
 
-1. **Stable contracts** — algorithms consume typed artifacts; source adapters can
+1. **Stable contracts** — algorithms consume datasets; source adapters can
    rot when upstream APIs change without breaking analysis code.
 2. **Manifest-driven** — plugins declare themselves via `plugin.yaml`; the loader
    discovers descriptively first (no imports), binds executable callables lazily.
-3. **Provenance everywhere** — every artifact carries a `Provenance` (plugin,
+3. **Provenance everywhere** — every dataset carries a `Provenance` (plugin,
    version, source fingerprint, schema id, build timestamp, derivation parents).
-4. **Backend-portable + native escape hatch** — the artifact API works on either
+4. **Backend-portable + native escape hatch** — the dataset API works on either
    Hail or pandas; algorithms that legitimately need raw Hail use
    `core_io.load_native` / `save_native` (zero-cost passthrough with provenance).
 
@@ -41,13 +41,13 @@ hvantk/
 │
 ├── core/                  # L1: Core infrastructure
 │   ├── config.py          # Configuration management
-│   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
+│   ├── io/                # Dataset load/save (Hail Tables, AnnData, etc.)
 │   ├── tool/              # tool manifest discovery (descriptive)
 │   ├── models/            # Domain model types
-│   │   ├── annotation_table.py  # AnnotationTable artifact
-│   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
-│   │   ├── variant_matrix.py    # VariantMatrix artifact (Hail MatrixTable)
-│   │   ├── gene_set.py          # GeneSet artifact
+│   │   ├── annotation_table.py  # AnnotationTable dataset type
+│   │   ├── expression_matrix.py # ExpressionMatrix dataset type (AnnData-only)
+│   │   ├── variant_matrix.py    # VariantMatrix dataset type (Hail MatrixTable)
+│   │   ├── gene_set.py          # GeneSet dataset type
 │   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
 │   │   ├── build_context.py     # BuildContext passed to plugin builders
 │   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
@@ -56,7 +56,8 @@ hvantk/
 │   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
 │   │   ├── run_builder.py # run_builder_for_spec() — build orchestrator
-│   │   └── drift_runner.py# Drift probe execution
+│   │   ├── drift_runner.py# Drift probe execution
+│   │   └── drift_ledger.py# Rebuild-ledger rows (shared by drift --regenerate and the drift bot)
 │   ├── utils/             # Cross-cutting utilities
 │   │   ├── hail_context.py   # Idempotent Hail init
 │   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
@@ -128,7 +129,7 @@ hvantk/
 ├── resources/             # Data catalog and schemas
 │   ├── schemas/           # JSON schema definitions
 │   ├── ensembl_release.py # pinned Ensembl release / GTF URL
-│   ├── drift_ledger.json  # committed drift fingerprints
+│   ├── drift_ledger.json  # rebuild ledger: one row per accepted fingerprint bump
 │   └── unified_registry.py# Aggregates the per-plugin catalog/datasets.json files
 │
 └── tests/                 # Test suite
@@ -150,7 +151,7 @@ The codebase is organized by function and biological domain:
 **Data Builders** (`skills/<provider>/builder.py`):
 - Each plugin under `hvantk/skills/` owns its plugin builder
   (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
-  `ExpressionMatrix`, `VariantMatrix`, or `GeneSet` artifacts, stamped
+  `ExpressionMatrix`, `VariantMatrix`, or `GeneSet` datasets, stamped
   with `Provenance` by the platform via `run_builder_for_spec`.
 - `hvantk reprocess <provider>:<dataset>` is the **only** public build
   path. There is no separate programmatic API; in-process callers that
@@ -176,24 +177,24 @@ The codebase is organized by function and biological domain:
 - **Proteins** - Keyed by `protein_id` or `interval`
 - **Expression** - AnnData matrices (`.h5ad`) with rows=samples/cells (`obs`), columns=genes (`var`)
 
-### 2. Artifact Contract
+### 2. Dataset Contract
 
-Every data product is one of three semantic artifact types in
+Every data product is one of four dataset types in
 [`hvantk/core/models/`](https://github.com/bigbio/hvantk/tree/main/hvantk/core/models):
 
-| Artifact | Backends | On-disk format | Used for |
+| Dataset type | Backends | On-disk format | Used for |
 |---|---|---|---|
 | `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
 | `ExpressionMatrix` | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
 | `VariantMatrix` | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |
 
-Each artifact carries a `Provenance` record (plugin, version, source
+Each dataset carries a `Provenance` record (plugin, version, source
 fingerprint, schema id, build timestamp, derivation `parents`). The
-`@algorithm` decorator chains input provenances onto output artifacts
+`@algorithm` decorator chains input provenances onto output datasets
 automatically, so the build graph is preserved end-to-end.
 
-Artifacts expose a **portable query API** (`filter`, `select`, `join`,
+`AnnotationTable` exposes a **portable query API** (`filter`, `select`, `join`,
 `with_columns`, `group_by().agg()`) via the [`col(...)`](https://github.com/bigbio/hvantk/blob/main/hvantk/core/models/_expr.py)
 expression DSL compiled to either backend at execution time. Algorithms
 can be written backend-agnostically:
@@ -222,7 +223,7 @@ core_io.save_native(filtered, "filtered.ht", provenance=Provenance(
 ### 3. Plugin Contract — adding a data source
 
 Each plugin under `hvantk/skills/<plugin>/` declares itself via `plugin.yaml`
-and provides a builder that returns a typed artifact. The platform's
+and provides a builder that returns a dataset. The platform's
 `run_builder_for_spec` orchestrates the build:
 
 ```mermaid
@@ -241,7 +242,7 @@ sequenceDiagram
     CLI->>Build: (parsed_input, ctx, **params)
     Build-->>CLI: AnnotationTable(provenance=ctx.provenance(schema_id=…))
     CLI->>CLI: validate artifact_type + schema_id
-    CLI->>IO: artifact.save(path)
+    CLI->>IO: dataset.save(path)
     IO-->>IO: write data + sidecar .provenance.json
 ```
 
@@ -311,6 +312,17 @@ The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
 
 Downloader CLI commands are wired automatically from the manifest's `cli:`
 block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
+A `cli:` entry whose module does not import is left out of `hvantk download`
+and reported by `hvantk plugins errors` as a `cli:<command>` row, whether or not
+`hvantk download` has run; so is an entry that repeats a command name already
+declared in the same manifest or by another provider, which is refused at load. `hvantk drift` ignores those rows: they describe a
+command, and a dataset that fails along with it has a row of its own.
+
+Of the `hvantk plugins` commands, only `errors` signals load failures through its
+exit code: it exits 1 when it lists anything. `list` and `describe` are
+informational and exit 0 when some units failed to load — `list` prints a one-line
+summary on stderr and `describe` marks a dataset `FAILED TO LOAD` — and `describe`
+exits 1 only for a provider that is unknown or failed to load as a whole.
 
 ### Streamer placement rule
 
@@ -391,7 +403,7 @@ annotated = variants.annotate(
 - `constants.py` - Shared constants (e.g., Ensembl field definitions)
 - `utils/hail_context.py` - Hail session initialization and management
 - `protocols.py` - Protocol definitions for extensibility
-- `models/` - Domain artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`)
+- `models/` - Domain dataset types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`)
 - `plugin/` - Plugin schema (`api.py`), discovery (`loader.py`), and builder dispatch (`run_builder.py`)
 
 **Design principle**: No domain logic, only infrastructure
@@ -450,7 +462,7 @@ Peer of `core/`, not a layer above it.
 | `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
 | `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON declared via each plugin's `plugin.yaml`. |
 | `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
-| `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
+| `core/models/` | Dataset types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
 
 **Dependency direction**: `resources/` may be imported by `algorithms/`,
 `skills/`, and `tools/`. It must NOT import from any of those — like
@@ -488,10 +500,15 @@ checklist:
 3. CLI downloader command is wired from the manifest's `cli:` block.
 4. Add a conformance test using the `run_builder_for_spec` orchestrator
    (see `hvantk/tests/test_plugin_conformance.py` for the template), and a
-   round-trip test named `test_*round_trip*`, with no `skip`/`skipif` marker
-   and marked `hail` for a `backend: hail` dataset
-   (`hvantk/tests/test_plugin_contract_artifacts.py` checks this).
-5. Run `hvantk plugins list` — your plugin should appear.
+   round-trip test tagged `@pytest.mark.round_trip("<provider>:<dataset>")`
+   (one id per collected test item), with no `skip`/`skipif` marker and
+   marked `hail` for a `backend: hail` dataset
+   (`hvantk/tests/test_plugin_contract_artifacts.py` replays the manifest's
+   `tests.command` to check this; `--require-round-trips` also fails a run
+   on a real skip/xfail that collection cannot see).
+5. Run `hvantk plugins list` — your plugin should appear — and
+   `hvantk plugins errors`, which exits 1 if anything failed to load (`list`
+   exits 0 regardless).
 
 See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 
@@ -512,7 +529,7 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
        ...
    ```
 3. The decorator handles provenance chaining automatically. Output
-   artifacts inherit `parents = (data.provenance, gene_set.provenance)`.
+   datasets inherit `parents = (data.provenance, gene_set.provenance)`.
 4. For Hail-native algorithms, declare `required_backend="hail"` and use
    `core_io.load_native` to read inputs natively.
 

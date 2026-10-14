@@ -12,9 +12,16 @@ import logging
 
 import hail as hl
 
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.core.utils.table_utils import str_to_bool
 
 logger = logging.getLogger(__name__)
+
+# gwas-catalog declares no lifecycle.parse, so `hvantk reprocess` hands the builder the
+# raw download directory (see resolve_raw_file). The downloader extracts
+# gwas-catalog-download-associations-v1.0-full.tsv; the committed test fixture is also a
+# .tsv. Fixes #388.
+_RAW_FILE_PATTERNS = ("*.tsv",)
 
 
 # Map from raw GWAS Catalog v1.0 column names (whitespace + slash + brackets)
@@ -66,15 +73,16 @@ def build_gwas_catalog_associations(
     """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT).
 
-    Two filters drop rows the schema cannot express cleanly (skill judgment
-    calls #2 + #3): ``STRONGEST SNP-RISK ALLELE`` ending in ``-?`` (no risk
-    allele recorded) and non-canonical ``CHR_ID`` (multi-chromosome /
-    haplotype associations).
+    ``parsed_input`` may be the TSV file itself or the directory containing it
+    (see ``resolve_raw_file``). Two filters drop rows the schema cannot
+    express cleanly (skill judgment calls #2 + #3): ``STRONGEST SNP-RISK
+    ALLELE`` ending in ``-?`` (no risk allele recorded) and non-canonical
+    ``CHR_ID`` (multi-chromosome / haplotype associations).
     """
     from hvantk.core.models import AnnotationTable
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         delimiter="\t",
         quote=None,
         missing="",

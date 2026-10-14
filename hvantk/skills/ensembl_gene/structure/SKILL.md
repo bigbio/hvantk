@@ -116,7 +116,7 @@ Input is a standard Ensembl GTF: tab-separated, 9 columns
   resolves a directory input to `<dir>/<ENSEMBL_GTF_FILENAME>` (the name the downloader
   writes) and returns a file-path input unchanged. This matters because
   `parse_gtf_structure` opens its input with plain `open()`/`gzip.open()`, which raises
-  `IsADirectoryError` on a directory -- unlike `hl.import_table`, which tolerates one
+  `IsADirectoryError` on a directory, as `hl.import_table` fails on one too
   (`builder.py`'s `_resolve_gtf_path` docstring).
 
 ## 5. Output contract
@@ -162,9 +162,9 @@ DataFrame to `gene_biotype == "protein_coding"` rows before the Hail Table is bu
 - **Downloader:** `download_dataset(raw_dir, **params)` / Click command `download_cmd`
   in `hvantk/skills/ensembl_gene/structure/cli.py`, wired via `plugin.yaml`'s
   `lifecycle.download` and the `cli:` block (command `ensembl-structure-download`).
-  Fetches `ENSEMBL_GTF_URL` into `raw_dir/ENSEMBL_GTF_FILENAME` via
-  `urllib.request.urlretrieve`; skips the download if the target already exists unless
-  `--overwrite` is passed.
+  Fetches `ENSEMBL_GTF_URL` into `raw_dir/ENSEMBL_GTF_FILENAME` via the shared
+  `stream_to_file` (`hvantk/core/utils/http.py`); skips the download if the target
+  already exists unless `--overwrite` is passed.
 - **Drift probe:** `fetch_fingerprint` in
   `hvantk/skills/ensembl_gene/structure/drift_probe.py`, `PROBE_VERSION = 2`. HEADs
   `ENSEMBL_GTF_URL` (no payload download -- the docstring notes the GTF is ~64 MB; note `catalog/datasets.json` records `size_bytes: 800000000` for the same file, so one of the two is wrong and neither should be trusted for capacity planning) and
@@ -235,8 +235,11 @@ upstream under the same release.
    `hvantk download ensembl-structure --raw-dir <dir> --overwrite`, then
    `hvantk reprocess ensembl-gene:structure --raw-dir <dir> --output <out>.ht` end to end.
 5. **Regenerate the committed drift baseline,**
-   `structure/tests/drift_fingerprint.json`, once the change is validated -- not silently
-   in the same PR as a behavioural change (`_conventions` § 12).
+   `structure/tests/drift_fingerprint.json`, with
+   `hvantk drift --regenerate ensembl-gene:structure --accepted-in "PR #N"` once the change
+   is validated -- not silently in the same PR as a behavioural change -- and commit the
+   rebuild-ledger row it records with it (none for a `probe_version` change;
+   `_conventions` § 12).
 6. **Re-run both pin tests:**
    `hvantk/skills/ensembl_gene/tests/test_release_pin.py` and
    `hvantk/tests/test_ensembl_release_pin.py`. The second fails if
@@ -277,3 +280,5 @@ Hail-free, cross-checks `hvantk.algorithms.ptm.constants`).
 > an intentional schema change with
 > `pytest hvantk/skills/ensembl_gene/structure/tests/test_builder.py -m hail --regenerate-snapshots`,
 > then commit the result.
+
+The fixture is synthetic: a hand-authored `mini.gtf` with invented gene/transcript IDs (`ENSG00000000001`, …), not a real Ensembl GTF excerpt. No `THIRD_PARTY_DATA.md` entry applies.

@@ -318,11 +318,13 @@ class TestClinVarDownloaderNetwork:
         """Test that the latest ClinVar VCF URL is reachable (HEAD request)."""
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         ds = ClinVarDataset.latest()
         req = urllib.request.Request(
             ds.download_url,
             method="HEAD",
             headers={"User-Agent": "hvantk/1.0"},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30, context=tls_context()) as resp:
             assert resp.status == 200

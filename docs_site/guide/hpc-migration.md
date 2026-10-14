@@ -101,7 +101,7 @@ echo $HOME; df -h $HOME            # home quota (code only)
 # project/work + scratch paths & quotas are site-specific (check docs / `quota`)
 which apptainer || which singularity
 apptainer build --fakeroot --help 2>&1 | head -1   # is --fakeroot allowed?
-java -version                      # default Java — MUST be 8 or 11 for Hail
+java -version                      # default Java — MUST be 11 for Hail
 ```
 
 Note the **scratch path** (often `/scratch/$USER` or `/lscratch/$SLURM_JOB_ID`),
@@ -119,8 +119,8 @@ The repo's `poetry.lock` encodes a tested triad: Hail **0.2.137** + pyspark
 `hvantk/core/utils/hail_context.py` that Hail 0.2.x needs under NumPy 2). Build from
 the lock; do not regenerate or loosen it. And:
 
-> **Java 11, not 17.** Hail 0.2.137 / Spark 3.5 (Scala 2.12) support **Java 8 or 11
-> only**. HPC `module load java` frequently defaults to 17/21, which breaks Hail.
+> **Java 11, not 17.** Hail 0.2.137 is built and tested with **Java 11 only** and warns
+> on any other version. HPC `module load java` frequently defaults to 17/21, which breaks Hail.
 > Bake Java 11 into the container so the host's Java module is irrelevant.
 
 ### 3.2 `hvantk.def` (build from the locked environment)
@@ -135,8 +135,8 @@ Two choices in it are load-bearing and must not be "modernised" without re-valid
 - **Base image is `python:3.10-slim-bullseye`, not bookworm.** Debian 12 (bookworm) has
   no `openjdk-11` package at all — `apt-get install openjdk-11-jdk-headless` fails with
   *"Package 'openjdk-11-jdk-headless' has no installation candidate … the following
-  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.x / Spark 3.5 support Java 8
-  or 11 **only**, so a bookworm base either fails the build or silently gives you
+  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.137 supports Java 11
+  **only**, so a bookworm base either fails the build or silently gives you
   Java 17. Debian 11 (bullseye) ships `openjdk-11-jdk-headless` (11.0.32.1).
 - **Extras include `expression`.** The set
   `hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression`
@@ -320,7 +320,7 @@ explicitly. Split it by action rather than copying it wholesale.
 | **Skip** (redundant) | uncompressed `.tsv` where a `.bgz` exists; raw dumps that a built `.h5ad` supersedes; duplicate `.gz` next to `.bgz` | don't copy |
 
 Net effect: physically move the experiment state and gated sources, refetch public
-bulk on the cluster, regenerate derived artifacts, and avoid copying redundancy.
+bulk on the cluster, regenerate derived datasets, and avoid copying redundancy.
 Globus is fast enough that transferring what you already have is often simpler than
 re-deriving it — decide per-subtree.
 
@@ -421,7 +421,7 @@ launching at scale.
   `poetry.lock` hash; a given `hvantk.sif` reproduces the exact Hail/numpy/native
   stack. Re-derive the image only by re-running `apptainer build` against the same
   lock.
-- **hvantk stamps provenance** on every artifact (`ctx.provenance(...)`) and has
+- **hvantk stamps provenance** on every dataset (`ctx.provenance(...)`) and has
   `hvantk drift` for source fingerprints — keep using both on-cluster so results
   carry their input lineage.
 - Treat scratch as ephemeral; the **project copy of outputs + the `.sif` + the git

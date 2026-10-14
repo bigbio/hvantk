@@ -22,12 +22,18 @@ def build_uniprot_ptm_sites(
     reference_genome: str = "GRCh38",
     flanking_codons: int = 5,
     fields=None,
+    overwrite: bool = False,
 ):
     """Plugin builder — returns an AnnotationTable.
 
     Reads the mapped PTM sites TSV (output of
     hvantk.algorithms.ptm.pipeline.map_ptm_sites) and wraps the lazy Hail Table
     with Provenance.
+
+    ``hvantk reprocess`` forwards every ``--plugin-arg`` to all three stages of
+    ``uniprot-ptm:sites``, so the builder also names the download stage's
+    ``overwrite`` and ignores it (the platform writes the output). It is named rather
+    than swallowed by ``**kwargs``, so a misspelt ``--plugin-arg`` still fails.
     """
     from hvantk.core.models import AnnotationTable
 

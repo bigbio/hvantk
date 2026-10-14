@@ -54,7 +54,9 @@ The builder returns an `ExpressionMatrix` wrapping an `AnnData`; the platform pe
 - CLI: `hvantk reprocess ucsc-cellbrowser:<dataset> --raw-dir <dir> --output <path>.h5ad` (dataset is one of `default`, `adult-ctx`, `dev-ctx`). Builder kwargs flow through `--plugin-arg key=value`.
 - Registry: the plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves each dataset from the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml` via `get_registry().get_dataset("ucsc-cellbrowser:<dataset>")` (one of `default`, `adult-ctx`, `dev-ctx`). Top-level builds run through `run_builder_for_spec` in `hvantk/core/plugin/run_builder.py`. There is no `MATRIX_BUILDERS` registry or `registry.py`.
 - Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.
-- Drift probe: `fetch_fingerprint` in `hvantk/skills/ucsc_cellbrowser/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift ucsc-cellbrowser:default` (see § 12 of `_conventions`).
+- Drift probes: one per dataset in `hvantk/skills/ucsc_cellbrowser/drift_probe.py`, each with its own baseline (§ 9), checked by `hvantk drift ucsc-cellbrowser:<dataset>` (see § 12 of `_conventions`). The module docstring is the full design (#396); in short:
+  - `fetch_adult_ctx_fingerprint` / `fetch_dev_ctx_fingerprint` fingerprint the pinned parent collection (`adult-ctx-meta-atlas` grouped by `Class`, `dev-ctx-meta-atlas` grouped by `Type.v2`; § 4). Under `headers`: the parent `meta.tsv` header row (one ranged GET), and the grouping column's labels, from the parent's own `dataset.json`, that `hvantk expression summarize-ucsc` keeps as rows, i.e. this dataset's `obs` rows. The labels go through the same two filters as `summarize_ucsc_streaming`: a label that pandas' `read_csv` defaults read as missing is dropped (pandas itself decides, so `NA` goes and `na` stays), and so is a group below `SUMMARIZE_MIN_CELLS_PER_GROUP` cells (the `--min-cells` default, shared from `shared/constants.py`). The cortex derivations are not scripted and record no cut-off of their own, so the default applies. That yields the 19 `Class` rows and the 15 `Type.v2` rows of the fixtures; `dev-ctx`'s `NA` (305 cells) is excluded. Under `checksums`: the sha256 of the header row. A changed column, or a class gained, lost, renamed or crossing the cut-off, is therefore a `drift:schema` PR. Under `extras`: the md5 and size the parent publishes for `exprMatrix.tsv.gz` and `meta.tsv`, and the cell count of every published label, dropped ones included. A re-release with the same layout, or a moved count, is `drift:routine`. The collection-level md5 and build time are kept under `informational` and never compared: they also move for coordinates and descriptions, which never reach the summary.
+  - `fetch_default_fingerprint` covers `default`, which builds whichever collection the user names and so has no fixed schema a probe could see. It tracks the browser's root index (`https://cells.ucsc.edu/dataset.json`) as a content signal under `extras` only. Its `headers` and `checksums` are empty on purpose, so index churn from the browser's ~320 other collections is `drift:routine`, never `drift:schema`.
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 
@@ -84,6 +86,8 @@ UCSC datasets are per-collection. To refresh a collection's build:
 5. If a parsing gotcha was introduced (e.g., new metadata encoding, different gene-ID separator, new column with mixed-NaN dtype), add it to § 4.
 6. Open PR; reviewer focus is the schema + sample-row diff narrative.
 
+Drift PRs for the cortex datasets mean the parent collection itself changed. A `drift:routine` one (only `extras` moved) means new parent files with the same layout: re-derive the per-class summary from them and rebuild. A `drift:schema` one means the `meta.tsv` columns or the class list moved. Re-derive as well, then check the grouping column and `expected_obs_columns` in the catalog against the new layout before regenerating the snapshots. A `drift:routine` PR for `default` only says the browser's index changed somewhere; refresh `data/cells_ucsc_datasets.json` if the new collections matter.
+
 ## 9. Validation contract
 
 This provider ships **three datasets**, each with its own fixture and snapshot pair.
@@ -96,25 +100,44 @@ relative to `hvantk/skills/ucsc_cellbrowser/` and match the manifest exactly.
 - `fixture`: `tests/testdata/raw/ucsc-cellbrowser` — `expression_matrix.tsv` (primary) and `metadata.tsv` (secondary).
 - `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser/schema.json`
 - `row_snapshot`: `tests/snapshots/ucsc-cellbrowser/sample_rows.json`
+- `drift_fingerprint`: `tests/drift_fingerprint.json` — the root-index baseline of `fetch_default_fingerprint` (§ 6).
 
 **`adult-ctx`**
 
 - `fixture`: `tests/testdata/raw/ucsc-cellbrowser-adult-ctx`
 - `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/schema.json`
 - `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/sample_rows.json`
+- `drift_fingerprint`: `tests/drift_fingerprint_adult_ctx.json` — the `adult-ctx-meta-atlas` baseline of `fetch_adult_ctx_fingerprint` (§ 6).
 
 **`dev-ctx`**
 
 - `fixture`: `tests/testdata/raw/ucsc-cellbrowser-dev-ctx`
 - `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/schema.json`
 - `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/sample_rows.json`
+- `drift_fingerprint`: `tests/drift_fingerprint_dev_ctx.json` — the `dev-ctx-meta-atlas` baseline of `fetch_dev_ctx_fingerprint` (§ 6).
 
 **Shared by all three**
 
-- `drift_fingerprint`: `tests/drift_fingerprint.json` — one file covering every dataset (see § 12).
+- `drift_fingerprint`: none. Until #396 all three shared `tests/drift_fingerprint.json`
+  and one probe of the browser's root index, so an update to any of the browser's
+  collections reported the same schema drift for all three, and a change to the two
+  parents the cortex datasets are derived from looked no different from any other. Each
+  dataset now has the baseline listed above.
 - `command`: `pytest hvantk/skills/ucsc_cellbrowser/tests` — the whole directory. This
   section previously named `tests/test_builder.py` alone, which disagreed with the
   manifest and silently excluded the drift-probe tests.
+
+`default`'s fixture is real (CC BY 4.0, re-sourced to the underlying Mendeley Data
+deposit after a review round found the original UCSC-accession citation pointed at a
+404; see its `THIRD_PARTY_DATA.md` entry). `adult-ctx` and `dev-ctx` are **synthetic**
+(review round): no licence or rights field is published for either Cell Browser
+dataset (`genome.ucsc.edu/license/` covers Genome Browser data, not Cell Browser; each
+dataset's own `dataset.json` carries no `license`/`rights` field and pools third-party
+studies — 16 for `adult-ctx`, 7 for `dev-ctx`), so their fixtures were replaced with
+hand-authored ones that keep the real `Class` / `Type_v2` group labels and gene
+identifiers but fabricate every expression value and `n_cells` count; see
+`expression_matrix-synthetic.tsv` / `metadata-synthetic.tsv` in each dataset's fixture
+directory. No `THIRD_PARTY_DATA.md` entry applies to either.
 
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 

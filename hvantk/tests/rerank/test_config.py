@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest, pandas as pd
 from hvantk.algorithms.cohort.spec import CohortManifest, CohortPrior
 from hvantk.algorithms.rerank.config import (
@@ -36,8 +38,7 @@ def test_defaults():
 
 
 def test_validate_rejects_variant_units():
-    c = _mk()
-    c.units = "variant"
+    c = dataclasses.replace(_mk(), units="variant")
     with pytest.raises(NotImplementedError):
         validate(c)
 

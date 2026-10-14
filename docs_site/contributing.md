@@ -138,17 +138,24 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
        )
    ```
    `BuildContext` (`ctx`) supplies plugin name, version, and source
-   fingerprint; the platform stamps Provenance and validates the artifact
+   fingerprint; the platform stamps Provenance and validates the dataset
    type / schema_id against `plugin.yaml`. **The CLI `hvantk reprocess` is
    the only public build path** — there is no separate programmatic API.
 
 3. **Create tests**
    - `hvantk/skills/<provider>/tests/test_builder.py` — snapshot
      round-trip test (use `phase_b_snapshot_adapter` from
-     `hvantk/tests/_snapshot_utils.py`). Name it `test_*round_trip*`, give it
-     no `skip`/`skipif` marker, and mark it `@pytest.mark.hail` for a
-     `backend: hail` dataset; `hvantk/tests/test_plugin_contract_artifacts.py`
-     fails otherwise.
+     `hvantk/tests/_snapshot_utils.py`). Tag it
+     `@pytest.mark.round_trip("<provider>:<dataset>")` — one dataset id per
+     collected test item; for a round trip parametrized over several
+     datasets, mark each case's `pytest.param(..., marks=...)` instead of
+     stacking every id on the function. Give it no `skip`/`skipif` marker,
+     and mark it `@pytest.mark.hail` for a `backend: hail` dataset.
+     `hvantk/tests/test_plugin_contract_artifacts.py` replays the manifest's
+     `tests.command` in a subprocess to check this (run it locally with
+     `-m round_trip_contract`; CI's `plugin-contract` job runs it on every
+     pull request), and `--require-round-trips` fails a run if the test ends
+     skipped or xfailed for real — the one case collection cannot see.
    - `hvantk/skills/<provider>/tests/testdata/` — minimal fixture.
    - `hvantk/skills/<provider>/tests/snapshots/` — generated via
      `pytest --regenerate-snapshots`.

@@ -406,6 +406,38 @@ class DatasetSpec:
     acquisition: Acquisition = field(default_factory=Acquisition)
     schema_ids: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        """Cross-check acquisition against the downloader, defending the type even
+        when a DatasetSpec is built directly rather than through the loader.
+
+        `_acquisition_of` (loader.py) raises this same error for the same reason when
+        a manifest declares BOTH ``acquisition.mode: byo`` and ``lifecycle.download``
+        -- but it is the only thing that checked this in Python; the JSON schema
+        enforces it too, but only for the YAML path. A DatasetSpec built by hand (a
+        test, an out-of-tree caller) skipped both and went straight through with no
+        check at all.
+
+        Only the BYO direction is safe to repeat here. The converse -- explicit
+        ``mode: download`` with no ``download_fn`` -- is ALSO a schema error (#360),
+        but ``mode == 'download'`` is also what every dataset defaults to when its
+        manifest omits the `acquisition` block entirely: the legitimate "a downloader
+        could be written but is not yet" state (`gevir:metrics`,
+        `gwas-catalog:associations`, ...). Once collapsed into an `Acquisition`
+        instance, that default is indistinguishable from an explicit `mode: download`
+        with no downloader -- the schema can still tell them apart because it still
+        sees the raw YAML, but a constructed `DatasetSpec` cannot. Rejecting
+        ``mode == 'download'`` with no ``download_fn`` here would therefore also
+        reject every one of those legitimate, already-loadable specs, so that half of
+        the rule is deliberately left to the schema. `is_byo`, in contrast, is never a
+        default -- `Acquisition.__post_init__` already requires a `reason` whenever it
+        is set -- so the BYO contradiction can be repeated safely.
+        """
+        if self.acquisition.is_byo and self.download_fn is not None:
+            raise PluginLoadError(
+                f"{self.name}: acquisition.mode is 'byo' but lifecycle.download is "
+                "declared; a dataset either fetches its own inputs or it does not."
+            )
+
 
 @dataclass(frozen=True)
 class Provider:

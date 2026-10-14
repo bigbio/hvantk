@@ -26,7 +26,9 @@
       ],
       "somatic": true,
       "synonyms": "SYNA1,SYNA2",
-      "tissue_type": "E",
+      "tissue_type": [
+        "E"
+      ],
       "translocation_partner": "",
       "tumour_types_germline": [
         "synthetic germline tumour A"
@@ -64,7 +66,9 @@
       ],
       "somatic": false,
       "synonyms": "SYNB1",
-      "tissue_type": "L",
+      "tissue_type": [
+        "L"
+      ],
       "translocation_partner": "",
       "tumour_types_germline": [
         "synthetic germline tumour B"
@@ -101,7 +105,9 @@
       ],
       "somatic": true,
       "synonyms": "SYND1, SYND2",
-      "tissue_type": "O",
+      "tissue_type": [
+        "O"
+      ],
       "translocation_partner": "SYNTHD-PARTNER",
       "tumour_types_germline": [],
       "tumour_types_somatic": [

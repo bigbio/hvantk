@@ -104,6 +104,8 @@ def test_build_config_string_and_override():
     from hvantk.algorithms.rerank.catalog.registry import axis, AXES, build_config
     from hvantk.algorithms.rerank.catalog.profile import DiseaseProfile
     from hvantk.algorithms.rerank.audit import NoAudit
+    from hvantk.algorithms.rerank.blocks import BlockPolicy
+    from hvantk.algorithms.rerank.nulls import NullConfig
 
     _saved = dict(AXES)
     try:
@@ -129,11 +131,27 @@ def test_build_config_string_and_override():
         override = FeatureAxis(
             "expression", lambda: pd.DataFrame({"gene": ["A", "B"], "x": [3.0, 4.0]})
         )
-        cfg = build_config(p, axes=["dummy_constraint", override])
+        # Distinct from every Config default (seed=DEFAULT_SEED, seed_sweep=1,
+        # nulls=None, blocks=None), so a dropped forward shows up as the Config's own
+        # default rather than silently matching by coincidence.
+        nulls = NullConfig(n_perm=37)
+        blocks = BlockPolicy(table="dummy_blocks.tsv")
+        cfg = build_config(
+            p,
+            axes=["dummy_constraint", override],
+            seed=7,
+            seed_sweep=4,
+            nulls=nulls,
+            blocks=blocks,
+        )
         assert cfg.name == "t"
         assert [f.name for f in cfg.features][0] == "constraint"
         assert "expression" in [f.name for f in cfg.features]
         assert isinstance(cfg.audit, NoAudit)
+        assert cfg.seed == 7
+        assert cfg.seed_sweep == 4
+        assert cfg.nulls is nulls
+        assert cfg.blocks is blocks
     finally:
         AXES.clear()
         AXES.update(_saved)

@@ -23,6 +23,23 @@ FIXTURE = (
 SNAPSHOT_DIR = Path("hvantk/skills/gwas_catalog/tests/snapshots")
 
 
+def test_a_raw_directory_resolves_to_its_associations_file(tmp_path):
+    """Regression guard for #388: ``hvantk reprocess`` with a plain ``--raw-dir``
+    (no ``--intermediate``) hands the builder the raw directory, not the file
+    inside it. Hail-free on purpose, so it runs in the default suite rather
+    than only on a Hail node."""
+    # The shared resolver, with the exact patterns `build_gwas_catalog_associations`
+    # passes it.
+    from hvantk.core.utils.raw_inputs import resolve_raw_file
+    from hvantk.skills.gwas_catalog.builder import _RAW_FILE_PATTERNS
+
+    tsv = tmp_path / "gwas-catalog-download-associations-v1.0-full.tsv"
+    tsv.write_text("dummy")
+
+    assert resolve_raw_file(tmp_path, patterns=_RAW_FILE_PATTERNS) == str(tsv)
+
+
+@pytest.mark.round_trip("gwas-catalog:associations")
 @pytest.mark.hail
 def test_gwas_catalog_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GWAS Catalog from fixture; assert schema and sample-row stability."""

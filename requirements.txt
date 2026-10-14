@@ -2,7 +2,9 @@
 #
 # `pyproject.toml` is the source of truth for what hvantk depends on. This file exists
 # only because .github/workflows/python-app.yml and python-package.yml install with pip
-# rather than poetry, and it has to be kept in sync by hand -- nothing checks it for you.
+# rather than poetry, and it has to be kept in sync by hand -- nothing enforced that
+# until .github/scripts/check_requirements_sync.py (#408), which the lockfile job in
+# python-package-conda.yml runs on every pull request and on every push to main/dev.
 # If you add or change a dependency in pyproject.toml, change it here too.
 #
 # It deliberately installs the OPTIONAL extras as well, because the test suite covers the
@@ -31,19 +33,25 @@ h5py>=3.7
 # The floor matches pyproject and is non-binding in practice: hail itself requires
 # numpy>=2,<3, so a real install lands on 2.x regardless.
 numpy>=1.23
+# scipy has been a base dependency in pyproject.toml since #376 (imported at module
+# scope by skills/ucsc_cellbrowser/shared/ucsc.py, reachable from a base install), not
+# an extra -- it lived here by mistake (#392).
+scipy>=1.8
 
 # --- optional extras, installed so the tests behind them actually run ---
 # ml / ancestry / psroc. Without scikit-learn, hvantk/tests/rerank/test_example.py
 # importorskips itself and the feature-selection stack goes untested on this path.
 scikit-learn>=1.4,<2
-scipy>=1.8
 # viz (matplotlib/seaborn also back the hgc, constraint and ancestry extras)
 matplotlib
 seaborn
 # expression. Note this extra cannot be installed on Intel macOS (scanpy -> numba ->
 # llvmlite ships no x86_64 macOS wheel from 0.47); CI is linux, so it installs fine here.
 scanpy>=1.10.0
-# constraint
+# constraint. statsmodels backs `hvantk ptm test`'s LMMs (run_lmm,
+# run_binned_interaction_lmm); scanpy happens to pull it in today, but those tests
+# should not depend on that (#408).
+statsmodels>=0.14
 tspex>=0.6.0
 
 # Deliberately NOT installed: the ptm (cptac, sorted-nearest), duckdb and interactive

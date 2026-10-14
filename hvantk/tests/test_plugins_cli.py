@@ -324,3 +324,96 @@ def test_describe_names_a_provider_recorded_under_its_directorys_underscored_nam
     assert result.exit_code != 0
     assert "failed to load" in result.output
     assert "unknown provider" not in result.output
+
+
+def test_cli_entries_that_fail_or_repeat_are_cli_rows_drift_ignores(
+    tmp_path, monkeypatch, caplog
+):
+    """#408: a `cli:` module that would not import was only a log line from `hvantk
+    download`, whose subcommand silently vanished. `plugins errors` must report it on
+    its own, as `cli:<command>`, while `drift` -- whose dataset still binds -- must not
+    count it (the reverted fix filed it under the provider: exit 2, a bogus row, and a
+    log line saying the dataset would not be drift-checked).
+
+    A command name declared twice, across providers or within one manifest, is refused
+    at load: the second entry would otherwise share the first one's cached resolution,
+    so a broken module behind it went unreported, and `hvantk download` would wire
+    only one of them."""
+    import json
+    import shutil
+
+    import click
+
+    from hvantk.tools.plugins.drift_cli import drift_cmd
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    manifest = plugin_dir / "plugin.yaml"
+    manifest.write_text(
+        manifest.read_text()
+        + "\ncli:\n  - command: fake-download\n"
+        + "    module: hvantk.nope.missing_downloader\n    function: download_cmd\n"
+    )
+    reg = _registry_with(monkeypatch, plugin_dir)
+    assert reg.load_errors() == []  # not resolved at load time (import cost)
+
+    with caplog.at_level("WARNING", logger="hvantk.core.plugin.loader"):
+        result = _runner().invoke(plugins_group, ["errors"])
+    assert result.exit_code == 1, result.output
+    assert (
+        "cli:fake-download: cannot import module 'hvantk.nope.missing_downloader'"
+        in result.stdout
+    )
+    logged = [r.getMessage() for r in caplog.records]
+    assert any("cli:fake-download" in m for m in logged), logged
+    assert not any("drift-checked" in m for m in logged), logged
+
+    group = click.Group("download")
+    reg.apply_plugin_downloaders(group)
+    assert "fake" not in group.commands
+    assert [u for u, _ in reg.load_errors()] == ["cli:fake-download"]  # once
+
+    # A second provider repeats `fake-download`, and repeats its own command with a
+    # module that does not import -- the entry the first one's cache used to hide.
+    builder = "hvantk.tests.testdata.raw.plugins.fake_plugin.builder"
+    plugin_two = tmp_path / "fake_two"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_two)
+    manifest_two = plugin_two / "plugin.yaml"
+    manifest_two.write_text(
+        manifest_two.read_text().replace("name: fake\n", "name: fake-two\n", 1)
+        + "\ncli:\n"
+        + f"  - {{command: fake-download, module: {builder}, function: build}}\n"
+        + f"  - {{command: fake-two-download, module: {builder}, function: build}}\n"
+        + "  - {command: fake-two-download, module: hvantk.nope.other, function: x}\n"
+    )
+    reg.load_from_directory(plugin_two)
+    repeated = [
+        str(exc) for _, exc in reg.load_errors() if "declared twice" in str(exc)
+    ]
+    assert len(repeated) == 2, reg.load_errors()
+    assert "'fake'" in repeated[0] and "'fake-two'" in repeated[0], repeated
+    assert "hvantk.nope.other.x" in repeated[1], repeated
+    result = _runner().invoke(plugins_group, ["errors"])
+    assert result.exit_code == 1, result.output
+    assert result.stdout.count("declared twice") == 2, result.stdout
+    group = click.Group("download")
+    reg.apply_plugin_downloaders(group)
+    assert set(group.commands) == {"fake-two"}
+
+    # `list` counts what is missing from its table; a lost command removes nothing.
+    listed = _runner().invoke(plugins_group, ["list"])
+    assert listed.exit_code == 0, listed.output
+    assert "failed to load" not in listed.stderr
+
+    for args, datasets in (
+        (["--json", "fake:default"], ["fake:default"]),
+        (["--all", "--json"], ["fake-two:default", "fake:default"]),
+        (
+            ["--all", "--domain", "genomics", "--json"],
+            ["fake-two:default", "fake:default"],
+        ),
+    ):
+        drift = _runner().invoke(drift_cmd, args)
+        assert drift.exit_code == 0, (args, drift.output)
+        assert sorted(r["dataset_name"] for r in json.loads(drift.stdout)) == datasets
+        assert "cli:" not in drift.stderr

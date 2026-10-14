@@ -80,7 +80,11 @@ def ptm_group(ctx):
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Overwrite existing outputs",
+    help=(
+        "Re-download the GTF and UniProt inputs instead of reusing cached "
+        "files, and replace an existing --output-ht table (without it, an "
+        "existing table stops the build before any work)"
+    ),
 )
 @click.pass_context
 def ptm_build(
@@ -684,6 +688,8 @@ def ptm_constraint(
         click.echo(result.summary())
         click.echo(f"Output: {config.output_dir}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"PTM constraint failed: {e}")
         click.echo(f"Error: {e}", err=True)
@@ -820,6 +826,7 @@ def ptm_test(
           --input variants.tsv --stratum-col primary_tissue_broad \\
           -o results/tissue_lmm.tsv
 
+    \b
       hvantk ptm test --test lmm-binned \\
           --input variants.tsv --stratum-col cell_type \\
           --expression-pkl brain_gene_celltype_median_expr.pkl \\

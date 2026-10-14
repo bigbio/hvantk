@@ -62,7 +62,8 @@ When invoked to build or update:
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Confirm input is a ClinVar VCF: read the `#CHROM` header line of the input file.
 3. Build the table inline in `build_clinvar` (no shared base helper):
-   - `hl.import_vcf(str(parsed_input), force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
+   - `parsed_input` may be the VCF file itself or the raw download directory (clinvar declares no `lifecycle.parse`): `resolve_raw_file(parsed_input, patterns=("*.vcf.gz", "*.vcf.bgz", "*.vcf"))` (`hvantk/core/utils/raw_inputs.py`) resolves it to the one VCF, skipping a `.tbi` index downloaded alongside it.
+   - `hl.import_vcf(<resolved path>, force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
    - `.repartition(100).key_by("locus", "alleles")`
    - Wrap the result with `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="clinvar-variants-v1"))`. The platform calls `artifact.save()` to write to disk.
 4. Apply the parsing rules from § 4 (force, contig_recoding, skip_invalid_loci).
@@ -112,3 +113,5 @@ you — raise `_RANGE_BYTES` rather than trimming what is parsed.
 - `row_snapshot`: `hvantk/skills/clinvar/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/clinvar/tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/clinvar/tests -m hail`
+
+The fixture is a real chromosome-20 slice of the public-domain ClinVar 2022-04-03 release; see its `THIRD_PARTY_DATA.md` entry.

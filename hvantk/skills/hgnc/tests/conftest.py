@@ -13,6 +13,7 @@ when both conftests load (e.g., when running the full suite).
 """
 
 from hvantk.tests.conftest import (  # noqa: F401
+    _hail_session_for_hail_tests,
     hail_session,
     pytest_collection_modifyitems,
     regenerate_snapshots,

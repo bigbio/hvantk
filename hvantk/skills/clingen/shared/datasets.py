@@ -174,6 +174,8 @@ def get_available_versions() -> List[str]:
     try:
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         logger.info(f"Checking ClinGen download endpoint: {CLINGEN_BASE_URL}")
 
         req = urllib.request.Request(
@@ -182,7 +184,7 @@ def get_available_versions() -> List[str]:
             headers={"User-Agent": "hvantk/1.0"},
         )
 
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=30, context=tls_context()) as response:
             if response.status == 200:
                 today = datetime.now().strftime("%Y-%m-%d")
                 logger.info(

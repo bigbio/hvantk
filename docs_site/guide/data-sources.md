@@ -4,6 +4,35 @@ This page covers all annotation and expression data sources supported by hvantk:
 
 Every build on this page goes through the unified `hvantk reprocess <plugin>:<dataset>` entry point — see the [Usage Guide](usage.md#1-build-a-dataset-with-hvantk-reprocess) for the orchestration pattern, lifecycle flags, and `--plugin-arg KEY=VALUE` conventions used below.
 
+## Downloader or documented acquisition
+
+A dataset's manifest declares one of three acquisition states — per *dataset*, not
+per provider, since a multi-dataset plugin can mix them (`onek-genomes` ships one BYO
+dataset and one auto-downloaded one):
+
+- **`lifecycle.download` is declared** — a real downloader exists; `hvantk download
+  <source>` or `hvantk reprocess <plugin>:<dataset>` fetches the raw file.
+- **`acquisition: {mode: byo, reason: ...}` is declared** — acquisition cannot be
+  automated, so it is documented instead (`reason` is one of `size`, `credentialed`,
+  `license`, `publication-only`, `unstable-url`). The user supplies `--raw-dir`
+  themselves; `byo` and `lifecycle.download` are mutually exclusive — a manifest
+  cannot claim both that fetching is impossible and ship a function that fetches.
+- **Neither block is declared** — automatable in principle, but no downloader has
+  been written yet; `hvantk reprocess` needs `--skip-download` until one lands.
+
+(An explicit `acquisition.mode: download` with no `lifecycle.download` is a schema
+error: it asserts a downloader exists without shipping one.)
+
+The decision between the first two states: build a downloader when the raw file is
+**under 1 GB**, **publicly accessible** (no licence gate), **high-value**, and served
+from a **stable, predictable URL**. Document acquisition instead when the file is
+**over 1 GB**, needs **licence acceptance or manual steps**, or the URL structure is
+**complex or fragile** (FTP directory listings, versioned mirrors). The third state
+means a downloader could be written in principle but has not been yet; nothing on
+this page is currently in that state (the last four -- `insider:interfaces`,
+`gwas-catalog:associations`, `cptac:expression`, `gevir:metrics` -- shipped their
+downloaders in #386's follow-up work).
+
 ## File format note
 
 Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Pre-convert before building:
@@ -25,8 +54,12 @@ hvantk utils convert-bgz input.gz
 | Expression Atlas | `hvantk download expression-atlas` | varies |
 | Ensembl gene annotations | `hvantk download ensembl-structure` | ~60 MB |
 | UniProt PTM sites | `hvantk download uniprot-ptm` | varies (REST API query) |
+| CPTAC protein expression | `hvantk download cptac-expression` | varies by cancer type |
 | CPTAC phosphoproteomics | `hvantk download cptac-phospho` | varies by cancer type |
 | PeptideAtlas phospho | `hvantk download peptideatlas-phospho` | ~549 MB |
+| INSIDER interfaces | `hvantk download insider-interfaces` | ~49 MB |
+| GWAS Catalog | `hvantk download gwas-catalog` | ~70 MB zip (~601 MB unzipped TSV) |
+| GeVIR gene metrics | `hvantk download gevir` | ~10.3 MB xlsx (~0.6 MB derived TSV) |
 | 1000 Genomes sample panel | *(no standalone command; see [1000 Genomes](#1000-genomes-nygcccdg-high-coverage-callset))* | ~55 KB |
 
 ### ClinVar
@@ -118,19 +151,47 @@ hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 ### Expression Atlas
 
 ```bash
-# Download bulk RNA-seq experiments
-hvantk download expression-atlas --download_path data/expression_atlas
+# Download one accession's bulk RNA-seq experiment
+hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/expression_atlas
+
+# Download + build in one call (reprocess forwards --plugin-arg accession=... to the
+# download stage; the build stage ignores it and locates the two input files within
+# --raw-dir)
+hvantk reprocess expression-atlas:dataset --raw-dir data/expression_atlas \
+  --output E-MTAB-6798.h5ad --plugin-arg accession=E-MTAB-6798
 ```
+
+`reprocess` scopes the expression matrix to the accession named by the raw dir's SDRF
+file and raises if no TPM file matches it (an older raw dir's leftover file, or two
+downloads merged by hand, must not silently combine mismatched expression + metadata).
+The unfiltered download above fetches every file in the experiment's FTP directory, so
+the gene-level and the transcript-level TPM file can both be present. `reprocess` builds
+from the one whose columns are the SDRF's runs, or from the **gene-level** one when both
+qualify. For E-MTAB-6798 that is the **transcript-level** file (`var` keyed by the
+transcript id): its gene-level file has one column per assay group (`g1` … `g94`), not
+per run. It raises when no file has the runs as columns.
+
+A transcript-level build needs `--plugin-arg level=gene` to sum its values per gene and
+key `var` by the gene id instead — before the result can be used with
+`hvantk expression markers`/`summarize` or the PTM constraint expression loader, which
+read `var_names` as the gene id and refuse a transcript-keyed matrix. A gene-level build
+already works there without it. `hvantk annotate prepare`'s
+matrix source type refuses a transcript-keyed matrix too, but needs more than
+`level=gene` either way: it
+resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an Expression Atlas
+build (gene- or transcript-level) needs a symbol-keyed summary before it is usable
+there.
 
 ## Manual download sources
 
 Most of these sources need manual acquisition — too large, license-gated, or a fragile URL
 — and for those, follow the instructions below, place the raw file(s) in a per-source
 directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
-members of this section ship a downloader instead (gnomAD constraint, Ensembl gene
-annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho and the 1000 Genomes
-sample metadata); they are grouped here because they carry a license, size, versioning
-or build-path caveat worth reading before relying on them.
+members of this section ship a downloader instead (GeVIR, gnomAD constraint, Ensembl gene
+annotations, UniProt PTM sites, CPTAC phospho and expression, PeptideAtlas phospho,
+INSIDER interfaces, the GWAS Catalog and the 1000 Genomes sample metadata); they are grouped here because
+they carry a license, size, versioning or build-path caveat worth reading before relying
+on them.
 
 ### dbNSFP (~50 GB)
 
@@ -201,15 +262,20 @@ INSIDER ships **two** products, and hvantk builds a dataset from each:
 | `insider:variants` | `Whole_Human_Interactome_Interface_hg38.bed` | ~1.17 GB | `http://interactomeinsider.yulab.org/bed/all.bed` |
 | `insider:interfaces` | `H_sapiens_interfacesALL.txt` | ~49 MB | `http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt` |
 
-**Download**: the downloads page carries no links in its markup, so use the direct
-URLs above (they are also recorded in the plugin catalog — `hvantk catalog show
-INSIDER_v1.0`). Both are served over plain HTTP; the site has no HTTPS listener.
-The BED is >1 GB, so acquisition is manual per the downloader framework in CLAUDE.md.
+**Download**: the downloads page carries no links in its markup, so both the plugin
+catalog (`hvantk catalog show INSIDER_v1.0`) and the `insider:interfaces` downloader use
+the direct URLs above. Both files are served over plain HTTP; the site has no HTTPS
+listener. The BED is >1 GB, so `insider:variants` stays manual acquisition; the pair
+table is small enough that `insider:interfaces` ships a real downloader instead:
+
+```bash
+hvantk download insider-interfaces --output data/insider/H_sapiens_interfacesALL.txt
+```
 
 **Build**:
 
 ```bash
-# Place insider_interaction_sites.bed.bgz in data/insider/ then:
+# Place Whole_Human_Interactome_Interface_hg38.bed in data/insider/ then:
 hvantk reprocess insider:variants \
   --raw-dir data/insider/ \
   --output interactome.ht \
@@ -222,18 +288,14 @@ locus-keyed (interaction sites as genomic intervals), `insider:interfaces` is ke
 `uniprot_id` and summarises each protein's interactome: `n_partners`,
 `n_partners_experimental`, `n_partners_predicted` and `n_interface_residues`. The two are
 complementary, not alternatives — use `interfaces` when the question is "how connected is
-this gene", and `variants` when it is "does this variant fall in an interaction site". Unlike
-`insider:variants`, this file is well under 1 GB, but `insider:interfaces` declares no
-`acquisition` block and no `lifecycle.download` either — no downloader exists yet for it
-(tracked in #386), so `--skip-download` is required below for the same reason as `gevir` and
-`gwas-catalog`.
+this gene", and `variants` when it is "does this variant fall in an interaction site".
+Unlike `insider:variants`, this file is well under 1 GB, so it declares `lifecycle.download`
+(#386) and `reprocess` fetches it automatically — no `--skip-download` needed:
 
 ```bash
-# Place H_sapiens_interfacesALL.txt in data/insider/ then:
 hvantk reprocess insider:interfaces \
   --raw-dir data/insider/ \
-  --output insider_interfaces.ht \
-  --skip-download
+  --output insider_interfaces.ht
 ```
 
 ### Ensembl gene annotations (~60 MB GTF)
@@ -264,7 +326,7 @@ hvantk reprocess ensembl-gene:structure \
   --skip-download
 ```
 
-### GeVIR (~1-2 MB)
+### GeVIR (~10 MB workbook)
 
 Gene-level intolerance-to-variation ranks (GeVIR and VIRLoF percentiles) for
 19,361 protein-coding genes, keyed by Ensembl gene_id. Not a variant-level
@@ -280,21 +342,31 @@ https://static-content.springer.com/esm/art%3A10.1038%2Fs41588-019-0560-2/MediaO
 ```
 
 That is a ~10.3 MB `.xlsx` workbook (only MOESM3 of the six supplementary slots is
-public; the rest return 403). The builder reads a bgzipped TSV, so extract sheet
-`table_2` and BGZF-compress it before building.
+public; the rest return 403), not a thin URL fetch: the builder reads a bgzipped TSV,
+so the downloader (`hvantk download gevir`; it is also in the built-in-downloader list
+above) extracts sheet `table_2` itself (stdlib `zipfile` + `xml.etree`, no openpyxl
+dependency) and BGZF-compresses it, including restoring the ~29 gene symbols Excel's
+autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`; see
+`hvantk/skills/gevir/cli.py`'s module docstring for the full, externally-verified
+restoration rule).
 
 > **Note:** the authors' repository at https://github.com/gevirank/gevir ships the
 > **analysis code only** — its `tables/` directory holds a placeholder file — so it
 > is not a source for the metric table. Earlier revisions of this guide pointed
 > there.
 
-A real downloader would have to do the extract-and-convert step, not just fetch the
-URL, so it is more than the usual thin wrapper — tracked as a follow-up in #386.
-
-**Build**:
+**Download + build** (end-to-end, fetches and derives the TSV automatically):
 
 ```bash
-# Place gevir_metrics.tsv.bgz in data/gevir/ then:
+hvantk reprocess gevir:metrics \
+  --raw-dir data/gevir/ \
+  --output gevir.ht
+```
+
+**Manual download**: an already-derived `gevir_metrics_pmid31873297.tsv.bgz` placed in
+`data/gevir/`, then built with `--skip-download`:
+
+```bash
 hvantk reprocess gevir:metrics \
   --raw-dir data/gevir/ \
   --output gevir.ht \
@@ -308,32 +380,35 @@ study provenance, p-value, effect size, and risk-allele frequency, built into a
 Hail Table keyed by `(locus, alleles)` with a sentinel ALT. v1.0 schema (34 columns).
 URL: https://www.ebi.ac.uk/gwas/
 
-**Download**: a periodic full dump, zipped, from EBI's FTP, released every 1-3 weeks:
+A periodic full dump, zipped, from EBI's FTP, released every 1-3 weeks. The zip is small
+and public, so hvantk ships a downloader (`hvantk download gwas-catalog`; it is also in
+the built-in-downloader list above) that fetches the current release from the FTP
+`releases/latest/` alias and extracts the associations TSV it contains.
+
+**Download + build** (end-to-end, fetches the current release automatically):
+
+```bash
+hvantk reprocess gwas-catalog:associations \
+  --raw-dir data/gwas_catalog/ \
+  --output gwas_catalog.ht
+```
+
+**Manual download**:
 
 ```
 https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations-full.zip
 ```
 
 Unzip to get `gwas-catalog-download-associations-v1.0-full.tsv` (verified live
-2026-09-30: zip 69,506,531 bytes, TSV 600,996,055 bytes). No `lifecycle.download` is
-declared yet for this plugin — see #386.
-
-**Build**:
+2026-09-30: zip 69,506,531 bytes, TSV 600,996,055 bytes), place it in `data/gwas_catalog/`,
+then build with `--skip-download`:
 
 ```bash
-# Place the unzipped TSV in data/gwas_catalog/ then:
 hvantk reprocess gwas-catalog:associations \
   --raw-dir data/gwas_catalog/ \
-  --intermediate data/gwas_catalog/gwas-catalog-download-associations-v1.0-full.tsv \
-  --skip-parse \
-  --skip-download \
-  --output gwas_catalog.ht
+  --output gwas_catalog.ht \
+  --skip-download
 ```
-
-> **Note:** `--intermediate <file> --skip-parse` is required, not optional, even though
-> this dataset declares no `lifecycle.parse` — the builder needs the exact TSV path, and
-> `--raw-dir` can only be a directory. `--skip-download` is also required — no
-> `lifecycle.download` is declared. See `hvantk/skills/gwas_catalog/SKILL.md` §6.
 
 ### COSMIC Cancer Gene Census
 
@@ -348,16 +423,9 @@ URL: https://cancer.sanger.ac.uk/census
 # Place the downloaded export (e.g. cancer_gene_census.tsv.gz) in data/cosmic_cgc/ then:
 hvantk reprocess cosmic-cgc:submissions \
   --raw-dir data/cosmic_cgc/ \
-  --intermediate data/cosmic_cgc/cancer_gene_census.tsv.gz \
-  --skip-parse \
   --skip-download \
   --output cosmic_cgc.ht
 ```
-
-> **Note:** `--intermediate <file> --skip-parse` is required, not optional, even though
-> this dataset declares no `lifecycle.parse` — the builder needs the exact file path, and
-> `--raw-dir` can only be a directory. `--skip-download` is optional, since acquisition is
-> bring-your-own. See `hvantk/skills/cosmic_cgc/SKILL.md` §7.
 
 ### AlphaGenome variant-effect scores
 
@@ -419,29 +487,28 @@ URL: https://www.uniprot.org/
 
 This is a live REST query rather than a large or license-gated file, so hvantk ships a
 downloader (`hvantk download uniprot-ptm`; it is also in the built-in-downloader list
-above). The `uniprot-ptm:sites` plugin dataset builds from a *genome-mapped* TSV, not the
-raw UniProt download, so `hvantk reprocess uniprot-ptm:sites` alone cannot complete the
-coordinate-mapping step — use `hvantk ptm build` below, which downloads the raw TSV, maps
-it against the Ensembl GTF, and builds the Hail Table in one command. For pre-download or
-manual acquisition:
-
-**Download** (optional, for offline use):
-
-```bash
-# UniProt PTM TSV via REST API
-hvantk download uniprot-ptm --output-dir data/ptm/
-
-# Ensembl GTF for coordinate mapping (download manually)
-# wget https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.*.gtf.gz -P data/ref/
-```
+above). The `uniprot-ptm:sites` table is built from *genome-mapped* sites, not from the
+raw UniProt download, and `hvantk reprocess uniprot-ptm:sites` runs every step: it
+downloads the raw TSV, fetches the pinned Ensembl GTF into the same `--raw-dir` (kept
+there, so later runs reuse it), maps the sites against it, and builds the Hail Table.
+`hvantk ptm build` runs the same mapping and can add PeptideAtlas and CPTAC phosphosites
+to the table.
 
 **Build**:
 
 ```bash
-# Automatic download and build
-hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
+# Download, map and build (UniProt sites)
+hvantk reprocess uniprot-ptm:sites \
+  --raw-dir data/ptm/ \
+  --output data/ptm/ptm_sites.ht
 
-# With pre-downloaded files
+# From files already in --raw-dir (a UniProt TSV and, optionally, the GTF)
+hvantk reprocess uniprot-ptm:sites \
+  --skip-download \
+  --raw-dir data/ptm/ \
+  --output data/ptm/ptm_sites.ht
+
+# Multi-source build, with pre-downloaded files
 hvantk ptm build \
   --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
   --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
@@ -449,12 +516,18 @@ hvantk ptm build \
   --output-ht data/ptm/ptm_sites.ht
 ```
 
+With `--skip-download`, the newest `uniprot-ptm-human-<YYYY-MM-DD>.tsv` in `--raw-dir`
+is mapped (`hvantk download uniprot-ptm --output-dir data/ptm/` writes one), and the GTF
+is downloaded only if `Homo_sapiens.GRCh38.113.gtf.gz` is not already there. The mapping
+uses GRCh38 coordinates, so `--plugin-arg reference_genome` accepts only `GRCh38`.
+
 ### Ensembl GTF (~50 MB compressed)
 
 Gene annotation with exon coordinates and CDS phases, used by the PTM mapper for residue-to-genomic coordinate mapping.
 URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/
 
-**Download**: Auto-downloaded by `hvantk ptm build`. For manual download:
+**Download**: Auto-downloaded by `hvantk reprocess uniprot-ptm:sites` (into its
+`--raw-dir`) and by `hvantk ptm build`. For manual download:
 
 ```bash
 wget https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz
@@ -477,13 +550,24 @@ hvantk reprocess cptac:phospho \
   --plugin-arg cancer_type=brca
 ```
 
-**`cptac:expression`** (protein expression) has no downloader and `hvantk reprocess
-cptac:expression` is not wired at all: the manifest declares no `lifecycle.parse` to turn
-a raw download into the `{"expression": <tsv>, "metadata": <tsv>}` mapping the builder
-needs. Stage the expression and metadata TSVs yourself and call the builder directly —
-see `hvantk/skills/cptac/expression/SKILL.md` §6-7 for the full workflow
-(`build_cptac_expression(parsed_input, ctx, gene_id_col=..., sample_id_col=...,
-expression_col=...)`); an automated downloader is tracked in #386.
+**`cptac:expression`** (whole-proteome protein expression, also one AnnData per cancer
+type) ships the same shape of downloader (`hvantk download cptac-expression`; also in
+the built-in-downloader list above):
+
+```bash
+hvantk reprocess cptac:expression \
+  --raw-dir data/cptac/ \
+  --output cptac_expression_brca.h5ad \
+  --plugin-arg cancer_type=brca
+```
+
+The `cancer_type` plugin-arg flows to both the download (fetch only that cancer) and the
+build (select its matrix+metadata pair). `--all` on `hvantk download cptac-expression`
+fetches every cancer type but does not merge them -- unlike `cptac:phospho`'s pan-cancer
+TSV merge, each cancer type's expression matrix keeps its own gene set and sample
+columns. A long-format TSV/CSV staged by hand still works too, via the
+`{"expression","metadata"}` mapping form of `parsed_input` -- see
+`hvantk/skills/cptac/expression/SKILL.md` §6-7 for the full workflow.
 
 ### PeptideAtlas phospho sites
 

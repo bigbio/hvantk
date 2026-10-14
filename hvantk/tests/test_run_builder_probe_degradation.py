@@ -21,7 +21,7 @@ from hvantk.core.plugin.run_builder import _coerce_fingerprint, run_builder_for_
 
 
 class _Artifact:
-    """Minimal stand-in for a typed artifact: saves, and carries provenance."""
+    """Minimal stand-in for a built dataset: saves, and carries provenance."""
 
     def __init__(self):
         self.saved_to = None
@@ -38,7 +38,7 @@ def _spec(probe):
     spec.drift_probe = probe
     spec.builder = lambda parsed_input, ctx, **params: _Artifact()
     # Mock auto-creates truthy attributes; the schema_id check would then
-    # dereference .provenance on the stand-in artifact.
+    # dereference .provenance on the stand-in dataset.
     spec.schema_id = None
     return spec
 

@@ -14,13 +14,16 @@ Examples:
 import click
 import logging
 import os
+import shutil
 import sys
 import ftplib
 import json
+import tempfile
 import time
 import random
 from tqdm import tqdm
 
+from hvantk.core.plugin.drift_runner import _current_umask
 from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
     load_expression_atlas_datasets,
@@ -41,6 +44,10 @@ def _download_file_with_retry(
     """
     Download a file with retry logic to handle connection issues.
 
+    Each attempt writes to a hidden temp file in the destination directory, which
+    replaces ``local_file_path`` only once the transfer is complete, so a failed
+    download leaves nothing under that name.
+
     Args:
         ftp (ftplib.FTP): FTP connection
         remote_file (str): Name of remote file to download
@@ -51,12 +58,22 @@ def _download_file_with_retry(
         initial_delay (int): Initial delay between retries in seconds
 
     Returns:
-        bool: True if successful, False otherwise
+        bool: True once the file is in place.
+
+    Raises:
+        RuntimeError: If every attempt fails, or the connection cannot be
+            re-established between attempts.
     """
     attempt = 0
     delay = initial_delay
+    # The temp name starts with a dot and ends in mkstemp's random suffix, so the
+    # builder's *.condensed-sdrf.tsv and *-tpms.tsv globs never match a leftover one.
+    tmp_dir = os.path.dirname(os.path.abspath(local_file_path))
+    tmp_prefix = f".{os.path.basename(local_file_path)}."
 
     while attempt < max_attempts:
+        fd, tmp_path = tempfile.mkstemp(dir=tmp_dir, prefix=tmp_prefix)
+        os.close(fd)
         try:
             # Get file size for progress bar
             file_size = 0
@@ -68,7 +85,7 @@ def _download_file_with_retry(
                 file_size = 0
 
             # Download with progress bar
-            with open(local_file_path, "wb") as f:
+            with open(tmp_path, "wb") as f:
                 with tqdm(
                     desc=remote_file,
                     total=file_size,
@@ -84,6 +101,13 @@ def _download_file_with_retry(
 
                     ftp.retrbinary(f"RETR {remote_file}", callback)
 
+            # mkstemp creates mode 0600; give the file the mode a normal create (or
+            # the file it replaces) would have, as stream_to_file does.
+            if os.path.exists(local_file_path):
+                shutil.copymode(local_file_path, tmp_path)
+            else:
+                os.chmod(tmp_path, 0o666 & ~_current_umask())
+            os.replace(tmp_path, local_file_path)
             logger.info(f"Downloaded {remote_file} to {local_file_path}")
             return True  # Success
         except (
@@ -94,10 +118,9 @@ def _download_file_with_retry(
         ) as e:
             attempt += 1
             if attempt >= max_attempts:
-                logger.error(
-                    f"Failed to download {remote_file} after {max_attempts} attempts: {str(e)}"
-                )
-                return False
+                raise RuntimeError(
+                    f"Failed to download {remote_file} after {max_attempts} attempts: {e}"
+                ) from e
 
             # Log the retry attempt
             logger.warning(
@@ -121,18 +144,27 @@ def _download_file_with_retry(
                     ftp.login()
                     ftp.set_pasv(True)
                 except (ftplib.error_temp, ConnectionRefusedError) as e:
-                    logger.error(f"Failed to reconnect to FTP server: {str(e)}")
-                    return False
+                    raise RuntimeError(
+                        f"Failed to download {remote_file}: could not reconnect "
+                        f"to {ftp_url}: {e}"
+                    ) from e
 
                 # Navigate back to the correct directory if path is provided
                 if ftp_path:
                     try:
                         ftp.cwd(ftp_path)
                     except ftplib.error_perm as e:
-                        logger.error(f"Cannot access {ftp_path}: {e}")
-                        return False
+                        raise RuntimeError(
+                            f"Failed to download {remote_file}: cannot access "
+                            f"{ftp_path} after reconnecting: {e}"
+                        ) from e
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
-    return False  # If we get here, all attempts failed
+    raise RuntimeError(
+        f"Failed to download {remote_file}: no attempt made (max_attempts={max_attempts})"
+    )
 
 
 def _print_dataset_accessions():

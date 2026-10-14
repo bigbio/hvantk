@@ -21,6 +21,7 @@ from hvantk.core.utils.qtl_helpers import (
     scan_tissue_files,
     strip_ensembl_version,
 )
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,10 @@ def _import_gtex_parquet(input_path, tissue, reference_genome):
     from pathlib import Path
     from pyspark.sql import SparkSession
 
+    from hvantk.core.utils.hail_context import init_hail
+
     files = scan_tissue_files(input_path, [".parquet"])
+    init_hail()  # Spark must be Hail's session, so Hail starts first
     spark = SparkSession.builder.getOrCreate()
 
     tables = []
@@ -117,8 +121,14 @@ def _import_gtex_tsv(input_path, tissue):
     return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
 
 
+# eQTLGen ships its cis-eQTLs as one gzipped TSV (cis-eQTLs_full.txt.gz). `hvantk
+# reprocess` hands this builder the raw directory it sits in.
+_EQTLGEN_PATTERNS = ("*.txt.gz", "*.txt")
+
+
 def _import_eqtlgen(input_path, reference_genome):
     """Import eQTLGen cis-eQTL summary statistics."""
+    input_path = resolve_raw_file(input_path, patterns=_EQTLGEN_PATTERNS)
     logger.info("Importing eQTLGen: %s", input_path)
     ht = hl.import_table(
         input_path,

@@ -1,5 +1,227 @@
 # Changelog
 
+## 0.5.0 — 2026-10-14
+
+Every dataset without a parse stage now builds from its `--raw-dir`, four more sources
+have downloaders, and single-file downloads are atomic and no longer need the
+interpreter's CA store. The drift bot and `hvantk drift --regenerate` share one rebuild
+ledger, and the UCSC, GTEx and dbNSFP drift probes watch the data they guard. The docs
+call what a build produces a dataset.
+
+**Upgrade notes.**
+- `hvantk ptm build` into an existing `--output-ht` now stops before any download or
+  mapping; pass `--overwrite` to replace the table (#445).
+- rerank runs the ablation and the permutation null at `Config.folds` folds, like the
+  headline score. A `Config` built in Python with `folds` other than the default 5 gets
+  different ablation and null deltas than before; the `hvantk rerank` CLI always uses 5
+  (#446).
+- rerank's `Config` is frozen: derive a variant with `dataclasses.replace(config, …)`.
+  `NullDistribution`, `BlockReport` and `SeedSpread` reject inconsistent values when built
+  by hand (#446).
+- Runs with blocks (`--blocks` or `Config.blocks`) now get a block-bootstrap interval for
+  `d_lo`/`d_md`/`d_hi` (wider under family clustering); runs without blocks are unchanged
+  (#453).
+- Rebuild a `cosmic-cgc:submissions` table built before this release before calling
+  `get_geneset_per_tissue()`: `tissue_type` is now `array<str>`, and an older table raises
+  an error that says so (#442, #463).
+- `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
+  `array<struct{name, url}>` (#443).
+- Re-download and rebuild a `gencc:submissions` table built before this release: values
+  that contained a quote reached it wrapped in quotes (#460).
+- `hvantk expression markers`/`summarize`, the PTM constraint expression loader, and
+  `hvantk annotate prepare`'s matrix source type now refuse a transcript-keyed AnnData
+  (`var.index.name == "transcript_id"`) instead of silently reading its `var_names` as
+  gene ids; the error names `--plugin-arg level=gene` as the fix (#455).
+- `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
+- `hvantk drift --regenerate` also updates `hvantk/resources/drift_ledger.json` when
+  upstream materially changed: pass `--accepted-in "PR #N"` and commit that change with
+  the fingerprint (#459).
+
+### Added
+
+- **Downloaders for `insider:interfaces` and `gwas-catalog:associations`.** `hvantk
+  download insider-interfaces` and `hvantk download gwas-catalog`, which `hvantk reprocess`
+  now runs too. The gwas-catalog builder resolves a raw directory to its associations
+  file, so the plain `--raw-dir` form works (#450).
+- **A downloader for `cptac:expression`.** `hvantk download cptac-expression
+  --cancer-type <ct>` (or `--all`) fetches the per-cancer-type whole-proteome matrix
+  and clinical-metadata CSV via the `cptac` Python package; `hvantk reprocess
+  cptac:expression` runs it automatically (#451).
+- **A downloader for `gevir:metrics`.** `hvantk download gevir` fetches the GeVIR
+  paper's Supplementary Table 2 workbook and derives the bgzipped metrics TSV itself
+  (stdlib `zipfile`/`xml.etree`, no new dependency), restoring the ~29 gene symbols
+  Excel's autocorrect silently turned into dates (e.g. `MARCH6`, `SEPT11`); `hvantk
+  reprocess gevir:metrics` runs it automatically (#457).
+- **`strict_fields` for `hgnc:lookup`.** `--plugin-arg strict_fields=true` turns a declared
+  field missing from the input header into an error instead of a warning (#443).
+- **`hvantk reprocess uniprot-ptm:sites` runs end to end.** A new parse stage fetches the
+  pinned Ensembl GTF into `--raw-dir`, where later runs reuse it, and maps the UniProt
+  download onto it; the command used to download and then fail at the build. `hvantk ptm
+  build` stays the command that adds PeptideAtlas and CPTAC sites (#454).
+- **A requirements sync check.** CI compares `requirements.txt` and `environment.yml` with
+  `pyproject.toml` (`.github/scripts/check_requirements_sync.py`) (#444).
+- **`build_config` exposes `seed`, `seed_sweep`, `nulls` and `blocks`.** Each is a
+  keyword-only parameter defaulting to `Config`'s own default, so a profile-driven rerank
+  config can opt into seed control, the multi-seed sweep, the permutation null and
+  paralogue-blocked CV without constructing `Config` by hand (#453).
+- **The downloader decision framework is published** in the data-sources guide: when a
+  source gets a downloader, and when its acquisition is documented instead (#441).
+- **`--plugin-arg level=gene` for Expression Atlas.** Sums a transcript-level
+  experiment's per-transcript values onto their gene id and keys `var` by the gene id,
+  instead of the default per-transcript matrix (`level=transcript`); a no-op for an
+  already gene-level experiment (#455).
+
+### Changed
+
+- **The UCSC Cell Browser and GTEx drift probes watch the data they guard.** Each UCSC
+  dataset has its own baseline: `adult-ctx` and `dev-ctx` fingerprint their parent
+  collection's `meta.tsv` header and grouping labels, and `default` tracks the browser
+  index as routine content only. GTEx reads the public `adult-gtex` bucket (release
+  folders, the v11 file layout, the documented `signif_pairs` columns) instead of the
+  portal's web-app build tags. Index churn and portal redeploys no longer open
+  `drift:schema` PRs (#447).
+- **The drift bot skips a regenerated fingerprint that disagrees with the drift report.**
+  `--regenerate` probes upstream a second time; when that reading differs from the
+  report's `observed` fingerprint, the dataset is skipped for the run instead of
+  committed, so a transiently stale response no longer becomes a flip-flop PR. A failed
+  regenerate in the routine batch is reported for that dataset instead of failing the
+  batch (#448).
+- **`hvantk drift --regenerate` records the rebuild-ledger row.** When the regenerated
+  fingerprint differs from the baseline it replaces (ignoring `fetched_at`,
+  `probe_version` and `informational`), it writes the dataset's row to
+  `hvantk/resources/drift_ledger.json`, with `--accepted-in` naming the PR (default
+  `manual`); a first capture or a `probe_version` change records none. The drift bot
+  passes `--no-ledger-row` and records its rows through the same code once its checks
+  pass, and a refused commit no longer leaves its rows staged for the next PR. Ledger
+  writes refuse a file that does not parse, and are atomic and locked (#459).
+- **The dbNSFP drift probe reads the release's column list.** It follows the releases
+  page's link to the latest academic release's `variant.columns.txt` and fingerprints its
+  column names under `headers` and `checksums`, so a release with unchanged columns is
+  routine and a column change opens a `drift:schema` PR. A release counts as academic
+  when it links an academic README, not when its title lacks a `c`, and both requests
+  send hvantk's User-Agent instead of `python-requests` (#459).
+- **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
+  on pull requests, and the PR workflows cancel a superseded pull-request run. A branch
+  without an open pull request no longer gets a CI run (#444).
+- **The plugin-contract check now ties each round trip to its dataset.** A fast check
+  confirms each dataset's `tests.command` is shaped like a real CI invocation (`pytest
+  hvantk/skills/<provider>/...`, with `-m hail` exactly when the backend is hail); a
+  slower one replays that command in a subprocess and checks its `round_trip`-marked
+  item is selected and clean of skip/xfail, replacing a decorator source scan that
+  could not tell whose round trip was whose. The slower check left the default `pytest`
+  run — it is marked `round_trip_contract` and runs via CI's `plugin-contract` job
+  instead. A `--require-round-trips` pytest hook additionally fails the run if a
+  round-trip test ends skipped or xfailed, including a `pytest.skip()` call raised from
+  inside the test body (#456).
+- **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
+  (#446).
+- **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
+  plugins validate` already did (#449).
+- **`hvantk plugins errors` also lists downloader modules that fail to import**, as
+  `cli:<command>` rows that `hvantk drift` ignores; such a downloader used to drop out of
+  `hvantk download` with only a log line. It is the one plugins command whose exit code
+  signals load failures: `plugins list` and `plugins describe` stay informational
+  (`describe` exits 1 only for a provider that is unknown or failed to load) (#454).
+- **The docs say "dataset" where they said "typed artifact".** The README, CONTRIBUTING,
+  the docs site, the architecture diagram and a few docstrings now call what a build
+  produces a dataset, and `AnnotationTable`, `ExpressionMatrix`, `VariantMatrix` and
+  `GeneSet` the four dataset types. Code names, such as `Artifact` and the manifest's
+  `artifact_type`, are unchanged (#462).
+- **Hail tests run with the test session's settings.** The `hail` marker now sets up
+  `hail_session`, which honours `PYSPARK_MASTER`, `SPARK_DRIVER_MEMORY` and its other
+  documented variables; before, Hail started with its defaults (#463).
+
+### Fixed
+
+- **Twelve commands reported their own `ctx.exit(1)` as a crash** (a traceback, then
+  `Error: 1`): the `hgc` commands, `ancestry-inference`, `psroc` and `ptm constraint`
+  (#439).
+- **PeptideAtlas:** a build without `protein_identification.tsv` silently skipped
+  canonical-isoform filtering and now fails, and a repeated (peptide, protein, start)
+  mapping is counted once (#440).
+- **`map_ptm_sites` labelled PeptideAtlas and CPTAC rows as curated UniProt** when their
+  TSV had no `source_db` / `evidence_type` (#445).
+- **`hvantk ptm build` could not re-run on the same day** into its output directory: the
+  dated UniProt download raised `FileExistsError`. It is now reused, and written
+  atomically (#445).
+- **`cosmic-cgc:submissions` kept multi-valued `TISSUE_TYPE` as one string**, so a gene
+  tagged `E, M` formed its own tissue group (#442).
+- **`pqtl:metrics` could map two source gene symbols of one tissue to the same `gene_id`**,
+  duplicating `(locus, alleles, gene_id)` there: an approved symbol and a previous or alias
+  symbol of the same gene, two previous/alias symbols of one gene, or two approved symbols
+  that HGNC gives one Ensembl ID. Within the tissue, the gene_id now goes to the one approved
+  symbol among them, or to none of them when there is no single one, and the others keep
+  their source symbol as `gene_id`, with a warning. In a tissue where it collides with
+  nothing, a symbol stays mapped (#456).
+- **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
+  (#443).
+- **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like
+  a build with no parameters; it now reads as `None`, "not recorded" (#449).
+- **drift-validate skipped suffixed fingerprints** such as onek-genomes'
+  `drift_fingerprint_variants.json` (#444).
+- **Docs:** the README genesets row, the psroc page title, the Expression Atlas licence URI
+  and the E-MTAB-6798 organism (#438).
+- **The README, the architecture guide and the architecture diagram said `skills/` imports
+  `algorithms/`**, which `hvantk/tests/test_dependency_directions.py` forbids. They now show
+  the enforced rule: `tools/` imports both, and `skills/` and `algorithms/` meet only through
+  `core/`. The diagram also lists the current tools and algorithms and `VariantMatrix`, and
+  the README states the real prerequisites (Java 11, Poetry 2) (#461).
+- **Fixture licences:** audited every plugin's test fixture except GeVIR's (handled in a
+  separate pull request) for real-vs-synthetic status; added `THIRD_PARTY_DATA.md`
+  entries for eight previously-undocumented real fixtures (ClinVar, gnomAD, GTEx, GWAS
+  Catalog, HGNC, 1000 Genomes, UCSC Cell Browser's `default` dataset, MSigDB); dropped 9
+  BioCarta/legacy-KEGG sets from the MSigDB fixture that fall outside MSigDB's CC BY 4.0
+  grant; replaced the INSIDER `variants` and UCSC Cell Browser `adult-ctx`/`dev-ctx`
+  fixtures with synthetic ones after finding no published licence covers them, and
+  corrected the uniprot-ptm fixture's status from real to synthetic; re-sourced the UCSC
+  Cell Browser `default` fixture to its actual origin (a CC BY 4.0 Mendeley Data deposit,
+  not a UCSC accession); and, for Expression Atlas, corrected the Human Protein Atlas
+  licence on E-PROT-3 from stale CC BY-SA 4.0 to CC BY 4.0 and removed E-PROT-13, whose
+  catalog entry did not match the Human Protein Atlas at all (#426, #420, #458).
+- **`hvantk reprocess` failed for datasets with no parse stage whose builder reads one
+  file**: reprocess hands such a builder the `--raw-dir` directory, which `hgnc:lookup`,
+  `clinvar:variants`, `clingen:gene-disease`, `gencc:submissions` and `msigdb:genesets`
+  (Hail's `FileNotFoundException: … is a directory`) and `insider:variants`,
+  `dbnsfp:variants` and `cosmic-cgc:submissions` (`IsADirectoryError`) tried to read as a
+  file; `gevir:metrics` failed whenever its raw directory held a second file. A shared
+  `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`) now resolves the directory to
+  its one matching file. For `clingen` and `gencc`, whose downloads carry the date in
+  their name, it picks the newest when the directory holds the same export from several
+  days (#460).
+- **Three downloaders failed TLS verification on some Python builds**: `hgnc`,
+  `gnomad-metrics` and `ensembl-gene:structure` called `urllib.request` without a CA
+  bundle, so on a Python whose default SSL context has none (such as the python.org macOS
+  installer) they failed with `CERTIFICATE_VERIFY_FAILED`, as did `clinvar`'s
+  `--verify-md5`, the `clingen` and `gencc` `--list-versions` and `uniprot-ptm`'s version
+  listing. Downloaders that write one file now share an atomic, `requests`-based
+  `stream_to_file()` (`hvantk/core/utils/http.py`), so a failed or truncated download
+  never leaves a partial file; the checks use `tls_context()`, which adds certifi's bundle
+  to the system trust store (#460).
+- **`gencc:submissions` failed to build from the current GenCC export, and mangled values
+  containing quotes**: `sanitize_tsv` wrote quoted values back quoted, but
+  `hl.import_table` reads without quote handling, so a tab inside a quoted value (100 rows
+  of the 2026-10-14 export) became an extra column, and about 600 values containing a
+  quote reached the table wrapped in quotes, their own quotes doubled. The sanitized TSV
+  is now written unquoted, with tabs and line breaks inside a value replaced by spaces. A
+  row whose field count still differs from the header's fails the download, and the
+  rejected file is removed (#460).
+- **`hvantk reprocess gtex-eqtl:eqtls` failed in two ways.** The default source crashed in a
+  fresh process with `'JavaPackage' object is not callable`, because the builder started
+  Spark before Hail; `--plugin-arg source=eqtlgen` passed the `--raw-dir` directory to
+  Hail. Hail now starts first, and the eQTLGen file is found inside the directory (#463).
+- **Expression Atlas builds could fail on a complete download and succeed on a broken
+  one.** With both `<accession>-tpms.tsv` and `-transcripts-tpms.tsv` in `--raw-dir`, as
+  an unfiltered download leaves them, the builder now takes the file whose columns are
+  the SDRF's runs; the gene-level file can have one column per assay group instead, as
+  E-MTAB-6798's does. A failed FTP transfer left a partial file that the build then used,
+  exiting 0; it now fails the download and leaves nothing behind (#463).
+- **`cptac:phospho` stayed stuck after a failed clinical download**: later runs skipped
+  the download because the matrix existed, and the build failed on the missing
+  metadata. The download is now skipped only when both files exist (#463).
+- **`hvantk drift --ledger` reported "no datasets pending rebuild" for a ledger it could
+  not read**, such as one with a merge conflict; it now exits 2 with the reason, like
+  `--mark-rebuilt` (#463).
+
 ## 0.4.0 — 2026-10-08
 
 Every shipped dataset now runs an executable contract, and builders that could finish

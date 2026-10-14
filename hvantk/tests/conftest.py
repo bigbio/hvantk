@@ -25,7 +25,7 @@ _SUFFIX_TO_MARK = {
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-apply markers based on filename suffix and ensure hail tests use hail_session."""
+    """Auto-apply markers based on filename suffix."""
     for item in items:
         fname = pathlib.Path(item.fspath).name
         # Apply suffix-based markers
@@ -34,9 +34,6 @@ def pytest_collection_modifyitems(config, items):
         ):
             if fname.endswith(suffix):
                 item.add_marker(marker)
-        # Ensure hail tests use the hail_session fixture (single-shot Hail startup)
-        if item.get_closest_marker("hail") is not None:
-            item.add_marker(pytest.mark.usefixtures("hail_session"))
 
 
 # ----------------------------
@@ -46,7 +43,8 @@ def pytest_collection_modifyitems(config, items):
 def hail_session(tmp_path_factory, request):
     """
     Initialize Hail once per test session (and per xdist worker) to avoid repeated startup cost
-    and spurious re-init errors. Auto-applied to tests marked with @pytest.mark.hail.
+    and spurious re-init errors. Set up for every test marked with @pytest.mark.hail by
+    ``_hail_session_for_hail_tests`` below.
 
     Honors optional env vars to tune Spark:
       - PYSPARK_MASTER (default: local[*])
@@ -75,15 +73,13 @@ def hail_session(tmp_path_factory, request):
     # Lazy import hail
     hl = importlib.import_module("hail")
 
-    # Detect if already initialized
+    # Detect if already initialized. Not with `hl.current_backend()`: when no backend
+    # exists it starts Hail with default settings, so the init below never ran (see
+    # `_hail_already_initialized`).
+    from hvantk.core.utils.hail_context import _hail_already_initialized
+
     started_here = False
-    already_initialized = False
-    try:
-        backend = hl.current_backend()
-        if backend is not None:
-            already_initialized = True
-    except Exception:
-        already_initialized = False
+    already_initialized = _hail_already_initialized()
 
     if not already_initialized:
         master = os.getenv("PYSPARK_MASTER", "local[*]")
@@ -131,6 +127,18 @@ def hail_session(tmp_path_factory, request):
             hl.stop()
         except Exception:
             pass
+
+
+@pytest.fixture(autouse=True)
+def _hail_session_for_hail_tests(request):
+    """Set up ``hail_session`` for each test marked ``hail``.
+
+    Requested at setup because pytest fixes a test's fixtures at collection: a
+    ``usefixtures`` mark added in ``pytest_collection_modifyitems`` is ignored.
+    Each plugin's ``tests/conftest.py`` re-exports this with ``hail_session``.
+    """
+    if request.node.get_closest_marker("hail") is not None:
+        request.getfixturevalue("hail_session")
 
 
 # ----------------------------

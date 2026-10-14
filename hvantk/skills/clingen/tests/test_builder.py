@@ -39,6 +39,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("clingen:gene-disease")
 @pytest.mark.hail
 def test_clingen_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build ClinGen from fixture; assert schema and sample-row stability."""

@@ -15,6 +15,9 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+    SUMMARIZE_MIN_CELLS_PER_GROUP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +53,15 @@ def describe_expression_cmd(matrix_path):
     adata = load_anndata(matrix_path)
     info = describe_expression_ad(adata)
 
+    # describe only inspects -- it never refuses a transcript-keyed AnnData (that is
+    # markers'/summarize's job via require_gene_keyed) -- but it should not mislabel a
+    # transcript-level Expression Atlas build's var as "genes" either (issue #383).
+    is_transcript_keyed = adata.var.index.name == "transcript_id"
+    var_label = "transcripts" if is_transcript_keyed else "genes"
+
     click.echo(f"\nExpression AnnData: {matrix_path}")
-    click.echo(f"  Observations (cells/samples): {info['n_obs']:,}")
-    click.echo(f"  Variables (genes):            {info['n_vars']:,}")
+    click.echo(f"  {'Observations (cells/samples):':<30s}{info['n_obs']:,}")
+    click.echo(f"  {f'Variables ({var_label}):':<30s}{info['n_vars']:,}")
     click.echo("")
     if info["fields"]:
         click.echo("Metadata fields:")
@@ -153,6 +162,7 @@ def summarize_expression_cmd(
 
     from hvantk.core.io.anndata_io import load_anndata
     from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
+    from hvantk.core.models.anndata_utils import TranscriptKeyedError
 
     output_path = Path(output)
     if output_path.suffix != ".h5ad":
@@ -199,8 +209,11 @@ def summarize_expression_cmd(
             param_hint="--group-by",
         )
 
-    # Same reasoning as `markers`: summarize_expression_ad reaches for scanpy,
-    # which is optional, so surface a missing extra as a usage error not a crash.
+    # Same reasoning as `markers`: summarize_expression_ad reaches for scanpy, which is
+    # optional, and also refuses a transcript-keyed AnnData (require_gene_keyed) -- both
+    # are usage errors, not crashes. Caught by TYPE, not bare ValueError, so an unrelated
+    # ValueError raised deeper in the aggregation (e.g. a numpy broadcasting failure)
+    # still surfaces as a real traceback instead of a misleadingly clean one-liner.
     try:
         summary = summarize_expression_ad(
             adata,
@@ -208,7 +221,7 @@ def summarize_expression_cmd(
             filter_by=filters,
             min_cells_per_group=min_cells,
         )
-    except ImportError as exc:
+    except (ImportError, TranscriptKeyedError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     if summary.n_obs == 0:
@@ -330,6 +343,10 @@ def markers_cmd(
         filter_by_metadata_ad,
         require_scanpy,
     )
+    from hvantk.core.models.anndata_utils import (
+        TranscriptKeyedError,
+        require_gene_keyed,
+    )
     from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
 
     # ClickException so a missing optional extra reads as a usage problem rather
@@ -349,6 +366,10 @@ def markers_cmd(
         raise SystemExit(1)
 
     adata = load_anndata(matrix_path)
+    try:
+        require_gene_keyed(adata, "hvantk expression markers")
+    except TranscriptKeyedError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     # Apply pre-filters
     if filter_by:
@@ -438,7 +459,7 @@ def markers_cmd(
 @click.option(
     "--min-cells",
     type=int,
-    default=10,
+    default=SUMMARIZE_MIN_CELLS_PER_GROUP,
     show_default=True,
     help="Drop groups with fewer cells than this threshold.",
 )

@@ -41,6 +41,11 @@ class _SeededStratifiedGroupKFold(StratifiedGroupKFold):
     tie-break among groups whose class-distribution spread is equal -- which is what the
     upstream shuffle was meant to do. Partitions therefore will not change silently if
     sklearn's own shuffle is ever fixed.
+
+    This defect is reported upstream as scikit-learn issue #32478
+    (https://github.com/scikit-learn/scikit-learn/issues/32478) and fixed by PR #32540,
+    which was merged after 1.7.2. hvantk maintains this splitter because it supports
+    scikit-learn >= 1.4.
     """
 
     def __init__(self, n_splits=5, seed=None):

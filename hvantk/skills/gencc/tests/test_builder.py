@@ -47,6 +47,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("gencc:submissions")
 @pytest.mark.hail
 def test_gencc_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GenCC from fixture; assert schema and sample-row stability."""

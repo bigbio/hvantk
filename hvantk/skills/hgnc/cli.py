@@ -14,12 +14,17 @@ from pathlib import Path
 
 import click
 
+from hvantk.core.utils.http import stream_to_file
 from hvantk.skills.hgnc.shared.constants import (
     HGNC_DOWNLOAD_URL,
     HGNC_INFO_URL,  # noqa: F401 - re-exported for callers importing it from here
 )
 
 logger = logging.getLogger(__name__)
+
+# urlretrieve had no timeout; 30s matches this codebase's other short-request
+# conventions (clinvar/clingen/gencc's version checks).
+_DOWNLOAD_TIMEOUT_S = 30
 
 # Canonical filename for the HGNC complete-set TSV. Used both by the bare CLI
 # (as a sensible default file name) and by the lifecycle ``download_dataset``
@@ -50,8 +55,7 @@ def download_hgnc(output_path: str, overwrite: bool = False) -> str:
     RuntimeError
         If download fails.
     """
-    import urllib.request
-    import urllib.error
+    import requests
 
     output = Path(output_path)
 
@@ -63,11 +67,11 @@ def download_hgnc(output_path: str, overwrite: bool = False) -> str:
 
     try:
         logger.info(f"Downloading HGNC data from {HGNC_DOWNLOAD_URL}")
-        urllib.request.urlretrieve(HGNC_DOWNLOAD_URL, output)
+        stream_to_file(HGNC_DOWNLOAD_URL, str(output), timeout=_DOWNLOAD_TIMEOUT_S)
         logger.info(f"Downloaded to {output_path}")
         return str(output)
 
-    except urllib.error.URLError as e:
+    except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to download HGNC data: {e}") from e
     except OSError as e:
         raise RuntimeError(f"Failed to write file: {e}") from e

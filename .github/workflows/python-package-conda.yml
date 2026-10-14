@@ -1,6 +1,21 @@
 name: Python Package using Conda
 
-on: [push, pull_request]
+# push is scoped to main/dev; pull_request keeps its own default (every target branch).
+# Without the scope, a push to an open PR's branch ran this whole workflow twice --
+# once for the push, once for pull_request -- including the ~30 min HGC Hail job, for
+# no extra signal (#432). A branch with no open PR now gets no CI on push; open a PR to
+# get a run.
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+
+# Cancel a superseded PR run so it stops competing for runners; never cancel a run on
+# main/dev, where `github.event.pull_request.number` is unset and the group key falls
+# back to the ref (#432).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every job here only reads the repo -- builds, installs, runs tests. The default token grants
 # write scopes none of them need. Flagged in review on #249 and not applied at the time; set
@@ -10,10 +25,11 @@ permissions:
 
 jobs:
   # Runs in seconds and needs no environment, so it sits in the workflow that triggers on
-  # every push and every pull request rather than only on main-targeted PRs. Its absence is
-  # why poetry.lock drifted out of sync with pyproject.toml across ~28 commits without CI
-  # noticing: nothing in the pipeline installed via poetry or validated the lock, so the two
-  # could disagree forever while every job stayed green.
+  # every push to main/dev and every pull request (any target branch) rather than only
+  # on main-targeted PRs. Its absence is why poetry.lock drifted out of sync with
+  # pyproject.toml across ~28 commits without CI noticing: nothing in the pipeline
+  # installed via poetry or validated the lock, so the two could disagree forever while
+  # every job stayed green.
   lockfile:
     name: poetry.lock in sync
     runs-on: ubuntu-latest
@@ -36,6 +52,16 @@ jobs:
         run: python -m pip install --upgrade pip poetry
       - name: Check pyproject.toml is valid and poetry.lock matches it
         run: poetry check --lock
+      # requirements.txt / environment.yml say in their own header that they are kept
+      # in sync with pyproject.toml by hand; nothing checked that until this (#408).
+      # tomllib needs Python >= 3.11, one more than the 3.10 above, hence the second
+      # setup-python here rather than bumping the job's main interpreter.
+      - name: Set up Python 3.11+ for the requirements-sync check
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check requirements.txt / environment.yml are in sync with pyproject.toml
+        run: python .github/scripts/check_requirements_sync.py
 
   # Nothing in CI installed the package, so `pytest` always imported hvantk from the checkout
   # directory and three things were never exercised: the `hvantk` console script, the
@@ -83,6 +109,11 @@ jobs:
           /tmp/venv/bin/python -c "import hvantk, os; p = os.path.dirname(hvantk.__file__); assert 'site-packages' in p, p; print('importing installed copy:', p)"
           /tmp/venv/bin/hvantk --help
           /tmp/venv/bin/hvantk plugins list
+      # `list` only omits a provider that failed to load; `errors` is the one that
+      # actually catches that (exits 1 whenever it has anything to report, #408).
+      - name: No plugin failed to load from the installed copy
+        working-directory: /tmp
+        run: /tmp/venv/bin/hvantk plugins errors
       # A packaging glob that drops manifests would still let `plugins list` exit 0 with a
       # short list, so assert the count instead of just the exit code.
       - name: Every plugin manifest survived packaging
@@ -128,17 +159,21 @@ jobs:
       - name: Test with pytest
         run: |
           python -m pip install pytest
-          pytest
+          # --require-round-trips fails the run if a @pytest.mark.round_trip(...) test
+          # (every non-hail-backed dataset's round trip runs in this default selection:
+          # cptac's two, expression-atlas, peptideatlas, ucsc-cellbrowser's three) ends
+          # skipped or xfailed, which a static check cannot see (#432).
+          pytest --require-round-trips
 
   # The `hail` marker is deselected by pytest.ini's addopts, so before this job the
   # plugin-contract tests had never run in CI. That is how test_plugin_smoke's expected
   # provider list drifted 8 providers behind the tree, and how three builder/streamer
   # bugs stayed green. Scoped to the contract tests (~2 min) rather than the whole `hail`
   # suite (~31 min, dominated by unrelated HGC/ancestry integration work) so it is cheap
-  # enough to run on every push and every pull request. The `pull_request` trigger is what
-  # covers a pull request from a fork: pushes to a fork run workflows in the fork, if
-  # anywhere, never here, so until #428 such a PR got no Hail run at all (#427) -- not
-  # from this job, nor from hgc-hail below.
+  # enough to run on every push to main/dev and every pull request. The `pull_request`
+  # trigger is what covers a pull request from a fork: pushes to a fork run workflows in
+  # the fork, if anywhere, never here, so until #428 such a PR got no Hail run at all
+  # (#427) -- not from this job, nor from hgc-hail below.
   plugin-contract:
     name: Plugin contract (hail)
     runs-on: ubuntu-latest
@@ -171,11 +206,17 @@ jobs:
           python -m pip install pytest requests-mock
       - name: Run plugin contract tests
         run: |
+          # -m adds `round_trip_contract`: the slow per-manifest collection check in
+          # test_plugin_contract_artifacts.py (pytest.ini deselects it by default, see
+          # that file's module docstring). --require-round-trips fails the run if a
+          # round_trip-marked test ends skipped or xfailed, which that collection check
+          # cannot see on its own (#432).
           pytest hvantk/tests/test_plugin_smoke.py \
                  hvantk/tests/test_plugin_conformance.py \
                  hvantk/tests/test_hail_helpers.py \
+                 hvantk/tests/test_plugin_contract_artifacts.py \
                  hvantk/skills \
-                 -m hail -rA
+                 -m "hail or round_trip_contract" --require-round-trips -rA
 
   # hvantk/tests/hgc/ ran in NO CI job: pytest.ini deselects `hail`, and the job above is
   # path-scoped to the contract tests. So test_convert_vds_to_mt -- the only end-to-end

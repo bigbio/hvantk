@@ -13,6 +13,13 @@ on:
   pull_request:
     branches: ["main", "dev"]
 
+# Cancel a superseded PR run so it stops competing for runners; never cancel a run on
+# main/dev, where `github.event.pull_request.number` is unset and the group key falls
+# back to the ref (#432).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # lint + test only; no write scopes needed
 permissions:
   contents: read
@@ -48,7 +55,10 @@ jobs:
           ruff check . --exit-zero --statistics --preview
       - name: Test with pytest
         run: |
-          pytest
+          # --require-round-trips fails the run if a @pytest.mark.round_trip(...) test
+          # (every non-hail-backed dataset's round trip runs in this default selection)
+          # ends skipped or xfailed, which a static check cannot see (#432).
+          pytest --require-round-trips
 
       - name: Build docs (strict)
         # The Deploy-docs workflow runs only on push to main and without

@@ -45,6 +45,8 @@ Stable notes:
   3. conversely, a **numeric** leading column the SDRF does *not* declare raises rather than being absorbed as a sample. A numeric annotation column (`Entrez`, gene length, an analytics `p-value`) is indistinguishable by content from a sample the SDRF omits, and the old code guessed "sample" — putting NCBI gene ids into the matrix as expression values, detectable only as an all-NaN `obs` row.
   Within those bounds content decides, since position alone is not enough (the transcript column is not always third). Note an all-missing column reads as all-NaN, which `to_numeric` also reports as **non**-numeric; it survives as a sample only because of the `values.notna().any()` guard, not because NaN counts as numeric. That guard is load-bearing.
 - Because a `*-transcripts-tpms.tsv` export is transcript-level, **one gene id spans several rows** — `Gene ID` repeats once per transcript of that gene. `var_names` therefore cannot be the gene id: anndata accepts duplicate `var_names` and only warns, so a naive build round-trips an `.h5ad` whose index is non-unique and silently returns multiple columns from `adata[:, gene_id]` downstream (#349). `create_anndata_from_expression_atlas` detects the transcript id column (`transcript_id_column`, default `"GeneID"`) among the inferred annotation columns and, when present, indexes `var` by it instead — unique per row by construction — demoting `gene_id_column` to a regular `var` column (`"Gene ID"`) so the gene id is kept, just no longer as the index. A gene-level export (no transcript column detected) is unaffected and still indexes `var` by the gene id.
+- **`hvantk reprocess` scopes the expression matrix to the SDRF's accession, and picks the TPM file whose columns are the SDRF's runs.** `_resolve_expression_atlas_inputs` (`builder.py`) reads the accession out of the sole `*.condensed-sdrf.tsv`'s own filename (`<accession>.condensed-sdrf.tsv`) and only considers TPM files named for that same accession -- SDRF and TPM candidates used to be counted independently, so a `--raw-dir` holding one accession's SDRF and a *different* accession's TPM file (a reused directory, two downloads merged by hand) silently passed and combined mismatched expression + metadata. `--plugin-arg accession=...` with no `config_path` filter fetches *every* file in the experiment's FTP directory (`ftp.nlst()`, `hvantk/skills/expression_atlas/cli.py`), so `<accession>-tpms.tsv` (gene-level) and `<accession>-transcripts-tpms.tsv` can both be present, and the name does not say which can be built: E-MTAB-6798's gene-level file has one column per assay group (`g1` … `g94`, each cell a string of quartiles), its transcript-level file one column per run. So the resolver reads each candidate's header line and keeps the files that have at least one SDRF run id among their columns. Exactly one is used; of several, the gene-level one, since a per-run gene file needs no aggregation. It raises when the SDRF's accession matches no TPM file, when no candidate has a run column, or when the choice is still ambiguous; the file actually chosen is logged at INFO.
+- **`level="gene"` collapses a transcript-level export back to one row per gene.** `hvantk expression markers`/`summarize` and the PTM constraint expression loader read `var_names` as the gene id with no override; against a transcript-keyed `var` they would silently emit per-transcript results labelled as per-gene (#383). This only matters when the resolved input is transcript-level (see above) — pass `level=gene` (e.g. `--plugin-arg level=gene` on `hvantk reprocess`) to sum each sample's transcript-level values onto their shared `Gene ID` and re-key `var` by the gene id (index name `gene_id`, matching a gene-level build; `Gene Name` carried along). Summation is correct for the abundance units Expression Atlas ships (TPM, FPKM, counts) — all linear, so a gene's total is the sum of its transcripts' — using `min_count=1` so a group of all-missing inputs sums to `NaN`, not `0.0`; a transcript with no `Gene ID` raises rather than being dropped by `groupby`. Against an already gene-level export, `level=gene` is a harmless no-op. The default, `level=transcript`, is unchanged. Any other value raises. Those same two consumers refuse a transcript-keyed AnnData outright (`hvantk.core.models.anndata_utils.require_gene_keyed`, checked via `var.index.name == "transcript_id"`) rather than silently mislabelling transcripts as genes, and the error names `--plugin-arg level=gene` as the fix. `hvantk annotate prepare`'s matrix source type refuses one too (defense in depth), but `level=gene` does not make an Expression Atlas build usable there: it resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so it needs a symbol-keyed reduction regardless of `level`.
 - SDRF is tab-separated, no header, and condensed-long: each row is `(accession, unused, sample_id, column_type, column_name, column_value)`. The `unused` column is dropped; `column_type` is either `characteristic` or `factor`; duplicates on `(sample_id, column_name)` keep the **last** value (see `_reshape_sdrf_long_to_wide_format`).
 - Column names from SDRF are normalized: spaces → underscores, parentheses stripped (`organism_part_(group)` → `organism_part_group`). Downstream `obs` column names follow this rule.
 - TODO: enumerate remaining per-accession quirks (mixed-type factor columns, missing SDRF rows, multi-pipeline TPM variants) as they are encountered.
@@ -56,7 +58,7 @@ Stable notes:
   export — see below). `X` is `float32`, **samples x var** — the source TSV is
   genes/transcripts x samples and the builder transposes it (`df[sample_cols].values.T`).
 - **`obs`:** indexed by `sample_id`; columns are SDRF characteristics / factors after the long → wide reshape (e.g. `organism`, `tissue`, `cell_type`, ...).
-- **`var`:** indexed by `gene_id` for a gene-level export. For a **transcript-level** export (the real Expression Atlas shape — see § 4), indexed by `transcript_id` instead, with `"Gene ID"` carried as a regular column so the gene id is not lost. Includes a `Gene Name` column when the source TSV had one.
+- **`var`:** indexed by `gene_id` for a gene-level export (which file `hvantk reprocess` builds from: § 4). For a **transcript-level** export (the real Expression Atlas per-transcript shape — see § 4) built with the default `level=transcript`, indexed by `transcript_id` instead, with `"Gene ID"` carried as a regular column so the gene id is not lost. Built with `level=gene`, a transcript-level export is summed onto the gene id and indexed by `gene_id` like a gene-level build (see § 4). Includes a `Gene Name` column when the source TSV had one.
 - **`uns["column_summary"]`:** per-`obs`-column summary annotated by `annotate_column_summary_ad`.
 - **Provenance:** stamped on the returned `ExpressionMatrix` via `ctx.provenance(schema_id="expression-atlas-dataset-v1")`; persisted by the platform as a sidecar `.provenance.json`.
 
@@ -83,8 +85,10 @@ When invoked to build or update a single Expression Atlas experiment:
 1. **Resolve raw paths.** Either download via
    `hvantk download expression-atlas --accession <E-XXXX-N> --download_path /tmp/atlas`,
    or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
-2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`.
+2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad --skip-download` (the raw dir already holds step 1's download; without `--skip-download`, pass `--plugin-arg accession=<E-XXXX-N>` too, since `hvantk reprocess` forwards it to the download stage).
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
+   - It builds from the TPM file whose columns are the SDRF's runs (the **gene-level** one when both files qualify). For E-MTAB-6798 that is the **transcript-level** file, since its gene-level file has a column per assay group (§4).
+   - A transcript-level build needs `--plugin-arg level=gene` to collapse it to one row per gene before handing the output to `hvantk expression markers`/`summarize` or the PTM constraint loader, neither of which accepts a transcript-keyed matrix; a gene-level build already works without it. `hvantk annotate prepare`'s matrix source type needs more than `level=gene` either way (§4): it resolves `var_names` as HGNC gene symbols, not Ensembl gene ids.
 3. **Validate:** run `pytest hvantk/skills/expression_atlas/tests`. That covers the seeded round-trip (`test_builder.py`, schema + sample rows + `n_obs`/`n_vars`) alongside the offline downloader and drift-probe tests. Regenerate snapshots only for an intentional change: `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. Building from a real, untruncated download works (#342 fixed); verified against the full 320-column `E-MTAB-6798` file.
 
 ## 8. Update playbook
@@ -107,6 +111,8 @@ Per `_conventions` § 9:
 
 The plugin manifest already declares these paths so the loader contract holds. `tests/test_builder.py` now exercises `build_expression_atlas` end-to-end against the committed fixture and asserts both snapshots plus `n_obs`/`n_vars`; regenerate via `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. No Hail is required — the artifact is AnnData-backed.
 
+The fixture is real E-MTAB-6798 data (CC BY 4.0); see its `THIRD_PARTY_DATA.md` entry.
+
 > **The fixture is production-shaped.** It keeps the real three-column header
 > (`Gene ID`, `Gene Name`, `GeneID`), so the round-trip test exercises the layout an
 > actual download has — not a sanitised one. It previously dropped the `GeneID`
@@ -117,5 +123,16 @@ The plugin manifest already declares these paths so the loader contract holds. `
 > two rows exactly as a real transcripts-tpms export would produce.
 > `tests/test_builder.py` additionally pins these behaviours directly: the transcript
 > column must key `var` and not become a third sample, a detected transcript column
-> must leave `var_names` unique with the gene id demoted to a column, and an
-> all-missing sample column must stay a sample.
+> must leave `var_names` unique with the gene id demoted to a column, an
+> all-missing sample column must stay a sample, and (#383) `level=gene` against the
+> same two-transcript gene sums its transcripts' values per sample and re-keys `var`
+> by the gene id (an all-missing sample or gene sums to `NaN`, not `0.0`; a
+> transcript with no gene id raises). `hvantk/tests/test_reprocess_expression_atlas_cli.py`
+> -- not under this skill's own `tests/`, since it imports `hvantk.tools.plugins.reprocess_cli`
+> and `skills/` must not import `tools/` -- drives the real `reprocess` command against
+> this fixture: with and without `level=gene`; with a fabricated per-run gene-level
+> file alongside the fixture's transcript-level one, which
+> `_resolve_expression_atlas_inputs` prefers; with an assay-group gene-level file
+> (`g1`, `g2` columns, the shape E-MTAB-6798 ships), which it passes over for the
+> transcript-level one; and two mismatched/ambiguous raw-dir shapes that must raise
+> rather than silently combine or guess.

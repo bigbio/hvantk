@@ -25,9 +25,15 @@ def _resolve_gtf_path(parsed_input) -> str:
 
     This dataset declares ``lifecycle.download`` but no ``lifecycle.parse``, so
     ``hvantk reprocess`` hands the builder the raw *directory* (the download wrote the
-    GTF inside it), not the file. Sibling plugins survive this because ``hl.import_table``
-    tolerates a directory path; this builder reads the GTF with plain Python ``open()``,
-    which raises ``IsADirectoryError`` on a directory. So resolve a directory to the known
+    GTF inside it), not the file. ``hl.import_table`` does NOT tolerate a directory
+    path either -- sibling plugins (hgnc, clinvar, clingen, gencc, gevir, gwas-catalog,
+    gnomad-metrics, msigdb, dbnsfp, cosmic-cgc, insider:variants) survive this via the
+    shared, pattern-matching ``resolve_raw_file`` (``hvantk/core/utils/raw_inputs.py``).
+    This builder keeps its own exact-filename resolver instead of switching to that
+    helper, because it already knows the pinned release's exact committed filename and
+    reads the GTF with plain Python ``open()``/``gzip.open()`` (picking gzip-vs-plain
+    off the ``.gz`` suffix of that known name, not file content), which raises
+    ``IsADirectoryError`` on a directory. So resolve a directory to the known
     committed filename here. A path that already points at a file is returned unchanged,
     which keeps the direct ``build(input_path=<file>)`` calls (tests, snapshots) working.
     """

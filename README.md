@@ -1,45 +1,63 @@
+[![Release](https://img.shields.io/github/v/release/bigbio/hvantk)](https://github.com/bigbio/hvantk/releases/latest)
+[![Python package](https://github.com/bigbio/hvantk/actions/workflows/python-package.yml/badge.svg)](https://github.com/bigbio/hvantk/actions/workflows/python-package.yml)
 [![Python Package using Conda](https://github.com/bigbio/hvantk/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/bigbio/hvantk/actions/workflows/python-package-conda.yml)
-[![Python application](https://github.com/bigbio/hvantk/actions/workflows/python-app.yml/badge.svg)](https://github.com/bigbio/hvantk/actions/workflows/python-app.yml)
-[![Python](https://img.shields.io/badge/python-%E2%89%A53.10-blue)](https://www.python.org)
+[![Scheduled drift check](https://github.com/bigbio/hvantk/actions/workflows/drift.yml/badge.svg)](https://github.com/bigbio/hvantk/actions/workflows/drift.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/bigbio/hvantk/actions/workflows/python-package.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://bigbio.github.io/hvantk)
 
 # hvantk
 
-**Hail-based toolkit for multiomics variant annotation and analysis.**
+**Hail-based toolkit for multi-omics variant annotation and analysis.**
 
-`hvantk` is a modular toolkit that uses [Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multiomics integration to improve the interpretation of genetic variants.
+`hvantk` turns public omics resources (variants, genes, proteins and expression) into
+datasets with provenance, and integrates them in analysis tools that help
+interpret genetic variants. It uses [Hail](https://hail.is/) for genome-scale tables and
+[AnnData](https://anndata.readthedocs.io/) for expression matrices.
+
+- **Data-source plugins.** More than 20 [sources](docs_site/guide/data-sources.md), among
+  them ClinVar, gnomAD, GTEx, UniProt and Expression Atlas. Each one builds with one
+  command, `hvantk reprocess <provider>:<dataset>`.
+- **Provenance on every dataset.** A build records its source fingerprint, schema,
+  builder commit and parameters, and a derived dataset keeps its parents.
+- **Drift detection.** `hvantk drift` compares a source's live fingerprint with the
+  committed one. A scheduled job re-checks every source twice a month and opens pull
+  requests for what changed.
+- **Analysis tools.** Joint genotyping, ancestry inference, QTL cascades, enrichment and
+  burden tests, PTM variant classification, pathogenicity-score evaluation and multi-omic
+  gene re-ranking.
 
 ## Installation
+
+Requires Python 3.10–3.12, Java 11 (for Hail and Spark) and
+[Poetry](https://python-poetry.org/) 2.x.
 
 ```bash
 git clone https://github.com/bigbio/hvantk
 cd hvantk
 poetry install
 eval "$(poetry env activate)"
+hvantk utils check-install   # verify the install
 ```
 
-**Prerequisites**: Python >=3.10, Hail
+The base install is lean. Plotting, machine-learning and a few provider-specific
+dependencies are opt-in extras: `poetry install --extras "ancestry psroc"`, or
+`poetry install --all-extras` for everything.
+[Installation → Optional features](docs_site/getting-started/installation.md#optional-features-extras)
+lists what each extra adds and which commands need it.
 
-### Optional extras
-
-The base install is intentionally lean — plotting, machine-learning, and a few
-provider-specific dependencies are opt-in Poetry extras:
+## Quick start
 
 ```bash
-poetry install --extras "ancestry psroc"   # one or more
-poetry install --all-extras                # everything
+# Every data source and its datasets
+hvantk plugins list
+
+# Download, parse and build the HGNC gene table, then check its source for drift
+hvantk reprocess hgnc:lookup --raw-dir data/hgnc --output hgnc.ht
 ```
 
-For the full table — what each extra pulls in and which commands need it — see
-[Installation → Optional features](docs_site/getting-started/installation.md#optional-features-extras).
-
-Verify it works:
-
-```bash
-hvantk utils check-install
-hvantk --help
-```
+The output is a Hail table with a `.provenance.json` sidecar. The
+[Usage Guide](docs_site/guide/usage.md) covers the analysis tools.
 
 ## Toolkit
 
@@ -56,8 +74,8 @@ hvantk --help
 | **Expression** | Expression analysis (summarize, marker extraction) | `hvantk expression` | [Usage Guide](docs_site/guide/usage.md) |
 | **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Usage Guide](docs_site/guide/usage.md#gene-level-annotation-matrices) |
 | **Cohort** | Validate and attach external cohorts | `hvantk cohort` | [Usage Guide](docs_site/guide/usage.md#external-cohorts) |
-| **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Example](examples/rerank/README.md) |
-| **Gene sets** | Extract or prepare gene set collections (ClinGen, GenCC, COSMIC) | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
+| **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Re-rank](docs_site/tools/rerank.md) |
+| **Gene sets** | Extract or prepare GeneSetCollection files from curated tables | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
 
 Plus the registry and operational commands: `hvantk plugins` and `hvantk tools` (inspect the
 plugin and tool registries), `hvantk catalog` (search the aggregated dataset catalog),
@@ -66,82 +84,77 @@ and `hvantk utils` (format conversion, BGZF validation, install diagnostics).
 
 ## Architecture
 
-`hvantk` is organized in four code layers (`core/`, `algorithms/`,
-`skills/`, `tools/`) plus a substrate-level data registry (`resources/`).
-A strict one-way dependency rule is enforced by tests in
+`hvantk` is organized in four code layers (`core/`, `algorithms/`, `skills/`, `tools/`)
+plus a substrate-level data registry (`resources/`). Imports flow one way, enforced by
 [`hvantk/tests/test_dependency_directions.py`](hvantk/tests/test_dependency_directions.py):
+`tools/` composes `skills/` and `algorithms/`, and those two never import each other.
+They meet only through the dataset types in `core/`.
 
 <p align="center">
-  <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
+  <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ imports skills/, algorithms/ and core/; skills/ and algorithms/ import only core/ and never each other; resources/ sits at the substrate level alongside core/. Imports never flow upward." width="860">
 </p>
 
-**Why the directions matter:** `skills/` adapters can rot when upstream APIs
-change without algorithms breaking; `algorithms/` evolve without churning
-the source-adapter layer. `core/` and `resources/` are the stable substrate
-everyone depends on — neither imports upward.
+A data-source adapter in `skills/` can break when its upstream changes without breaking
+any algorithm, and `algorithms/` evolve without touching the adapters. `core/` and
+`resources/` are the stable substrate; neither imports upward.
 
 ### Data model
 
-Four semantic artifact types live in [`hvantk/core/models/`](hvantk/core/models/),
-each backed by one of several native engines:
+Four dataset types live in [`hvantk/core/models/`](hvantk/core/models/), each backed by
+a native engine:
 
-| Artifact | Backends | On-disk format | Used for |
+| Dataset type | Backends | On-disk format | Used for |
 |---|---|---|---|
 | [`AnnotationTable`](hvantk/core/models/annotation_table.py) | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
 | [`ExpressionMatrix`](hvantk/core/models/expression_matrix.py) | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
 | [`VariantMatrix`](hvantk/core/models/variant_matrix.py) | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
-| [`GeneSet`](hvantk/core/models/gene_set.py) | (in-memory `frozenset`) | `.geneset.json` | curated gene collections (CHD, MSigDB, …) |
+| [`GeneSet`](hvantk/core/models/gene_set.py) | (in-memory `frozenset`) | `.geneset.json` | curated gene collections (ClinGen, GenCC, COSMIC CGC, MSigDB, …) |
 
-Every artifact carries a [`Provenance`](hvantk/core/models/provenance.py)
-record — plugin name, version, source fingerprint, schema id, build
-timestamp, and a `parents: tuple[Provenance, ...]` chain for algorithm
-derivations. The `@algorithm` decorator stamps input provenances onto
-output artifacts automatically, so the build graph is preserved end-to-end.
+Every dataset carries a [`Provenance`](hvantk/core/models/provenance.py) record: where it
+came from (its dataset id, such as `clinvar:variants`, and the source fingerprint), its
+schema id, the builder commit, build parameters and timestamp, and a `parents` chain. The
+`@algorithm` decorator stamps input provenances onto output datasets, so the build graph
+is preserved end to end.
 
-Artifacts expose a **portable query API** (`filter`, `select`, `join`,
-`with_columns`, `group_by().agg()`) via the [`col(...)`](hvantk/core/models/_expr.py)
-expression DSL, compiled to either Hail or pandas at execution time —
-algorithms can be written backend-agnostically. When the algorithm legitimately
-needs the raw native object, [`core_io.load_native(path)`](hvantk/core/io/__init__.py)
-returns `(native_obj, Provenance)` zero-cost.
+`AnnotationTable` exposes a portable query API (`filter`, `select`, `join`,
+`with_columns`, `group_by().agg()`) through the [`col(...)`](hvantk/core/models/_expr.py)
+expression DSL, compiled to Hail or pandas at execution time. When an algorithm needs the
+raw native object, [`core_io.load_native(path)`](hvantk/core/io/__init__.py) returns
+`(native_obj, Provenance)` at no cost.
 
-### Plugin contract — adding a new data source
+### Plugin contract
 
-Each data source ships as a self-contained plugin under `hvantk/skills/<plugin>/`,
-declared by a [`plugin.yaml`](hvantk/skills/clinvar/plugin.yaml) manifest naming its
-builder and drift probe, plus an optional downloader for sources that permit an
-automated fetch. Sources behind a license gate, or too large to mirror, ship a
-documented acquisition procedure instead. The platform orchestrator
-[`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) resolves the manifest,
-computes the source fingerprint, calls the builder, validates the returned artifact
-against the manifest's `artifact_type` and `schema_id` (or one of its `schema_ids`),
-and saves it alongside a sidecar `.provenance.json`. The loader discovers manifests on
-its own — there is no registry to edit.
+Each data source is a self-contained plugin under `hvantk/skills/<plugin>/`, declared by a
+[`plugin.yaml`](hvantk/skills/clinvar/plugin.yaml) manifest that names its builder, drift
+probe and, where the source allows an automated fetch, its downloader. Sources behind a
+licence gate, or too large to mirror, document their acquisition instead.
+[`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) computes the source
+fingerprint, calls the builder, validates the built dataset against the manifest's
+`artifact_type` and `schema_id`, and saves it with a `.provenance.json` sidecar. The
+loader discovers manifests on its own; there is no registry to edit.
 
-The full contract and the annotated directory tree live in the architecture guide:
-
-- [Plugin contract](docs_site/architecture.md#3-plugin-contract--adding-a-data-source)
-  — build sequence diagram, annotated `plugin.yaml`, two-pass loader, streamer
-  placement rule
-- [Project structure](docs_site/architecture.md#project-structure) — what lives in
-  each package, layer by layer
+The [architecture guide](docs_site/architecture.md#3-plugin-contract--adding-a-data-source)
+has the build sequence, an annotated `plugin.yaml`, the two-pass loader and the
+[project structure](docs_site/architecture.md#project-structure).
 
 ### How to extend
 
 | Add | Where | Pattern |
 |---|---|---|
-| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns one of the four artifact types) + `drift_probe.py`. Loader auto-discovers. |
-| A new algorithm | `hvantk/algorithms/<domain>/` | Decorate with `@algorithm(name=…, backends=[…], inputs={…}, outputs={…})`. Operate on Artifact inputs (or use `load_native` for Hail-heavy work). |
-| A new CLI command | `hvantk/tools/<domain>/` | Add the click command + a `.tool.yaml` manifest, then an entry in `_LAZY_COMMANDS` in `hvantk/hvantk.py`. Do **not** add a module-level import + `cli.add_command` — that works, but costs every invocation your command's imports (see [Architecture](docs_site/architecture.md#adding-a-new-cli-command)). |
-| A new artifact format | `hvantk/core/io/_formats.py` + dispatch in `__init__.py` | Add `save_<artifact>_<ext>` / `load_<artifact>_<ext>`. |
+| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns one of the four dataset types) + `drift_probe.py`. The loader discovers it. |
+| A new algorithm | `hvantk/algorithms/<domain>/` | Decorate with `@algorithm(name=…, backends=[…], inputs={…}, outputs={…})`. Operate on dataset inputs (or use `load_native` for Hail-heavy work). |
+| A new CLI command | `hvantk/tools/<domain>/` | Add the click command, a `.tool.yaml` manifest and an entry in `_LAZY_COMMANDS` in `hvantk/hvantk.py`, so the command's imports load only when it runs ([details](docs_site/architecture.md#adding-a-new-cli-command)). |
+| A new on-disk format | `hvantk/core/io/_formats.py` + dispatch in `__init__.py` | Add `save_<type>_<ext>` / `load_<type>_<ext>`. |
 
 ## Documentation
 
 **Full docs site:** [https://bigbio.github.io/hvantk](https://bigbio.github.io/hvantk)
 
-- [Data Sources](docs_site/guide/data-sources.md) -- Available annotations and how to acquire them
-- [Examples](docs_site/examples/index.md) -- Tutorials and walkthroughs for each tool
-- [Architecture](docs_site/architecture.md) -- Design patterns and extension points
+- [Data Sources](docs_site/guide/data-sources.md): available annotations and how to acquire them
+- [Usage Guide](docs_site/guide/usage.md): dataset builds and the analysis tools
+- [Examples](docs_site/examples/index.md): tutorials and walkthroughs for each tool
+- [Architecture](docs_site/architecture.md): design patterns and extension points
+- [Changelog](CHANGELOG.md): what changed in each release
 
 ## Citation
 
@@ -158,17 +171,12 @@ If you use hvantk in your research, please cite:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, code style, and testing requirements.
-
-```bash
-poetry install
-pytest -q
-hvantk --help
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, code style and tests
+(`pytest -q` runs the fast suite).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
 
 ## Support
 

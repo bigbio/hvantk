@@ -52,10 +52,9 @@ class _StubGeneCatalog:
     Per that contract (``hvantk/core/streamers/gene_catalog.py``), the returned
     dict has the *same keys as the input* -- an unmapped symbol (``SYNTHGENE1``)
     maps to ``None`` rather than being omitted. This does not change which
-    ``gene_id`` any row gets: the builder's
-    ``hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)`` falls back
-    to the raw symbol identically whether the key is missing or present with a
-    ``None``/missing value.
+    ``gene_id`` any row gets: ``_map_gene_symbols`` keeps only symbols that map to
+    an ID, so the builder's ``hl.or_else(mapping_literal.get(hl.tuple([ht.tissue,
+    ht.gene_symbol])), ht.gene_symbol)`` falls back to the raw symbol either way.
     """
 
     _KNOWN = {
@@ -70,6 +69,7 @@ class _StubGeneCatalog:
         return {s: self._KNOWN.get(s) for s in symbols}
 
 
+@pytest.mark.round_trip("pqtl:metrics")
 @pytest.mark.hail
 def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, caplog):
     """Build pQTL metrics from the synthetic Liver fixture; assert schema/row stability.
@@ -113,7 +113,7 @@ def test_pqtl_metrics_round_trip(hail_session, tmp_path, regenerate_snapshots, c
     # it could not map; a bare map_ids call would key SYNTHGENE1 by symbol silently.
     assert (
         "Mapped 3 of 4 pQTL gene symbol(s) to Ensembl gene IDs: 3 approved, "
-        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 1 unmapped"
+        "0 via a previous symbol, 0 via an alias; 0 ambiguous, 0 colliding, 1 unmapped"
     ) in caplog.text
     assert "Examples: SYNTHGENE1" in caplog.text
 

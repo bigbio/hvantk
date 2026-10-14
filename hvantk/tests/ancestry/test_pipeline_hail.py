@@ -278,7 +278,7 @@ class TestRunAncestryInference:
 
         assert len(var_exp) == 5
         assert all(0 <= v <= 1 for v in var_exp)
-        assert sum(var_exp) <= 1.0
+        assert sum(var_exp) <= 1.0 + 1e-9  # float rounding can land just above 1
 
     def test_kwargs_override_config(
         self, hail_session, synthetic_query_mt, synthetic_reference_mt

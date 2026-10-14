@@ -17,6 +17,7 @@ Example usage:
 import csv
 import logging
 import os
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -175,10 +176,12 @@ def _fetch_json(url: str) -> tuple:
         import json
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         req = urllib.request.Request(
             url, headers={"Accept": "application/json", "User-Agent": "hvantk/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=120, context=tls_context()) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data, resp
 
@@ -215,7 +218,8 @@ class UniProtPTMDataset:
         date provided.
 
         Args:
-            version_date: Date string in YYYY-MM-DD format
+            version_date: Date string in YYYY-MM-DD format; unpadded fields
+                (``2026-5-1``) are accepted and stored zero-padded
 
         Returns:
             UniProtPTMDataset instance
@@ -224,11 +228,14 @@ class UniProtPTMDataset:
             ValueError: If version_date is not in valid format
         """
         try:
-            datetime.strptime(version_date, "%Y-%m-%d")
+            parsed = datetime.strptime(version_date, "%Y-%m-%d")
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
             ) from None
+        # strptime accepts "2026-5-1", but the uniprot-ptm parse stage only looks for
+        # zero-padded dates in the file name, so label with the canonical form.
+        version_date = parsed.strftime("%Y-%m-%d")
 
         file_name = f"uniprot-ptm-human-{version_date}.tsv"
 
@@ -262,24 +269,28 @@ class UniProtPTMDataset:
         pagination, extracts MOD_RES features from each protein, and
         writes one row per PTM site.
 
+        If a file is already at the destination and ``overwrite`` is False,
+        the existing file is reused (no network call) rather than treated as
+        an error: the destination is dated (``uniprot-ptm-human-<date>.tsv``),
+        so re-running on the same day against the same ``output_dir`` is
+        expected to land on the same path.
+
         Args:
             output_dir: Directory to save the output TSV file
-            overwrite: If True, overwrite an existing file
+            overwrite: If True, re-download even when the file already exists
 
         Returns:
-            Path to the written TSV file
+            Path to the (possibly reused) TSV file
 
         Raises:
-            FileExistsError: If file exists and overwrite is False
             RuntimeError: If the API request fails
         """
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, self.file_name)
 
         if os.path.exists(output_path) and not overwrite:
-            raise FileExistsError(
-                f"File already exists: {output_path}. Use overwrite=True to replace."
-            )
+            logger.info(f"Reusing existing UniProt PTM download: {output_path}")
+            return output_path
 
         url = _build_search_url(
             self.api_url, self.query, UNIPROT_API_FIELDS, UNIPROT_BATCH_SIZE
@@ -289,8 +300,19 @@ class UniProtPTMDataset:
         total_records = 0
         page_count = 0
 
+        # Write to a sibling temp file and rename into place atomically, so a
+        # crash or interrupt mid-download never leaves a partial file under
+        # `output_path` for a later run to mistake for a complete, reusable
+        # download. The temp is private (PID plus a random token: jobs on two
+        # cluster nodes can share a PID and a directory) and created with a plain
+        # open() rather than mkstemp, so the published file gets the umask-masked
+        # mode instead of 0600, which another user's `reprocess --skip-download`
+        # in a shared raw directory could not read.
+        tmp_path = os.path.join(
+            output_dir, f".{self.file_name}.{os.getpid()}.{uuid.uuid4().hex[:8]}"
+        )
         try:
-            with open(output_path, "w", newline="") as fh:
+            with open(tmp_path, "x", newline="") as fh:
                 writer = csv.DictWriter(
                     fh, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n"
                 )
@@ -310,17 +332,19 @@ class UniProtPTMDataset:
 
                     url = _get_next_link(response)
 
-            logger.info(
-                f"Downloaded {total_records} PTM records from {page_count} pages "
-                f"to {output_path}"
-            )
-            return output_path
-
+            os.replace(tmp_path, output_path)
         except Exception as e:
-            # Clean up partial file on failure
-            if os.path.exists(output_path):
-                os.remove(output_path)
             raise RuntimeError(f"Failed to download UniProt PTM data: {str(e)}") from e
+        finally:
+            # No-op once the replace above succeeds (tmp_path no longer exists).
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        logger.info(
+            f"Downloaded {total_records} PTM records from {page_count} pages "
+            f"to {output_path}"
+        )
+        return output_path
 
     def get_metadata(self) -> Dict[str, str]:
         """
@@ -364,6 +388,8 @@ def get_available_versions() -> List[str]:
     try:
         import urllib.request
 
+        from hvantk.core.utils.http import tls_context
+
         test_url = _build_search_url(
             UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1
         )
@@ -375,7 +401,7 @@ def get_available_versions() -> List[str]:
             headers={"User-Agent": "hvantk/1.0"},
         )
 
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=30, context=tls_context()) as response:
             if response.status == 200:
                 today = datetime.now().strftime("%Y-%m-%d")
                 logger.info(

@@ -49,6 +49,11 @@ datasets:
     drift_probe:
       module: hvantk.skills.insider.interfaces.drift_probe
       function: fetch_fingerprint
+    lifecycle:
+      # No parse stage: the builder reads the downloaded file directly from raw_dir.
+      download:
+        module: hvantk.skills.insider.interfaces.cli
+        function: download_dataset
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/insider/interfaces/tests -m hail
@@ -56,3 +61,8 @@ datasets:
       schema_snapshot: interfaces/tests/snapshots/schema.json
       row_snapshot: interfaces/tests/snapshots/sample_rows.json
       drift_fingerprint: interfaces/tests/drift_fingerprint.json
+
+cli:
+  - command: insider-interfaces-download
+    module: hvantk.skills.insider.interfaces.cli
+    function: download_cmd

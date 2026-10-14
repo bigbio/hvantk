@@ -60,6 +60,7 @@ def test_compute_qc_cli_validation_failure():
         )
 
         assert result.exit_code == 1
+        assert "Error: 1" not in result.output  # no catch-all report
         assert "Input file validation failed" in result.output
 
 

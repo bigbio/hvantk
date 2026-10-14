@@ -79,9 +79,10 @@ def _require_sklearn():
     default=1,
     show_default=True,
     help="Recompute each axis's interval over this many CV seeds (seed, seed+1, ...) and "
-    "report the envelope (the union of the gene-bootstrap interval and the across-seed "
-    "range; never narrower) beside the gene-resampling interval. 1 leaves the reported "
-    "interval blind to which genes landed in which fold.",
+    "report the envelope (the union of the bootstrap interval and the across-seed "
+    "range; never narrower) beside the bootstrap interval itself (gene-resampling, or "
+    "block-resampling when --blocks is set). 1 leaves the reported interval blind to "
+    "which genes landed in which fold.",
 )
 @click.option(
     "--blocks",
@@ -89,7 +90,9 @@ def _require_sklearn():
     type=click.Path(exists=True),
     default=None,
     help="HGNC complete-set TSV (symbol/gene_group/status). Switches cross-validation to "
-    "paralogue-blocked folds so a gene family cannot straddle a fold.",
+    "paralogue-blocked folds so a gene family cannot straddle a fold, and switches the "
+    "per-axis bootstrap interval from gene-resampling to block-resampling (whole "
+    "families resampled together) to match.",
 )
 @click.option(
     "--max-block-frac",
@@ -322,7 +325,10 @@ def rerank_cmd(
         # raises is a user-facing message (e.g. a gene-group table that matches no gene,
         # too few paralogue blocks for the fold count, a requested permutation null with
         # no candidate axis left to search over), so the CLI reports it cleanly instead
-        # of a traceback.
+        # of a traceback -- but the traceback is not thrown away: it is logged at DEBUG
+        # first, so a ValueError that is actually a bug (a numpy/pandas ValueError with
+        # nothing user-facing to say) is still diagnosable via `hvantk -vv rerank ...`.
+        logger.debug("rerank() raised %s", exc, exc_info=True)
         raise click.ClickException(str(exc)) from exc
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")

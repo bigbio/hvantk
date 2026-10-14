@@ -17,18 +17,18 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 - **In scope:** building an `interval`-keyed Hail Table from the BED file for variant-interval intersection (e.g., "does this variant fall in any predicted interface residue?").
 - **Out of scope:**
   - The complementary `H_sapiens_interfacesALL.txt` product (protein-pair keyed; encodes per-protein interface residue arrays with Source = ECLAIR / PDB / I3D) was out of scope for this skill's initial design. It has since shipped as a second dataset in this same plugin, `insider:interfaces` — see § 9b.
-  - Downloader. The BED is >1 GB; per `_conventions` § 11 and the downloader strategy (CLAUDE.md), acquisition is manual.
+  - Downloader. The BED is >1 GB; per `_conventions` § 11 and the downloader-or-documented-acquisition rule (`docs_site/guide/data-sources.md#downloader-or-documented-acquisition`), acquisition is manual.
 
 This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 declares `interval` keying as valid; this skill anchors it.
 
 ## 2. Source identity
 
-- **Provider:** Yu lab (Cornell). Wei et al., *Nat Methods* 2017, PMID 29036289.
+- **Provider:** Yu lab (Cornell). Meyer MJ et al., "Interactome INSIDER: a structural interactome browser for genomic studies", *Nature Methods* 15(2):107–114 (2018), PMID 29355848, DOI 10.1038/nmeth.4540. (Corrected #426/review round — PMID 29036289 previously cited here belongs to an unrelated paper, "VICTOR: genome-based phylogeny and classification of prokaryotic viruses".)
 - **Distribution:** the download page carries no links in its markup, but both
   products have stable, directly addressable paths. Per `_conventions` § 2 the
   catalog owns them: see `catalog/datasets.json`, or run
   `hvantk catalog show INSIDER_v1.0`. Both are what the drift probes pin.
-- **License:** Academic use (per the existing catalog entry).
+- **License:** not stated — no licence or terms-of-use statement is published anywhere for INSIDER (checked 2026-10-13; see `variants/tests/testdata/raw/insider/README.md`). The catalog's previous "Academic use" value was unsupported and has been corrected to "Not stated".
 - **Catalog entry:** `INSIDER_v1.0` in `hvantk/skills/insider/catalog/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
 Stable note (not in catalog): INSIDER releases two complementary products from one source. This skill originally anchored the genomic BED only; the protein-residue TXT has since been onboarded as the `insider:interfaces` second dataset — see § 9b.
@@ -78,10 +78,10 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 
 ## 6. hvantk integration points
 
-- **Builder:** `build_insider_interactome(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable` in `hvantk/skills/insider/variants/builder.py`. Builds the table inline: calls `_parse_insider_bed_to_temp_tsv(str(parsed_input))` (track-aware Python pre-processor), then `hl.import_table` + `hl.locus_interval`, then `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`, and wraps the result via `AnnotationTable.from_hail(grouped, provenance=ctx.provenance(schema_id="insider-variants-v1"))`. The only shared helper it imports is `cleanup_temp_file` from `hvantk/core/utils/hail_helpers.py` (used on the error path). It does **not** use `create_table_base`.
+- **Builder:** `build_insider_interactome(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable` in `hvantk/skills/insider/variants/builder.py`. Builds the table inline: resolves `parsed_input` with the shared `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`, pattern `*.bed` only -- `_parse_insider_bed_to_temp_tsv` opens it in text mode via `hfs.open`, which does not decompress, so a `.bed.bgz`/`.bed.gz` copy is not accepted) to the one BED file, calls `_parse_insider_bed_to_temp_tsv(...)` on it (track-aware Python pre-processor), then `hl.import_table` + `hl.locus_interval`, then `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`, and wraps the result via `AnnotationTable.from_hail(grouped, provenance=ctx.provenance(schema_id="insider-variants-v1"))`. Shared helpers it imports: `cleanup_temp_file` from `hvantk/core/utils/hail_helpers.py` (used on the error path) and `resolve_raw_file`. It does **not** use `create_table_base`.
 - **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private) lives in `hvantk/skills/insider/variants/builder.py` (only consumer is this plugin). Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
 - **Registry / loader:** plugin-driven; the in-tree plugin manifest at `hvantk/skills/insider/plugin.yaml` declares dataset `variants` with `builder.function: build_insider_interactome`. The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset under compound key `insider:variants` via `get_registry().get_dataset("insider:variants")`; the top-level build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry or `registry.py`.
-- **CLI:** `hvantk reprocess insider:variants --raw-dir <dir> --output <out> [--plugin-arg reference_genome=GRCh38]`. `reprocess` passes the `--raw-dir` directory to the builder as `parsed_input` (insider has no `lifecycle.parse`); `_parse_insider_bed_to_temp_tsv` consumes it as the BED path.
+- **CLI:** `hvantk reprocess insider:variants --raw-dir <dir> --output <out> [--plugin-arg reference_genome=GRCh38]`. `reprocess` passes the `--raw-dir` directory to the builder as `parsed_input` (insider has no `lifecycle.parse`); `resolve_raw_file` resolves it to the one plain `*.bed` file inside, which `_parse_insider_bed_to_temp_tsv` then consumes as the BED path.
 - **Snapshot util branch:** `hvantk/tests/_snapshot_utils.py` — `hl.tinterval` handlers added in PR #105.
 - **Downloader:** out of scope (manual acquisition; the BED is >1 GB, so no `lifecycle.download` entry in `plugin.yaml`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/insider/variants/drift_probe.py`, compared against `variants/tests/drift_fingerprint.json` by `hvantk drift insider:variants` (see § 12 of `_conventions`).
@@ -115,7 +115,7 @@ INSIDER updates are irregular. To onboard a new release:
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed` (manifest value: `variants/tests/testdata/raw/insider`). 5 PPI tracks (~21 raw data rows; 20 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
+- **fixture:** `hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample-synthetic.bed` (manifest value: `variants/tests/testdata/raw/insider`). 5 PPI tracks (19 data rows; 18 valid after zero-length filtering, with 4 tracks sharing one interval, `chr3:2000300-2000302`). **Synthetic** (#426): no published licence or terms-of-use statement could be found for INSIDER (checked 2026-10-13; see `testdata/raw/insider/README.md` for the full audit), so the fixture that used to be a real track-aware slice of the live BED is now hand-authored, with fabricated PPI-accession placeholders (`SYNTH0001`-`SYNTH0007`) and arbitrary GRCh38-valid coordinates, preserving the real file's block structure (`browser` directive, `track name=<P1>_ppi_<P2> description=... visibility=dense itemRgb="On"` headers each paired with data rows, and an interval shared across several tracks to exercise the multi-PPI-per-interval aggregation). No `THIRD_PARTY_DATA.md` entry applies.
 - **schema_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **command:** `pytest hvantk/skills/insider/variants/tests -m hail`.
@@ -166,18 +166,20 @@ rows over 15,144 proteins), not the 1.17 GB BED: the pair table already carries 
 UniProt accessions and both interface-residue lists, so a per-gene reduction needs no
 genomic join.
 
-**Build**: `interfaces` has no `lifecycle.download` yet (automatable but not yet written;
-tracked in issue #386), so acquire `H_sapiens_interfacesALL.txt`
-manually from the direct URL in `catalog/datasets.json` and pass `--skip-download`:
+**Build**: `interfaces` has its own `lifecycle.download` (#386) -- the pair table is
+small, public, and served from a stable direct URL, so it qualifies per
+`docs_site/guide/data-sources.md#downloader-or-documented-acquisition`.
+`hvantk reprocess insider:interfaces` downloads `H_sapiens_interfacesALL.txt` on its
+own; no `--skip-download` needed:
 
 ```bash
 hvantk reprocess insider:interfaces \
     --raw-dir /path/to/insider_raw_dir \
-    --output /path/to/insider_interfaces.ht \
-    --skip-download
+    --output /path/to/insider_interfaces.ht
 ```
 
-- **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source).
+- **Downloader:** `hvantk/skills/insider/interfaces/cli.py` (`download_dataset` lifecycle entry point, wired via `plugin.yaml` `lifecycle.download`; CLI command `hvantk download insider-interfaces` via the `cli:` block). Delegates to the shared `stream_to_file` (`hvantk/core/utils/http.py`), the same atomic-write primitive `hgnc`'s downloader uses: a sibling temp file, renamed into place only once the transfer completes; same skip-if-present/`--overwrite` semantics as `hgnc`. Test: `interfaces/tests/test_downloader.py` (mocked, no network).
+- **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source). **Synthetic**: hand-authored rows with placeholder UniProt-like accessions (`Q00001`-`Q00003`), not a slice of the real 49 MB file. No `THIRD_PARTY_DATA.md` entry applies — consistent with `variants`' fixture above, no published INSIDER licence was found either.
 - **schema_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/schema.json` — `{uniprot_id, n_partners, n_partners_experimental, n_partners_predicted, n_interface_residues}`, keyed `uniprot_id`.
 - **row_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/sample_rows.json`.
 - **command:** `pytest hvantk/skills/insider/interfaces/tests -m hail`.

@@ -10,7 +10,7 @@ For downloading raw data files (built-in downloaders and manual steps), see [Dat
 
 ## 1) Build a dataset with `hvantk reprocess`
 
-Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and artifact contract. The single CLI entry point is `hvantk reprocess`.
+Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and dataset contract. The single CLI entry point is `hvantk reprocess`.
 
 ### Discover available datasets
 
@@ -20,6 +20,11 @@ hvantk plugins list
 
 # Show one plugin's manifest in detail
 hvantk plugins describe clinvar
+
+# Name anything that failed to load; exits 1 if there is anything
+# (`list` exits 0 regardless; `describe` exits 1 only for a provider that is
+# unknown or failed to load as a whole, not for one failed dataset)
+hvantk plugins errors
 ```
 
 ### Build a dataset end-to-end (download → parse → build)
@@ -183,6 +188,12 @@ hvantk expression markers \
   --top-n 200 \
   -o /out/heart_LV_markers.json
 ```
+
+`summarize` and `markers` read `var_names` as the gene id and refuse an AnnData whose
+`var` is keyed by transcript id instead (e.g. a transcript-level Expression Atlas build
+made without `--plugin-arg level=gene` — see [Data Sources](data-sources.md)). `describe`
+only inspects, so it never refuses; it labels the variable axis "transcripts" rather than
+"genes" in that case.
 
 ## Prepare Custom Gene Sets
 

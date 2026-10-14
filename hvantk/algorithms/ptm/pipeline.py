@@ -3,7 +3,9 @@ PTM Build Pipeline — pure coordinate-mapping core for PTM data acquisition.
 
 This module exposes the algorithm-only (no skills) build core as a Python API.
 Skill-driven steps (UniProt download, Hail Table build) live in
-:mod:`hvantk.tools.ptm.pipeline`.
+:mod:`hvantk.tools.ptm.pipeline`. :func:`map_uniprot_raw_dir` is the
+``lifecycle.parse`` stage the ``uniprot-ptm:sites`` plugin declares, so that
+``hvantk reprocess`` can map a UniProt download without the tools layer.
 
 Example:
     >>> from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline_core
@@ -19,8 +21,10 @@ import csv
 import gzip
 import logging
 import os
+import re
 import shutil
 import urllib.parse
+import uuid
 
 import requests
 from collections import defaultdict
@@ -131,8 +135,23 @@ class PTMBuildResult:
     source_counts: Dict[str, int] = field(default_factory=dict)
 
 
+def _private_sibling(path: str) -> str:
+    """A temporary name beside ``path`` that no concurrent writer will pick.
+
+    The PID alone is not enough: jobs on two cluster nodes can share a PID and a
+    directory on a shared filesystem.
+    """
+    head, tail = os.path.split(path)
+    return os.path.join(head, f".{tail}.{os.getpid()}.{uuid.uuid4().hex[:8]}")
+
+
 def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
     """Download the Ensembl GTF file if not already cached.
+
+    The file appears under its final name only once complete: an interrupted
+    download used to leave a truncated GTF there, which every later run reused
+    ("Using cached GTF") and failed on, and which a second job sharing the
+    directory could read half-written.
 
     Parameters
     ----------
@@ -167,10 +186,18 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
         )
 
     logger.info("Downloading Ensembl GTF to %s...", gtf_path)
-    with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
-        resp.raise_for_status()
-        with open(gtf_path, "wb") as fout:
-            shutil.copyfileobj(resp.raw, fout)
+    # A plain open() rather than mkstemp, so the published file gets the
+    # umask-masked mode and not 0600.
+    tmp_path = _private_sibling(gtf_path)
+    try:
+        with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
+            resp.raise_for_status()
+            with open(tmp_path, "xb") as fout:
+                shutil.copyfileobj(resp.raw, fout)
+        os.replace(tmp_path, gtf_path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
     logger.info("Downloaded: %s", gtf_path)
     return gtf_path
 
@@ -180,16 +207,20 @@ def map_ptm_sites(
     gtf_data: GTFData,
     output_path: str,
     transcript_cache: Optional[Dict] = None,
+    source_db_default: str = "UniProt",
+    evidence_type_default: str = "curated",
 ) -> PTMBuildResult:
     """Map PTM sites from protein coordinates to genomic coordinates.
 
-    Reads the UniProt PTM TSV, resolves transcripts, maps each site to
-    genomic codon coordinates, and writes the result to a new TSV.
+    Reads a PTM TSV (UniProt, or another source sharing the same column
+    layout), resolves transcripts, maps each site to genomic codon
+    coordinates, and writes the result to a new TSV.
 
     Parameters
     ----------
     ptm_tsv : str
-        Path to the UniProt PTM TSV (from download_uniprot_ptm).
+        Path to the PTM TSV (from download_uniprot_ptm, or another source's
+        downloader, e.g. ``hvantk download peptideatlas-phospho``).
     gtf_data : GTFData
         Parsed Ensembl GTF data.
     output_path : str
@@ -197,6 +228,15 @@ def map_ptm_sites(
     transcript_cache : dict, optional
         Shared TranscriptCDS cache for cross-call reuse. If None, a local
         cache is created for this call only.
+    source_db_default : str, optional
+        ``source_db`` written for a row whose input TSV has no ``source_db``
+        column (default: ``"UniProt"``). Callers mapping a different
+        source's TSV should pass that source's own label (e.g.
+        ``"PeptideAtlas"``) so a hand-made or third-party TSV missing the
+        column isn't mislabelled as curated UniProt.
+    evidence_type_default : str, optional
+        ``evidence_type`` written for a row with no ``evidence_type`` column
+        (default: ``"curated"``).
 
     Returns
     -------
@@ -275,8 +315,10 @@ def map_ptm_sites(
                         "amino_acid": rec.get("amino_acid", ""),
                         "ptm_type": desc,
                         "ptm_category": ptm_category,
-                        "source_db": rec.get("source_db", "UniProt"),
-                        "evidence_type": rec.get("evidence_type", "curated"),
+                        "source_db": rec.get("source_db", source_db_default),
+                        "evidence_type": rec.get(
+                            "evidence_type", evidence_type_default
+                        ),
                         "n_observations": rec.get("n_observations", "0"),
                         "tissue_type": rec.get("tissue_type", ""),
                     }
@@ -423,7 +465,16 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
         logger.info("Mapping %s phospho sites...", source_name)
         source_mapped_path = os.path.join(config.output_dir, source_filename)
         source_result = map_ptm_sites(
-            source_tsv, gtf_data, source_mapped_path, transcript_cache
+            source_tsv,
+            gtf_data,
+            source_mapped_path,
+            transcript_cache,
+            # source_name is already "PeptideAtlas"/"CPTAC" — the exact
+            # source_db value each downloader writes (see their shared/
+            # datasets.py) — so a TSV missing the column is labelled by its
+            # own source instead of defaulting to curated UniProt.
+            source_db_default=source_name,
+            evidence_type_default="mass_spectrometry",
         )
         source_paths.append(source_mapped_path)
         source_counts[source_name] = source_result.n_mapped
@@ -466,3 +517,140 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
 
     logger.info("PTM core mapping complete: %d sites mapped", result.n_mapped)
     return result
+
+
+#: What ``hvantk download uniprot-ptm`` writes: one TSV per download day, named by the
+#: plugin's ``UniProtPTMDataset.from_date``.
+_UNIPROT_DOWNLOAD_RE = re.compile(r"^uniprot-ptm-human-(\d{4}-\d{2}-\d{2})\.tsv$")
+
+
+def map_uniprot_raw_dir(
+    raw_dir: str,
+    output_path: str,
+    *,
+    reference_genome: str = "GRCh38",
+    overwrite: bool = False,
+    flanking_codons: int = 5,
+    fields=None,
+) -> str:
+    """``lifecycle.parse`` of the ``uniprot-ptm:sites`` plugin dataset.
+
+    Maps the newest UniProt download in ``raw_dir`` to genomic coordinates and writes
+    the mapped TSV the plugin's builder reads to ``output_path``, which is what lets
+    ``hvantk reprocess uniprot-ptm:sites`` run end to end. UniProt sites only:
+    ``hvantk ptm build`` stays the command that adds PeptideAtlas and CPTAC sites.
+
+    The pinned Ensembl GTF is downloaded into ``raw_dir`` once and reused by later
+    runs; its release never changes under a given pin, so delete the file to fetch it
+    again. ``output_path`` is written block-gzipped when its name ends in ``.bgz`` and
+    as plain text otherwise, because the builder's ``hl.import_table`` picks the codec
+    from the file name and ``reprocess``'s default intermediate has no suffix. A
+    ``.gz`` name is refused before any work: ``hl.import_table`` will not read a
+    ``.gz`` file in parallel without ``force_bgz``, which the builder does not pass.
+    The file is replaced atomically.
+
+    ``hvantk reprocess`` forwards every ``--plugin-arg`` to all three stages of the
+    dataset, so this stage also names the download stage's and the builder's
+    arguments and ignores them. They are named rather than swallowed by ``**kwargs``,
+    so a misspelt ``--plugin-arg`` still fails.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory holding ``uniprot-ptm-human-<YYYY-MM-DD>.tsv`` (the download stage's
+        output); the newest date is mapped when there are several.
+    output_path : str
+        Where the mapped TSV goes; must not end in ``.gz``.
+    reference_genome : str
+        Must be ``"GRCh38"``, the build of the pinned GTF; it is forwarded to the
+        builder too, which would label GRCh38 coordinates with any other build.
+    overwrite : bool
+        The download stage's; ignored here (the cached GTF is reused either way).
+    flanking_codons, fields
+        The builder's; ignored here.
+
+    Returns
+    -------
+    str
+        ``output_path``.
+
+    Raises
+    ------
+    ValueError
+        If ``reference_genome`` is not GRCh38, if ``output_path`` ends in ``.gz``, or
+        if no site maps (nothing is written).
+    FileNotFoundError
+        If ``raw_dir`` holds no UniProt download.
+    """
+    if reference_genome != "GRCh38":
+        raise ValueError(
+            f"reference_genome={reference_genome!r}: uniprot-ptm:sites maps against the "
+            "pinned Ensembl GRCh38 GTF, so building its coordinates as another "
+            "reference would mislabel every locus"
+        )
+    if output_path.endswith(".gz"):
+        raise ValueError(
+            f"intermediate {output_path!r} ends in .gz, which the builder's "
+            "hl.import_table refuses to read in parallel; name it *.bgz for "
+            "block-gzipped output, or give it no compression suffix for plain text"
+        )
+    downloads = sorted(
+        (m.group(1), name)
+        for name in os.listdir(raw_dir)
+        if (m := _UNIPROT_DOWNLOAD_RE.match(name))
+    )
+    if not downloads:
+        raise FileNotFoundError(
+            f"no UniProt PTM download (uniprot-ptm-human-<YYYY-MM-DD>.tsv) in "
+            f"{raw_dir!r}; run the download stage, or `hvantk download uniprot-ptm "
+            "--output-dir` into it"
+        )
+    ptm_tsv = os.path.join(raw_dir, downloads[-1][1])
+    if len(downloads) > 1:
+        logger.info(
+            "Mapping the newest of %d UniProt downloads: %s", len(downloads), ptm_tsv
+        )
+
+    logger.info("Parsing Ensembl GTF...")
+    gtf_path = download_ensembl_gtf(raw_dir)
+    try:
+        gtf_data = parse_ensembl_gtf(gtf_path)
+    except (EOFError, OSError) as exc:  # a truncated or corrupt gzip
+        raise ValueError(
+            f"cannot read the Ensembl GTF {gtf_path} ({exc}); delete it so the next "
+            "run downloads it again"
+        ) from exc
+
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(out_dir, exist_ok=True)
+    # Private names, created by plain open() calls rather than mkstemp, so the
+    # result gets the caller's umask instead of 0600 in a shared raw directory.
+    tmp = _private_sibling(os.path.join(out_dir, os.path.basename(output_path)))
+    mapped, plain = f"{tmp}.tsv.bgz", f"{tmp}.tsv"
+    try:
+        result = map_ptm_sites(ptm_tsv, gtf_data, mapped)
+        if result.n_mapped == 0:
+            raise ValueError(
+                f"No PTM sites mapped ({result.n_total} read from {ptm_tsv}, against "
+                f"the GTF {gtf_path}), so nothing was written to {output_path}. "
+                "Check that the TSV is the file `hvantk download uniprot-ptm` wrote, "
+                "and that the GTF is complete (delete it to download it again)."
+            )
+        if output_path.endswith(".bgz"):
+            os.replace(mapped, output_path)
+        else:
+            with gzip.open(mapped, "rb") as src, open(plain, "xb") as dst:
+                shutil.copyfileobj(src, dst)
+            os.replace(plain, output_path)
+    finally:
+        for path in (mapped, plain):
+            if os.path.exists(path):
+                os.remove(path)
+
+    logger.info(
+        "Mapped %d of %d UniProt PTM sites to %s",
+        result.n_mapped,
+        result.n_total,
+        output_path,
+    )
+    return output_path

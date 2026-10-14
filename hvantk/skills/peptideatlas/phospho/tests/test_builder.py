@@ -65,8 +65,9 @@ written to an ``output_path``. Neither is a true fit: this artifact is not
 AnnData, and forcing it through the Hail branch would only work via
 ``AnnotationTable.to_hail()`` (which drops the pandas dtypes and requires a
 full Hail/Spark session, `@pytest.mark.hail`, just to validate a builder that
-never touches Hail -- see ``hail_session`` cost in ``hvantk/tests/conftest.py``
-and CLAUDE.md's "one contract per layer" guidance). ``AnnotationTable`` already
+never touches Hail -- see ``hail_session`` cost in ``hvantk/tests/conftest.py``,
+and this plugin keeps one clear contract per layer rather than routing a
+pandas-only artifact through Hail just to reuse a helper). ``AnnotationTable`` already
 computes its own backend-agnostic ``.schema`` dict
 (``hvantk/core/models/annotation_table.py::_normalize_dtype``), so this test
 uses that directly plus a small local helper mirroring ``collect_sample_rows``'
@@ -195,6 +196,7 @@ def _sample_rows(df, keys: list[dict]) -> list[dict]:
     return out
 
 
+@pytest.mark.round_trip("peptideatlas:phospho")
 def test_peptideatlas_phospho_snapshot_round_trip(tmp_path, regenerate_snapshots):
     """Parse the raw fixture zip, build peptideatlas:phospho from it, and assert
     schema and sample-row stability against committed snapshots."""

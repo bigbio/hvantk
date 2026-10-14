@@ -41,7 +41,7 @@ Two releases, both hosted under `GNOMAD_RELEASE_BASE_URL`:
 - Key column: default `key="gene_id"` (v2.1.1 `by_gene`/`by_transcript`). v4.0 `constraint_metrics` has no `gene_id` column, so callers must pass `--plugin-arg key=transcript` (or another present column) — the builder does not infer this automatically.
 - **The committed fixture is v2.1.1, whose column names are flat** (78 columns, none containing a dot). The dotted-name advice below therefore applies to a v4.0 build only and is NOT exercised by the round-trip test.
 - v4.0's column names are dotted — `lof.pLI`, `lof.oe_ci.upper` (= LOEUF), `mis.z_score` — and v4.0 ships **no `gene_id` column** at all; both facts are documented in `shared/constants.py` (see its module docstring). A dot is not valid in a Python identifier, so once such a column is imported these fields must be subscripted (`ht['lof.pLI']`): attribute access `ht.lof.pLI` reads as field `lof` then `.pLI` and fails. That consequence is Hail's, not something `constants.py` states.
-- `parsed_input` may be a file path or a `raw_dir` (`builder.py`): when it is a directory, the builder globs `*.bgz` then `*.tsv` inside it. Zero matches raises `FileNotFoundError`; more than one match raises `ValueError` and refuses to silently pick one — a `raw_dir` must hold exactly one version's constraint file (mirrors the `gevir` builder's fail-loud pattern, per PR #222 review referenced in `builder.py`).
+- `parsed_input` may be a file path or a `raw_dir` (gnomad-metrics declares no `lifecycle.parse`): when it is a directory, the shared `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`) resolves it to the single non-hidden file matching `*.bgz`/`*.tsv` (case-insensitive). Zero or more than one match both raise `ValueError` naming the directory, the patterns, and the files found, and refuse to silently pick one — a `raw_dir` must hold exactly one version's constraint file.
 - Import options: `impute=True`, `min_partitions=100` — contrast with `hgnc`, which imports with `impute=False` and keeps every field as a string.
 - Optional `fields` param (`list[str]`) selects a column subset post-import via `ht.select(*fields)`.
 
@@ -74,7 +74,7 @@ Triggered when a new gnomAD constraint release ships, or the drift probe reports
 
 1. `hvantk drift gnomad-metrics:metrics` compares live ETag/Content-Length/`x-goog-generation` per object against `tests/drift_fingerprint.json`. Because the compared surface lives entirely under `headers`, every drift event on this plugin is tiered `"schema"` (never `"routine"`) by `classify_risk` — see `_conventions` § 12 and the reasoning documented in `drift_probe.py`.
 2. If a genuinely new release adds/replaces an object path, update `GNOMAD_CONSTRAINT_TABLES` (and `DEFAULT_VERSION`/`DEFAULT_TABLE` if the default should move) in `shared/constants.py` — the drift probe's `OBJECT_PATHS` is derived from that constant, so no separate probe edit is needed.
-3. Regenerate the fingerprint with `hvantk drift --regenerate gnomad-metrics:metrics` after validating the change is a genuine upstream republish, not a probe artifact.
+3. Regenerate the fingerprint with `hvantk drift --regenerate gnomad-metrics:metrics --accepted-in "PR #N"` after validating the change is a genuine upstream republish, not a probe artifact, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
 4. If the header of the upstream TSV changed shape, regenerate `tests/snapshots/{schema,sample_rows}.json` with `pytest hvantk/skills/gnomad_metrics/tests -m hail --regenerate-snapshots` and review the diff before committing.
 
 ## 9. Validation contract
@@ -86,3 +86,5 @@ Declared in `plugin.yaml`'s `tests:` block for dataset `gnomad-metrics:metrics`.
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/gnomad_metrics/tests -m hail`
+
+The fixture is a real chromosome-20 slice of the v2.1.1 by-gene constraint table, released without restriction on use; see its `THIRD_PARTY_DATA.md` entry.

@@ -51,6 +51,18 @@ _ENTRY_POINT_GROUP = "hvantk.providers"
 #: error path can judge a name WITHOUT running the validation that just failed.
 _PROVIDER_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
+#: Load-error unit prefix for a manifest `cli:` entry whose callable will not resolve
+#: (`cli:<command>`). Such a row is about the command alone -- a dataset whose own
+#: callables fail with it is recorded separately, under `provider:dataset` -- so
+#: `hvantk drift` does not count it. `cli` (like `entry-point`) is a reserved provider
+#: name in manifest.schema.json, so no dataset key can start with this prefix.
+CLI_UNIT_PREFIX = "cli:"
+
+
+def is_cli_unit(unit: str) -> bool:
+    """True for a load-error unit recorded for a manifest `cli:` entry."""
+    return unit.startswith(CLI_UNIT_PREFIX)
+
 
 def _load_schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
@@ -114,6 +126,76 @@ def _acquisition_of(ds_manifest: dict, lifecycle: dict, compound: str) -> Acquis
     return acq
 
 
+def _dataset_label(content: Any, path: list) -> str | None:
+    """The ``name:`` of the dataset at ``content["datasets"][path[1]]``, if ``path``
+    (a jsonschema ``ValidationError.absolute_path``, already converted to a list)
+    points there, else None.
+
+    A manifest declares a LIST of datasets, so a schema failure inside one of them is
+    reported by ``jsonschema`` only as an array index -- the ``PluginLoadError`` this
+    raises is then filed under the PROVIDER's name (``_record_load_error`` has no
+    dataset to attribute it to), with nothing saying which of a multi-dataset plugin's
+    entries actually broke. Defensive: this augments an error message and must never
+    raise one of its own, so any shape mismatch (a non-dict entry, an out-of-range
+    index, a manifest that is not even a dict) falls through to None rather than
+    masking the real ValidationError.
+    """
+    if len(path) < 2 or path[0] != "datasets" or not isinstance(path[1], int):
+        return None
+    try:
+        dataset = content["datasets"][path[1]]
+    except (LookupError, TypeError):
+        return None
+    name = dataset.get("name") if isinstance(dataset, dict) else None
+    return name if isinstance(name, str) and name else f"#{path[1]}"
+
+
+def _explain(exc: jsonschema.ValidationError, content: Any = None) -> str:
+    """Render a schema error, translating the ones whose raw text explains nothing,
+    and naming the dataset when the failing path points inside one.
+
+    A conditional rule reports as `... should not be valid under {'required': [...]}`,
+    which states the mechanism and not the problem. This is the message a plugin
+    author sees -- at ``hvantk plugins validate`` time, and since #408 at load time
+    too -- so the two ``if/then`` rules on ``acquisition``/``lifecycle`` (#360) get a
+    sentence instead.
+
+    ``content`` is the parsed manifest ``exc`` came from. Passing it lets a failure
+    inside ``datasets[i]`` be attributed to that dataset's own ``name:`` instead of
+    the bare provider, which is all a load error was recorded under before #408 --
+    with no way to tell which entry of a multi-dataset plugin actually broke.
+    ``hvantk plugins validate`` checks one manifest at a time and already names it on
+    the command line, so it omits ``content`` and keeps today's wording.
+    """
+    path = list(exc.absolute_path)
+    if exc.validator == "not" and "lifecycle" in path:
+        message = (
+            "acquisition.mode is 'byo' but lifecycle.download is declared. A dataset "
+            "either fetches its own inputs or it cannot -- drop the downloader, or set "
+            "acquisition.mode to 'download'."
+        )
+    elif exc.validator == "not" and path == ["name"]:
+        message = (
+            f"provider name {exc.instance!r} is reserved: load errors are recorded as "
+            "'cli:<command>' and 'entry-point:<name>', and this provider's "
+            "'<name>:<dataset>' keys would be taken for them. Choose another name."
+        )
+    elif exc.validator == "required" and (
+        exc.validator_value == ["lifecycle"]
+        or (exc.validator_value == ["download"] and path and path[-1] == "lifecycle")
+    ):
+        message = (
+            "acquisition.mode is 'download' but no lifecycle.download is declared. "
+            "Declare the downloader, or set acquisition.mode to 'byo' with a reason; "
+            "omit the acquisition block while a downloader is still to be written."
+        )
+    else:
+        where = " -> ".join(str(x) for x in path)
+        message = f"{exc.message}{f' (at {where})' if where else ''}"
+    dataset = _dataset_label(content, path) if content is not None else None
+    return f"dataset {dataset!r}: {message}" if dataset is not None else message
+
+
 class PluginRegistry:
     """Registry of all loaded provider plugins.
 
@@ -138,6 +220,14 @@ class PluginRegistry:
         self._schema = _load_schema()
         # CLI entries per plugin, keyed by plugin name.
         self._cli_entries: dict[str, list[dict]] = {}
+        # Who declared each `cli:` command first, as (plugin, entry): a command name
+        # is registry-wide, so a second declaration is refused at load.
+        self._cli_owners: dict[str, tuple[str, dict]] = {}
+        # Resolved `cli:` callables and cached failures, keyed by (plugin, command).
+        # Filled on demand by `resolve_cli_entries` / `apply_plugin_downloaders`, never
+        # at load time (see `resolve_cli_entries`).
+        self._cli_callables: dict[tuple[str, str], Callable[..., Any]] = {}
+        self._failed_cli: dict[tuple[str, str], PluginLoadError] = {}
 
     # --- Public lookup API ---
 
@@ -281,7 +371,9 @@ class PluginRegistry:
         """Collect a load failure AND say so.
 
         ``unit`` is whatever disappeared from the registry -- a plugin directory, an
-        entry point, or a single ``provider:dataset`` key.
+        entry point, or a single ``provider:dataset`` key -- or a ``cli:<command>``
+        entry whose callable did not resolve (`resolve_cli_entries`), which costs that
+        command alone; a dataset that fails with it is recorded under its own key.
 
         Collecting silently is the problem this exists to stop. `plugins list` prints
         the survivors with no "N failed" line, and `drift-health.yml` greps the report
@@ -302,6 +394,12 @@ class PluginRegistry:
         by `load_from_directory` -- one of the two paths already covered.)
         """
         self._load_errors.append((unit, exc))
+        if is_cli_unit(unit):
+            # "NOT registered and will not be drift-checked" would be false here (#408).
+            logger.warning(
+                "%r failed to load; that command is NOT available: %s", unit, exc
+            )
+            return
         logger.warning(
             "%r failed to load; it is NOT registered and will not be drift-checked: %s",
             unit,
@@ -328,6 +426,54 @@ class PluginRegistry:
 
     # --- CLI wiring ---
 
+    def resolve_cli_entries(self) -> None:
+        """Resolve every manifest ``cli:`` entry, recording each failure as a load error.
+
+        A failure is recorded under ``cli:<command>``, not under the provider: the
+        command is lost, while the provider's datasets bind (or fail) on their own, so
+        `hvantk drift` ignores these rows. Before this, a downloader module that would
+        not import was only logged by `apply_plugin_downloaders`, and its subcommand
+        silently vanished from `hvantk download`.
+
+        Called by `hvantk plugins errors`, so the check does not depend on `hvantk
+        download` having run in the same process, and through `apply_plugin_downloaders`
+        by the download CLI, which needs the callables anyway. Never at load time:
+        a `cli:` module need not be one the datasets import, and it may pull heavy
+        dependencies that every other registry consumer would then pay for.
+
+        Idempotent: each entry is resolved once and its outcome cached, so calling this
+        and `apply_plugin_downloaders` in one process records a failure once.
+        """
+        for plugin_name, entries in self._cli_entries.items():
+            for entry in entries:
+                self._resolve_cli_entry(plugin_name, entry)
+
+    def _resolve_cli_entry(
+        self, plugin_name: str, entry: dict
+    ) -> Callable[..., Any] | None:
+        """The callable of one ``cli:`` entry, or None once its failure is recorded."""
+        key = (plugin_name, entry["command"])
+        if key in self._cli_callables:
+            return self._cli_callables[key]
+        if key in self._failed_cli:
+            return None
+        try:
+            fn = self._resolve_callable(entry["module"], entry["function"])
+        except PluginLoadError as exc:
+            err = exc
+        except Exception as exc:  # noqa: BLE001
+            # Same wrapping as the eager dataset pass: a module that raises something
+            # other than ImportError at import time is a load failure too, not a crash
+            # of whichever command happened to resolve it.
+            err = PluginLoadError(str(exc))
+            err.__cause__ = exc
+        else:
+            self._cli_callables[key] = fn
+            return fn
+        self._failed_cli[key] = err
+        self._record_load_error(f"{CLI_UNIT_PREFIX}{entry['command']}", err)
+        return None
+
     def apply_plugin_downloaders(self, click_group: Any) -> None:
         """Wire each plugin's downloader CLI into the given click group.
 
@@ -340,6 +486,9 @@ class PluginRegistry:
         Entries that don't end in ``-download`` are skipped — they're
         reserved for future top-level commands.
 
+        An entry whose callable does not resolve is skipped, and recorded as a
+        ``cli:<command>`` load error (see `resolve_cli_entries`).
+
         Idempotent: skips entries whose short name is already registered.
         """
         for plugin_name, entries in self._cli_entries.items():
@@ -350,15 +499,8 @@ class PluginRegistry:
                 short_name = command[: -len("-download")]
                 if short_name in click_group.commands:
                     continue
-                try:
-                    fn = self._resolve_callable(entry["module"], entry["function"])
-                except PluginLoadError as exc:
-                    logger.warning(
-                        "skipping downloader %r from plugin %r: %s",
-                        short_name,
-                        plugin_name,
-                        exc,
-                    )
+                fn = self._resolve_cli_entry(plugin_name, entry)
+                if fn is None:
                     continue
                 click_group.add_command(fn, name=short_name)
 
@@ -374,7 +516,9 @@ class PluginRegistry:
         try:
             jsonschema.validate(content, self._schema)
         except jsonschema.ValidationError as exc:
-            raise PluginLoadError(f"schema validation failed: {exc.message}") from exc
+            raise PluginLoadError(
+                f"schema validation failed: {_explain(exc, content)}"
+            ) from exc
         return content
 
     def _build_dataset_manifest(
@@ -528,8 +672,28 @@ class PluginRegistry:
                 self._failed_datasets[dm.name] = err
                 self._record_load_error(dm.name, err)
 
-        # Cache CLI entries for downloader wiring.
-        cli_entries = manifest.get("cli", [])
+        # Cache CLI entries for downloader wiring. A command name may be declared once
+        # across the whole registry: a second entry would share the first's resolution
+        # (hiding a module of its own that does not import) and, under `hvantk
+        # download`, the first one wired would silently shadow it. The first stays;
+        # each later one is refused with a load error that names both.
+        cli_entries = []
+        for entry in manifest.get("cli", []):
+            command = entry["command"]
+            if command in self._cli_owners:
+                first_plugin, first = self._cli_owners[command]
+                self._record_load_error(
+                    f"{CLI_UNIT_PREFIX}{command}",
+                    PluginLoadError(
+                        f"cli command {command!r} is declared twice: by provider "
+                        f"{first_plugin!r} ({first['module']}.{first['function']}) and "
+                        f"by provider {manifest['name']!r} "
+                        f"({entry['module']}.{entry['function']}); the second is ignored"
+                    ),
+                )
+                continue
+            self._cli_owners[command] = (manifest["name"], entry)
+            cli_entries.append(entry)
         if cli_entries:
             self._cli_entries[manifest["name"]] = cli_entries
 

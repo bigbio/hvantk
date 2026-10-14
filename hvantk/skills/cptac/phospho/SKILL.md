@@ -104,7 +104,7 @@ CPTAC publishes refreshed datasets through the `cptac` Python package. When a ne
 2. Update the Poetry dep pin in `pyproject.toml` (`cptac = { version = "*", optional = true }` -- pin to the new release if reproducibility matters).
 3. Re-download every cancer type of interest with `--overwrite` and spot-check row counts and `tissue_type` distributions against the previous build.
 4. If any new modification notation or column shape appears, document it in § 4.
-5. Re-regenerate `tests/drift_fingerprint.json` to record the new package version.
+5. Regenerate `tests/drift_fingerprint.json` with `hvantk drift --regenerate cptac:phospho --accepted-in "PR #N"` to record the new package version, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
 6. If a builder snapshot exists (TODO), run `pytest hvantk/skills/cptac/phospho/tests --regenerate-snapshots` and inspect the diff.
 
 ## 9. Validation contract
@@ -122,3 +122,5 @@ The plugin manifest declares these paths so the loader contract holds. Parser un
 > **Snapshot status:** seeded. `test_builder.py` asserts the build against both
 > snapshots. Regenerate after an intentional schema change with
 > `pytest hvantk/skills/cptac/phospho/tests/test_builder.py --regenerate-snapshots`, then commit.
+
+The fixture is synthetic: a hand-authored 2-sample/2-site phospho + metadata pair, not a CPTAC download excerpt. No `THIRD_PARTY_DATA.md` entry applies.

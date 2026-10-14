@@ -58,9 +58,14 @@ def load_gene_by_group_matrix(
     entry_field
         Hail MT entry field holding the expression value. Default ``"x"``.
     gene_key
-        Optional override for the row key used as the gene identifier. If
-        ``None`` the backend's default is used (``var_names`` for AnnData,
-        first row key for Hail MT).
+        Row key used as the gene identifier for the ``hail-mt`` backend only
+        (``None`` uses the MT's first row key). The ``anndata`` backend does
+        not read this parameter -- it always uses ``adata.var_names``, which
+        must already be gene-keyed (see
+        :func:`hvantk.core.models.anndata_utils.require_gene_keyed`; a
+        transcript-keyed AnnData is rejected rather than silently aggregated
+        under the wrong label). The ``tabular`` backend ignores it too (the
+        file is assumed to already be gene-keyed).
 
     Returns
     -------
@@ -178,8 +183,10 @@ def _load_from_anndata(
     """
     from hvantk.core.io.anndata_io import load_anndata
     from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
+    from hvantk.core.models.anndata_utils import require_gene_keyed
 
     adata = load_anndata(path)
+    require_gene_keyed(adata, "hvantk ptm constraint (anndata expression source)")
     if grouping not in adata.obs.columns:
         raise KeyError(
             f"Grouping field '{grouping}' not found in adata.obs. "
@@ -187,16 +194,28 @@ def _load_from_anndata(
         )
 
     if aggfunc == "mean":
-        long_df = summarize_expression_ad(
+        # summarize_expression_ad returns an AnnData (groups x genes, obs=groups,
+        # var=genes, layers["mean"]=the per-group means), NOT a long DataFrame with
+        # "gene_id"/"group"/"mean" columns -- .empty and .pivot() are DataFrame
+        # methods and raised AttributeError against it unconditionally, so this
+        # branch could never actually run.
+        agg = summarize_expression_ad(
             adata,
             group_by=grouping,
             min_cells_per_group=min_cells_per_group,
         )
-        if long_df.empty:
+        if agg.n_obs == 0:
             raise ValueError(
                 f"No groups survived min_cells_per_group={min_cells_per_group}."
             )
-        wide = long_df.pivot(index="gene_id", columns="group", values="mean")
+        mean_layer = agg.layers["mean"]
+        if hasattr(mean_layer, "toarray"):
+            mean_layer = mean_layer.toarray()
+        wide = pd.DataFrame(
+            np.asarray(mean_layer).T,
+            index=pd.Index(agg.var_names, name="gene_id"),
+            columns=list(agg.obs_names),
+        )
         wide.columns.name = None
         return wide
 
@@ -214,6 +233,14 @@ def _aggregate_anndata_direct(
 ) -> pd.DataFrame:
     """Aggregate AnnData cells → groups with median or median_nonzero per gene."""
     import scipy.sparse as sp
+
+    from hvantk.core.models.anndata_utils import require_gene_keyed
+
+    # Guarded again here (not only in _load_from_anndata): this function reads
+    # adata.var_names directly as the gene id, and is a plausible call target on
+    # its own should a future caller reach it without going through
+    # _load_from_anndata first.
+    require_gene_keyed(adata, "hvantk ptm constraint (anndata expression source)")
 
     labels = adata.obs[grouping].astype(str).to_numpy()
     unique_groups = [g for g in sorted(set(labels))]

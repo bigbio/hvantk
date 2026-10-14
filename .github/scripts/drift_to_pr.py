@@ -25,8 +25,10 @@ For each ``status == "drifted"`` entry the script:
 1. Computes a branch name ``drift/<provider>-<dataset>`` (the colon in
    ``provider:dataset`` is replaced with ``-`` so it is a valid ref).
 2. Branches off ``BASE_BRANCH``.
-3. Runs ``hvantk drift --regenerate <provider:dataset>`` to overwrite the
-   committed ``drift_fingerprint.json``.
+3. Runs ``hvantk drift --regenerate --no-ledger-row <provider:dataset>`` to
+   overwrite the committed ``drift_fingerprint.json``. The rebuild-ledger row is
+   recorded by this script instead, through the same ``hvantk.core.plugin.drift_ledger``
+   code the CLI uses, and only once the checks below have passed.
 4. Commits with a plain Conventional Commits message.
 5. Force-pushes with lease (the branch is bot-owned) -- but only if the branch does
    not already propose the same fingerprint. ``--regenerate`` rewrites ``fetched_at``
@@ -51,6 +53,25 @@ returned 0 -- so when the repository's "Allow GitHub Actions to create and
 approve pull requests" setting was off, every run pushed its branches, failed
 all 11 ``gh pr create`` calls, and reported success. The daily job was green for
 months while opening nothing.
+
+A regenerate is a SECOND, independent probe call, not a replay of the one that
+produced the drift report. Before committing it, the result is compared against
+the report's own ``observed`` fingerprint (ignoring the same volatile keys the
+drift comparison itself ignores); a mismatch means upstream served something
+different in the window between the two calls, and the dataset is skipped for
+this run rather than committed -- otherwise it would just get reverted again
+next run when a THIRD probe disagrees with it, a flip-flop PR that churns
+forever without anything upstream actually settling. A skip from this check is
+a signal, not a failure, and does not set the exit code.
+
+A refused regenerate for one dataset in the routine batch no longer takes the
+whole batch down with it. It used to propagate out of the batch's regenerate
+loop, and ``main()`` caught that by marking EVERY routine dataset failed and
+reporting -- regardless of which stage actually failed -- "the branches were
+pushed; the ``gh pr create`` calls failed", even on a run where neither had
+happened yet. The loop now isolates a refused regenerate to its own dataset,
+drops it from the batch, and lets the rest proceed to their own PR; the final
+summary names the real failing stage per dataset instead of assuming one.
 """
 
 from __future__ import annotations
@@ -69,17 +90,28 @@ try:  # PyYAML ships in the conda env; soft-import so --dry-run still works
 except ImportError:  # pragma: no cover - exercised only in stripped envs
     yaml = None
 
+# The bot runs where drift.yml installed hvantk (`pip install -e`), as its own
+# `python -m hvantk.hvantk drift --regenerate` subprocess requires anyway. A hard import:
+# if the package is missing the bot fails at start-up, rather than with an ignore set or
+# a ledger writer that silently does nothing.
+from hvantk.core.plugin.api import PROBE_FINGERPRINT_IGNORED_KEYS
+from hvantk.core.plugin.drift_ledger import (
+    SCHEMA_KEYS,  # noqa: F401 -- re-exported: probe docstrings cite it from this script
+    LedgerError,
+    classify_risk,
+    record_changes,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
+# The ledger inside THIS checkout -- the file the `git add` below stages -- passed
+# explicitly to the shared writer rather than resolved from wherever hvantk is installed.
 LEDGER_PATH = REPO_ROOT / "hvantk" / "resources" / "drift_ledger.json"
 
-# Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
-# imported because this script runs from a checkout where the package may not be
-# importable, and `_fingerprints_match` must not become a no-op if the import fails --
-# a silently-empty ignore set would make every comparison "different" and restore the
-# exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
-FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
+# The keys the drift comparison itself ignores, so "materially the same" here can never
+# disagree with what `hvantk drift` reports as clean.
+FINGERPRINT_IGNORED_KEYS = PROBE_FINGERPRINT_IGNORED_KEYS
 
 
 # --------------------------------------------------------------------------- #
@@ -103,35 +135,9 @@ def strip_ignored(fingerprint: dict) -> dict:
     return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
 
 
-# Fingerprint keys that carry the SCHEMA signal. `headers` is the column list;
-# `checksums` is a hash of the column-header row for the header-hashing probes
-# (clingen, gencc, hgnc) or of the VCF meta-header (clinvar), so a moved checksum means
-# the columns moved. A probe that puts HTTP metadata here instead makes this tier
-# constant -- see #333, and `extras` for where a pure content signal belongs.
-SCHEMA_KEYS = frozenset({"headers", "checksums"})
-
-
-def classify_risk(diff: dict | None) -> str:
-    """Classify a drift diff as ``"routine"`` or ``"schema"``.
-
-    Routine means the schema signal is unchanged and only content/version moved --
-    safe to batch with other routine datasets into one PR. Schema means the column
-    list or header hash moved, or the fingerprint gained/lost a top-level key, and
-    the plugin's builder.py may need a change.
-
-    Defaults to ``"schema"`` for anything it cannot read. Misclassifying a schema
-    change as routine would bury it in a batch; the reverse just opens one extra PR.
-    """
-    if not isinstance(diff, dict) or not diff:
-        return "schema"
-    if diff.get("added") or diff.get("removed"):
-        return "schema"
-    changed = diff.get("changed") or {}
-    if not isinstance(changed, dict):
-        return "schema"
-    if SCHEMA_KEYS & set(changed):
-        return "schema"
-    return "routine"
+# `classify_risk` (and the `SCHEMA_KEYS` it reads) live in hvantk.core.plugin.drift_ledger
+# and are imported above: the ledger row's `signal` is that same classification, and
+# `hvantk drift --regenerate` records rows too, so the tiering has one implementation.
 
 
 # All routine drift shares one branch, so it becomes one reviewable PR per run rather
@@ -148,40 +154,6 @@ def partition_by_risk(drifted: list[dict]) -> tuple[list[dict], list[dict]]:
     return routine, schema
 
 
-# --------------------------------------------------------------------------- #
-# Rebuild ledger. A fingerprint bump is also the signal that a built artifact may now
-# be stale; without this, that fact survives only in git history. Recorded in the same
-# commit as the fingerprints it describes -- see record_in_ledger below for why it must
-# be written and staged only once handle_drifted / handle_routine_batch have already
-# decided a commit is happening, never earlier.
-# --------------------------------------------------------------------------- #
-
-
-def ledger_entry(*, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
-    """One ledger row. ``rebuilt_at`` starts None and is set by whoever rebuilds;
-    a value older than ``last_upstream_change`` is the stale-artifact condition.
-
-    ``dataset`` is accepted for a call signature symmetric with ``ledger_update``
-    (and to self-document each call site); it is not part of the row itself, since
-    the dataset name is already the ledger's key at the ``ledger_update`` level.
-    """
-    return {
-        "last_upstream_change": now,
-        "accepted_in": pr_ref,
-        "signal": classify_risk(diff),
-        "rebuilt_at": None,
-    }
-
-
-def ledger_update(
-    ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str
-) -> dict:
-    """Return a copy of ``ledger`` with ``dataset`` updated. Never touches other rows."""
-    out = dict(ledger)
-    out[dataset] = ledger_entry(dataset=dataset, diff=diff, pr_ref=pr_ref, now=now)
-    return out
-
-
 def fingerprints_match(a: str, b: str) -> bool:
     """True if two fingerprint JSON blobs agree once volatile keys are dropped.
 
@@ -192,6 +164,66 @@ def fingerprints_match(a: str, b: str) -> bool:
         return strip_ignored(json.loads(a)) == strip_ignored(json.loads(b))
     except (ValueError, AttributeError, TypeError):
         return False
+
+
+# --------------------------------------------------------------------------- #
+# Stability check: does a regenerate agree with the probe call that reported it?
+#
+# `--regenerate` is a SECOND, independent probe call -- not a replay of the call
+# that produced the drift report's `observed` fingerprint. If upstream served
+# something different in the window between the two (a stale CDN/cache edge, a
+# mid-deploy response), committing the second reading just restores the first
+# value's content next run, when a THIRD probe disagrees with the second -- a
+# flip-flop PR that force-pushes back and forth without anything upstream actually
+# settling. This never ran before: `entry["observed"]` was read only to render the
+# PR body, never compared against what regenerating actually produced.
+# --------------------------------------------------------------------------- #
+
+
+def _read_fingerprint_file(path_str: str | None) -> dict | None:
+    """Parse the fingerprint JSON at ``path_str``, or None if it cannot be trusted.
+
+    None covers every case where the caller must not draw a conclusion: no path at
+    all (an older report shape, or a synthetic one in tests), a RELATIVE path (a
+    real report's ``fingerprint_path`` is always absolute -- ``TestPaths`` resolves
+    every path before it reaches a ``DriftResult`` -- so a relative one here is not
+    a path this check should trust), or a file that does not exist or does not
+    parse as a JSON object. The caller treats None as "cannot verify", which must
+    mean "proceed", never "block" -- the same "I cannot tell" rule
+    ``fingerprints_match`` documents above.
+    """
+    if not path_str:
+        return None
+    path = Path(path_str)
+    if not path.is_absolute():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def regenerate_agrees_with_probe(entry: dict) -> bool:
+    """Did the regenerate that just ran see the same thing as the probe call that
+    produced this report entry's ``observed`` fingerprint, ignoring volatile keys?
+
+    Reads the file at ``entry["fingerprint_path"]`` -- freshly overwritten on disk
+    by the ``--regenerate`` subprocess call that must already have run by the time
+    this is called -- and compares it against ``entry["observed"]``. Returns True
+    ("stable enough to proceed") whenever the comparison cannot be made at all: no
+    ``observed`` dict to compare, or no trustworthy fingerprint file to read. That
+    is deliberate, not a gap -- suppressing a real drift PR over an inconclusive
+    check would be worse than occasionally missing this guard, exactly as
+    ``fingerprints_match`` resolves the same tension above.
+    """
+    observed = entry.get("observed")
+    if not isinstance(observed, dict):
+        return True
+    regenerated = _read_fingerprint_file(entry.get("fingerprint_path"))
+    if regenerated is None:
+        return True
+    return strip_ignored(regenerated) == strip_ignored(observed)
 
 
 # One full regeneration cycle. A PR still open after this was not acted on.
@@ -265,11 +297,12 @@ def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
 
     Datasets sharing a ``fingerprint_path`` share a baseline file, so they cannot have
     independent drift: one upstream event produces N identical reports, N branches
-    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` is the
-    worked case -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants
-    (obs cell-type column `celltype` / `Class` / `Type_v2`), but the probe fingerprints
-    the provider-wide catalog, so all three always agree. Merging one made the other two
-    conflict.
+    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` was the
+    worked case until #396 -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema*
+    variants (obs cell-type column `celltype` / `Class` / `Type_v2`), but its probe then
+    fingerprinted the provider-wide catalog into one shared baseline, so all three always
+    agreed and merging one PR made the other two conflict. Each now has its own baseline;
+    the grouping stays for any provider that declares a shared one.
 
     Returns one entry per signal, each carrying a ``datasets`` list naming every member,
     so the PR can say what it covers. Entries WITHOUT a fingerprint_path are never
@@ -455,6 +488,28 @@ def commit_message_for(dataset: str) -> str:
     return f"chore(drift): regenerate fingerprint for {dataset}"
 
 
+def regenerate_argv(dataset: str) -> list[str]:
+    """The ``hvantk drift --regenerate`` call for ``dataset``, with ``--no-ledger-row``.
+
+    Without that flag the CLI records the dataset's rebuild-ledger row the moment the
+    fingerprint is rewritten -- before the stability check, before either anti-churn
+    guard, and inside the routine batch's loop -- so a skipped or dropped dataset would
+    leave a row behind that `_discard_one_fingerprint` / `_discard_staged_fingerprints`
+    never restore (they cover `hvantk/skills` only). The bot records its own rows in
+    `record_in_ledger` instead. `_stage_for_called_process_error` recognises this
+    command by its first four tokens, so those stay as they are.
+    """
+    return [
+        "python",
+        "-m",
+        "hvantk.hvantk",
+        "drift",
+        "--regenerate",
+        "--no-ledger-row",
+        dataset,
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # Side-effecting helpers. Each accepts ``dry_run`` and short-circuits cleanly.
 # --------------------------------------------------------------------------- #
@@ -497,8 +552,13 @@ def remote_branch_exists(branch: str, *, dry_run: bool) -> bool:
     return bool((result.stdout or "").strip())
 
 
+#: What a drift run writes and stages: the fingerprints under hvantk/skills, and the
+#: rebuild ledger `record_in_ledger` writes.
+_RUN_WRITTEN_PATHS = ("hvantk/skills", "hvantk/resources/drift_ledger.json")
+
+
 def _discard_staged_fingerprints(*, dry_run: bool) -> None:
-    """Return index AND working tree for ``hvantk/skills`` to HEAD.
+    """Return index AND working tree for ``hvantk/skills`` and the ledger to HEAD.
 
     Every early return out of `handle_drifted` after `git add` must call this. The
     regeneration is per-dataset but the checkout is not isolated: the next iteration
@@ -510,26 +570,107 @@ def _discard_staged_fingerprints(*, dry_run: bool) -> None:
 
     `git checkout HEAD -- <path>` rather than `git reset`: reset alone unstages but
     leaves the modified file in the working tree, where the next `git add` re-stages it.
+
+    The ledger is restored too. A failure after `record_in_ledger` -- a refused
+    `git commit` in either handler -- leaves its rows staged beside the fingerprints,
+    and the next schema dataset's `git checkout -B` carries both into ITS commit. One
+    call per path, so a ledger HEAD does not have cannot stop the fingerprints from
+    being restored.
     """
     if dry_run:
-        print("[dry-run] (would discard staged fingerprint changes)")
+        print("[dry-run] (would discard staged fingerprint and ledger changes)")
         return
+    for path in _RUN_WRITTEN_PATHS:
+        result = subprocess.run(
+            ["git", "checkout", "HEAD", "--", path],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            # `check=False` keeps one failed cleanup from aborting the whole run, but
+            # swallowing the output would hide the exact state this function exists to
+            # prevent: the change stays staged and the next dataset commits it onto
+            # ITS branch. Surface it so the job log names the contaminating run.
+            print(
+                f"  WARNING: could not discard staged changes to {path}; the next "
+                "dataset may commit them onto its branch: "
+                f"{(result.stderr or '').strip()}",
+                file=sys.stderr,
+            )
+
+
+def _discard_one_fingerprint(fingerprint_path: str | None, *, dry_run: bool) -> bool:
+    """Best-effort restore of ONE dataset's own fingerprint file to HEAD.
+
+    `handle_routine_batch`'s regenerate loop now isolates a per-dataset failure (a
+    refused regenerate, or an unstable probe -- see `regenerate_agrees_with_probe`)
+    instead of aborting the whole batch, and stages nothing until the loop finishes.
+    A dataset dropped mid-loop can still have left a real, successfully-written
+    change sitting in the working tree, and the later `git add hvantk/skills` stages
+    the WHOLE directory -- not just the surviving datasets -- so that leftover would
+    otherwise ride into a commit it has nothing to do with. Unlike
+    `_discard_staged_fingerprints`, this never touches `hvantk/skills` as a whole, so
+    it cannot discard a sibling dataset's already-regenerated file earlier in the
+    same loop.
+
+    Does nothing, and returns True (nothing to undo, so nothing is wrong), when
+    ``fingerprint_path`` is missing, relative (a real report's path is always
+    absolute; see `_read_fingerprint_file`), or outside the repository -- the same
+    "cannot verify, so do not act" posture as the rest of this module's defensive
+    checks, since a wrong guess here could discard an unrelated file.
+
+    Returns False when an actual restore was attempted and failed -- the caller
+    must then assume the file is STILL dirty and stop before anything stages it
+    (see `handle_routine_batch`'s callers), rather than merely warn and continue as
+    this used to.
+    """
+    if dry_run or not fingerprint_path:
+        return True
+    path = Path(fingerprint_path)
+    if not path.is_absolute():
+        return True
+    try:
+        rel = path.relative_to(REPO_ROOT)
+    except ValueError:
+        return True
+
+    # A regenerate can CREATE a fingerprint file HEAD has never seen (a brand-new
+    # dataset's first run), not only modify an existing one. `git checkout HEAD --
+    # <path>` has nothing to restore FROM in that case and fails outright, even
+    # though discarding the file is still exactly right: delete it instead.
+    tracked = subprocess.run(
+        ["git", "cat-file", "-e", f"HEAD:{rel.as_posix()}"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if tracked.returncode != 0:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            print(
+                f"  WARNING: could not delete untracked {rel}; it may ride along "
+                f"into an unrelated commit: {exc}",
+                file=sys.stderr,
+            )
+            return False
+        return True
+
     result = subprocess.run(
-        ["git", "checkout", "HEAD", "--", "hvantk/skills"],
+        ["git", "checkout", "HEAD", "--", str(rel)],
         check=False,
         text=True,
         capture_output=True,
     )
     if result.returncode != 0:
-        # `check=False` keeps one failed cleanup from aborting the whole run, but
-        # swallowing the output would hide the exact state this function exists to
-        # prevent: the fingerprint stays staged and the next dataset commits it onto
-        # ITS branch. Surface it so the job log names the contaminating run.
         print(
-            "  WARNING: could not discard staged fingerprints; the next dataset may "
-            f"commit them onto its branch: {(result.stderr or '').strip()}",
+            f"  WARNING: could not restore {rel}; it may ride along into an "
+            f"unrelated commit: {(result.stderr or '').strip()}",
             file=sys.stderr,
         )
+        return False
+    return True
 
 
 def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
@@ -719,28 +860,29 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
     )
 
 
-def load_ledger() -> dict:
-    """Read the ledger. A missing or corrupt file yields {} rather than raising --
-    a broken ledger must not block a drift PR, it just starts recording afresh.
+def record_in_ledger(
+    entries: list[dict],
+    *,
+    pr_ref: str,
+    dry_run: bool,
+    step_summary: Path | None = None,
+) -> None:
+    """Record a rebuild-ledger row for every dataset in ``entries``, accepted in
+    ``pr_ref`` (the bot's branch), and write the ledger back.
 
-    Also yields {} for JSON that parses but is not an object -- e.g. a truthy `[...]`
-    or a bare string. `json.loads(text) or {}` looks like it handles "empty/invalid",
-    but `or` only substitutes on a FALSY parse (`[]`, `0`, `""`, `null`); a populated
-    list or non-empty string is truthy and would pass straight through, and every
-    caller here assumes a dict (`record_in_ledger` does `dict(ledger)`, which raises
-    `TypeError` for a list).
-    """
-    if not LEDGER_PATH.is_file():
-        return {}
-    try:
-        data = json.loads(LEDGER_PATH.read_text())
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    A fingerprint bump is also the signal that a built artifact may now be stale;
+    without the ledger that fact survives only in git history. The row itself, and the
+    read/merge/write of the file, are `hvantk.core.plugin.drift_ledger.record_changes`
+    -- the one implementation `hvantk drift --regenerate` uses too. The bot runs that
+    regenerate with `--no-ledger-row` so the row is written HERE, at the point chosen
+    below, and nowhere earlier.
 
-
-def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:
-    """Update the ledger for every dataset in ``entries`` and write it back.
+    That point matters for the routine batch as much as for the guards below. Nothing
+    touches the ledger while the batch's regenerate loop runs, so a dataset dropped
+    mid-loop (a refused regenerate, or an unstable probe; `_discard_one_fingerprint`
+    restores only its fingerprint file) cannot leave a row behind, and there is no
+    shared ledger file to restore that could clobber another dataset's row. Only the
+    datasets that survived the loop reach this call, in one write.
 
     Callers must invoke this only once they have already decided a commit is
     happening -- i.e. AFTER both anti-churn guards in handle_drifted /
@@ -759,26 +901,70 @@ def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None
     `branch_needs_update`). Calling it here, right before the commit, still gets the
     ledger change into the SAME commit as the fingerprints it describes -- just via
     its own `git add` rather than the earlier one.
+
+    A ledger that cannot be parsed (a merge conflict left in it) does not block the
+    PR, but it is never written back either: `record_changes` reads strictly, and
+    writing back what a lenient read made of it would erase every other row. The
+    rows are reported as missing instead, and the commit goes ahead without them.
     """
     if dry_run:
         print(f"  [dry-run] would record {len(entries)} ledger entries")
         return
-    now = datetime.now(timezone.utc).isoformat()
-    ledger = load_ledger()
-    for entry in entries:
-        ledger = ledger_update(
-            ledger,
-            dataset=entry["dataset_name"],
-            diff=entry.get("diff"),
-            pr_ref=pr_ref,
-            now=now,
+    try:
+        record_changes(
+            [(entry["dataset_name"], entry.get("diff")) for entry in entries],
+            accepted_in=pr_ref,
+            path=LEDGER_PATH,
         )
-    LEDGER_PATH.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    except LedgerError as exc:
+        names = ", ".join(str(entry["dataset_name"]) for entry in entries)
+        print(
+            f"  WARNING: {exc}; no rebuild-ledger row recorded for {names}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- WARNING: rebuild ledger unreadable, no row recorded for `{names}` "
+            f"-- repair `hvantk/resources/drift_ledger.json` and add the rows by hand "
+            f"({exc})",
+        )
 
 
 # --------------------------------------------------------------------------- #
 # Per-dataset workflow.
 # --------------------------------------------------------------------------- #
+
+
+def _stage_for_called_process_error(exc: subprocess.CalledProcessError) -> str:
+    """A short, human label for which pipeline step raised ``exc``.
+
+    Feeds the final summary's per-dataset failure line. Before this, that summary
+    used one hardcoded sentence -- "The branches were pushed; the `gh pr create`
+    calls failed" -- for every failure regardless of cause, which was simply wrong
+    whenever the real failure was a refused regenerate: neither a push nor a
+    `gh pr create` call had even been attempted yet on that path.
+
+    No ``git fetch`` case: every ``git fetch`` call in this module is invoked with
+    ``check=False`` (its own result is read directly instead -- see the warning
+    printed right after each one), so it can never raise a `CalledProcessError`
+    for this function to label. Re-add the case only alongside a fetch call that
+    actually uses ``check=True``.
+    """
+    cmd = list(exc.cmd) if exc.cmd else []
+    if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]:
+        return "regenerate refused/failed"
+    if cmd[:2] == ["git", "checkout"]:
+        return "git checkout failed"
+    if cmd[:2] == ["git", "commit"]:
+        return "git commit failed"
+    if cmd[:2] == ["git", "push"]:
+        return "git push failed"
+    if cmd[:3] == ["gh", "pr", "create"]:
+        return "gh pr create failed"
+    if cmd[:3] == ["gh", "pr", "edit"]:
+        return "gh pr edit failed"
+    label = cmd[0] if cmd else "command"
+    return f"{label} exited {exc.returncode}"
 
 
 def handle_drifted(
@@ -804,15 +990,33 @@ def handle_drifted(
     print(f"\n=== Drifted: {dataset} -> branch {branch} ===")
 
     # 1) branch off base
-    _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
+    fetch_result = _run(
+        ["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False
+    )
+    if fetch_result.returncode != 0:
+        # `check=False`: the workflow's checkout step already fetched the base
+        # minutes earlier in the same job, so a transient network failure here must
+        # not fail the run -- the checkout below falls back to the cached
+        # `origin/<base_branch>`. But a silently-ignored result means a LATER
+        # checkout failure (if the cache is stale too) gets misattributed, with no
+        # record that the fetch was the first thing to go wrong.
+        print(
+            f"  WARNING: git fetch origin {base_branch} failed (exit "
+            f"{fetch_result.returncode}); continuing from the cached "
+            f"origin/{base_branch}.",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- WARNING: `git fetch origin {base_branch}` failed (exit "
+            f"{fetch_result.returncode}); continuing from the cached "
+            f"origin/{base_branch}.",
+        )
     _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
 
     # 2) regenerate fingerprint via the CLI we already ship
     try:
-        _run(
-            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
-            dry_run=dry_run,
-        )
+        _run(regenerate_argv(dataset), dry_run=dry_run)
     except Exception:
         # A failed regenerate can still leave THIS dataset's fingerprint dirty in the
         # working tree (partially written, or left over from a prior attempt). `main()`
@@ -824,6 +1028,26 @@ def handle_drifted(
         # handle_routine_batch's regenerate loop, one dataset at a time instead of N.
         _discard_staged_fingerprints(dry_run=dry_run)
         raise
+
+    # 2b) Stability check: the regenerate above just made a SECOND, independent
+    # probe call. If it disagrees with the FIRST call that produced this report's
+    # `observed` fingerprint, upstream moved in the window between the two and
+    # committing the second reading risks a flip-flop PR that reverts itself again
+    # next run. See `regenerate_agrees_with_probe`. Skipped under dry_run: nothing
+    # was actually written to disk to compare against.
+    if not dry_run and not regenerate_agrees_with_probe(entry):
+        print(
+            f"  WARNING: upstream changed between the probe and the regenerate for "
+            f"{dataset}; skipping this run (will retry next run)."
+        )
+        _discard_staged_fingerprints(dry_run=dry_run)
+        _summary_line(
+            step_summary,
+            f"- SKIPPED (unstable probe): `{dataset}` -> regenerated fingerprint "
+            "disagreed with the drift report's own probe call; upstream likely "
+            "changed between the two. Will retry next run.",
+        )
+        return
 
     # 3) stage only fingerprint JSONs (avoid accidentally pulling in unrelated
     #    working-tree noise from the runner).
@@ -902,7 +1126,7 @@ def handle_drifted(
     # only now, after both guards above have passed, so its ever-moving
     # `last_upstream_change` timestamp cannot defeat either of them. See
     # record_in_ledger's docstring.
-    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run)
+    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run, step_summary=step_summary)
     _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
@@ -960,20 +1184,75 @@ def handle_drifted(
     )
 
 
+def _abort_routine_batch_on_restore_failure(
+    *,
+    datasets: list[str],
+    triggering_name: str,
+    triggering_note: str,
+    fingerprint_path: str | None,
+    dry_run: bool,
+    step_summary: Path | None,
+) -> list[tuple[str, str]]:
+    """Stop the WHOLE routine batch when `_discard_one_fingerprint` could not
+    restore one dataset's file.
+
+    A failed restore means the working tree can no longer be trusted: the
+    disagreeing/refused content may still be sitting at ``fingerprint_path``, and
+    the later `git add hvantk/skills` stages the WHOLE directory, so it would
+    otherwise ride into the surviving datasets' commit -- exactly the
+    contamination `_discard_one_fingerprint` exists to prevent. There is no safe
+    per-dataset isolation left at this point, so every dataset still in the batch
+    is marked failed rather than risk silently committing the leftover. A
+    best-effort blanket discard still runs, on the chance it clears what the
+    single-path restore could not (e.g. a permissions change mid-run).
+    """
+    _discard_staged_fingerprints(dry_run=dry_run)
+    stage = "restore failed"
+    label = ", ".join(datasets)
+    print(
+        f"error handling routine batch ({label}): could not restore "
+        f"{fingerprint_path} for {triggering_name} ({triggering_note}); aborting "
+        "the batch for this run",
+        file=sys.stderr,
+    )
+    _summary_line(
+        step_summary,
+        f"- ERROR: routine batch (`{label}`) -- could not restore "
+        f"`{fingerprint_path}` (from `{triggering_name}`, {triggering_note}); "
+        f"{stage}",
+    )
+    return [
+        (name, f"{triggering_note}; {stage}" if name == triggering_name else stage)
+        for name in datasets
+    ]
+
+
 def handle_routine_batch(
     entries: list[dict],
     *,
     base_branch: str,
     dry_run: bool,
     step_summary: Path | None,
-) -> None:
+) -> list[tuple[str, str]]:
     """Regenerate every routine fingerprint onto ONE branch and open ONE PR.
 
     Mirrors handle_drifted's sequence, but the regenerate step loops over datasets
     before a single commit, so N routine datasets cost one PR instead of N.
+
+    Returns a ``(dataset_name, stage)`` pair for every dataset that did NOT make it
+    into the batch's PR -- empty when every dataset in ``entries`` succeeded. A
+    refused regenerate or an unstable probe (see `regenerate_agrees_with_probe`) is
+    isolated to its own dataset and never prevents the rest of the batch from
+    proceeding: dropping ONE dataset used to raise and take every other dataset in
+    the batch down with it, even ones that had already regenerated cleanly. A
+    failure in the shared commit/push/PR stage below IS a single fate for every
+    dataset still in the batch at that point (one branch, one commit, one PR), so it
+    is reported against all of them. Never raises `subprocess.CalledProcessError`
+    itself, so the caller's final summary can name the real failing stage per
+    dataset instead of assuming one (`gh pr create`) that may never have run.
     """
     if not entries:
-        return
+        return []
 
     datasets = [e["dataset_name"] for e in entries]
     branch = ROUTINE_BRANCH
@@ -981,26 +1260,135 @@ def handle_routine_batch(
     for name in datasets:
         print(f"      {name}")
 
-    _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
-    _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
-
     try:
-        for name in datasets:
-            _run(
-                ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
-                dry_run=dry_run,
+        fetch_result = _run(
+            ["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False
+        )
+        if fetch_result.returncode != 0:
+            # `check=False`: the workflow's checkout step already fetched the base
+            # minutes earlier in the same job, so a transient network failure here
+            # must not fail the run -- the checkout below falls back to the cached
+            # `origin/<base_branch>`. But a silently-ignored result means a LATER
+            # checkout failure (if the cache is stale too) gets misattributed, with
+            # no record that the fetch was the first thing to go wrong.
+            print(
+                f"  WARNING: git fetch origin {base_branch} failed (exit "
+                f"{fetch_result.returncode}); continuing from the cached "
+                f"origin/{base_branch}.",
+                file=sys.stderr,
             )
+            _summary_line(
+                step_summary,
+                f"- WARNING: `git fetch origin {base_branch}` failed (exit "
+                f"{fetch_result.returncode}); continuing from the cached "
+                f"origin/{base_branch}.",
+            )
+        _run(
+            ["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run
+        )
+    except subprocess.CalledProcessError as exc:
+        # Nothing has been regenerated yet at this point in the function, so there is
+        # nothing to restore -- unlike every other failure path below. Without a
+        # branch checked out, none of the batch's datasets can proceed, so this is a
+        # shared fate for all of them, reported against every one rather than just an
+        # anchor. Catching this here (rather than leaving it to escape, as a bare
+        # uncaught exception did before this fix) is what keeps the docstring's "never
+        # raises subprocess.CalledProcessError itself" true, and lets `main()` still
+        # run the schema / probe-failed / stub loops and write the step summary for
+        # this run instead of crashing out of all of them.
+        stage = _stage_for_called_process_error(exc)
+        label = ", ".join(datasets)
+        print(
+            f"error preparing routine batch branch ({label}): "
+            f"{exc.cmd} exited {exc.returncode}\n"
+            f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- ERROR: routine batch (`{label}`) -- {stage}",
+        )
+        return [(name, stage) for name in datasets]
+
+    failed: list[tuple[str, str]] = []
+    surviving: list[dict] = []
+    try:
+        for entry in entries:
+            name = entry["dataset_name"]
+            try:
+                _run(regenerate_argv(name), dry_run=dry_run)
+            except subprocess.CalledProcessError as exc:
+                # Per-dataset and independent: dataset N's regenerate being refused
+                # must not discard datasets 1..N-1's ALREADY-regenerated files sitting
+                # in the working tree, which a blanket `_discard_staged_fingerprints()`
+                # call would do (it restores the whole `hvantk/skills` tree). Restoring
+                # just THIS entry's own path and moving on keeps the rest of the batch
+                # intact.
+                print(
+                    f"error regenerating {name}: {exc.cmd} exited {exc.returncode}\n"
+                    f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
+                    file=sys.stderr,
+                )
+                stage = "regenerate refused/failed"
+                _summary_line(step_summary, f"- ERROR: `{name}` -- {stage}")
+                fp = entry.get("fingerprint_path")
+                if not _discard_one_fingerprint(fp, dry_run=dry_run):
+                    # The file could not be restored, so the working tree can no
+                    # longer be trusted: the later `git add hvantk/skills` would
+                    # stage this dataset's leftover into the survivors' commit.
+                    # Give up on the whole batch rather than risk that.
+                    return _abort_routine_batch_on_restore_failure(
+                        datasets=datasets,
+                        triggering_name=name,
+                        triggering_note=stage,
+                        fingerprint_path=fp,
+                        dry_run=dry_run,
+                        step_summary=step_summary,
+                    )
+                failed.append((name, stage))
+                continue
+
+            if not dry_run and not regenerate_agrees_with_probe(entry):
+                # Same guard as handle_drifted's stability check, applied per dataset
+                # here: a benign, retry-next-run skip, NOT a failure -- it must not
+                # push this dataset's name into `failed` or affect the exit code.
+                print(
+                    f"  WARNING: upstream changed between the probe and the "
+                    f"regenerate for {name}; skipping this dataset this run "
+                    "(will retry next run)."
+                )
+                _summary_line(
+                    step_summary,
+                    f"- SKIPPED (unstable probe): `{name}` -> regenerated "
+                    "fingerprint disagreed with the drift report's own probe call; "
+                    "upstream likely changed between the two. Will retry next run.",
+                )
+                fp = entry.get("fingerprint_path")
+                if not _discard_one_fingerprint(fp, dry_run=dry_run):
+                    return _abort_routine_batch_on_restore_failure(
+                        datasets=datasets,
+                        triggering_name=name,
+                        triggering_note="unstable probe",
+                        fingerprint_path=fp,
+                        dry_run=dry_run,
+                        step_summary=step_summary,
+                    )
+                continue
+
+            surviving.append(entry)
     except Exception:
-        # A mid-loop failure leaves every dataset regenerated BEFORE the failing one
-        # sitting dirty in the working tree (staging happens only once, after the whole
-        # loop finishes). `main()` catches the CalledProcessError this raises, logs it,
-        # and continues into the schema loop -- whose `git checkout -B` does not touch
-        # an already-dirty working tree, and whose `git add hvantk/skills` would stage
-        # (and then commit) these leftovers onto an unrelated PR: a schema-change PR,
-        # invisible in its diff and its ledger entry. Discard before the failure is
-        # allowed to propagate.
+        # Anything OTHER than the per-dataset CalledProcessError handled above is
+        # unanticipated; fall back to the blanket cleanup rather than risk leaving a
+        # half-written loop's worth of changes for the schema loop below to silently
+        # absorb (see the module-level comment this mirrors in handle_drifted).
         _discard_staged_fingerprints(dry_run=dry_run)
         raise
+
+    if not surviving:
+        return failed
+
+    entries = surviving
+    datasets = [e["dataset_name"] for e in entries]
 
     _run(["git", "add", "hvantk/skills"], dry_run=dry_run)
 
@@ -1039,7 +1427,7 @@ def handle_routine_batch(
                 f"- DRIFT (unchanged): routine batch of {len(datasets)} had nothing "
                 "to commit; drift may have already been addressed",
             )
-            return
+            return failed
 
     # See the matching comment in handle_drifted: walrus preserves the original
     # short-circuit so `pr_exists_for_branch` still runs only when needed, while making
@@ -1056,66 +1444,92 @@ def handle_routine_batch(
             step_summary,
             f"- DRIFT (unchanged): routine batch of {len(datasets)} still open",
         )
-        return
+        return failed
 
     # See the matching comment in handle_drifted: the ledger is written and staged in
     # its own `git add` only after both anti-churn guards above have passed, never
     # before, or its ever-changing `last_upstream_change` timestamp would defeat them.
-    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run)
+    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run, step_summary=step_summary)
     _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
-    _run(
-        [
-            "git",
-            "commit",
-            "-m",
-            f"chore(drift): refresh {len(datasets)} snapshots\n\n"
-            + "\n".join(f"- {n}" for n in datasets),
-        ],
-        dry_run=dry_run,
-    )
-    _run(
-        ["git", "push", "--force-with-lease", "--set-upstream", "origin", branch],
-        dry_run=dry_run,
-    )
-
-    title = f"chore(drift): refresh {len(datasets)} snapshots"
-    body = build_batch_pr_body(entries)
-    # Collect maintainers across every dataset in the batch, then resolve ONCE on the
-    # combined list -- not per dataset, or a fallback would land on the batch as many
-    # times as it has entries with no declared maintainer of their own.
-    maintainers = sorted(
-        {
-            m
-            for e in entries
-            for m in read_maintainers(split_dataset(e["dataset_name"])[0])
-        }
-    )
-    assignees = resolve_assignees(maintainers)
-
-    existing = pr_exists_for_branch(branch, dry_run=dry_run)
-    if existing:
+    # From here on, every dataset still in `entries` shares ONE fate: one commit, one
+    # push, one PR. A failure anywhere in this block is therefore genuinely a shared
+    # failure for all of them -- caught here, rather than left to propagate, so this
+    # function never raises `subprocess.CalledProcessError` and the caller always gets
+    # back a complete, correctly-staged account of what failed and why.
+    try:
         _run(
-            ["gh", "pr", "edit", existing, "--title", title, "--body", body],
+            [
+                "git",
+                "commit",
+                "-m",
+                f"chore(drift): refresh {len(datasets)} snapshots\n\n"
+                + "\n".join(f"- {n}" for n in datasets),
+            ],
             dry_run=dry_run,
         )
-    else:
         _run(
-            pr_create_argv(
-                base_branch=base_branch,
-                branch=branch,
-                title=title,
-                body=body,
-                risk="routine",
-                assignees=assignees,
-            ),
+            ["git", "push", "--force-with-lease", "--set-upstream", "origin", branch],
             dry_run=dry_run,
         )
+
+        title = f"chore(drift): refresh {len(datasets)} snapshots"
+        body = build_batch_pr_body(entries)
+        # Collect maintainers across every dataset in the batch, then resolve ONCE on
+        # the combined list -- not per dataset, or a fallback would land on the batch
+        # as many times as it has entries with no declared maintainer of their own.
+        maintainers = sorted(
+            {
+                m
+                for e in entries
+                for m in read_maintainers(split_dataset(e["dataset_name"])[0])
+            }
+        )
+        assignees = resolve_assignees(maintainers)
+
+        existing = pr_exists_for_branch(branch, dry_run=dry_run)
+        if existing:
+            _run(
+                ["gh", "pr", "edit", existing, "--title", title, "--body", body],
+                dry_run=dry_run,
+            )
+        else:
+            _run(
+                pr_create_argv(
+                    base_branch=base_branch,
+                    branch=branch,
+                    title=title,
+                    body=body,
+                    risk="routine",
+                    assignees=assignees,
+                ),
+                dry_run=dry_run,
+            )
+    except subprocess.CalledProcessError as exc:
+        # A refused `git commit` leaves the fingerprints AND the ledger rows staged,
+        # and the schema loop's next `git checkout -B` would carry them into another
+        # dataset's commit. After a successful commit this restores nothing.
+        _discard_staged_fingerprints(dry_run=dry_run)
+        stage = _stage_for_called_process_error(exc)
+        label = ", ".join(datasets)
+        print(
+            f"error handling routine batch ({label}): "
+            f"{exc.cmd} exited {exc.returncode}\n"
+            f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- ERROR: routine batch (`{label}`) -- {stage}",
+        )
+        failed.extend((name, stage) for name in datasets)
+        return failed
 
     _summary_line(
         step_summary,
         f"- DRIFT: routine batch of {len(datasets)} -> branch `{branch}`",
     )
+    return failed
 
 
 def pr_create_argv(
@@ -1325,32 +1739,22 @@ def main(argv: list[str] | None = None) -> int:
             f"unchanged); batching them onto one branch: {ROUTINE_BRANCH}."
         )
 
-    failed: list[str] = []
-    try:
+    # Each entry is (dataset_name, stage): `handle_routine_batch` isolates a refused
+    # regenerate or an unstable probe to its own dataset (never raises for either --
+    # see its docstring), so every failure it reports is already final and
+    # stage-labelled. A drifted dataset only ever lands here for an operational
+    # failure, never for being merely unchanged/skipped -- those are signals, logged
+    # in the step summary above, and never affect the exit code (see the module
+    # docstring).
+    failed: list[tuple[str, str]] = []
+    failed.extend(
         handle_routine_batch(
             routine,
             base_branch=args.base_branch,
             dry_run=args.dry_run,
             step_summary=step_summary,
         )
-    except subprocess.CalledProcessError as exc:
-        # Same contract as the per-dataset loop below: a git/gh failure here must not
-        # be swallowed, or the batch silently stops opening PRs while the job still
-        # reports success -- the exact regression this script exists to prevent (see
-        # the module docstring).
-        covered = [str(e.get("dataset_name")) for e in routine]
-        failed.extend(covered)
-        label = ", ".join(covered)
-        print(
-            f"error handling routine batch ({label}): "
-            f"{exc.cmd} exited {exc.returncode}\n"
-            f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
-            file=sys.stderr,
-        )
-        _summary_line(
-            step_summary,
-            f"- ERROR: routine batch (`{label}`) -- {exc.cmd[0]} exited {exc.returncode}",
-        )
+    )
 
     for entry in schema:
         try:
@@ -1361,6 +1765,10 @@ def main(argv: list[str] | None = None) -> int:
                 step_summary=step_summary,
             )
         except subprocess.CalledProcessError as exc:
+            # Whatever stage failed, nothing this dataset staged -- its fingerprint,
+            # its ledger row after a refused `git commit` -- may reach the next
+            # dataset's branch, whose `git checkout -B` keeps the index as it is.
+            _discard_staged_fingerprints(dry_run=args.dry_run)
             # One drifted dataset failing to PR shouldn't stop the others, but it
             # must not vanish either: collected here and re-raised as a nonzero
             # exit once every dataset has had its turn.
@@ -1372,7 +1780,8 @@ def main(argv: list[str] | None = None) -> int:
             covered = [
                 str(d) for d in (entry.get("datasets") or [entry.get("dataset_name")])
             ]
-            failed.extend(covered)
+            stage = _stage_for_called_process_error(exc)
+            failed.extend((name, stage) for name in covered)
             label = ", ".join(covered)
             print(
                 f"error handling {label}: "
@@ -1382,7 +1791,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             _summary_line(
                 step_summary,
-                f"- ERROR: `{label}` -- {exc.cmd[0]} exited {exc.returncode}",
+                f"- ERROR: `{label}` -- {stage}",
             )
 
     for entry in probe_failed:
@@ -1392,19 +1801,20 @@ def main(argv: list[str] | None = None) -> int:
         handle_stub(entry, step_summary=step_summary)
 
     if failed:
-        joined = ", ".join(sorted(failed))
+        failed.sort()
+        joined = "; ".join(f"`{name}` ({stage})" for name, stage in failed)
         print(
             f"\nERROR: {len(failed)} drifted dataset(s) were detected but no pull "
             f"request could be opened for them: {joined}.\n"
-            "If the failure above is 'GitHub Actions is not permitted to create or "
+            "If a stage above says 'GitHub Actions is not permitted to create or "
             "approve pull requests', enable Settings -> Actions -> General -> "
             "'Allow GitHub Actions to create and approve pull requests'.",
             file=sys.stderr,
         )
         _summary_line(
             step_summary,
-            f"\n**{len(failed)} drifted dataset(s) could not be turned into a PR.** "
-            "The branches were pushed; the `gh pr create` calls failed.",
+            f"\n**{len(failed)} drifted dataset(s) could not be turned into a PR:** "
+            + "; ".join(f"`{name}` -- {stage}" for name, stage in failed),
         )
         return 1
 

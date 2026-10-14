@@ -19,7 +19,14 @@ from hvantk.skills.uniprot_ptm.shared.datasets import UniProtPTMDataset
 logger = logging.getLogger(__name__)
 
 
-def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
+def download_dataset(
+    raw_dir: str,
+    overwrite: bool = False,
+    *,
+    reference_genome: str = "GRCh38",
+    flanking_codons: int = 5,
+    fields=None,
+) -> str:
     """Lifecycle entry point for the plugin loader.
 
     Per the ``DatasetSpec`` contract documented in
@@ -28,14 +35,21 @@ def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
     directory. For UniProt PTM there is exactly one artifact, the live
     REST-API-derived MOD_RES TSV, labelled with today's date.
 
+    ``hvantk reprocess`` forwards every ``--plugin-arg`` to all three stages of
+    ``uniprot-ptm:sites`` (this download, the parse stage
+    ``hvantk.algorithms.ptm.pipeline.map_uniprot_raw_dir`` and the builder), so each
+    stage names the union of their arguments and ignores the ones that are not its
+    own. They are named rather than swallowed by ``**kwargs``, so a misspelt
+    ``--plugin-arg`` still fails.
+
     Parameters
     ----------
     raw_dir : str
         Directory under which the downloaded TSV is placed.
     overwrite : bool, optional
         Whether to overwrite an existing file (default: False).
-    **kwargs
-        Reserved for future lifecycle keyword arguments; ignored today.
+    reference_genome, flanking_codons, fields
+        The parse stage's and the builder's arguments; ignored here.
 
     Returns
     -------
@@ -110,10 +124,6 @@ def download_cmd(ctx, version_date, output_dir, overwrite):
         click.echo(f"Downloaded to: {output_path}")
         logger.info(f"UniProt PTM dataset downloaded to {output_path}")
 
-    except FileExistsError as e:
-        click.echo(f"Error: {e}", err=True)
-        click.echo("Use --overwrite to replace existing files.")
-        ctx.exit(1)
     except RuntimeError as e:
         click.echo(f"Download failed: {e}", err=True)
         ctx.exit(1)

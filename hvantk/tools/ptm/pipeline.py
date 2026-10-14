@@ -59,6 +59,9 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     """End-to-end PTM build pipeline: download + core mapping + Hail Table build.
 
     Steps:
+        0. If a table already exists at ``config.output_ht`` and
+           ``config.overwrite`` is False, stop immediately with a
+           ValueError -- before any download or mapping.
         1. Download UniProt PTM TSV (if ``config.ptm_tsv`` is not set)
         2. Delegate to :func:`ptm_build_pipeline_core` for GTF download,
            parsing, and coordinate mapping
@@ -83,8 +86,10 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     Raises
     ------
     ValueError
-        If :func:`config_errors` reports anything (checked before anything is
-        downloaded), or if no PTM site maps, in which case no table is written.
+        If :func:`config_errors` reports anything, if ``config.output_ht``
+        already exists and ``config.overwrite`` is False (both checked
+        before anything is downloaded or mapped), or if no PTM site maps,
+        in which case no table is written.
     """
     from pathlib import Path
 
@@ -94,6 +99,13 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     errors = config_errors(config)
     if errors:
         raise ValueError(f"Invalid config: {'; '.join(errors)}")
+    # Checked before any download or mapping: without this, a re-run into an
+    # existing --output-ht paid for the full UniProt/GTF download and
+    # coordinate mapping before failing at the final Hail Table write.
+    if not config.overwrite and Path(config.output_ht).exists():
+        raise ValueError(
+            f"{config.output_ht} already exists; pass --overwrite to replace it"
+        )
     # Resolved before any download, so a plugin that failed to load stops the run
     # here rather than after the downloads and the mapping.
     spec = plugin_loader.get_registry().get_dataset("uniprot-ptm:sites")

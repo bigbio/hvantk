@@ -19,7 +19,7 @@ Provisional. This plugin ships **two datasets**, both `domain: genomics` / `back
 
 Out of scope for this skill:
 - Joining `:samples` onto `:variants`. This is a deliberate post-load, user-side step (not baked into the `:variants` build) — see the worked example in § 7.
-- Downloading the ~1.5 TB genotype VCF set programmatically — out of the "build a downloader" tier per `CLAUDE.md`'s size threshold; the plugin has no `cli.py` and no `lifecycle.download` for `:variants`.
+- Downloading the ~1.5 TB genotype VCF set programmatically — beyond the size threshold of the "build a downloader" tier (see `docs_site/guide/data-sources.md#downloader-or-documented-acquisition`); the plugin has no `cli.py` and no `lifecycle.download` for `:variants`.
 
 ## 2. Source identity
 
@@ -93,8 +93,9 @@ This join is intentionally not baked into the `:variants` build: sample metadata
 
 Both datasets use **release-identity** drift probes (`drift_probe.py` module docstring): the upstream sources are immutable per release, so nothing should drift *within* a release; a new release requires a code change, not a fingerprint regeneration alone.
 
-1. `:variants` — when a successor release ships (e.g., a larger-cohort expansion), update `_VARIANTS_RELEASE_DIR` / `_VARIANTS_ANCHOR_FILE` / `_VARIANTS_BASE` in `drift_probe.py` to repoint at the new release's chr22 anchor, then regenerate `tests/drift_fingerprint_variants.json` via `hvantk drift --regenerate onek-genomes:variants`.
-2. `:samples` — if IGSR republishes the panel at a new URL/version, update `_SAMPLES_URL` / `_SAMPLES_VERSION` in `drift_probe.py` (and `_IGSR_URL` in `samples_download.py`, which must stay in sync manually — the two are not derived from one shared constant), then regenerate `tests/drift_fingerprint_samples.json`.
+1. `:variants` — when a successor release ships (e.g., a larger-cohort expansion), update `_VARIANTS_RELEASE_DIR` / `_VARIANTS_ANCHOR_FILE` / `_VARIANTS_BASE` in `drift_probe.py` to repoint at the new release's chr22 anchor, then regenerate `tests/drift_fingerprint_variants.json` via `hvantk drift --regenerate onek-genomes:variants --accepted-in "PR #N"`.
+2. `:samples` — if IGSR republishes the panel at a new URL/version, update `_SAMPLES_URL` / `_SAMPLES_VERSION` in `drift_probe.py` (and `_IGSR_URL` in `samples_download.py`, which must stay in sync manually — the two are not derived from one shared constant), then regenerate `tests/drift_fingerprint_samples.json` via `hvantk drift --regenerate onek-genomes:samples --accepted-in "PR #N"`.
+   In both cases, repointing the constants is not a probe-logic change, so leave `probe_version` alone: the regenerate then records the dataset's rebuild-ledger row for the new release. A bumped `probe_version` records none (`_conventions` § 12), and the row would have to be added by hand.
 3. If VCF INFO/format fields or the samples panel's columns change shape, regenerate both snapshot pairs with `pytest hvantk/skills/onek_genomes/tests -m hail --regenerate-snapshots` and review the diff — note this plugin's snapshot filenames (`variants_schema.json`, `samples_sample_rows.json`, …) and flat head-of-N row shape predate `_snapshot_utils.regenerate_snapshots`'s key-matched `{"key": ..., "row": ...}` convention used elsewhere; the regeneration path in `test_builder.py` deliberately preserves the older per-dataset-filename convention rather than migrating it.
 
 ## 9. Validation contract
@@ -115,3 +116,5 @@ Declared in `plugin.yaml`'s `tests:` block, one per dataset, both under a **plug
   - `command`: `pytest hvantk/skills/onek_genomes/tests -m hail`
 
 Per `_conventions` § 12, these two datasets deliberately do **not** share one drift fingerprint: each has its own probe function (`fetch_variants_fingerprint` vs `fetch_samples_fingerprint`) and its own baseline file, because they are independent upstream signals (a VCF release vs. a samples panel) rather than one provider-wide signal fanned out to variants.
+
+Both fixtures are real 1000 Genomes / IGSR data, available without embargo but requiring NIGMS/Coriell and NHGRI-grant acknowledgement on reuse; see the `THIRD_PARTY_DATA.md` entry.

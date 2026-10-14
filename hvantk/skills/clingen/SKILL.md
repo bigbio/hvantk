@@ -70,7 +70,7 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 
 1. Re-download: `hvantk download clingen --output-dir <raw_dir> --overwrite`. Capture the `Last-Modified` header (or the snapshot date label) in the PR description.
 2. Diff the new CSV header against the previous fixture header. New columns alone are non-breaking — they will not appear in the built table unless added to `CLINGEN_GENE_DISEASE_FIELDS`. Removed/renamed columns require updating `CLINGEN_GENE_DISEASE_FIELDS`.
-3. Drift-probe diff: regenerate `hvantk/skills/clingen/tests/drift_fingerprint.json` and inspect for column-list changes or hash changes.
+3. Drift-probe diff: `hvantk drift clingen:gene-disease` prints any column-list or hash change against `hvantk/skills/clingen/tests/drift_fingerprint.json`. Once it is handled, `hvantk drift --regenerate clingen:gene-disease --accepted-in "PR #N"` rewrites the baseline and records the rebuild-ledger row (none for a `probe_version` change; `_conventions` § 12); commit both.
 4. If the fixture (`hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv`) is no longer representative (new classification value, new GCEP under test), refresh it from a curated sub-sample.
 5. Re-run the plugin tests (`pytest hvantk/skills/clingen/tests -m hail`); expected diffs: new optional columns, refreshed `classification_date` values. Unexpected diffs (changed key semantics, stripped prefixes leaking back in) require investigation before commit.
 6. Open PR; reviewer checks the diff narrative.
@@ -88,3 +88,5 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 > `pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result. The other live tests are `test_downloader.py`,
 > `test_drift_probe.py`, and `test_streamer.py`.
+
+The fixture is synthetic: hand-authored rows in the real ClinGen CSV layout (BRCA1/BRCA2/TP53/… with invented classification-report URLs and dates), not a download excerpt. No `THIRD_PARTY_DATA.md` entry applies.

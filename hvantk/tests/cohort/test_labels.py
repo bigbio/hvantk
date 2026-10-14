@@ -1,7 +1,7 @@
 """Loading a cohort's label gene set from a GeneSetCollection JSON.
 
 Pure Python -- no Hail. Note this uses hvantk.core.utils.gene_sets.GeneSet (the plain
-named set inside a collection), NOT hvantk.core.models.GeneSet (the typed artifact).
+named set inside a collection), NOT hvantk.core.models.GeneSet (the dataset type).
 """
 
 import json

@@ -1,21 +1,64 @@
-"""GTEx eQTL drift probe: portal HEAD + version-meta scrape.
+"""GTEx eQTL drift probe: the pinned v11 release, read from the bucket GTEx serves it from.
 
-GTEx ships per-tissue v11 cis-eQTL parquet files but does not expose a
-machine-readable manifest of the release artifacts. The GTEx portal
-download page (``https://gtexportal.org/home/downloads/adult-gtex/qtl``)
-does, however, return ``Last-Modified``/``ETag`` headers and the HTML
-body contains ``<meta name="gtex-version" content="...">`` and
-``<meta name="gtex-build-date" content="...">`` tags that flip when the
-portal redeploys (which historically tracks data releases).
+``probe_version`` 1 fingerprinted the GTEx Portal download *page*: it hashed the page's
+``gtex-version`` and ``gtex-build-date`` meta tags plus its ``ETag`` and filed the hash
+under ``checksums``, a schema key to the drift bot (``SCHEMA_KEYS`` in
+``.github/scripts/drift_to_pr.py``). Those tags identify a build of the portal web
+application, not a data release. On 2026-10-12 the page read ``cl363``, built 2026-09-22,
+while every v11 file this plugin reads was uploaded on 2026-01-15 and has not changed since;
+the redeploy from ``cl362`` was nonetheless tiered as a schema change (bot PR #403).
 
-The probe fingerprints both the HEAD metadata and the version/build-date
-meta-tag pair. ``source_version`` is the gtex-version string from the
-HTML; the checksum hashes ``(gtex-version, gtex-build-date, ETag)``.
+The GTEx API's dataset list (``/api/v2/metadata/dataset``) is no better a release signal
+here: it lists ``gtex_v7``, ``gtex_v8``, ``kids_first_harmonization`` and ``gtex_v10`` --
+the releases the portal serves through its API -- and not v11, which has been downloadable
+since January 2026.
 
-This is the best signal we have without an authenticated portal API or
-gs:// directory listing. It is honest about its limitation: it tracks
-"portal freshness", which is highly correlated with -- but not strictly
-equivalent to -- v11 dataset releases.
+Version 2 reads the source the portal's download links point at: the public ``adult-gtex``
+Google Cloud Storage bucket, which allows anonymous listing through the JSON API. Three
+small GETs (two listings and a 7 KB README):
+
+* ``headers``
+
+  - ``gs://adult-gtex/bulk-qtl/`` -- the bulk-QTL release folders (``v10``, ``v11``, ...).
+    A new GTEx release appears here. Adopting one is a builder change (SKILL.md s 8: a new
+    source constant, possibly a new import branch -- v8 to v11 went from TSV to parquet),
+    which is what the schema tier asks a reviewer to check.
+  - ``gs://adult-gtex/bulk-qtl/v11/single-tissue-cis-qtl/`` -- the object names in the
+    pinned release's cis-QTL folder, i.e. its file layout. The builder's
+    ``*.v11.eQTLs.signif_pairs.parquet`` inputs ship inside ``GTEx_Analysis_v11_eQTL.tar``
+    (the Liver member is exactly the 27,912,129 bytes the catalog records).
+  - ``README_eQTL_v11.txt:signif_pairs`` -- the columns the release README documents for
+    ``*.signif_pairs.parquet``, in documented order. This is GTEx's *declared* schema, not
+    the parquet's own: the real files already differ from it in two known ways (SKILL.md
+    s 4). Reading a real parquet footer would mean walking the 3.3 GB archive's tar
+    headers first, one ranged request per member -- 100 requests and ~40 s, measured on
+    2026-10-12 -- which no scheduled probe should do.
+
+* ``checksums`` -- sha256 of that README section's text, so a changed column description
+  (the ``af`` direction the builder depends on, say) or file extension moves it even when
+  the column names do not. The rest of the README (eGenes, allpairs, fine-mapping) is out
+  of scope for this builder and deliberately not hashed.
+* ``extras`` -- ``size`` and a content hash of ``GTEx_Analysis_v11_eQTL.tar``, the
+  identity of the archive holding the builder's inputs, keyed by the hash it is:
+  ``md5Hash`` when the listing has one, else ``crc32c``. Cloud Storage lists no
+  ``md5Hash`` for a composite object, while every object has a ``crc32c``, so a
+  re-upload that drops the md5 shows as a routine change of key instead of breaking
+  the probe for good. A re-upload of v11 data that keeps the layout is ``routine``.
+  Only an archive missing from the folder is recorded as ``null``; the folder listing
+  under ``headers`` reports that layout change. An archive listed without a size, or
+  without either hash, fails the probe: recording it would erase its identity, and a
+  baseline regenerated in that state would compare clean through later changes.
+* ``source_version`` -- ``v11``, the release this probe is pinned to. A constant: moving
+  to a newer release is a change to this probe, not an observation of it.
+
+Portal build tags, build dates and page ``ETag``s are not recorded at all, not even under
+``informational``: they describe deployments of the web application, and fetching the
+page for them would add a request, and an HTML scrape that can fail the probe, for no
+drift signal.
+
+Fails closed (``DriftProbeError``) when a listing is empty, paginated or unreadable, when
+the archive is listed without a size or hash, or when the README no longer documents
+the files this builder reads.
 """
 
 from __future__ import annotations
@@ -28,58 +71,159 @@ import requests
 
 from hvantk.core.plugin.api import DriftProbeError
 
-PROBE_VERSION = 1
-GTEX_PORTAL_DOWNLOAD_URL = "https://gtexportal.org/home/downloads/adult-gtex/qtl"
-_GTEX_VERSION_META_RE = re.compile(
-    r'<meta\s+name="gtex-version"\s+content="([^"]+)"', re.IGNORECASE
+PROBE_VERSION = 2
+
+GTEX_RELEASE = "v11"
+GTEX_BUCKET = "adult-gtex"
+#: Google Cloud Storage JSON API object listing for the bucket (anonymous access).
+GTEX_LIST_URL = f"https://storage.googleapis.com/storage/v1/b/{GTEX_BUCKET}/o"
+_RELEASES_PREFIX = "bulk-qtl/"
+_RELEASE_PREFIX = f"{_RELEASES_PREFIX}{GTEX_RELEASE}/single-tissue-cis-qtl/"
+_ARCHIVE = f"GTEx_Analysis_{GTEX_RELEASE}_eQTL.tar"
+_README = f"README_eQTL_{GTEX_RELEASE}.txt"
+GTEX_README_URL = (
+    f"https://storage.googleapis.com/{GTEX_BUCKET}/{_RELEASE_PREFIX}{_README}"
 )
-_GTEX_BUILD_DATE_META_RE = re.compile(
-    r'<meta\s+name="gtex-build-date"\s+content="([^"]+)"', re.IGNORECASE
-)
-_FILENAME = "gtex-portal-qtl-downloads"
+
+_RELEASES_KEY = f"gs://{GTEX_BUCKET}/{_RELEASES_PREFIX}"
+_RELEASE_KEY = f"gs://{GTEX_BUCKET}/{_RELEASE_PREFIX}"
+_README_KEY = f"{_README}:signif_pairs"
+
 _TIMEOUT_S = 30
+
+#: The README's section rule (``#----...``). Sections alternate title / body between rules.
+_SECTION_RULE = re.compile(r"^#-{10,}[ \t]*$", re.M)
+#: The body that documents the builder's input: its "File extension(s):" line names it.
+_SIGNIF_PAIRS_EXTENSION = re.compile(r"^\s*File extensions?:.*signif_pairs", re.M)
+#: A documented column: an indented ``name:`` line. "File extensions:" and
+#: "Column headers:" never match, because their labels contain a space.
+_COLUMN_LINE = re.compile(r"^\s+([A-Za-z0-9_.]+):\s", re.M)
 
 
 def fetch_fingerprint() -> dict:
-    """Fingerprint the GTEx QTL download page + version meta-tags."""
-    try:
-        resp = requests.get(
-            GTEX_PORTAL_DOWNLOAD_URL, timeout=_TIMEOUT_S, allow_redirects=True
-        )
-        resp.raise_for_status()
-        body = resp.text
-        etag = resp.headers.get("ETag", "")
-        last_modified = resp.headers.get("Last-Modified", "")
-    except requests.RequestException as exc:
-        raise DriftProbeError(f"HTTP failure: {exc}") from exc
-
-    version_match = _GTEX_VERSION_META_RE.search(body)
-    build_date_match = _GTEX_BUILD_DATE_META_RE.search(body)
-    if version_match is None:
+    """Fingerprint the pinned GTEx v11 cis-eQTL release; see the module docstring."""
+    prefixes = _list(_RELEASES_PREFIX, fields="prefixes,nextPageToken").get("prefixes")
+    releases = sorted(
+        p[len(_RELEASES_PREFIX) :].rstrip("/")
+        for p in prefixes or []
+        if isinstance(p, str) and p.startswith(_RELEASES_PREFIX)
+    )
+    if not releases:
         raise DriftProbeError(
-            "GTEx portal page did not contain a gtex-version meta tag"
+            f"{_RELEASES_KEY} lists no release folders; the bucket layout has changed"
         )
 
-    gtex_version = (version_match.group(1) or "").strip()
-    gtex_build_date = (
-        (build_date_match.group(1) if build_date_match else "") or ""
-    ).strip()
+    items = _list(
+        _RELEASE_PREFIX, fields="items(name,size,md5Hash,crc32c),nextPageToken"
+    ).get("items")
+    objects = {
+        item["name"][len(_RELEASE_PREFIX) :]: item
+        for item in items or []
+        if isinstance(item, dict)
+        and isinstance(item.get("name"), str)
+        and item["name"].startswith(_RELEASE_PREFIX)
+    }
+    if not objects:
+        raise DriftProbeError(
+            f"{_RELEASE_KEY} lists no objects; the pinned {GTEX_RELEASE} release has "
+            "moved or been withdrawn"
+        )
+    archive = objects.get(_ARCHIVE)
 
-    fingerprint_blob = f"{gtex_version}|{gtex_build_date}|{etag}".encode("utf-8")
-    checksum = hashlib.sha256(fingerprint_blob).hexdigest()
+    section = _signif_pairs_section(_get_text(GTEX_README_URL))
+    columns = _COLUMN_LINE.findall(section)
+    if not columns:
+        raise DriftProbeError(
+            f"{_README}: the signif_pairs section documents no columns; its format has "
+            "changed"
+        )
 
     return {
         "probe_version": PROBE_VERSION,
-        "source_version": gtex_version,
+        "source_version": GTEX_RELEASE,
         "headers": {
-            _FILENAME: ["gtex-version", "gtex-build-date", "ETag", "Last-Modified"],
+            _RELEASES_KEY: releases,
+            _RELEASE_KEY: sorted(objects),
+            _README_KEY: columns,
         },
-        "checksums": {_FILENAME: checksum},
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "checksums": {
+            _README_KEY: hashlib.sha256(section.encode("utf-8")).hexdigest(),
+        },
         "extras": {
-            "gtex_version": gtex_version,
-            "gtex_build_date": gtex_build_date,
-            "etag": etag,
-            "last_modified": last_modified,
+            _ARCHIVE: None if archive is None else _content_identity(archive),
         },
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _content_identity(item: dict) -> dict:
+    """``size`` plus the strongest hash the listing gives, keyed by the hash's name."""
+    name = f"gs://{GTEX_BUCKET}/{item.get('name')}"
+    size = item.get("size")
+    if size in (None, ""):
+        raise DriftProbeError(
+            f"{name} is listed without a size; refusing to record it with no identity"
+        )
+    for key in ("md5Hash", "crc32c"):
+        if item.get(key):
+            return {key: item[key], "size": size}
+    raise DriftProbeError(
+        f"{name} is listed with neither md5Hash nor crc32c; refusing to record it "
+        "with no content hash"
+    )
+
+
+def _list(prefix: str, *, fields: str) -> dict:
+    """One page of the bucket's object listing under ``prefix`` (direct children only)."""
+    try:
+        resp = requests.get(
+            GTEX_LIST_URL,
+            params={"prefix": prefix, "delimiter": "/", "fields": fields},
+            timeout=_TIMEOUT_S,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise DriftProbeError(
+            f"HTTP failure listing gs://{GTEX_BUCKET}/{prefix}: {exc}"
+        ) from exc
+    try:
+        payload = resp.json()
+    except ValueError as exc:
+        raise DriftProbeError(
+            f"listing of gs://{GTEX_BUCKET}/{prefix} was not JSON: {exc}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise DriftProbeError(
+            f"listing of gs://{GTEX_BUCKET}/{prefix} returned a JSON "
+            f"{type(payload).__name__}, not an object"
+        )
+    if payload.get("nextPageToken"):
+        # One page holds 1,000 entries; these folders hold about a dozen. A second page
+        # would mean the layout changed beyond recognition, and fingerprinting the first
+        # page alone would silently drop the rest.
+        raise DriftProbeError(
+            f"listing of gs://{GTEX_BUCKET}/{prefix} spans more than one page"
+        )
+    return payload
+
+
+def _get_text(url: str) -> str:
+    try:
+        resp = requests.get(url, timeout=_TIMEOUT_S)
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise DriftProbeError(f"HTTP failure on {url}: {exc}") from exc
+    # Decoded from the bytes, not `resp.text`: the object is served as text/plain with no
+    # charset, for which requests would guess ISO-8859-1.
+    return resp.content.decode("utf-8", errors="replace")
+
+
+def _signif_pairs_section(readme: str) -> str:
+    """Body of the README section that documents ``*.signif_pairs.*`` files."""
+    for block in _SECTION_RULE.split(readme):
+        if _SIGNIF_PAIRS_EXTENSION.search(block):
+            return block.strip()
+    raise DriftProbeError(
+        f"{_README} no longer documents *.signif_pairs.* files, the builder's input; "
+        "the release format has changed"
+    )

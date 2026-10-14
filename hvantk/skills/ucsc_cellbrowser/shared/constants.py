@@ -22,3 +22,8 @@ UCSC_JSON_FILE_PATH = _PLUGIN_DIR / "data" / "cells_ucsc_datasets.json"
 # UCSC gene and cell ID columns
 UCSC_CELL_ID_COLUMN = "cell_id"
 UCSC_GENE_COLUMN = "gene"
+
+# Groups with fewer cells are dropped by `summarize_ucsc_streaming`; this is its default,
+# and the default of `hvantk expression summarize-ucsc --min-cells`. The adult-ctx and
+# dev-ctx drift probes apply the same cut-off to their parent collection's class labels.
+SUMMARIZE_MIN_CELLS_PER_GROUP = 10

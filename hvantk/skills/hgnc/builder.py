@@ -14,7 +14,14 @@ from hvantk.skills.hgnc.shared.constants import (
     HGNC_GENE_FIELDS,
     HGNC_PIPE_SEPARATED_FIELDS,
 )
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.core.utils.table_utils import get_row_fields
+
+# hgnc declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
+# download directory (see resolve_raw_file). The real downloader writes
+# hgnc_complete_set.txt; the committed test fixture is a differently-named .tsv -- both
+# patterns are needed so a real raw dir and the fixture dir resolve alike.
+_RAW_FILE_PATTERNS = ("*.txt", "*.tsv")
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +36,37 @@ def _missing_declared_fields(row_fields) -> list[str]:
     return [k for k in HGNC_GENE_FIELDS if k not in row_fields]
 
 
+def _split_pipe_tokens(expr: hl.expr.StringExpression) -> hl.expr.ArrayExpression:
+    """Tokenize one HGNC pipe-separated cell into its de-quoted, stripped parts.
+
+    hgnc_complete_set.txt QUOTES its multi-value fields (prev_symbol is written
+    `"H1F4|HIST1H1E"`), so the quotes must come off BEFORE the split -- otherwise
+    the first and last elements keep a stray `"` and every alias/prev-symbol
+    lookup for the clean symbol misses. No HGNC value legitimately contains a
+    double quote, so stripping them all is safe and simpler than anchoring to
+    the ends. Empty/missing input yields an empty array rather than `[""]`.
+
+    Shared by the plain `array<str>` fields in HGNC_PIPE_SEPARATED_FIELDS and
+    by lsdb, which tokenizes the same way but then re-pairs the tokens into
+    `array<struct{name, url}>` instead of keeping them flat (#391).
+    """
+    return hl.if_else(
+        hl.is_defined(expr) & (expr != ""),
+        expr.replace('"', "")
+        .split("\\|")
+        .map(lambda x: x.strip())
+        .filter(lambda x: x != ""),
+        hl.empty_array(hl.tstr),
+    )
+
+
 def build_hgnc_gene_lookup(
     parsed_input,
     ctx,
     *,
     include_withdrawn: bool = False,
     fields=None,
+    strict_fields: bool = False,
 ):
     """Plugin builder — returns an AnnotationTable.
 
@@ -48,16 +80,26 @@ def build_hgnc_gene_lookup(
         If True, include withdrawn genes (default False).
     fields : list of str, optional
         Optional field subset; if None, all fields are kept.
+    strict_fields : bool, optional
+        If True, raise ValueError when a field declared in HGNC_GENE_FIELDS is
+        absent from the input header, instead of only logging a warning
+        (default False).
 
     Returns
     -------
     hvantk.core.models.AnnotationTable
         The HGNC table wrapped with Provenance.
+
+    Raises
+    ------
+    ValueError
+        If ``strict_fields`` is True and the input header is missing one or
+        more fields declared in HGNC_GENE_FIELDS.
     """
     from hvantk.core.models import AnnotationTable
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS),
         impute=False,
         min_partitions=10,
         missing="",
@@ -67,6 +109,10 @@ def build_hgnc_gene_lookup(
     row_fields = get_row_fields(ht)
     missing_fields = _missing_declared_fields(row_fields)
     if missing_fields:
+        if strict_fields:
+            raise ValueError(
+                "HGNC input is missing declared field(s): " + ", ".join(missing_fields)
+            )
         logger.warning(
             "HGNC input is missing declared field(s): %s", ", ".join(missing_fields)
         )
@@ -76,29 +122,30 @@ def build_hgnc_gene_lookup(
     if not include_withdrawn:
         ht = ht.filter(ht.status == "Approved")
 
-    # Parse pipe-separated fields into arrays.
-    #
-    # hgnc_complete_set.txt QUOTES its multi-value fields (prev_symbol is written
-    # `"H1F4|HIST1H1E"`), so the quotes must come off BEFORE the split -- otherwise the
-    # first and last elements keep a stray `"` and every alias/prev-symbol lookup for the
-    # clean symbol misses. No HGNC value legitimately contains a double quote, so
-    # stripping them all is safe and simpler than anchoring to the ends.
+    # Parse pipe-separated fields into arrays. See _split_pipe_tokens for the
+    # quote-strip/split/strip/filter-empty rationale.
     row_fields = get_row_fields(ht)
     for field in HGNC_PIPE_SEPARATED_FIELDS:
         if field in row_fields:
-            ht = ht.annotate(
-                **{
-                    field: hl.if_else(
-                        hl.is_defined(ht[field]) & (ht[field] != ""),
-                        ht[field]
-                        .replace('"', "")
-                        .split("\\|")
-                        .map(lambda x: x.strip())
-                        .filter(lambda x: x != ""),
-                        hl.empty_array(hl.tstr),
-                    )
-                }
+            ht = ht.annotate(**{field: _split_pipe_tokens(ht[field])})
+
+    # lsdb's tokens are (database name, URL) PAIRS, not independent values
+    # (e.g. `"Breast Cancer|http://.../LRG_292|http://..."`), so it is kept out
+    # of HGNC_PIPE_SEPARATED_FIELDS (see the comment there) and re-paired here
+    # into array<struct{name, url}> instead of one flat array<str> that would
+    # interleave names and URLs (#391). An odd token count (a trailing name
+    # with no URL) gets url=missing rather than erroring.
+    if "lsdb" in row_fields:
+        tokens = _split_pipe_tokens(ht["lsdb"])
+        n_tokens = hl.len(tokens)
+        ht = ht.annotate(
+            lsdb=hl.range(0, (n_tokens + 1) // 2).map(
+                lambda i: hl.struct(
+                    name=tokens[2 * i],
+                    url=hl.or_missing(2 * i + 1 < n_tokens, tokens[2 * i + 1]),
+                )
             )
+        )
 
     if fields is not None:
         ht = ht.select(*fields)

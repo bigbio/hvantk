@@ -4,15 +4,18 @@ import zipfile
 from unittest import mock
 
 import pytest
+import requests
 
 from hvantk.core.utils.file_utils import (
     compress_files,
     convert_gz_to_bgz,
     decompress_files,
     detect_compression,
+    download_file,
     is_bgzf,
     is_gzipped,
     resolve_compression,
+    sanitize_tsv,
     _get_conversion_backend,
     _is_bgzf_header,
     _make_bgzf_block,
@@ -328,3 +331,51 @@ class TestResolveCompression:
         path, force = resolve_compression(plain_text_file)
         assert path == plain_text_file
         assert force is False
+
+
+def test_sanitize_tsv_writes_rows_hail_splits_correctly(tmp_path):
+    """Regression: a quoted value holding a tab (live GenCC ships 100 such rows) was
+    written back quoted, and ``hl.import_table``, which reads without a ``quote``
+    argument, split it into an extra column and failed the build. A value holding a
+    quote character came back wrapped in quotes, with its own quotes doubled.
+    """
+    path = tmp_path / "sample.tsv"
+    path.write_text(
+        'id\tname\tnotes\n1\t"\tLeading tab"\tsays "hi"\n\n2\t"two\nlines"\tplain\n'
+    )
+
+    assert sanitize_tsv(str(path)) == 2
+    lines = path.read_text().splitlines()
+    assert [len(line.split("\t")) for line in lines] == [3, 3, 3]
+    assert lines[1] == '1\t Leading tab\tsays "hi"'
+    assert lines[2] == "2\ttwo lines\tplain"
+
+    # A data row whose field count still differs from the header's is fatal, not
+    # padded/truncated with a warning: an unclosed quote can swallow a later record
+    # into one oversized cell (csv.reader keeps consuming lines inside an open
+    # quote), and a pad/truncate back to the header width would hide that rather
+    # than surface it. Today's live GenCC export has no such rows.
+    bad_path = tmp_path / "bad.tsv"
+    bad_path.write_text("id\tname\tnotes\n1\tok\tfine\n2\tshort\n")
+    with pytest.raises(ValueError, match=r"row 2 of .* has 2 field\(s\), expected 3"):
+        sanitize_tsv(str(bad_path))
+
+
+def test_download_file_removes_destination_on_failure(tmp_path):
+    """A failed download must remove a stale destination rather than leave it in
+    place: a refresh that fails should not keep the previous release's copy around
+    for a later build to pick up, which is what kept paired downloads (a VCF plus
+    its ``.tbi``, a matrix plus its metadata) from mixing releases.
+    """
+    dest = tmp_path / "existing.txt"
+    dest.write_text("stale copy from a previous release")
+
+    with mock.patch(
+        "requests.get", side_effect=requests.exceptions.ConnectionError("network down")
+    ):
+        with pytest.raises(Exception):
+            download_file(
+                "https://example.org/existing.txt", str(tmp_path), "existing.txt"
+            )
+
+    assert not dest.exists()

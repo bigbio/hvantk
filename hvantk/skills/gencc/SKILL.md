@@ -20,7 +20,7 @@ Provider metadata (URL, license, citation) has nowhere to live yet: GenCC has no
 
 Stable provider notes the catalog will not capture:
 - GenCC serves a single rolling submissions TSV; there are no dated archives. Freshness is **not** determined by `Last-Modified`: the drift probe's content signal is the HTTP `Content-Length` header (`extras.content_length`) instead. Across the 4 fingerprint commits from 2026-07-27 to 2026-08-23 the checksum (`6f07ac79f9…`) never moved while `Last-Modified` moved on every regeneration. `Last-Modified` is still recorded, under `informational` (excluded from drift comparison) alongside the `submitted_as_date` values in the body; `source_version` is `null`, and the probe (`probe_version` 2) fails closed — raises `DriftProbeError` — if the server omits `Content-Length`.
-- The TSV is generated on demand by the GenCC backend, so two downloads minutes apart may differ. The body may contain multiline quoted fields and blank lines that `hl.import_table` cannot handle natively, so the dataset's `download()` runs `sanitize_tsv()` in-place before the file is consumed.
+- The TSV is generated on demand by the GenCC backend, so two downloads minutes apart may differ. The body may contain multiline quoted fields, delimiters (tabs) inside quoted values, and blank lines that `hl.import_table` cannot handle natively — free-text fields such as `submitted_as_notes` and `submitted_as_disease_name` carry these in practice — so the dataset's `download()` runs `sanitize_tsv()` in-place before the file is consumed; see § 4 for what it does to the file and when it refuses to guess.
 
 ## 3. Backend choice + reasoning
 
@@ -29,7 +29,7 @@ Stable provider notes the catalog will not capture:
 ## 4. Raw format & gotchas
 
 - File: tab-separated, optional double-quoted fields. The column header is the **first** non-blank line and begins with `sgc_id`. There is no metadata preamble (unlike ClinGen).
-- Preprocessing: handled inside the downloader (`sanitize_tsv` strips multiline quoted fields and blank lines). The builder itself calls `hl.import_table` directly on the sanitized TSV.
+- Preprocessing: handled inside the downloader. `sanitize_tsv` (`hvantk/core/utils/file_utils.py`) strips blank lines, flattens embedded newlines and delimiters within a quoted value to spaces, and writes every value back **unquoted** (`hl.import_table` is called without a `quote` argument, so a value left quoted would reach the table with its own quotes doubled). A data row whose field count still differs from the header's after that flattening is fatal (`ValueError` naming the row and both counts), not padded or truncated with a warning — an unclosed quote can otherwise swallow a later record into one oversized cell. The builder itself calls `hl.import_table` directly on the sanitized TSV.
 - GenCC rate-limits: a scheduled drift regeneration on 2026-08-04 got back HTTP 429 and failed the run outright. The drift probe uses `request_with_retry` (`hvantk/core/utils/http.py`) instead of bare `requests` for its HEAD and GET calls — it retries transient statuses (429 plus the 5xx family) and connection errors with exponential backoff, honouring `Retry-After` but clamped to a max sleep so a long backoff can't stall CI. Still load-bearing: the 2026-08-29 baseline regeneration for `probe_version: 2` hit 429 again and the retry recovered it on attempt 3/4, so the probe completed rather than failing the run.
 - Import: `hl.import_table(delimiter="\t", impute=False, min_partitions=10)`. All fields stay as strings; no type inference.
 - Field renaming is driven by `GENCC_SUBMISSION_FIELDS` (`hvantk/skills/gencc/shared/constants.py`). Notable renames: `gene_curie → hgnc_id`, `gene_symbol → gene_symbol`, `disease_curie → mondo_id`, `disease_title → disease_label`, `classification_title → classification`, `moi_title → mode_of_inheritance`, `submitter_title → submitter`, `submitted_as_date → submission_date`, `submitted_as_public_report_url → report_url`, `submitted_as_pmids → pmids`.
@@ -72,7 +72,7 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 
 1. Re-download: `hvantk download gencc --output-dir <raw_dir> --overwrite`. Capture the new `Content-Length` in the PR description — that is what the drift probe treats as the content signal (see § 2). `Last-Modified` is recorded for reference only.
 2. Diff the new TSV header against the previous fixture header. New columns alone are non-breaking — they will not appear in the built table unless added to `GENCC_SUBMISSION_FIELDS`. Removed/renamed columns require updating `GENCC_SUBMISSION_FIELDS`.
-3. Drift-probe diff: regenerate `hvantk/skills/gencc/tests/drift_fingerprint.json` and inspect for column-list changes or hash changes.
+3. Drift-probe diff: `hvantk drift gencc:submissions` prints any column-list or hash change against `hvantk/skills/gencc/tests/drift_fingerprint.json`. Once it is handled, `hvantk drift --regenerate gencc:submissions --accepted-in "PR #N"` rewrites the baseline and records the rebuild-ledger row (none for a `probe_version` change; `_conventions` § 12); commit both.
 4. If the fixture (`hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv`) is no longer representative (new classification value, new submitter under test), refresh it from a curated sub-sample.
 5. Re-run the snapshot round-trip with `--regenerate-snapshots`; expected diffs: new optional columns, refreshed `submission_date` values. Unexpected diffs (changed key semantics, stripped prefixes leaking back in) require investigation before commit.
 6. Open PR; reviewer checks the snapshot diff narrative.
@@ -89,3 +89,5 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 > Regenerate after an intentional schema change with
 > `pytest hvantk/skills/gencc/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result.
+
+The fixture is synthetic: hand-authored rows in the real GenCC TSV layout (BRCA1/BRCA2/TP53/… with placeholder `example.com` report URLs and sequential PMIDs), not a download excerpt. No `THIRD_PARTY_DATA.md` entry applies.

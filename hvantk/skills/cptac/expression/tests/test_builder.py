@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from hvantk.tests._snapshot_utils import (
@@ -49,6 +50,48 @@ def _fake_ctx():
     )
 
 
+def _write_raw_dir_fixture(raw, ct="brca"):
+    """Matrix+metadata CSV pair in the layout ``CPTACExpressionDataset.download``
+    writes, so the raw-dir build path below can resolve them via ``cancer_type``."""
+    pd.DataFrame(
+        {
+            "SampleID": ["S1", "S1", "S2", "S2"],
+            "GeneID": ["P04637", "P00533", "P04637", "P00533"],
+            "Gene Name": ["TP53", "EGFR", "TP53", "EGFR"],
+            "Expression": [10.5, 5.2, 20.3, 8.1],
+        }
+    ).to_csv(raw / f"cptac-expression-{ct}-matrix.csv", index=False)
+    pd.DataFrame(
+        {"tissue": ["liver", "liver"]},
+        index=pd.Index(["S1", "S2"], name="SampleID"),
+    ).to_csv(raw / f"cptac-expression-{ct}-metadata.csv")
+
+
+def test_build_from_raw_dir(tmp_path):
+    """``reprocess`` hands the raw download dir straight to the builder (#386):
+    no ``lifecycle.parse`` is declared, so ``cancer_type`` must select the
+    per-cancer matrix+metadata pair out of a directory. Mirrors
+    ``cptac/phospho/tests/test_builder.py::test_build_from_raw_dir``; the
+    directory-vs-mapping resolution itself is shared code
+    (``resolve_raw_dir_inputs``), already exercised there for the error paths
+    (missing cancer_type, missing files, stray kwargs)."""
+    from hvantk.core.models import ExpressionMatrix
+    from hvantk.skills.cptac.expression.builder import build_cptac_expression
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    _write_raw_dir_fixture(raw, "brca")
+
+    art = build_cptac_expression(str(raw), _fake_ctx(), cancer_type="brca")
+
+    assert isinstance(art, ExpressionMatrix)
+    adata = art.to_anndata()
+    assert adata.shape == (2, 2)  # 2 samples x 2 genes
+    assert set(adata.obs.index) == {"S1", "S2"}
+    assert set(adata.var.index) == {"P04637", "P00533"}
+    assert "tissue" in adata.obs.columns
+
+
 def _build_for_snapshot(expression_path, **call_kwargs):
     """Adapt the builder to the snapshot helper's calling convention."""
     from hvantk.skills.cptac.expression.builder import build_cptac_expression
@@ -65,6 +108,7 @@ def _build_for_snapshot(expression_path, **call_kwargs):
     return artifact.to_anndata()
 
 
+@pytest.mark.round_trip("cptac:expression")
 def test_cptac_expression_snapshot_round_trip(tmp_path, regenerate_snapshots):
     """Build CPTAC expression from fixture; assert schema and sample-row stability."""
     if regenerate_snapshots:

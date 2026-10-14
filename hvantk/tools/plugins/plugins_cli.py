@@ -18,7 +18,12 @@ def plugins_group():
 
 @plugins_group.command(name="list")
 def list_cmd():
-    """List loaded provider plugins."""
+    """List loaded provider plugins.
+
+    Informational: exits 0 even when something failed to load. A one-line summary on
+    stderr then counts what is missing from the table; `hvantk plugins errors` names it,
+    and is the plugins command whose exit code signals load failures.
+    """
     reg = plugin_loader.get_registry()
     providers = reg.list_providers()
     if not providers:
@@ -38,8 +43,16 @@ def _echo_load_failure_summary(reg) -> None:
     in the tree), and a human at a terminal sees both streams anyway. Before this the
     table said a provider was fine with zero datasets, and both `list` and `describe`
     exited 0 -- the only signal was a logger.warning, which nothing reads.
+
+    `cli:<command>` rows are left out: a downloader command that does not import
+    removes nothing from this table. `list` does not resolve the `cli:` entries
+    itself, so such rows exist only if something else in this process did.
     """
-    errs = reg.load_errors()
+    errs = [
+        (unit, exc)
+        for unit, exc in reg.load_errors()
+        if not plugin_loader.is_cli_unit(unit)
+    ]
     if errs:
         click.echo(
             f"{len(errs)} unit(s) failed to load and are NOT listed "
@@ -51,7 +64,13 @@ def _echo_load_failure_summary(reg) -> None:
 @plugins_group.command(name="describe")
 @click.argument("provider")
 def describe_cmd(provider: str):
-    """Show full details for one provider."""
+    """Show full details for one provider.
+
+    Informational: a dataset that failed to load is listed as FAILED TO LOAD and the
+    command still exits 0. It exits 1 only when PROVIDER is unknown or failed to load
+    as a whole. `hvantk plugins errors` is the plugins command whose exit code signals
+    load failures.
+    """
     reg = plugin_loader.get_registry()
     errors = reg.load_errors()
     try:
@@ -91,8 +110,19 @@ def describe_cmd(provider: str):
 
 @plugins_group.command(name="errors")
 def errors_cmd():
-    """List plugins that failed to load and why. Exits 1 when there is anything to list."""
+    """List everything that failed to load, and why.
+
+    Covers providers, entry points and datasets, and each manifest `cli:` entry whose
+    command does not import or repeats a command name already declared, reported as
+    `cli:<command>` (a row about that command alone, which `hvantk drift` ignores). The one plugins command whose exit code
+    signals load failures: exits 1 when it lists anything, 0 when there is nothing to
+    list.
+    """
     reg = plugin_loader.get_registry()
+    # Resolved here rather than at load time (import cost), and rather than relying on
+    # `hvantk download` having run in this process, which is what kept a downloader
+    # that would not import out of this list (#408).
+    reg.resolve_cli_entries()
     errs = reg.load_errors()
     if not errs:
         click.echo("(no load errors)")
@@ -102,33 +132,6 @@ def errors_cmd():
     # Rows mean the registry is missing something. A script asking `plugins errors`
     # should not have to parse the text to learn that.
     raise SystemExit(1)
-
-
-def _explain(exc) -> str:
-    """Render a schema error, translating the ones whose raw text explains nothing.
-
-    A conditional rule reports as `... should not be valid under {'required': [...]}`,
-    which states the mechanism and not the problem. This is the message a third-party
-    plugin author sees, so the rules expressed as `if/then` get a sentence instead.
-    """
-    path = list(exc.absolute_path)
-    if exc.validator == "not" and "lifecycle" in path:
-        return (
-            "acquisition.mode is 'byo' but lifecycle.download is declared. A dataset "
-            "either fetches its own inputs or it cannot -- drop the downloader, or set "
-            "acquisition.mode to 'download'."
-        )
-    if exc.validator == "required" and (
-        exc.validator_value == ["lifecycle"]
-        or (exc.validator_value == ["download"] and path and path[-1] == "lifecycle")
-    ):
-        return (
-            "acquisition.mode is 'download' but no lifecycle.download is declared. "
-            "Declare the downloader, or set acquisition.mode to 'byo' with a reason; "
-            "omit the acquisition block while a downloader is still to be written."
-        )
-    where = " -> ".join(str(x) for x in path)
-    return f"{exc.message}{f' (at {where})' if where else ''}"
 
 
 @plugins_group.command(name="validate")
@@ -154,7 +157,7 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     try:
         jsonschema.validate(content, schema)
     except jsonschema.ValidationError as exc:
-        raise click.ClickException(f"validation failed: {_explain(exc)}")
+        raise click.ClickException(f"validation failed: {plugin_loader._explain(exc)}")
     catalog_rel = content.get("catalog")
     if catalog_rel:
         catalog_path = Path(manifest_path).parent / catalog_rel

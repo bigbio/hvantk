@@ -30,12 +30,19 @@ def temp_dir():
 
 def test_download_expression_matrix(temp_dir):
     """Test download expression matrix file from UCSC Cell Browser"""
-    # Mock successful response for unit testing
+    # Mock successful response for unit testing. download_file delegates to
+    # hvantk.core.utils.http.stream_to_file, which uses the response as a context
+    # manager (`with requests.get(...) as response:`); MagicMock's auto-created
+    # __enter__ returns a DIFFERENT, unconfigured mock unless wired to return self.
     with patch("requests.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.status_code = 200
-        mock_response.headers.get.return_value = "1024"  # Content length
+        # Content-Length must match the mocked body (9 bytes), or stream_to_file's
+        # short-read check rejects the download.
+        mock_response.headers.get.return_value = "9"
         mock_response.iter_content.return_value = [b"test data"]
+        mock_response.__enter__.return_value = mock_response
+        mock_response.__exit__.return_value = False
 
         download_file(url_expression_matrix, temp_dir, EXPRESSION_MATRIX_FILE_NAME)
 
@@ -54,12 +61,16 @@ def test_download_metadata(temp_dir):
 
     :return: None
     """
-    # Mock successful response for unit testing
+    # Mock successful response for unit testing. See test_download_expression_matrix
+    # above for why __enter__/__exit__ must be wired explicitly here.
     with patch("requests.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.status_code = 200
-        mock_response.headers.get.return_value = "1024"  # Content length
+        # Must match the mocked body (18 bytes); see test_download_expression_matrix.
+        mock_response.headers.get.return_value = "18"
         mock_response.iter_content.return_value = [b"metadata test data"]
+        mock_response.__enter__.return_value = mock_response
+        mock_response.__exit__.return_value = False
 
         download_file(url_metadata, temp_dir, METADATA_FILE_NAME)
         assert os.path.exists(os.path.join(temp_dir, METADATA_FILE_NAME))

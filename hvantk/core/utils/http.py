@@ -14,17 +14,44 @@ caps only the exponential-backoff path, not this one -- verified against urllib3
 A rate-limited host answering ``Retry-After: 3600`` would therefore park a CI job for an
 hour. This helper honours the header, because ignoring a server's explicit backoff
 request is how you get rate-limited harder, but clamps it to ``max_sleep_s``.
+
+``tls_context()`` and ``stream_to_file()`` below are unrelated to retries.
+
+``tls_context()`` is for the call sites that use ``urllib.request.urlopen`` directly
+instead of ``requests``: clinvar's ``verify_md5``, the ``get_available_versions`` of
+clingen, gencc and uniprot-ptm, and the ``urllib`` fallback in uniprot-ptm's
+``_fetch_json``. On a python.org macOS build (this repo's base Python) the platform's
+default trust store is not configured at all, so a bare ``urlopen`` HTTPS call fails
+with ``CERTIFICATE_VERIFY_FAILED``, while ``requests`` (which bundles ``certifi``) is
+unaffected. ``tls_context()`` adds certifi's bundle on top of whatever the platform
+already trusts.
+
+``stream_to_file()`` is the one atomic download primitive for every plugin
+downloader that writes a single file to disk: ``hgnc``, ``gnomad-metrics``,
+``ensembl-gene:structure``, ``gwas-catalog`` and ``insider:interfaces`` call it
+directly, and ``hvantk.core.utils.file_utils.download_file`` (clinvar, clingen, gencc)
+delegates to it. It goes through ``requests``, so it needs no ``tls_context()``.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import shutil
+import ssl
+import tempfile
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Iterable
+from functools import lru_cache
+from pathlib import Path
+from typing import Iterable, Mapping
 
+import certifi
 import requests
+from tqdm import tqdm
+
+from hvantk.core.plugin.drift_runner import _current_umask
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +59,157 @@ logger = logging.getLogger(__name__)
 # these probes hit answer overload with a bare 500 rather than a 503.
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
+#: The User-Agent hvantk identifies itself with -- the value the ClinGen, GenCC, ClinVar
+#: and UniProt downloaders send. A probe that leaves requests' default
+#: (``python-requests/<version>``) in place presents as a generic scraper to a site behind
+#: bot protection (dbnsfp.org sits behind Cloudflare), and a challenge served to the CI
+#: runner would fail that probe closed on every scheduled run (#408).
+USER_AGENT = "hvantk/1.0"
+
 DEFAULT_ATTEMPTS = 4
 DEFAULT_BACKOFF_S = 2.0
 DEFAULT_MAX_SLEEP_S = 30.0
 
 # 2**32 s is ~136 years; any clamp is reached long before this.
 _MAX_EXP = 32
+
+
+@lru_cache(maxsize=1)
+def tls_context() -> ssl.SSLContext:
+    """Cached SSL context that adds certifi's CA bundle on top of the system store.
+
+    ``ssl.create_default_context()`` with no arguments still calls
+    ``load_default_certs()`` internally, so it keeps the platform trust store AND
+    honours ``SSL_CERT_FILE``/``SSL_CERT_DIR`` -- unlike
+    ``create_default_context(cafile=certifi.where())``, which uses *only* the given
+    file and silently drops both. ``load_verify_locations()`` then layers certifi's
+    bundle on top, so a host whose cert chains to a CA only certifi ships still
+    verifies, without narrowing what a correctly configured system already trusted.
+    This is deliberately not "the same way ``requests`` does it" -- ``requests``
+    (via ``urllib3``) uses certifi exclusively, full stop. This is only a fallback
+    for the platform gap ``requests`` happens not to have (python.org's macOS build
+    ships no system trust store at all), so it adds rather than replaces. Cached
+    because constructing an ``SSLContext`` re-parses both CA sources from disk on
+    every call.
+    """
+    ctx = ssl.create_default_context()
+    ctx.load_verify_locations(cafile=certifi.where())
+    return ctx
+
+
+_CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+
+def stream_to_file(
+    url: str,
+    dest: str | Path,
+    *,
+    timeout: float,
+    headers: Mapping[str, str] | None = None,
+    progress_label: str | None = None,
+) -> None:
+    """Stream *url* to *dest* atomically, through a sibling temp file.
+
+    Promoted from a private copy in ``hvantk/skills/gwas_catalog/cli.py`` (now
+    deleted in favour of this one) to be the one download primitive every plugin
+    downloader that writes a single file uses. A plain ``open(dest, "wb")`` would
+    leave a truncated file at *dest* if the network drops mid-download; this writes
+    to a temp file in *dest*'s directory first and only ``os.replace``s it into
+    place once the transfer completes, so *dest* either does not exist or holds the
+    complete download, never a partial one -- including on a short read (a response
+    whose connection closes before its declared ``Content-Length`` is fully
+    delivered). ``urllib3`` (which ``requests`` sits on) only enforces that itself
+    since its 2.0 release (``enforce_content_length`` defaulting True); ``requests``
+    allows ``urllib3>=1.21.1`` and this package pins no floor above that, so the
+    check below is done explicitly rather than relied on from the dependency.
+    Raises ``requests.exceptions.ChunkedEncodingError`` -- a ``RequestException``,
+    so callers' existing "on download failure" messages stay right -- on a
+    mismatch, before the temp file is renamed into place, so ``finally`` below
+    still removes it. Uses ``requests`` rather than ``urllib.request``, so it is
+    not subject to the trust-store gap ``tls_context()`` works around and needs no
+    context of its own.
+
+    Parameters
+    ----------
+    url : str
+        URL to fetch.
+    dest : str | Path
+        Local path to write the response body to.
+    timeout : float
+        Socket timeout in seconds, applied to the connection and to each read -- not a
+        cap on total transfer time, so a slow-but-steady transfer keeps succeeding and
+        only a genuinely stalled one times out.
+    headers : Mapping[str, str], optional
+        Extra request headers (e.g. ``User-Agent``).
+    progress_label : str, optional
+        When given, show a ``tqdm`` progress bar with this label while streaming.
+        Omitted by default (matching the behaviour this replaces at most call
+        sites); ``hvantk.core.utils.file_utils.download_file`` passes its
+        ``file_name`` here to keep its existing progress bar.
+
+    Raises
+    ------
+    requests.exceptions.RequestException
+        On a network, HTTP-level, or short-read failure. *dest* is left untouched
+        (neither created nor modified) in every failure case.
+    """
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name + ".")
+    os.close(fd)
+    done = False
+    try:
+        with requests.get(
+            url, stream=True, timeout=timeout, headers=dict(headers or {})
+        ) as response:
+            response.raise_for_status()
+            declared_length = response.headers.get("content-length")
+            total = int(declared_length) if declared_length is not None else 0
+            written = 0
+            with open(tmp_name, "wb") as fh:
+                if progress_label is not None:
+                    with tqdm(
+                        desc=progress_label,
+                        total=total or None,
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                    ) as bar:
+                        for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                            if chunk:
+                                size = fh.write(chunk)
+                                written += size
+                                bar.update(size)
+                else:
+                    for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                        if chunk:
+                            written += fh.write(chunk)
+
+            # Short-read check (see the docstring for why it is not left to
+            # urllib3). Only for an identity-encoded response: with a
+            # Content-Encoding, Content-Length is the compressed size, while
+            # `iter_content()` yields decoded bytes.
+            if (
+                declared_length is not None
+                and "content-encoding" not in response.headers
+                and written != total
+            ):
+                raise requests.exceptions.ChunkedEncodingError(
+                    f"Response ended prematurely: {written} bytes read, "
+                    f"Content-Length declared {total}"
+                )
+        # mkstemp always creates mode 0600; match what a normal file create (or the
+        # existing file, on overwrite) would get, mirroring
+        # drift_runner.write_fingerprint's atomic-publish idiom.
+        if dest.exists():
+            shutil.copymode(dest, tmp_name)
+        else:
+            os.chmod(tmp_name, 0o666 & ~_current_umask())
+        os.replace(tmp_name, dest)
+        done = True
+    finally:
+        if not done and os.path.exists(tmp_name):
+            os.remove(tmp_name)
 
 
 def parse_retry_after(value: str | None) -> float | None:

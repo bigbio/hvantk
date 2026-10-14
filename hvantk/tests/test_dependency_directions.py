@@ -1,8 +1,9 @@
 """Assert that hvantk's five-package layout honors the one-way dependency rule:
 
-    skills/      ----+
-                     +-->  algorithms/  -->  core/, resources/
-    tools/       ----+
+    tools/  -->  skills/, algorithms/  -->  core/, resources/
+
+skills/ and algorithms/ are siblings: neither imports the other or tools/, and a
+skill imports no other skill. They meet only through core/.
 
 core/ and resources/ are both substrate -- consumed by the code layers above,
 neither imports upward. resources/ holds the data-catalog registry, JSON

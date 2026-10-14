@@ -150,6 +150,7 @@ def _build_for_snapshot(expression_path, **call_kwargs):
     return artifact.to_anndata()
 
 
+@pytest.mark.round_trip("cptac:phospho")
 def test_cptac_phospho_snapshot_round_trip(regenerate_snapshots):
     """Build CPTAC phospho from the committed fixture; assert schema/row stability."""
     if regenerate_snapshots:

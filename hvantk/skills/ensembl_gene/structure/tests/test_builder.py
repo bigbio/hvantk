@@ -31,6 +31,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("ensembl-gene:structure")
 @pytest.mark.hail
 def test_structure_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     import hail as hl

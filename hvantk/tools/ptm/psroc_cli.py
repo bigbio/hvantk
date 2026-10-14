@@ -427,6 +427,8 @@ def psroc_cmd(
         logger.error(f"Configuration error: {e}")
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)
+    except (click.ClickException, click.exceptions.Exit):
+        raise
     except Exception as e:
         logger.exception(f"Pipeline failed: {e}")
         click.echo(f"Error: {e}", err=True)

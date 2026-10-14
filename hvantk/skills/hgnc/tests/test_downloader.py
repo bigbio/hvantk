@@ -10,29 +10,38 @@ from unittest.mock import patch, MagicMock
 import tempfile
 import shutil
 
-from hvantk.skills.hgnc.cli import download_hgnc
+from hvantk.skills.hgnc.cli import _DOWNLOAD_TIMEOUT_S, download_hgnc
 from hvantk.skills.hgnc.shared.constants import HGNC_DOWNLOAD_URL
 
 
 class TestDownloadHgnc:
-    """Tests for the download_hgnc function."""
+    """Tests for the download_hgnc function.
+
+    These mock ``hvantk.skills.hgnc.cli.stream_to_file`` (the name as imported into
+    ``cli.py``, not its defining module) rather than ``urllib.request.urlretrieve``:
+    ``download_hgnc`` calls the shared ``stream_to_file`` helper
+    (``hvantk/core/utils/http.py``), a ``requests``-based atomic download, so it no
+    longer goes through ``urlretrieve`` at all.
+    """
 
     def test_download_creates_file(self, tmp_path):
         """Test that download creates the output file."""
         output_path = tmp_path / "hgnc_complete_set.txt"
 
-        # Mock urllib.request.urlretrieve
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
+        with patch("hvantk.skills.hgnc.cli.stream_to_file") as mock_download:
             # Simulate successful download by creating the file
-            def create_file(_url, path):
-                Path(path).write_text("test content")
-                return (path, None)
+            def create_file(
+                _url, dest, *, timeout=None, headers=None, progress_label=None
+            ):
+                Path(dest).write_text("test content")
 
-            mock_retrieve.side_effect = create_file
+            mock_download.side_effect = create_file
 
             result = download_hgnc(str(output_path))
 
-            mock_retrieve.assert_called_once_with(HGNC_DOWNLOAD_URL, output_path)
+            mock_download.assert_called_once_with(
+                HGNC_DOWNLOAD_URL, str(output_path), timeout=_DOWNLOAD_TIMEOUT_S
+            )
             assert result == str(output_path)
             assert output_path.exists()
 
@@ -40,13 +49,14 @@ class TestDownloadHgnc:
         """Test that download creates parent directories if needed."""
         output_path = tmp_path / "nested" / "dir" / "hgnc_complete_set.txt"
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
+        with patch("hvantk.skills.hgnc.cli.stream_to_file") as mock_download:
 
-            def create_file(_url, path):
-                Path(path).write_text("test content")
-                return (path, None)
+            def create_file(
+                _url, dest, *, timeout=None, headers=None, progress_label=None
+            ):
+                Path(dest).write_text("test content")
 
-            mock_retrieve.side_effect = create_file
+            mock_download.side_effect = create_file
 
             result = download_hgnc(str(output_path))
 
@@ -66,13 +76,14 @@ class TestDownloadHgnc:
         output_path = tmp_path / "hgnc_complete_set.txt"
         output_path.write_text("existing content")
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
+        with patch("hvantk.skills.hgnc.cli.stream_to_file") as mock_download:
 
-            def create_file(_url, path):
-                Path(path).write_text("new content")
-                return (path, None)
+            def create_file(
+                _url, dest, *, timeout=None, headers=None, progress_label=None
+            ):
+                Path(dest).write_text("new content")
 
-            mock_retrieve.side_effect = create_file
+            mock_download.side_effect = create_file
 
             result = download_hgnc(str(output_path), overwrite=True)
 
@@ -81,12 +92,14 @@ class TestDownloadHgnc:
 
     def test_download_handles_network_error(self, tmp_path):
         """Test that download wraps network errors in RuntimeError."""
-        import urllib.error
+        import requests
 
         output_path = tmp_path / "hgnc_complete_set.txt"
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            mock_retrieve.side_effect = urllib.error.URLError("Connection refused")
+        with patch("hvantk.skills.hgnc.cli.stream_to_file") as mock_download:
+            mock_download.side_effect = requests.exceptions.ConnectionError(
+                "Connection refused"
+            )
 
             with pytest.raises(RuntimeError, match="Failed to download HGNC data"):
                 download_hgnc(str(output_path))

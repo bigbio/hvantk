@@ -19,6 +19,7 @@ import re
 import hail as hl
 
 from hvantk.core.utils.hail_helpers import cleanup_temp_file
+from hvantk.core.utils.raw_inputs import resolve_raw_file
 from hvantk.skills.insider.shared import normalize_hadoop_path
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,14 @@ _TRACK_NAME_RE = re.compile(r"name=([^\s]+)")
 
 # Shared with insider:interfaces -- both datasets take the same two input shapes.
 _normalize_hadoop_path = normalize_hadoop_path
+
+# insider:variants is bring-your-own (size: the BED is >1 GB), so `hvantk reprocess`
+# hands this builder the raw directory the user placed the BED in (see
+# resolve_raw_file). The real file is plain `Whole_Human_Interactome_Interface_hg38.bed`;
+# the committed fixture is also a plain `.bed`. Plain `*.bed` only: `hfs.open` below
+# reads in text mode, which does not decompress, so a `.bed.bgz`/`.bed.gz` copy fails
+# with `UnicodeDecodeError` on its first line.
+_RAW_FILE_PATTERNS = ("*.bed",)
 
 
 def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
@@ -98,15 +107,21 @@ def build_insider_interactome(
 ):
     """Plugin builder — returns an AnnotationTable.
 
-    Parses the INSIDER BED via :func:`_parse_insider_bed_to_temp_tsv`,
-    imports + aggregates, and returns the lazy Hail Table wrapped with
-    Provenance. The temp TSV is intentionally NOT cleaned up on success
-    (Hail's lazy evaluation holds a reference until ``artifact.save()``
-    materializes the table); the OS cleans the Hail temp dir at session end.
+    ``parsed_input`` may be the BED file itself or the raw directory it was placed
+    in -- insider:variants declares no ``lifecycle.parse`` (it is bring-your-own),
+    so ``hvantk reprocess`` hands the builder the raw directory as-is;
+    ``resolve_raw_file`` picks the one BED out of it. Parses the INSIDER BED via
+    :func:`_parse_insider_bed_to_temp_tsv`, imports + aggregates, and returns the
+    lazy Hail Table wrapped with Provenance. The temp TSV is intentionally NOT
+    cleaned up on success (Hail's lazy evaluation holds a reference until
+    ``artifact.save()`` materializes the table); the OS cleans the Hail temp dir at
+    session end.
     """
     from hvantk.core.models import AnnotationTable
 
-    tsv_path = _parse_insider_bed_to_temp_tsv(str(parsed_input))
+    tsv_path = _parse_insider_bed_to_temp_tsv(
+        resolve_raw_file(parsed_input, patterns=_RAW_FILE_PATTERNS)
+    )
     try:
         ht = hl.import_table(
             tsv_path,

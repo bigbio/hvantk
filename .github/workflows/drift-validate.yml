@@ -7,7 +7,10 @@ name: Drift fingerprint validation
 on:
   pull_request:
     paths:
-      - 'hvantk/skills/**/drift_fingerprint.json'
+      # `*` after the base name, not just `.json`: multi-dataset providers suffix it
+      # per dataset (onek_genomes' drift_fingerprint_variants.json /
+      # _samples.json), and the unsuffixed form missed both (#408).
+      - 'hvantk/skills/**/drift_fingerprint*.json'
 
 permissions:
   contents: read
@@ -51,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" \
-                    -- 'hvantk/skills/**/drift_fingerprint.json')
+                    -- 'hvantk/skills/**/drift_fingerprint*.json')
           if [ -z "$changed" ]; then echo "no fingerprint files changed"; exit 0; fi
           for f in $changed; do
             python3 -c "import json,sys; json.load(open(sys.argv[1])); print('valid: '+sys.argv[1])" "$f"
