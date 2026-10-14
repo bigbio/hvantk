@@ -69,12 +69,17 @@ def test_gene_symbol_mapping_resolves_outdated_symbols_and_reports_unmapped(capl
         _Gene("HGNC:2", "OTHER", "ENSG00000000002", aliases=("NICKNAME",)),
     )
 
-    mapping = _map_gene_symbols(catalog, {"OUTDATED", "NICKNAME", "NOT_IN_CATALOG"})
+    mapping = _map_gene_symbols(
+        catalog, {"Liver": {"OUTDATED", "NICKNAME", "NOT_IN_CATALOG"}}
+    )
 
-    assert mapping == {"OUTDATED": "ENSG00000000001", "NICKNAME": "ENSG00000000002"}
+    assert mapping == {
+        ("Liver", "OUTDATED"): "ENSG00000000001",
+        ("Liver", "NICKNAME"): "ENSG00000000002",
+    }
     assert (
         "Mapped 2 of 3 pQTL gene symbol(s) to Ensembl gene IDs: 0 approved, "
-        "1 via a previous symbol, 1 via an alias; 0 ambiguous, 1 unmapped"
+        "1 via a previous symbol, 1 via an alias; 0 ambiguous, 0 colliding, 1 unmapped"
     ) in caplog.text
     assert "NOT_IN_CATALOG" in caplog.text
 
@@ -99,12 +104,94 @@ def test_ambiguous_symbol_stays_unmapped_instead_of_taking_the_first_gene(caplog
         ),
     )
 
-    mapping = _map_gene_symbols(catalog, {"GENEA", "SHARED", "OLDB"})
+    mapping = _map_gene_symbols(catalog, {"Liver": {"GENEA", "SHARED", "OLDB"}})
 
-    assert mapping == {"GENEA": "ENSG00000000001", "OLDB": "ENSG00000000002"}
-    assert "1 ambiguous, 0 unmapped" in caplog.text
+    assert mapping == {
+        ("Liver", "GENEA"): "ENSG00000000001",
+        ("Liver", "OLDB"): "ENSG00000000002",
+    }
+    assert "1 ambiguous, 0 colliding, 0 unmapped" in caplog.text
     assert "1 pQTL gene symbol(s) match more than one gene" in caplog.text
     assert "Examples: SHARED" in caplog.text
+
+
+def test_colliding_symbol_defers_to_the_approved_symbol_only_in_its_tissue(caplog):
+    """Regression: two source symbols mapping to the same gene_id duplicated
+    (locus, alleles, gene_id) within a tissue.
+
+    OLDNAME and OLDNAME2 are previous symbols of CURRENT's gene. In Colon, CURRENT labels
+    rows too, so both defer to it there. In Heart, OLDNAME is the gene's only name, so it
+    keeps the gene_id: rows of different tissues are told apart by ``tissue``, and a
+    source can name one protein differently in different tissues. In Colon, OLDB1 (a
+    previous symbol) and OLDB2 (an alias) both resolve to GENEB, and TWINA and TWINB
+    are two approved symbols with one Ensembl ID; neither pair has a single approved
+    symbol to arbitrate, so no symbol of either pair keeps the gene_id there.
+    """
+    from hvantk.skills.pqtl.builder import _map_gene_symbols
+
+    catalog = _FakeHGNCCatalog(
+        _Gene(
+            "HGNC:1",
+            "CURRENT",
+            "ENSG00000000001",
+            previous=("OLDNAME", "OLDNAME2"),
+        ),
+        _Gene(
+            "HGNC:2",
+            "GENEB",
+            "ENSG00000000002",
+            previous=("OLDB1",),
+            aliases=("OLDB2",),
+        ),
+        _Gene("HGNC:3", "TWINA", "ENSG00000000003"),
+        _Gene("HGNC:4", "TWINB", "ENSG00000000003"),
+    )
+
+    mapping = _map_gene_symbols(
+        catalog,
+        {
+            "Colon": {
+                "CURRENT",
+                "OLDNAME",
+                "OLDNAME2",
+                "OLDB1",
+                "OLDB2",
+                "TWINA",
+                "TWINB",
+            },
+            "Heart": {"OLDNAME", "TWINA"},
+        },
+    )
+
+    assert mapping == {
+        ("Colon", "CURRENT"): "ENSG00000000001",
+        ("Heart", "OLDNAME"): "ENSG00000000001",
+        ("Heart", "TWINA"): "ENSG00000000003",
+    }
+    # Mapped counts a symbol that keeps its ID in some tissue; colliding, one that
+    # keeps it in none.
+    assert (
+        "Mapped 3 of 7 pQTL gene symbol(s) to Ensembl gene IDs: 2 approved, "
+        "1 via a previous symbol, 0 via an alias; 0 ambiguous, 4 colliding, 0 unmapped"
+    ) in caplog.text
+    assert (
+        "In tissue Colon, pQTL gene symbol(s) OLDNAME, OLDNAME2 resolve to the same gene "
+        "(ENSG00000000001) as the approved symbol 'CURRENT'"
+    ) in caplog.text
+    assert (
+        "In tissue Colon, pQTL gene symbols OLDB1, OLDB2 all resolve to the same gene "
+        "(ENSG00000000002) with no single approved symbol"
+    ) in caplog.text
+    assert (
+        "In tissue Colon, pQTL gene symbols TWINA, TWINB all resolve to the same gene "
+        "(ENSG00000000003) with no single approved symbol"
+    ) in caplog.text
+    assert "In tissue Heart" not in caplog.text
+
+    # A build whose every mapped symbol collides would key its rows by symbol only,
+    # so it raises.
+    with pytest.raises(ValueError, match="None of the 2 pQTL gene symbols mapped"):
+        _map_gene_symbols(catalog, {"Liver": {"OLDB1", "OLDB2"}})
 
 
 def test_no_mapped_symbol_raises():
@@ -113,7 +200,7 @@ def test_no_mapped_symbol_raises():
     catalog = _FakeHGNCCatalog(_Gene("HGNC:1", "GENEA", "ENSG00000000001"))
 
     with pytest.raises(ValueError, match="None of the 2 pQTL gene symbols mapped"):
-        _map_gene_symbols(catalog, {"UNKNOWN1", "UNKNOWN2"})
+        _map_gene_symbols(catalog, {"Liver": {"UNKNOWN1", "UNKNOWN2"}})
 
 
 def test_missing_gene_name_does_not_break_the_report(caplog):
@@ -122,7 +209,7 @@ def test_missing_gene_name_does_not_break_the_report(caplog):
 
     catalog = _FakeHGNCCatalog(_Gene("HGNC:1", "GENEA", "ENSG00000000001"))
 
-    mapping = _map_gene_symbols(catalog, {"GENEA", "UNKNOWN", None})
+    mapping = _map_gene_symbols(catalog, {"Liver": {"GENEA", "UNKNOWN", None}})
 
-    assert mapping == {"GENEA": "ENSG00000000001"}
+    assert mapping == {("Liver", "GENEA"): "ENSG00000000001"}
     assert "Some pQTL rows have no gene name" in caplog.text

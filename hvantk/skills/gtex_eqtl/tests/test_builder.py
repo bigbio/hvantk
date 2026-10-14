@@ -34,6 +34,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("gtex-eqtl:eqtls")
 @pytest.mark.hail
 def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GTEx v11 eQTL from Liver fixture; assert schema and sample-row stability."""

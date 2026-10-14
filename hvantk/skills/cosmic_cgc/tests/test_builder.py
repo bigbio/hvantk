@@ -76,6 +76,7 @@ class _StubGeneCatalog:
         return {id_: self._FULL_MAP.get(id_) for id_ in ids}
 
 
+@pytest.mark.round_trip("cosmic-cgc:submissions")
 @pytest.mark.hail
 def test_cosmic_cgc_submissions_round_trip(
     hail_session, tmp_path, regenerate_snapshots

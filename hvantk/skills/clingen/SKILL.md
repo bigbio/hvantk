@@ -88,3 +88,5 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 > `pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result. The other live tests are `test_downloader.py`,
 > `test_drift_probe.py`, and `test_streamer.py`.
+
+The fixture is synthetic: hand-authored rows in the real ClinGen CSV layout (BRCA1/BRCA2/TP53/… with invented classification-report URLs and dates), not a download excerpt. No `THIRD_PARTY_DATA.md` entry applies.

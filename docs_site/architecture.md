@@ -312,6 +312,17 @@ The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
 
 Downloader CLI commands are wired automatically from the manifest's `cli:`
 block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
+A `cli:` entry whose module does not import is left out of `hvantk download`
+and reported by `hvantk plugins errors` as a `cli:<command>` row, whether or not
+`hvantk download` has run; so is an entry that repeats a command name already
+declared in the same manifest or by another provider, which is refused at load. `hvantk drift` ignores those rows: they describe a
+command, and a dataset that fails along with it has a row of its own.
+
+Of the `hvantk plugins` commands, only `errors` signals load failures through its
+exit code: it exits 1 when it lists anything. `list` and `describe` are
+informational and exit 0 when some units failed to load — `list` prints a one-line
+summary on stderr and `describe` marks a dataset `FAILED TO LOAD` — and `describe`
+exits 1 only for a provider that is unknown or failed to load as a whole.
 
 ### Streamer placement rule
 
@@ -489,10 +500,15 @@ checklist:
 3. CLI downloader command is wired from the manifest's `cli:` block.
 4. Add a conformance test using the `run_builder_for_spec` orchestrator
    (see `hvantk/tests/test_plugin_conformance.py` for the template), and a
-   round-trip test named `test_*round_trip*`, with no `skip`/`skipif` marker
-   and marked `hail` for a `backend: hail` dataset
-   (`hvantk/tests/test_plugin_contract_artifacts.py` checks this).
-5. Run `hvantk plugins list` — your plugin should appear.
+   round-trip test tagged `@pytest.mark.round_trip("<provider>:<dataset>")`
+   (one id per collected test item), with no `skip`/`skipif` marker and
+   marked `hail` for a `backend: hail` dataset
+   (`hvantk/tests/test_plugin_contract_artifacts.py` replays the manifest's
+   `tests.command` to check this; `--require-round-trips` also fails a run
+   on a real skip/xfail that collection cannot see).
+5. Run `hvantk plugins list` — your plugin should appear — and
+   `hvantk plugins errors`, which exits 1 if anything failed to load (`list`
+   exits 0 regardless).
 
 See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 

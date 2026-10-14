@@ -43,6 +43,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("uniprot-ptm:sites")
 @pytest.mark.hail
 def test_uniprot_ptm_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build UniProt PTM sites from fixture; assert schema and sample-row stability."""

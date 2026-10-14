@@ -1,0 +1,20 @@
+cell_id	Class	n_cells
+Astrocyte	Astrocyte	47877
+Endothelial	Endothelial	35958
+IT	IT	11658
+L4 IT	L4 IT	44601
+L5 ET	L5 ET	50543
+L5/6 IT Car3	L5/6 IT Car3	9999
+L5/6 NP	L5/6 NP	53110
+L6 CT	L6 CT	31760
+L6b	L6b	38934
+LAMP5	LAMP5	33487
+Microglia	Microglia	21875
+OPC	OPC	41689
+Oligodendrocyte	Oligodendrocyte	23657
+PAX6	PAX6	21137
+PVALB	PVALB	34687
+Pericyte	Pericyte	23433
+SST	SST	52412
+VIP	VIP	10183
+VLMC	VLMC	35938

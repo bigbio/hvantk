@@ -15,12 +15,18 @@ datasets:
     backend: hail
     artifact_type: AnnotationTable
     schema_id: gevir-metrics-v1
+    acquisition:
+      mode: download
     builder:
       module: hvantk.skills.gevir.builder
       function: build_gevir_metrics
     drift_probe:
       module: hvantk.skills.gevir.drift_probe
       function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.gevir.cli
+        function: download_dataset
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/gevir/tests -m hail
@@ -32,3 +38,8 @@ datasets:
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: gevir-download
+    module: hvantk.skills.gevir.cli
+    function: download_cmd

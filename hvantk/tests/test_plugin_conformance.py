@@ -350,7 +350,8 @@ def test_insider_variants_round_trip(tmp_path):
     assert spec.schema_id == "insider-variants-v1"
 
     fixture = Path(
-        "hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed"
+        "hvantk/skills/insider/variants/tests/testdata/raw/insider/"
+        "insider_sample-synthetic.bed"
     )
     assert fixture.exists()
 
@@ -763,7 +764,9 @@ def test_gevir_metrics_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "gevir-metrics-v1"
 
-    fixture = Path("hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz")
+    fixture = Path(
+        "hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297-synthetic.tsv.bgz"
+    )
     assert fixture.exists()
 
     object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})

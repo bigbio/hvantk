@@ -153,23 +153,6 @@
     ]
   },
   {
-    "title": "Human Protein Atlas - Normal tissue proteomics",
-    "accession": "E-PROT-13",
-    "type": "Proteomics baseline",
-    "pubmedid": "31665441",
-    "description": "Mass spectrometry-based protein expression profiling of normal human tissues from the Human Protein Atlas providing quantitative protein abundance data.",
-    "files": [
-      {
-        "type": "sdrf",
-        "name": "E-PROT-13.condensed-sdrf.tsv"
-      },
-      {
-        "type": "protein-abundance",
-        "name": "E-PROT-13-protein-abundance.tsv"
-      }
-    ]
-  },
-  {
     "title": "RNA-seq of mouse tissues",
     "accession": "E-MTAB-2706",
     "type": "RNA-Seq mRNA baseline",
@@ -374,11 +357,11 @@
     ]
   },
   {
-    "title": "Human Protein Atlas - Subcellular proteomics",
+    "title": "Human Protein Atlas - Normal tissue proteomics",
     "accession": "E-PROT-3",
     "type": "Proteomics baseline",
-    "pubmedid": "28495876",
-    "description": "Subcellular protein localization data from the Human Protein Atlas using immunofluorescence microscopy to map protein subcellular distribution.",
+    "pubmedid": "25613900",
+    "description": "Human immunochemistry data on 83 different normal cell types from 44 tissue types from the Human Protein Atlas project.",
     "files": [
       {
         "type": "sdrf",

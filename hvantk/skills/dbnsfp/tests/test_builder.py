@@ -39,6 +39,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("dbnsfp:variants")
 @pytest.mark.hail
 def test_dbnsfp_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build dbNSFP from fixture; assert schema and sample-row stability."""

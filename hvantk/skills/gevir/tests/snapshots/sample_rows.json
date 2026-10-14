@@ -4,10 +4,10 @@
       "gene_id": "ENSG00000000003"
     },
     "row": {
-      "canonical_transcript": "ENST00000373020",
-      "gevir_pct": 88.34254429,
-      "gnomad_gene_name": "TSPAN6",
-      "virlof_pct": 74.77403027
+      "canonical_transcript": "ENST00000900001",
+      "gevir_pct": 61.0332231649,
+      "gnomad_gene_name": "SYNG1",
+      "virlof_pct": 19.3367485515
     }
   },
   {
@@ -15,10 +15,10 @@
       "gene_id": "ENSG00000000005"
     },
     "row": {
-      "canonical_transcript": "ENST00000373031",
-      "gevir_pct": 44.76524973,
-      "gnomad_gene_name": "TNMD",
-      "virlof_pct": 47.75579774
+      "canonical_transcript": "ENST00000900002",
+      "gevir_pct": 87.9088230124,
+      "gnomad_gene_name": "SYNG2",
+      "virlof_pct": 91.1136647357
     }
   },
   {
@@ -26,10 +26,10 @@
       "gene_id": "ENSG00000000419"
     },
     "row": {
-      "canonical_transcript": "ENST00000371588",
-      "gevir_pct": 24.52352668,
-      "gnomad_gene_name": "DPM1",
-      "virlof_pct": 33.55715097
+      "canonical_transcript": "ENST00000900003",
+      "gevir_pct": 32.7924541797,
+      "gnomad_gene_name": "SYNG3",
+      "virlof_pct": 47.3630183168
     }
   },
   {
@@ -37,10 +37,10 @@
       "gene_id": "ENSG00000000457"
     },
     "row": {
-      "canonical_transcript": "ENST00000367772",
-      "gevir_pct": 43.17958783,
-      "gnomad_gene_name": "SCYL3",
-      "virlof_pct": 29.90031507
+      "canonical_transcript": "ENST00000900004",
+      "gevir_pct": 41.497553604,
+      "gnomad_gene_name": "SYNG4",
+      "virlof_pct": 61.8279127115
     }
   },
   {
@@ -48,10 +48,10 @@
       "gene_id": "ENSG00000000460"
     },
     "row": {
-      "canonical_transcript": "ENST00000286031",
-      "gevir_pct": 59.5165539,
-      "gnomad_gene_name": "C1orf112",
-      "virlof_pct": 46.49036723
+      "canonical_transcript": "ENST00000900005",
+      "gevir_pct": 59.4328426223,
+      "gnomad_gene_name": "SYNG5",
+      "virlof_pct": 82.7600700566
     }
   },
   {
@@ -59,10 +59,10 @@
       "gene_id": "ENSG00000000938"
     },
     "row": {
-      "canonical_transcript": "ENST00000374005",
-      "gevir_pct": 19.71489076,
-      "gnomad_gene_name": "FGR",
-      "virlof_pct": 18.03625846
+      "canonical_transcript": "ENST00000900006",
+      "gevir_pct": 88.2101910092,
+      "gnomad_gene_name": "SYNG6",
+      "virlof_pct": 84.1086302602
     }
   }
 ]

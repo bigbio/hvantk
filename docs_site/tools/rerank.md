@@ -25,7 +25,7 @@ All three are opt-in CLI flags, and every one of them defaults to today's behavi
 hvantk rerank -c config.yaml -o out.tsv
 ```
 
-This is the minimal invocation: a config naming a cohort manifest, one or more feature tables, and a label gene list (see **The config YAML** below). It writes a ranked TSV to `out.tsv` and prints a short console summary. Every console/TSV excerpt on this page, including this one, comes from one small synthetic cohort built purely for illustration -- a couple hundred genes, three feature axes, no real biology or gene names -- so that the numbers agree with each other from section to section:
+This is the minimal invocation: a config naming a cohort manifest, one or more feature tables, and a label gene list (see **The config YAML** below). It writes a ranked TSV to `out.tsv` and prints a short console summary. This excerpt comes from one small synthetic cohort built purely for illustration -- a couple hundred genes, three feature axes, no real biology or gene names. The blocked walk-through further down (**Multiplicity**, **Blocked CV**, **Seeds**) uses a second, separate synthetic fixture of its own -- same shape, plus a paralogue-block structure -- introduced where it first appears, so its numbers agree with each other section to section without needing to match this unblocked one:
 
 ```text
 Wrote 200 genes -> out.tsv
@@ -99,7 +99,7 @@ Offering several feature axes and reporting the best one's delta-AUC is itself a
 - **Per-axis** -- permute the label, refit the baseline and baseline+*this* axis, record the delta. Correct when the axis was pre-specified.
 - **Selected-maximum** -- permute, refit, add *each* offered axis, record the *largest* delta. Correct when the axis is reported *because* it came top over the other candidates. Only this one is a multiplicity correction: the maximum over several candidate axes is stochastically larger than any single one of them, so a per-axis null can sit near zero while the selected-maximum null does not.
 
-Both nulls refit the baseline on every permutation -- scoring a permuted-label model against the unpermuted baseline would measure the permutation, not the axis. P-values use `p = (1 + #{null >= observed}) / (1 + n_perm)` (Phipson & Smyth 2010): a naive `(null >= observed).mean()` reports `p = 0` for a value no permutation reached, which a finite permutation set can never actually license. `p_selected_max` is the single-step max-T (Westfall-Young) adjusted p-value for that axis's observed delta. The observed deltas themselves come from the null's own scorer, unrounded -- **not** the ablation table's `d_md` (a bootstrap *median*, rounded to 3 decimal places: a different statistic, computed a different way).
+Both nulls refit the baseline on every permutation -- scoring a permuted-label model against the unpermuted baseline would measure the permutation, not the axis. P-values use `p = (1 + #{null >= observed}) / (1 + n_perm)` (Phipson & Smyth 2010): a naive `(null >= observed).mean()` reports `p = 0` for a value no permutation reached, which a finite permutation set can never actually license. `p_selected_max` is the single-step max-T (Westfall-Young) adjusted p-value for that axis's observed delta. The observed deltas themselves come from the null's own scorer, unrounded -- **not** the ablation table's `d_md` (a bootstrap *median*, rounded to 3 decimal places: a different statistic, computed a different way). They are, however, the SAME quantity as the ablation table's own `auc` column difference for that axis: the null's scorer and `_raw_oof` run the identical columns, seed, folds and blocks, so `observed` and `auc[axis] - auc[baseline]` agree up to `auc`'s 3-decimal rounding. In this run, `observed = 0.032381` for `expression` below, against `0.807 - 0.775 = 0.032` from the **Seeds** table further down -- checkable against each other precisely because both come from the one run this whole blocked walk-through uses.
 
 > **What null hypothesis this tests.** Permuting the label tests the *global* null that no feature, baseline included, carries label information -- not the *conditional* null that this one axis adds nothing given the baseline already in the model. With an informative baseline, the permutation null of the delta is wider than the delta's true sampling spread under the conditional null, so the test is valid but conservative: failing to clear the selected-maximum null is weak evidence that the axis adds nothing, not proof that it does not.
 
@@ -111,14 +111,14 @@ The null is tied to one **control setting** -- the leakage and selection policie
 hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt --n-perm 20 --seed-sweep 3 --null-out null_summary.tsv
 ```
 
-(This example also passes `--blocks` and `--seed-sweep`, each covered in its own section below, so that every number on this page is drawn from one consistent run.) It adds, after the ablation table:
+(This example also passes `--blocks` and `--seed-sweep`, each covered in its own section below. This is the first of three commands run against ONE separate synthetic fixture built for this blocked walk-through -- 200 genes, the same three feature axes as **Quick Start**, plus a paralogue-block structure -- so that every number here, in **Blocked CV** and in **Seeds** below is drawn from that one consistent run.) It adds, after the ablation table:
 
 ```text
-Multiplicity: 2 axes searched over 20 permutations; selected-maximum null median +0.0247
-Setting: arm='all' leakage=None selection=None folds=5 seed=42 block_digest='ad1a7436eced' baseline=['constraint'] candidates={'expression': 1, 'conservation': 1}
+Multiplicity: 2 axes searched over 20 permutations; selected-maximum null median +0.0426
+Setting: arm='all' leakage=None selection=None folds=5 seed=42 block_digest='7cd6dbdd71eb' baseline=['constraint'] candidates={'expression': 1, 'conservation': 1}
         axis  observed  selmax_median  p_selected_max
-  expression  0.033367       0.024705        0.285714
-conservation -0.025791       0.024705        0.809524
+  expression  0.032381       0.042649        0.571429
+conservation -0.028333       0.042649        0.904762
 ```
 
 The `Setting:` line is `ControlSetting.describe()`: the leakage and selection policies, the provenance arm, the fold count, the CV seed, the baseline/candidate columns and -- whenever `--blocks` is set -- the digest of the blocking the folds actually used, so a p-value can always be traced back to exactly what it was computed under.
@@ -134,6 +134,8 @@ Every number `hvantk rerank` produces by default comes from plain stratified 5-f
 ```bash
 hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt
 ```
+
+(The same blocked synthetic fixture introduced in **Multiplicity** above -- so its `Blocks:` line below, which depends only on the universe and the blocks table, is identical to the one that run also prints.)
 
 `--blocks` takes an HGNC complete-set TSV with `symbol`/`gene_group` columns (and, optionally, `status` -- when present, only `Approved` rows are kept). Genes are matched against it by their **approved HGNC symbol only**; a gene absent from the table, or known to your universe only by an alias or a previous symbol, becomes its own unconstrained singleton block rather than an error -- unless *none* of the universe's genes match, which almost always means the table's gene keys disagree with your universe's (e.g. Ensembl IDs against HGNC symbols) and *is* an error. A match rate below 50% is logged as a `WARNING`, which reaches the console by default (`hvantk` sends `WARNING` and above to stderr unless verbosity is turned down) -- but the quickest check either way is the matched count the console's `Blocks:` line below always prints too.
 
@@ -152,10 +154,12 @@ Two further mechanics worth knowing about: the grouped splitter is a **correctly
 
 Blocking is threaded everywhere a fold boundary matters: the outer cross-validation of both the headline score and the ablation, the multi-seed sweep, and -- as described above -- the permutation null. There are three documented exceptions to this blocking: `CalibratedClassifierCV`'s own inner calibration split, which takes only an integer fold count and so cannot see the blocks; a family can therefore straddle *that* split within one already-blocked outer training fold. Similarly, with a selection policy that uses the RFECV wrapper (`SelectionPolicy(wrapper="rfecv")`), RFECV's inner `StratifiedKFold` inside each training fold is likewise unblocked (it is opt-in). The third applies only when a fit sees more than 10,000 rows: the estimator leaves `HistGradientBoostingClassifier`'s `early_stopping="auto"`, which scikit-learn (1.7.2) switches on for `n_samples > 10,000`, and each fit then holds out a class-stratified random 10% validation split drawn with the run's seed and blind to the blocks -- a family can straddle *that* split too, and `--seed-sweep` then also varies which rows every fit holds out, on top of the fold assignment. The estimator is left as is deliberately (changing it would change every historic result); below that size no such split exists. The per-axis deltas that are the scientific claim never go through the first two -- they use the uncalibrated, fully-blocked scorer in `evaluator.py` (fully blocked below 10,000 rows; the early-stopping split applies to it exactly as to the headline). Custom API scorers passed directly to `permutation_deltas` that carry no `.groups` attribute are not checked against `blocks=` at all -- only scorers built by the library's own `oof_scorer` declare one.
 
+The per-axis bootstrap interval (`d_lo`/`d_md`/`d_hi`) is blocked the same way, and for the same reason. With `--blocks` set, `_boot_ci` resamples whole paralogue blocks instead of genes: each draw picks as many block ids as there are blocks, uniformly and with replacement, and takes every member gene of the ids it picked (a cluster bootstrap) -- a size-6 family rides in or out of a draw as one unit, exactly as it rides into one fold or the other. Resampling genes independently here while the folds are blocked would silently understate the interval by exactly the amount blocking exists to correct for, which is why this is not a separate flag: it follows `--blocks` automatically. Without `--blocks`, the interval is unchanged -- genes resampled independently, bit-identical to every run before this.
+
 The console's `Blocks:` line (shown whenever `--blocks` did not abort) reports the blocking, including the matched-gene count that catches a silent key mismatch:
 
 ```text
-Blocks: 152 paralogue block(s); largest 4 (2.0%); 64 gene(s) in a block of size > 1; 200/200 genes matched the gene-group table; digest ad1a7436eced
+Blocks: 89 paralogue block(s); largest 4 (2.0%); 160 gene(s) in a block of size > 1; 200/200 genes matched the gene-group table; digest 7cd6dbdd71eb
 ```
 
 ### Seeds -- `--seed`, `--seed-sweep`
@@ -168,17 +172,18 @@ Doubling as the null's base seed has one consequence worth knowing before you re
 hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt --seed-sweep 3
 ```
 
-(Shown with `--blocks` because the tables on this page all come from one blocked run; the
-envelope works the same way without it.)
+(The same blocked synthetic fixture as **Multiplicity** and **Blocked CV** above -- shown
+with `--blocks` because the envelope and the block bootstrap are both best illustrated
+together on blocked folds; the envelope works the same way without blocking too.)
 
-The gene-resampling bootstrap (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the gene *sample* moved. It cannot see a second variance component: which genes land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
+The bootstrap interval (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the *sample* moved -- genes resampled independently when unblocked, or whole paralogue blocks resampled together when `--blocks` is set (see **Blocked CV** above). Either way it cannot see a second variance component: which genes (or blocks) land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
 
 ```text
 Per-axis ablation (delta-AUC over constraint):
       family   auc   d_lo   d_md  d_hi  d_lo_env  d_hi_env  n_seeds
-  constraint 0.659  0.000  0.000 0.000     0.000     0.000        3
-  expression 0.693 -0.028  0.034 0.091    -0.028     0.091        3
-conservation 0.633 -0.071 -0.027 0.014    -0.071     0.014        3
+  constraint 0.775  0.000  0.000 0.000     0.000     0.000        3
+  expression 0.807 -0.011  0.033 0.088    -0.011     0.088        3
+conservation 0.747 -0.064 -0.027 0.011    -0.064     0.011        3
 ```
 
 The envelope is a **union, not a calibrated interval** over both components: the two are not independent draws from one distribution, and combining them properly would need a nested design nobody has run. `d_lo_env`/`d_hi_env` are that union rounded to 3 decimal places, exactly like `d_lo`/`d_hi`. The union is guaranteed never to be narrower than the bootstrap interval alone, but **not** guaranteed to be strictly wider -- that depends on the data: when the across-seed range happens to fall entirely inside `[d_lo, d_hi]`, `d_lo_env == d_lo` and `d_hi_env == d_hi` and no widening is visible, which is itself informative (it says the CV partition was not, on this data, a meaningful source of extra spread), not a sign that the sweep did nothing. It exists so a reader cannot mistake one lucky (or unlucky) partition for a measured effect -- a single cross-validation partition can land anywhere within that spread. With the default `--seed-sweep 1`, the three extra columns are **absent** from the ablation table entirely, so a plain `hvantk rerank` run is byte-for-byte what it always was.
@@ -209,7 +214,7 @@ The permutation null (`--n-perm`, above) already recomputes the stratified parti
 |---|---|
 | `family` | The axis name, or the baseline axis (always `d_lo`/`d_md`/`d_hi` `== 0.0` there, by construction). |
 | `auc` | Out-of-fold AUC of baseline+axis (uncalibrated). |
-| `d_lo`, `d_md`, `d_hi` | 2.5th/50th/97.5th percentile of a paired, gene-resampling bootstrap on the delta-AUC of this axis over the baseline alone. |
+| `d_lo`, `d_md`, `d_hi` | 2.5th/50th/97.5th percentile of a paired bootstrap on the delta-AUC of this axis over the baseline alone: genes resampled independently when unblocked, or whole paralogue blocks resampled together (a cluster bootstrap) whenever `--blocks` is set. |
 | `d_lo_env`, `d_hi_env` | *Only when `--seed-sweep > 1`.* The envelope described above: the union of `[d_lo, d_hi]` and the across-seed delta range, rounded to 3 decimal places. Never narrower than `[d_lo, d_hi]`; not guaranteed to be strictly wider (depends on the data). |
 | `n_seeds` | *Only when `--seed-sweep > 1`.* The sweep width actually used -- the same count as the CLI's `--seed-sweep`, `Config.seed_sweep` and `Evaluator.evaluate`'s `n_seeds` parameter. |
 
@@ -228,8 +233,8 @@ The permutation null (`--n-perm`, above) already recomputes the stratified parti
 
 ```text
         axis  n_perm  n_candidates  null_mean  null_sd  null_p95  selmax_median  selmax_p95  observed  p_per_axis  p_selected_max
-  expression      20             2   0.000574 0.055376  0.125819       0.024705    0.125819  0.033367    0.238095        0.285714
-conservation      20             2   0.001621 0.043121  0.065352       0.024705    0.125819 -0.025791    0.714286        0.809524
+  expression      20             2   0.007976 0.050086  0.078080       0.042649    0.105902  0.032381    0.333333        0.571429
+conservation      20             2   0.001140 0.055931  0.092714       0.042649    0.105902 -0.028333    0.761905        0.904762
 ```
 
 ### Blocks summary (console only)

@@ -19,7 +19,14 @@
     },
     "name": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "not": {
+        "enum": [
+          "cli",
+          "entry-point"
+        ]
+      },
+      "$comment": "Reserved names (#408): load errors are recorded as `cli:<command>` and `entry-point:<name>`, so a provider called `cli` or `entry-point` would have its `<provider>:<dataset>` keys taken for those units -- dropped from `hvantk drift` and from the `plugins list` summary, or matched to the wrong provider. The loader translates a failure here in `_explain`."
     },
     "version": {
       "type": "string",
@@ -171,7 +178,9 @@
             "additionalProperties": false,
             "properties": {
               "command": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "description": "The pytest invocation that reaches this dataset's round-trip test, e.g. 'pytest hvantk/skills/<provider>/tests -m hail'. An empty string satisfied 'required' while leaving the dataset invisible to the round-trip contract checks in hvantk/tests/test_plugin_contract_artifacts.py (#432)."
               },
               "fixture": {
                 "type": "string"
