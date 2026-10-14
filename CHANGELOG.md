@@ -70,6 +70,16 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `drift:schema` PRs (#447).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
   on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
+- **The plugin-contract check now ties each round trip to its dataset.** A fast check
+  confirms each dataset's `tests.command` is shaped like a real CI invocation (`pytest
+  hvantk/skills/<provider>/...`, with `-m hail` exactly when the backend is hail); a
+  slower one replays that command in a subprocess and checks its `round_trip`-marked
+  item is selected and clean of skip/xfail, replacing a decorator source scan that
+  could not tell whose round trip was whose. The slower check left the default `pytest`
+  run — it is marked `round_trip_contract` and runs via CI's `plugin-contract` job
+  instead. A `--require-round-trips` pytest hook additionally fails the run if a
+  round-trip test ends skipped or xfailed, including a `pytest.skip()` call raised from
+  inside the test body (#456).
 - **`hvantk rerank`'s `Config` is frozen, and its result types validate on construction**
   (#446).
 - **Plugin load errors explain manifest schema failures and name the dataset**, as `hvantk
@@ -95,6 +105,13 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   atomically (#445).
 - **`cosmic-cgc:submissions` kept multi-valued `TISSUE_TYPE` as one string**, so a gene
   tagged `E, M` formed its own tissue group (#442).
+- **`pqtl:metrics` could map two source gene symbols of one tissue to the same `gene_id`**,
+  duplicating `(locus, alleles, gene_id)` there: an approved symbol and a previous or alias
+  symbol of the same gene, two previous/alias symbols of one gene, or two approved symbols
+  that HGNC gives one Ensembl ID. Within the tissue, the gene_id now goes to the one approved
+  symbol among them, or to none of them when there is no single one, and the others keep
+  their source symbol as `gene_id`, with a warning. In a tissue where it collides with
+  nothing, a symbol stays mapped (#456).
 - **`hgnc:lookup` kept `ena`, `lsdb` and `pubmed_id` as quoted, pipe-joined strings**
   (#443).
 - **A sidecar written before #428 read `build_parameters` back as `{}`**, which looks like

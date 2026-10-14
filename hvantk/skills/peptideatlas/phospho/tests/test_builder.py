@@ -196,6 +196,7 @@ def _sample_rows(df, keys: list[dict]) -> list[dict]:
     return out
 
 
+@pytest.mark.round_trip("peptideatlas:phospho")
 def test_peptideatlas_phospho_snapshot_round_trip(tmp_path, regenerate_snapshots):
     """Parse the raw fixture zip, build peptideatlas:phospho from it, and assert
     schema and sample-row stability against committed snapshots."""

@@ -41,6 +41,7 @@ _UCSC_CASES = [
         _SNAPSHOT_ROOT / "ucsc-cellbrowser",
         "ucsc-cellbrowser:default",
         {},
+        marks=pytest.mark.round_trip("ucsc-cellbrowser:default"),
         id="asp_2019-celltype-summary",
     ),
     pytest.param(
@@ -53,6 +54,7 @@ _UCSC_CASES = [
         _SNAPSHOT_ROOT / "ucsc-cellbrowser-adult-ctx",
         "ucsc-cellbrowser:adult-ctx",
         {},
+        marks=pytest.mark.round_trip("ucsc-cellbrowser:adult-ctx"),
         id="adult-ctx-meta-atlas-class-summary",
     ),
     pytest.param(
@@ -65,6 +67,7 @@ _UCSC_CASES = [
         _SNAPSHOT_ROOT / "ucsc-cellbrowser-dev-ctx",
         "ucsc-cellbrowser:dev-ctx",
         {},
+        marks=pytest.mark.round_trip("ucsc-cellbrowser:dev-ctx"),
         id="dev-ctx-meta-atlas-type-v2-summary",
     ),
 ]

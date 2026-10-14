@@ -53,6 +53,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("gnomad-metrics:metrics")
 @pytest.mark.hail
 def test_gnomad_metrics_snapshot_round_trip(
     hail_session, tmp_path, regenerate_snapshots

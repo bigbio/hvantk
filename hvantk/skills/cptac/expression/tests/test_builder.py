@@ -108,6 +108,7 @@ def _build_for_snapshot(expression_path, **call_kwargs):
     return artifact.to_anndata()
 
 
+@pytest.mark.round_trip("cptac:expression")
 def test_cptac_expression_snapshot_round_trip(tmp_path, regenerate_snapshots):
     """Build CPTAC expression from fixture; assert schema and sample-row stability."""
     if regenerate_snapshots:

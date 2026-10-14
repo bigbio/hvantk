@@ -46,4 +46,7 @@ jobs:
           ruff check . --exit-zero --statistics --preview
       - name: Test with pytest
         run: |
-          pytest
+          # --require-round-trips fails the run if a @pytest.mark.round_trip(...) test
+          # (every non-hail-backed dataset's round trip runs in this default selection)
+          # ends skipped or xfailed, which a static check cannot see (#432).
+          pytest --require-round-trips

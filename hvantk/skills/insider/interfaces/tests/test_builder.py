@@ -30,6 +30,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("insider:interfaces")
 @pytest.mark.hail
 def test_insider_interfaces_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build the interface reduction from fixture; assert schema + sample-row stability."""

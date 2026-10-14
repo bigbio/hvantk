@@ -32,6 +32,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("msigdb:genesets")
 @pytest.mark.hail
 def test_msigdb_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build MSigDB from fixture; assert schema and sample-row stability."""

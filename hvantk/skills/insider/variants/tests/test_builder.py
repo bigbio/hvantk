@@ -38,6 +38,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("insider:variants")
 @pytest.mark.hail
 def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build INSIDER BED from fixture; assert schema and sample-row stability."""

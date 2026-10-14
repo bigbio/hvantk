@@ -39,6 +39,7 @@ SAMPLE_KEYS = [
 ]
 
 
+@pytest.mark.round_trip("gevir:metrics")
 @pytest.mark.hail
 def test_gevir_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GeVIR from fixture; assert schema and sample-row stability."""
