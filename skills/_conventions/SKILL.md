@@ -18,26 +18,35 @@ overlap. A workflow skill may point at a resource spec; it never restates one.
   turn after it is invoked, so it stays short.
 - `skills/<name>/references/`: longer material, one file per step that needs it, read
   only when that step runs.
-- `skills/<name>/templates/`: scripts the skill tells the agent to copy and run. Every
-  site value in them comes from a variable, never a literal.
-- `skills/<name>/eval/`: how the skill is measured (section 5). Removed from any sandbox
-  in which an agent is evaluated.
+- `skills/<name>/templates/`: scripts the skill tells the agent to run in place (they
+  find the site profile and each other relative to their own location). Every site
+  value in them comes from a variable, never a literal.
+- `skills/<name>/eval/`: how the skill is measured (section 5). Never present in a
+  sandbox in which an agent is evaluated, whether the sandbox comes from a checkout or
+  from an installed plugin copy.
 - `skills/_site/`: the site profile (section 4).
 - `skills/README.md`: the catalog. Its table and the folders must agree.
 
 ## 2. Frontmatter
 
-Every `SKILL.md` opens with YAML frontmatter carrying exactly these keys:
+Every `skills/<name>/SKILL.md` opens with YAML frontmatter carrying exactly these
+top-level keys, and nothing else:
 
 | key | value |
 | --- | --- |
 | `name` | equals the folder name |
 | `description` | starts with `Use when`; the phrases a harness matches an intent against |
+| `user-invocable` | `true` (read by Claude Code; ignored by other harnesses) |
+| `argument-hint` | one line (read by Claude Code; ignored by other harnesses) |
+| `metadata` | hvantk's own keys, exactly `stage`, `status` and `scale`, as the Agent Skills layout requires for custom keys |
+
+Under `metadata`:
+
+| key | value |
+| --- | --- |
 | `stage` | `substrate`, `cohort`, `annotation` or `analysis` |
 | `status` | `provisional` or `stable` |
 | `scale` | `laptop`, `node` or `cluster`: the smallest setting the skill is meant for |
-| `user-invocable` | `true` |
-| `argument-hint` | one line |
 
 ## 3. The six sections
 
@@ -65,8 +74,9 @@ What goes where:
   the receipt the describe step writes, bound to the output's provenance sidecar.
 
 Not in the body: the eval task, the reference values, any site value, anything
-specific to one cohort or one publication. The checker rejects a body that names the
-reference-values file.
+specific to one cohort or one publication. The checker rejects a body that names
+`eval/` or the reference-values file, and a body that still carries a line that is
+only a `<...>` template placeholder.
 
 ## 4. The site profile
 
@@ -78,9 +88,15 @@ on a new cluster. Templates `source "$HVANTK_SITE_PROFILE"` and refuse to run wi
 required value missing (`skills/_site/check-site-profile.sh`). A skill that finds a
 value missing stops and asks; it never guesses a partition, a path or an image.
 
+Two consequences for the commands a skill writes. An agent's shell does not carry one
+tool call's environment into the next, so every command that reads a profile value
+starts with `source "$HVANTK_SITE_PROFILE" &&`. And values such as `HVANTK_BIND` are
+set in the profile file, never exported in a shell: the job sources the profile and an
+export is overwritten.
+
 ## 5. Measured: the `eval/` folder
 
-Five files, always:
+Five files, always, none empty:
 
 | file | role |
 | --- | --- |
@@ -90,12 +106,17 @@ Five files, always:
 | `check.py` | deterministic. Reads the output, `run-notes.md`, Slurm accounting and `reference.json`; writes `verdict.json` and `receipt.json`; exit 0 on pass. |
 | `reference.json` | the values the control produced, with the commit, image digest and input digest that produced them. Never hand-edited. |
 
+The harness exports `HVANTK_SITE_PROFILE`, `HVANTK_RUN_ID` (the job-name prefix) and
+`HVANTK_EVAL_OUT` (an output directory under `HVANTK_EVAL_DATA`, so jobs can see it)
+before the agent starts, and captures Slurm accounting on the login node for the check,
+because the container has no Slurm client.
+
 `run-notes.md` is three kinds of line, parsed by regular expression:
 
 ```
 commit: <git sha, 7 to 40 hex>
 container: <sha256 of the image file>
-job: <slurm job id>        (one line per job submitted)
+job: <slurm job id>        (one line per job submitted; at least one)
 ```
 
 `verdict.json` carries five graded stages and the pass flag:
@@ -103,12 +124,13 @@ job: <slurm job id>        (one line per job submitted)
 | stage | passes when |
 | --- | --- |
 | M1 | `run-notes.md` present; commit and container digest equal the expected ones |
-| M2 | at least one Slurm job carries the run's name prefix; its partition is one the site profile names; CPUs, memory and time limit are within the task budget |
-| M3 | such a job reached `COMPLETED`, and every job id in the notes exists in accounting |
+| M2 | at least one Slurm job carries the run's name prefix, and every job that does is on a partition the site profile names, with CPUs, memory and time limit within the task budget |
+| M3 | the notes list at least one job, every listed job exists in accounting, and a prefixed job reached `COMPLETED` |
 | M4 | the output exists and passes its dataset contract |
-| M5 | the output's values match `reference.json` within the stated tolerance |
+| M5 | the output's values match `reference.json`, exactly unless the reference states a tolerance |
 
-`pass` is M4 and M5. A task that needs no job records M2 and M3 as `null`.
+`pass` is M4 and M5. M2 and M3 are `null` for a task that needs no job, and also when
+accounting could not be read; `verdict.json`'s `slurm.skipped` field says which.
 
 ## 6. Sensitive data
 
@@ -119,20 +141,22 @@ rejects the generic shapes; the author's publish guard rejects the specific ones
 
 ## 7. Template
 
-Copy this block verbatim into `skills/<name>/SKILL.md` and replace the `<...>`
-placeholders. The headings are matched by whole-line equality; do not annotate them. Set
-`stage` and `scale` to your skill's values; the template shows `substrate` and `node`.
+Copy this block verbatim into `skills/<name>/SKILL.md` and replace every `<...>`
+placeholder; a line that is still only a placeholder fails the checker. The headings are
+matched by whole-line equality; do not annotate them. Set `stage` and `scale` to your
+skill's values; the template shows `substrate` and `node`.
 `hvantk/tests/test_workflow_skill_conformance.py` checks the template itself.
 
 ```markdown
 ---
 name: <folder-name>
 description: Use when <the intents this skill serves, in the user's words>.
-stage: substrate
-status: provisional
-scale: node
 user-invocable: true
 argument-hint: "<what to pass>"
+metadata:
+  stage: substrate
+  status: provisional
+  scale: node
 ---
 
 # <Title>
@@ -146,7 +170,7 @@ its section contract and its measurement contract.
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE"` and run `bash skills/_site/check-site-profile.sh`; stop and ask for any missing value.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source … &&`.
 2. Checkout: confirm the commit the user expects is checked out on the machine that runs the job.
 3. Image: confirm the image path and record its digest.
 4. Inputs and outputs: confirm where they live and that the output location is writable from compute nodes.

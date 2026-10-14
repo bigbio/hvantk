@@ -1,11 +1,12 @@
 ---
 name: hpc-hail-job
 description: 'Use when running any Hail-backed hvantk command (reprocess, hgc, annotate, cohort, qtlcascade, utils check-install) on a Slurm cluster from the container image: sizing one node, node-local scratch, submitting, waiting, triaging a pending or failed job, and verifying the output. Also when a Hail job dies with "Connection refused", "Failed to create any local dir", a cgroup out-of-memory kill, or "Executor heartbeat timed out".'
-stage: substrate
-status: provisional
-scale: node
 user-invocable: true
 argument-hint: "<hvantk subcommand and its arguments> [--cpus N --mem-gb G --time D-HH:MM:SS]"
+metadata:
+  stage: substrate
+  status: provisional
+  scale: node
 ---
 
 # Run a Hail-backed hvantk command as a Slurm job
@@ -31,9 +32,10 @@ run fine through the same template, with a small request).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE"` and run
-   `bash skills/_site/check-site-profile.sh`. If it reports a missing value, stop and
-   ask the user for it. Never guess a partition, a path or an image. Values such as
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`.
+   If it reports a missing value, stop and ask the user for it. One tool call's
+   environment does not survive into the next, so every later command that reads a
+   profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`. Never guess a partition, a path or an image. Values such as
    `HVANTK_SCRATCH_ROOT` and `HVANTK_BIND` are set in that file, not exported in your
    shell: the job sources the profile and an export is overwritten.
 2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`.
@@ -62,7 +64,7 @@ run fine through the same template, with a small request).
      hvantk download <source> --help   # each source has its own output option; put raw files under "$HVANTK_WORK/raw/<source>/"
    ```
 6. Once per image and node type, prove the stack works:
-   `bash skills/hpc-hail-job/templates/submit-hail-job.sh --name <run>-check --cpus 4 --mem-gb 16 --time 0-00:20:00 --wait -- hvantk utils check-install`
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-check --cpus 4 --mem-gb 16 --time 0-00:20:00 --wait -- hvantk utils check-install`
    must print the Hail version and pass its smoke test.
 
 ## 3. Procedure
@@ -74,7 +76,7 @@ run fine through the same template, with a small request).
 2. Dry-check the submission: the same command with `--dry-run` runs `sbatch --test-only`
    and prints the resolved request without submitting.
    ```bash
-   bash skills/hpc-hail-job/templates/submit-hail-job.sh --name <run>-<what> \
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-<what> \
      --cpus 4 --mem-gb 16 --time 0-00:30:00 --dry-run -- \
      hvantk reprocess gencc:submissions --raw-dir "$HVANTK_WORK/raw/gencc" \
        --output "$HVANTK_WORK/out/gencc.ht" --skip-download --no-check-drift
@@ -87,7 +89,7 @@ run fine through the same template, with a small request).
    state is `COMPLETED`. A foreground wait outlives most tool timeouts, so run it in
    the background and poll:
    ```bash
-   nohup bash skills/hpc-hail-job/templates/submit-hail-job.sh --name <run>-<what> ... --wait -- ... > <run>-<what>.submit.log 2>&1 &
+   nohup bash -c 'source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-<what> ... --wait -- ...' > <run>-<what>.submit.log 2>&1 &
    squeue -j <id> -o "%i %j %T %M %L %R"           # while it runs
    sacct -j <id> -X -o JobID,JobName%30,State,ExitCode,Elapsed,ReqMem,AllocCPUS   # when it is gone
    ```
@@ -183,7 +185,7 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
    sidecar `<output>.provenance.json` exists and names the `schema_id` you expected.
 3. Describe the table inside the image and write the receipt:
    ```bash
-   bash skills/hpc-hail-job/templates/submit-hail-job.sh --name <run>-describe \
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-describe \
      --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/hpc-hail-job/templates/hail-describe.py" \
        "$HVANTK_WORK/out/gencc.ht" --receipt "$HVANTK_WORK/out/gencc.receipt.json"

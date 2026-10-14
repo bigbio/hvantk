@@ -34,15 +34,16 @@ WORKFLOW_SECTIONS: tuple[str, ...] = (
     "## 5. Traps",
     "## 6. Verification",
 )
+#: Top-level frontmatter keys, exactly: the two the Agent Skills layout requires, the
+#: two Claude Code reads, and ``metadata`` for hvantk's own routing keys.
 REQUIRED_FRONTMATTER: tuple[str, ...] = (
     "name",
     "description",
-    "stage",
-    "status",
-    "scale",
     "user-invocable",
     "argument-hint",
+    "metadata",
 )
+METADATA_KEYS: tuple[str, ...] = ("stage", "status", "scale")
 STAGES = {"substrate", "cohort", "annotation", "analysis"}
 STATUSES = {"provisional", "stable"}
 SCALES = {"laptop", "node", "cluster"}
@@ -53,7 +54,9 @@ EVAL_FILES: tuple[str, ...] = (
     "check.py",
     "reference.json",
 )
-_LOCAL_REF = re.compile(r"`((?:references|templates|eval)/[^`\s]+)`")
+_LOCAL_REF = re.compile(r"`((?:references|templates)/[^`\s]+)`")
+#: A line that is nothing but an angle-bracket placeholder, optionally as a list item.
+_PLACEHOLDER_LINE = re.compile(r"^\s*(?:[-*]\s+|\d+\.\s+)?<[^<>\n]+>\.?\s*$", re.M)
 
 
 def iter_workflow_skills(root: Path = SKILLS_DIR):
@@ -64,7 +67,11 @@ def iter_workflow_skills(root: Path = SKILLS_DIR):
 
 
 def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]:
-    """Contract violations for one workflow ``SKILL.md``; empty means conforming."""
+    """Contract violations for one workflow ``SKILL.md``; empty means conforming.
+
+    ``require_files=False`` is for the copy-me template in ``_conventions``: it still
+    carries its ``<...>`` placeholders and has no folder of its own.
+    """
     problems: list[str] = []
     text = path.read_text()
     fm = parse_frontmatter(text)
@@ -76,6 +83,12 @@ def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]
     absent = [k for k in REQUIRED_FRONTMATTER if k not in fm or fm[k] in ("", None)]
     if absent:
         problems.append(f"frontmatter missing or empty: {', '.join(absent)}")
+    extra = sorted(set(fm) - set(REQUIRED_FRONTMATTER))
+    if extra:
+        problems.append(
+            f"frontmatter has keys outside the contract: {', '.join(extra)} "
+            "(hvantk keys go under metadata)"
+        )
     if fm.get("name") != path.parent.name:
         problems.append(
             f"frontmatter name {fm.get('name')!r} must equal the folder name "
@@ -83,14 +96,23 @@ def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]
         )
     if not str(fm.get("description", "")).startswith("Use when"):
         problems.append("description must start with 'Use when' (it is the trigger)")
-    if fm.get("stage") not in STAGES:
-        problems.append(f"stage must be one of {sorted(STAGES)}")
-    if fm.get("status") not in STATUSES:
-        problems.append(f"status must be one of {sorted(STATUSES)}")
-    if fm.get("scale") not in SCALES:
-        problems.append(f"scale must be one of {sorted(SCALES)}")
     if fm.get("user-invocable") is not True:
         problems.append("user-invocable must be true")
+    meta = fm.get("metadata")
+    if not isinstance(meta, dict):
+        problems.append("metadata must be a mapping with stage, status and scale")
+        meta = {}
+    extra_meta = sorted(set(meta) - set(METADATA_KEYS))
+    if extra_meta:
+        problems.append(
+            f"metadata has keys outside the contract: {', '.join(extra_meta)}"
+        )
+    if meta.get("stage") not in STAGES:
+        problems.append(f"metadata.stage must be one of {sorted(STAGES)}")
+    if meta.get("status") not in STATUSES:
+        problems.append(f"metadata.status must be one of {sorted(STATUSES)}")
+    if meta.get("scale") not in SCALES:
+        problems.append(f"metadata.scale must be one of {sorted(SCALES)}")
 
     headings = _body_heading_lines(text)
     positions = []
@@ -104,12 +126,18 @@ def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]
         if ordered != list(WORKFLOW_SECTIONS):
             problems.append("required sections are out of order")
     for section in WORKFLOW_SECTIONS:
-        if section in headings and _is_placeholder_body(_section_body(text, section)):
+        if section not in headings:
+            continue
+        body = _section_body(text, section)
+        if _is_placeholder_body(body):
             problems.append(f"{section!r} has no real body")
+        elif require_files and _PLACEHOLDER_LINE.search(body):
+            problems.append(f"{section!r} still contains a template placeholder line")
 
-    if "reference.json" in text:
+    if "reference.json" in text or re.search(r"\beval/", text):
         problems.append(
-            "SKILL.md names reference.json; eval material stays out of the skill body"
+            "SKILL.md names eval material (eval/ or reference.json); it stays out of "
+            "the skill body"
         )
 
     if require_files:
@@ -118,8 +146,9 @@ def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]
                 problems.append(f"body names {rel} but the file does not exist")
         eval_dir = path.parent / "eval"
         for name in EVAL_FILES:
-            if not (eval_dir / name).is_file():
-                problems.append(f"eval/{name} is missing")
+            f = eval_dir / name
+            if not f.is_file() or f.stat().st_size == 0:
+                problems.append(f"eval/{name} is missing or empty")
     return problems
 
 
@@ -163,6 +192,19 @@ def test_the_shipped_template_satisfies_its_own_checker(tmp_path):
     (folder / "SKILL.md").write_text(blocks[0])
     problems = check_workflow_skill(folder / "SKILL.md", require_files=False)
     assert problems == [], "\n  ".join(problems)
+
+
+def test_an_unfilled_copy_of_the_template_is_rejected(tmp_path):
+    """Copying the template and changing only the name must not pass."""
+    conventions = (SKILLS_DIR / "_conventions" / "SKILL.md").read_text()
+    block = re.findall(r"```markdown\n(.*?)```", conventions, re.S)[0]
+    folder = tmp_path / "copied-skill"
+    (folder / "eval").mkdir(parents=True)
+    for name in EVAL_FILES:
+        (folder / "eval" / name).write_text("x\n")
+    (folder / "SKILL.md").write_text(block.replace("<folder-name>", "copied-skill", 1))
+    problems = check_workflow_skill(folder / "SKILL.md")
+    assert any("template placeholder line" in p for p in problems), problems
 
 
 def test_readme_catalog_matches_the_folders():

@@ -26,14 +26,18 @@ and evaluation, and the QTL cascade.
 **Claude Code**, from the repository:
 
 ```text
-/plugin marketplace add bigbio/hvantk
-/plugin install hvantk@hvantk
+/plugin install hvantk --marketplace bigbio/hvantk
 ```
+
+or, on older Claude Code releases, in two steps: `/plugin marketplace add bigbio/hvantk`
+then `/plugin install hvantk@hvantk`.
 
 or from a checkout, for development: `claude --plugin-dir /path/to/hvantk`.
 
-**Other agent harnesses** that implement the Agent Skills layout: point them at this
-`skills/` folder, or symlink it into their skills path.
+**Other agent harnesses** that read the Agent Skills layout: point them at this
+`skills/` folder, or symlink it into their skills path. hvantk's own keys sit under
+`metadata`, as the layout requires; the two Claude Code keys (`user-invocable`,
+`argument-hint`) are ignored by other harnesses.
 
 ## Before the first run: the site profile
 

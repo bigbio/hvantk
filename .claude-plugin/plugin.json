@@ -1,11 +1,9 @@
 {
   "name": "hvantk",
-  "version": "0.5.0",
   "description": "Workflow skills for driving hvantk analyses with a coding agent: run Hail-backed hvantk commands on a Slurm cluster from the container image. More skills follow the same contract.",
   "author": {
     "name": "bigbio"
   },
   "homepage": "https://github.com/bigbio/hvantk",
-  "license": "MIT",
-  "hooks": "./hvantk/skills/_hooks/hooks.json"
+  "license": "MIT"
 }

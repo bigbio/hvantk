@@ -17,7 +17,7 @@ that meets an empty value stops and asks the user. It never guesses.
 | `HVANTK_SIF` | the container image built from the repo's lock file | wherever you built or copied it; a symlink to the current image is fine |
 | `HVANTK_CPU_PARTITION` | partition for single-node CPU jobs | `sinfo -s` lists partitions; your site docs say which is for general CPU work |
 | `HVANTK_NODE_CPUS` | cores on one node of that partition | `sinfo -p <partition> -o "%c %m %l"` |
-| `HVANTK_NODE_MEM_GB` | memory on one node of that partition, in GB | same command, second column (MB) |
+| `HVANTK_NODE_MEM_GB` | memory on one node of that partition, in GB | same command, second column, which Slurm prints in MiB: divide by 1024 and round down |
 | `HVANTK_WORK` | large project or work storage, writable from compute nodes | your site docs; often a `$WORK` or `$PROJECT` variable |
 
 ## Optional

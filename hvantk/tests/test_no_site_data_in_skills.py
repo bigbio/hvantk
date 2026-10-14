@@ -30,16 +30,17 @@ TEXT_SUFFIXES = {
     ".txt",
     ".toml",
 }
+#: The one file the scan skips: the filled site profile, which ``.gitignore`` ignores.
+SKIPPED_FILES = {"site-profile.local.sh"}
 
 #: Public hosts a skill may legitimately name. Add to this list on purpose, never a
-#: cluster, institute or personal host.
+#: cluster, institute or personal host, and never a host because an address uses it.
 ALLOWED_HOSTS = {
     "github.com",
     "raw.githubusercontent.com",
     "storage.googleapis.com",
     "www.genenames.org",
     "genenames.org",
-    "hail.is",
     "docs.anthropic.com",
     "anthropic.com",
     "claude.com",
@@ -48,9 +49,6 @@ ALLOWED_HOSTS = {
     "example.com",
     "ensembl.org",
     "ftp.ensembl.org",
-    "ebi.ac.uk",
-    "ftp.ebi.ac.uk",
-    "proot.gitlab.io",
     "apptainer.org",
     "sylabs.io",
     "slurm.schedmd.com",
@@ -58,18 +56,25 @@ ALLOWED_HOSTS = {
     "python.org",
     "readthedocs.io",
 }
+#: The only domains an e-mail address may use: placeholders.
+ALLOWED_EMAIL_DOMAINS = {"example.org", "example.com"}
 
-_HOME_PATH = re.compile(r"(?<![\w/])/(?:Users|home|user)/[A-Za-z0-9._-]+")
-_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)")
-_SSH_USER_AT = re.compile(r"\bssh\s+(?:-\S+\s+)*[A-Za-z0-9._-]+@")
-_SBATCH_SITE_DIRECTIVE = re.compile(
-    r"#SBATCH\s+--(?:partition|account|mail-user|qos)\b"
+_HOME_PATH = re.compile(
+    r"(?<![\w/])/(?:Users|home|user|work|scratch|gpfs|lustre)/[A-Za-z][A-Za-z0-9._-]*"
 )
-_LITERAL_PARTITION = re.compile(r"--(?:partition|account|qos)=(?!['\"]?[$<{])\S+")
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)")
+_REMOTE_USER_AT = re.compile(r"\b(?:ssh|scp|rsync)\b[^\n@]*\s[A-Za-z0-9._-]+@")
+_SBATCH_SITE_DIRECTIVE = re.compile(
+    r"#SBATCH\s+(?:--(?:partition|account|mail-user|qos)\b|-[pAq]\b)"
+)
+_LITERAL_LONG_FLAG = re.compile(r"--(?:partition|account|qos)[= ](?!['\"]?[$<{])\S+")
+_LITERAL_SHORT_FLAG = re.compile(
+    r"\b(?:sbatch|srun|salloc|sinfo|squeue)\b[^\n]*?\s-[pAq]\s*(?!['\"]?[$<{])\S+"
+)
 _MAIL_USER = re.compile(r"--mail-user[= ](?!['\"]?[$<])\S+")
 _HOST = re.compile(
     r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
-    r"(?:ac\.uk|de|edu|org|com|net|eu|uk|io|fr|ch|nl|it|es)\b"
+    r"(?:ac\.uk|de|edu|org|com|net|eu|uk|io|fr|ch|nl|it|es|se|dk|at|be|fi|no|pl|us|ca|au|gov)\b"
 )
 
 
@@ -79,18 +84,22 @@ def findings_in(text: str) -> list[str]:
     for m in _HOME_PATH.finditer(text):
         out.append(f"home-path: {m.group(0)}")
     for m in _EMAIL.finditer(text):
-        if m.group(1).lower() not in ALLOWED_HOSTS:
+        if m.group(1).lower() not in ALLOWED_EMAIL_DOMAINS:
             out.append(f"email: {m.group(0)}")
-    for m in _SSH_USER_AT.finditer(text):
+    for m in _REMOTE_USER_AT.finditer(text):
         out.append(f"ssh-user-at-host: {m.group(0)}")
     for m in _SBATCH_SITE_DIRECTIVE.finditer(text):
         out.append(f"sbatch-site-directive: {m.group(0)}")
-    for m in _LITERAL_PARTITION.finditer(text):
+    for m in _LITERAL_LONG_FLAG.finditer(text):
+        out.append(f"literal-site-flag: {m.group(0)}")
+    for m in _LITERAL_SHORT_FLAG.finditer(text):
         out.append(f"literal-site-flag: {m.group(0)}")
     for m in _MAIL_USER.finditer(text):
         out.append(f"mail-user: {m.group(0)}")
-    for m in _HOST.finditer(text):
-        host = m.group(0).lower()
+    for m in _HOST.finditer(text.lower()):
+        host = m.group(0)
+        if host.startswith("hvantk."):  # dotted module names, not hosts
+            continue
         if host not in ALLOWED_HOSTS and not any(
             host.endswith("." + a) for a in ALLOWED_HOSTS
         ):
@@ -107,7 +116,7 @@ def scanned_files() -> list[Path]:
         for p in sorted(root.rglob("*")):
             if not p.is_file() or p.suffix not in TEXT_SUFFIXES:
                 continue
-            if ".local." in p.name:  # the filled site profile, gitignored
+            if p.name in SKIPPED_FILES:
                 continue
             files.append(p)
     return files
@@ -123,14 +132,23 @@ def scanned_files() -> list[Path]:
         ("see /Users/someone/projects/x", "home-path"),
         ("cd /home/someone/work", "home-path"),
         ("ls /user/someone/git", "home-path"),
+        ("data under /scratch/someone/x", "home-path"),
         ("mail someone@institute.example.net", "email"),
+        ("contact someone@github.com", "email"),
         ("ssh someone@login1", "ssh-user-at-host"),
+        ("ssh -p 22 someone@login1", "ssh-user-at-host"),
+        ("rsync -av out/ someone@login1:/data", "ssh-user-at-host"),
         ("#SBATCH --partition=batch", "sbatch-site-directive"),
+        ("#SBATCH -p batch", "sbatch-site-directive"),
+        ("#SBATCH -A proj123", "sbatch-site-directive"),
         ("#SBATCH --mail-user=x", "sbatch-site-directive"),
         ("sbatch --partition=batch job.sbatch", "literal-site-flag"),
+        ("sbatch --partition batch job.sbatch", "literal-site-flag"),
+        ("sbatch -p batch job.sbatch", "literal-site-flag"),
         ("sbatch --account=proj123 job.sbatch", "literal-site-flag"),
         ("--mail-user=someone@institute.example.net", "mail-user"),
         ("copy to login.cluster.institute.de", "host"),
+        ("copy to Login.Cluster.Institute.DE", "host"),
     ],
 )
 def test_each_rule_fires_on_its_shape(text, rule):
@@ -143,14 +161,19 @@ def test_each_rule_fires_on_its_shape(text, rule):
         "write under $HVANTK_WORK/out",
         'sbatch --partition="$HVANTK_CPU_PARTITION" job.sbatch',
         "sbatch --partition=$HVANTK_CPU_PARTITION job.sbatch",
+        'sbatch --partition "${HVANTK_FAT_PARTITION:-$HVANTK_CPU_PARTITION}" --exclusive',
         "sbatch --partition=<your partition> job.sbatch",
+        'sinfo -p <partition> -o "%c %m"',
+        'squeue -p "$HVANTK_CPU_PARTITION" --start -j <id>',
+        'mkdir -p "$HVANTK_WORK/out"',
         'ssh "$HPC_ALIAS" true',
         "export SLURM_EMAIL_NOTIFICATION=you@example.org",
+        '--mail-user="$SLURM_EMAIL_NOTIFICATION"',
         "https://github.com/bigbio/hvantk",
         "https://storage.googleapis.com/public-download-files/x",
+        "from hvantk.core.io import load_native",
         "hgnc.ht and hgnc.ht.provenance.json",
         "site-profile.local.sh",
-        '--mail-user="$SLURM_EMAIL_NOTIFICATION"',
     ],
 )
 def test_placeholder_forms_are_clean(text):
@@ -159,9 +182,9 @@ def test_placeholder_forms_are_clean(text):
 
 def test_scanner_sees_the_skills_tree():
     """Guard the guard: an empty file list would make the tree test vacuous."""
-    assert any("skills" in p.parts for p in scanned_files()), (
-        "no files found under skills/"
-    )
+    assert any(
+        p.relative_to(REPO_ROOT).parts[0] == "skills" for p in scanned_files()
+    ), "no files found under skills/"
 
 
 def test_no_site_data_in_skills_tree():

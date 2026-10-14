@@ -21,6 +21,7 @@ if (( ${#missing[@]} )); then
 fi
 [[ -d "$HVANTK_REPO" ]] || { echo "ERROR: HVANTK_REPO is not a directory: $HVANTK_REPO" >&2; exit 1; }
 [[ -e "$HVANTK_SIF" ]]  || { echo "ERROR: HVANTK_SIF not found: $HVANTK_SIF" >&2; exit 1; }
+[[ -d "$HVANTK_WORK" ]] || { echo "ERROR: HVANTK_WORK is not a directory: $HVANTK_WORK" >&2; exit 1; }
 [[ "$HVANTK_NODE_CPUS" =~ ^[0-9]+$ && "$HVANTK_NODE_MEM_GB" =~ ^[0-9]+$ ]] \
   || { echo "ERROR: HVANTK_NODE_CPUS and HVANTK_NODE_MEM_GB must be integers" >&2; exit 1; }
 echo "site profile OK: $HVANTK_SITE_PROFILE"

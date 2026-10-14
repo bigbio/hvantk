@@ -10,7 +10,9 @@ image, as a Slurm job. Do not run the build on the login node.
   `HVANTK_EVAL_DATA` is the site profile's value (default `$HVANTK_WORK/hvantk-eval`).
   Do not download anything; compute nodes have no internet access.
 - Write the dataset to `$HVANTK_EVAL_OUT/hgnc.ht`.
-- Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`.
+- Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`. The harness sets
+  `HVANTK_RUN_ID` and `HVANTK_EVAL_OUT` (a directory under `HVANTK_EVAL_DATA`, so jobs
+  can see it) in your environment before you start.
 - Budget per job: one node, at most 8 cores, 32 GB of memory, 30 minutes.
 - When the build has completed, write `$HVANTK_EVAL_OUT/run-notes.md` containing one
   line `commit: <git commit of the checkout>`, one line `container: <sha256 of the image

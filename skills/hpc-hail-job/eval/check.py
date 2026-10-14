@@ -8,7 +8,7 @@ Slurm client; without a file it tries ``sacct`` and records M2 and M3 as null wh
 is unavailable or fails.
 
     python check.py --output OUT.ht --run-notes NOTES.md --reference reference.json \
-        --run-id PREFIX --expect-commit SHA [--expect-sif-sha256 HEX] \
+        --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \
         [--sacct-file FILE | --since now-2days | --no-slurm] [--site-profile FILE] \
         [--expect-fail]
     python check.py --output OUT.ht --reference reference.json --write-reference \
@@ -152,8 +152,10 @@ def grade_slurm(
         within.append(ok)
     m2 = bool(jobs) and all(within)
     all_ids = {j["id"] for j in rows}
-    m3 = any(j["state"].startswith(SUCCESS_STATES) for j in jobs) and all(
-        n in all_ids for n in notes["jobs"]
+    m3 = (
+        bool(notes["jobs"])
+        and any(j["state"].startswith(SUCCESS_STATES) for j in jobs)
+        and all(n in all_ids for n in notes["jobs"])
     )
     return m2, m3, {"jobs": jobs, "within_budget": within}
 
@@ -238,6 +240,9 @@ def main() -> int:
     if args.write_reference:
         write_reference(args)
         return 0
+    for required in ("run_id", "expect_commit", "expect_sif_sha256"):
+        if not getattr(args, required):
+            ap.error(f"--{required.replace('_', '-')} is required when grading")
 
     output = Path(args.output)
     reference = json.loads(Path(args.reference).read_text())

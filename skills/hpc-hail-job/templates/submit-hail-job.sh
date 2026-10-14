@@ -2,7 +2,7 @@
 # Submit one hvantk command as a single-node Hail job.
 #
 #   submit-hail-job.sh [--name NAME] [--cpus N] [--mem-gb G] [--time D-HH:MM:SS]
-#                      [--partition P] [--exclusive] [--dry-run] [--wait]
+#                      [--partition <P>] [--exclusive] [--dry-run] [--wait]
 #                      -- <hvantk ...|python ...>
 #
 # Reads every site value from $HVANTK_SITE_PROFILE (skills/_site/SITE-PROFILE.md).
