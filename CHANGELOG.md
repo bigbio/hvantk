@@ -145,6 +145,11 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `drift_fingerprint_variants.json` (#444).
 - **Docs:** the README genesets row, the psroc page title, the Expression Atlas licence URI
   and the E-MTAB-6798 organism (#438).
+- **The README, the architecture guide and the architecture diagram said `skills/` imports
+  `algorithms/`**, which `hvantk/tests/test_dependency_directions.py` forbids. They now show
+  the enforced rule: `tools/` imports both, and `skills/` and `algorithms/` meet only through
+  `core/`. The diagram also lists the current tools and algorithms and `VariantMatrix`, and
+  the README states the real prerequisites (Java 8 or 11, Poetry 2) (#461).
 - **Fixture licences:** audited every plugin's test fixture except GeVIR's (handled in a
   separate pull request) for real-vs-synthetic status; added `THIRD_PARTY_DATA.md`
   entries for eight previously-undocumented real fixtures (ClinVar, gnomAD, GTEx, GWAS

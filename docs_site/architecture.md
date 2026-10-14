@@ -9,7 +9,7 @@ strict one-way dependency rule enforced by
 [`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
 <p align="center">
-  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ imports skills/, algorithms/ and core/; skills/ and algorithms/ import only core/ and never each other; resources/ sits at the substrate level alongside core/. Imports never flow upward." width="860">
 </p>
 
 `resources/` is a peer of `core/` (not a layer above it): both are
