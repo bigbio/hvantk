@@ -10,7 +10,7 @@ For downloading raw data files (built-in downloaders and manual steps), see [Dat
 
 ## 1) Build a dataset with `hvantk reprocess`
 
-Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and artifact contract. The single CLI entry point is `hvantk reprocess`.
+Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and dataset contract. The single CLI entry point is `hvantk reprocess`.
 
 ### Discover available datasets
 
