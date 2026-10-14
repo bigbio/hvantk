@@ -86,7 +86,7 @@
     <text x="500" y="146" text-anchor="middle">plugin.yaml manifest</text>
 
     <rect x="374" y="162" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="500" y="180" text-anchor="middle">builder.py → typed artifact</text>
+    <text x="500" y="180" text-anchor="middle">builder.py → dataset</text>
 
     <rect x="374" y="196" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
     <text x="500" y="214" text-anchor="middle">drift_probe.py</text>
@@ -184,7 +184,7 @@
 
     <rect x="64" y="510" width="436" height="64" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
     <text x="282" y="532" text-anchor="middle" font-weight="600">Provenance · BuildContext</text>
-    <text x="282" y="551" text-anchor="middle" font-size="10.5" fill="#6d28d9">required on every artifact</text>
+    <text x="282" y="551" text-anchor="middle" font-size="10.5" fill="#6d28d9">required on every dataset</text>
     <text x="282" y="565" text-anchor="middle" font-size="10.5" fill="#6d28d9">parents chained automatically by @algorithm</text>
 
     <rect x="508" y="510" width="438" height="64" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>

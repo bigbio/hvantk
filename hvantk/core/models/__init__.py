@@ -1,4 +1,4 @@
-"""Typed artifacts and the build-time helpers that stamp them.
+"""The four dataset types and the build-time helpers that stamp them.
 
 Every name below is resolved lazily (PEP 562). Importing them eagerly made the
 *package* import pull in pandas (via ``annotation_table``) and anndata (via

@@ -320,7 +320,7 @@ explicitly. Split it by action rather than copying it wholesale.
 | **Skip** (redundant) | uncompressed `.tsv` where a `.bgz` exists; raw dumps that a built `.h5ad` supersedes; duplicate `.gz` next to `.bgz` | don't copy |
 
 Net effect: physically move the experiment state and gated sources, refetch public
-bulk on the cluster, regenerate derived artifacts, and avoid copying redundancy.
+bulk on the cluster, regenerate derived datasets, and avoid copying redundancy.
 Globus is fast enough that transferring what you already have is often simpler than
 re-deriving it — decide per-subtree.
 
@@ -421,7 +421,7 @@ launching at scale.
   `poetry.lock` hash; a given `hvantk.sif` reproduces the exact Hail/numpy/native
   stack. Re-derive the image only by re-running `apptainer build` against the same
   lock.
-- **hvantk stamps provenance** on every artifact (`ctx.provenance(...)`) and has
+- **hvantk stamps provenance** on every dataset (`ctx.provenance(...)`) and has
   `hvantk drift` for source fingerprints — keep using both on-cluster so results
   carry their input lineage.
 - Treat scratch as ephemeral; the **project copy of outputs + the `.sif` + the git

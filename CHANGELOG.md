@@ -114,6 +114,11 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `hvantk download` with only a log line. It is the one plugins command whose exit code
   signals load failures: `plugins list` and `plugins describe` stay informational
   (`describe` exits 1 only for a provider that is unknown or failed to load) (#454).
+- **The docs say "dataset" where they said "typed artifact".** The README, CONTRIBUTING,
+  the docs site, the architecture diagram and a few docstrings now call what a build
+  produces a dataset, and `AnnotationTable`, `ExpressionMatrix`, `VariantMatrix` and
+  `GeneSet` the four dataset types. Code names, such as `Artifact` and the manifest's
+  `artifact_type`, are unchanged (#462).
 
 ### Fixed
 

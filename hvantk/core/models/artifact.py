@@ -1,4 +1,4 @@
-"""The ``Artifact`` union — a name for "one of the four typed artifacts".
+"""The ``Artifact`` union — a name for "one of the four dataset types".
 
 ``Artifact`` used to be a ``runtime_checkable`` Protocol here. Nothing ever
 imported it and nothing dispatched on it, so it was removed as dead code. But

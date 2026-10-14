@@ -138,7 +138,7 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
        )
    ```
    `BuildContext` (`ctx`) supplies plugin name, version, and source
-   fingerprint; the platform stamps Provenance and validates the artifact
+   fingerprint; the platform stamps Provenance and validates the dataset
    type / schema_id against `plugin.yaml`. **The CLI `hvantk reprocess` is
    the only public build path** — there is no separate programmatic API.
 

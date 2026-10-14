@@ -7,7 +7,7 @@ never a column in the cohort table. A collection also records where it came from
 which is exactly the provenance an informally-curated clinical panel most needs.
 
 Note this uses ``hvantk.core.utils.gene_sets.GeneSet`` (a plain named set inside a
-collection), NOT ``hvantk.core.models.GeneSet`` (the typed artifact). The two are
+collection), NOT ``hvantk.core.models.GeneSet`` (the dataset type). The two are
 unrelated classes that share a name.
 """
 

@@ -11,15 +11,15 @@
 **Hail-based toolkit for multi-omics variant annotation and analysis.**
 
 `hvantk` turns public omics resources (variants, genes, proteins and expression) into
-typed artifacts with provenance, and integrates them in analysis tools that help
+datasets with provenance, and integrates them in analysis tools that help
 interpret genetic variants. It uses [Hail](https://hail.is/) for genome-scale tables and
 [AnnData](https://anndata.readthedocs.io/) for expression matrices.
 
 - **Data-source plugins.** More than 20 [sources](docs_site/guide/data-sources.md), among
   them ClinVar, gnomAD, GTEx, UniProt and Expression Atlas. Each one builds with one
   command, `hvantk reprocess <provider>:<dataset>`.
-- **Provenance on every artifact.** A build records its source fingerprint, schema,
-  builder commit and parameters, and a derived artifact keeps its parents.
+- **Provenance on every dataset.** A build records its source fingerprint, schema,
+  builder commit and parameters, and a derived dataset keeps its parents.
 - **Drift detection.** `hvantk drift` compares a source's live fingerprint with the
   committed one. A scheduled job re-checks every source twice a month and opens pull
   requests for what changed.
@@ -88,7 +88,7 @@ and `hvantk utils` (format conversion, BGZF validation, install diagnostics).
 plus a substrate-level data registry (`resources/`). Imports flow one way, enforced by
 [`hvantk/tests/test_dependency_directions.py`](hvantk/tests/test_dependency_directions.py):
 `tools/` composes `skills/` and `algorithms/`, and those two never import each other.
-They meet only through `core/`'s typed artifacts.
+They meet only through the dataset types in `core/`.
 
 <p align="center">
   <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ imports skills/, algorithms/ and core/; skills/ and algorithms/ import only core/ and never each other; resources/ sits at the substrate level alongside core/. Imports never flow upward." width="860">
@@ -100,20 +100,21 @@ any algorithm, and `algorithms/` evolve without touching the adapters. `core/` a
 
 ### Data model
 
-Four artifact types live in [`hvantk/core/models/`](hvantk/core/models/), each backed by
+Four dataset types live in [`hvantk/core/models/`](hvantk/core/models/), each backed by
 a native engine:
 
-| Artifact | Backends | On-disk format | Used for |
+| Dataset type | Backends | On-disk format | Used for |
 |---|---|---|---|
 | [`AnnotationTable`](hvantk/core/models/annotation_table.py) | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
 | [`ExpressionMatrix`](hvantk/core/models/expression_matrix.py) | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
 | [`VariantMatrix`](hvantk/core/models/variant_matrix.py) | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | [`GeneSet`](hvantk/core/models/gene_set.py) | (in-memory `frozenset`) | `.geneset.json` | curated gene collections (ClinGen, GenCC, COSMIC CGC, MSigDB, …) |
 
-Every artifact carries a [`Provenance`](hvantk/core/models/provenance.py) record: the
-plugin, dataset and source fingerprint it came from, its schema id, the builder commit,
-build parameters and timestamp, and a `parents` chain. The `@algorithm` decorator stamps
-input provenances onto output artifacts, so the build graph is preserved end to end.
+Every dataset carries a [`Provenance`](hvantk/core/models/provenance.py) record: where it
+came from (its dataset id, such as `clinvar:variants`, and the source fingerprint), its
+schema id, the builder commit, build parameters and timestamp, and a `parents` chain. The
+`@algorithm` decorator stamps input provenances onto output datasets, so the build graph
+is preserved end to end.
 
 `AnnotationTable` exposes a portable query API (`filter`, `select`, `join`,
 `with_columns`, `group_by().agg()`) through the [`col(...)`](hvantk/core/models/_expr.py)
@@ -128,7 +129,7 @@ Each data source is a self-contained plugin under `hvantk/skills/<plugin>/`, dec
 probe and, where the source allows an automated fetch, its downloader. Sources behind a
 licence gate, or too large to mirror, document their acquisition instead.
 [`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) computes the source
-fingerprint, calls the builder, validates the artifact against the manifest's
+fingerprint, calls the builder, validates the built dataset against the manifest's
 `artifact_type` and `schema_id`, and saves it with a `.provenance.json` sidecar. The
 loader discovers manifests on its own; there is no registry to edit.
 
@@ -140,10 +141,10 @@ has the build sequence, an annotated `plugin.yaml`, the two-pass loader and the
 
 | Add | Where | Pattern |
 |---|---|---|
-| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns one of the four artifact types) + `drift_probe.py`. The loader discovers it. |
-| A new algorithm | `hvantk/algorithms/<domain>/` | Decorate with `@algorithm(name=…, backends=[…], inputs={…}, outputs={…})`. Operate on artifact inputs (or use `load_native` for Hail-heavy work). |
+| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns one of the four dataset types) + `drift_probe.py`. The loader discovers it. |
+| A new algorithm | `hvantk/algorithms/<domain>/` | Decorate with `@algorithm(name=…, backends=[…], inputs={…}, outputs={…})`. Operate on dataset inputs (or use `load_native` for Hail-heavy work). |
 | A new CLI command | `hvantk/tools/<domain>/` | Add the click command, a `.tool.yaml` manifest and an entry in `_LAZY_COMMANDS` in `hvantk/hvantk.py`, so the command's imports load only when it runs ([details](docs_site/architecture.md#adding-a-new-cli-command)). |
-| A new artifact format | `hvantk/core/io/_formats.py` + dispatch in `__init__.py` | Add `save_<artifact>_<ext>` / `load_<artifact>_<ext>`. |
+| A new on-disk format | `hvantk/core/io/_formats.py` + dispatch in `__init__.py` | Add `save_<type>_<ext>` / `load_<type>_<ext>`. |
 
 ## Documentation
 
