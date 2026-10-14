@@ -104,7 +104,7 @@ CPTAC publishes refreshed datasets through the `cptac` Python package. When a ne
 1. Run the drift probe: `python -c "from hvantk.skills.cptac.expression.drift_probe import fetch_fingerprint; print(fetch_fingerprint())"`. A change in `source_version` (the installed `cptac` package version) is the trigger.
 2. Re-download every cancer type of interest with `--overwrite` and spot-check sample / gene counts and `tissue_type` distributions against the previous build.
 3. If any new column shape appears from `get_proteomics()` (e.g. a different `Database_ID` convention), document it in § 4 and adjust `melt_proteomics_wide_to_long`.
-4. Re-regenerate `tests/drift_fingerprint.json` once the package version is updated.
+4. Regenerate `tests/drift_fingerprint.json` with `hvantk drift --regenerate cptac:expression --accepted-in "PR #N"` once the package version is updated, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
 
 ## 9. Validation contract
 

@@ -235,8 +235,11 @@ upstream under the same release.
    `hvantk download ensembl-structure --raw-dir <dir> --overwrite`, then
    `hvantk reprocess ensembl-gene:structure --raw-dir <dir> --output <out>.ht` end to end.
 5. **Regenerate the committed drift baseline,**
-   `structure/tests/drift_fingerprint.json`, once the change is validated -- not silently
-   in the same PR as a behavioural change (`_conventions` § 12).
+   `structure/tests/drift_fingerprint.json`, with
+   `hvantk drift --regenerate ensembl-gene:structure --accepted-in "PR #N"` once the change
+   is validated -- not silently in the same PR as a behavioural change -- and commit the
+   rebuild-ledger row it records with it (none for a `probe_version` change;
+   `_conventions` § 12).
 6. **Re-run both pin tests:**
    `hvantk/skills/ensembl_gene/tests/test_release_pin.py` and
    `hvantk/tests/test_ensembl_release_pin.py`. The second fails if

@@ -74,7 +74,7 @@ Triggered when a new gnomAD constraint release ships, or the drift probe reports
 
 1. `hvantk drift gnomad-metrics:metrics` compares live ETag/Content-Length/`x-goog-generation` per object against `tests/drift_fingerprint.json`. Because the compared surface lives entirely under `headers`, every drift event on this plugin is tiered `"schema"` (never `"routine"`) by `classify_risk` — see `_conventions` § 12 and the reasoning documented in `drift_probe.py`.
 2. If a genuinely new release adds/replaces an object path, update `GNOMAD_CONSTRAINT_TABLES` (and `DEFAULT_VERSION`/`DEFAULT_TABLE` if the default should move) in `shared/constants.py` — the drift probe's `OBJECT_PATHS` is derived from that constant, so no separate probe edit is needed.
-3. Regenerate the fingerprint with `hvantk drift --regenerate gnomad-metrics:metrics` after validating the change is a genuine upstream republish, not a probe artifact.
+3. Regenerate the fingerprint with `hvantk drift --regenerate gnomad-metrics:metrics --accepted-in "PR #N"` after validating the change is a genuine upstream republish, not a probe artifact, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
 4. If the header of the upstream TSV changed shape, regenerate `tests/snapshots/{schema,sample_rows}.json` with `pytest hvantk/skills/gnomad_metrics/tests -m hail --regenerate-snapshots` and review the diff before committing.
 
 ## 9. Validation contract

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import click
 
-from hvantk.core.plugin import drift_runner, loader as plugin_loader
+from hvantk.core.plugin import drift_ledger, drift_runner, loader as plugin_loader
 from hvantk.core.plugin.api import DriftProbeError, PluginLoadError
 
 
@@ -26,10 +26,10 @@ EXIT_REGISTRY_ERROR = 3
 # click.UsageError so it exits with this code rather than click's.
 EXIT_USAGE_ERROR = 4
 
-# hvantk/tools/plugins/drift_cli.py -> parents[2] is hvantk/, so this resolves to
-# hvantk/resources/drift_ledger.json -- the ledger the drift bot writes in the same
-# commit as the fingerprints it describes (see .github/scripts/drift_to_pr.py).
-LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.json"
+# hvantk/resources/drift_ledger.json: the rebuild ledger `--regenerate` and the drift bot
+# write (see hvantk/core/plugin/drift_ledger.py). Read from this module at call time, so
+# a test can point every ledger read and write here at a temporary file.
+LEDGER_PATH = drift_ledger.LEDGER_PATH
 
 
 def _usage_error(message: str) -> None:
@@ -55,7 +55,11 @@ def _usage_error(message: str) -> None:
 @click.option(
     "--regenerate",
     is_flag=True,
-    help="Overwrite drift_fingerprint.json with observed probe output",
+    help=(
+        "Overwrite drift_fingerprint.json with observed probe output, and record a "
+        "rebuild-ledger row if upstream materially changed (not for a first capture "
+        "or a probe_version change)"
+    ),
 )
 @click.option(
     "--timeout", default=60, show_default=True, help="Probe timeout in seconds"
@@ -73,10 +77,47 @@ def _usage_error(message: str) -> None:
     metavar="DATASET",
     help="Record DATASET as rebuilt now, clearing it from --ledger's stale list",
 )
+@click.option(
+    "--accepted-in",
+    "accepted_in",
+    default=None,
+    metavar="REF",
+    help=(
+        "With --regenerate: the PR or branch that accepts the new fingerprint, recorded "
+        f"in its rebuild-ledger row [default: {drift_ledger.MANUAL_ACCEPTED_IN}]"
+    ),
+)
+@click.option(
+    "--no-ledger-row",
+    "no_ledger_row",
+    is_flag=True,
+    help=(
+        "With --regenerate: write no rebuild-ledger row (the drift bot records its own "
+        "once its checks pass)"
+    ),
+)
 def drift_cmd(
-    dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag, mark_rebuilt
+    dataset,
+    all_flag,
+    domain,
+    as_json,
+    regenerate,
+    timeout,
+    ledger_flag,
+    mark_rebuilt,
+    accepted_in,
+    no_ledger_row,
 ):
     """Compare a plugin's live drift-probe fingerprint against the expected file."""
+    # Both only qualify --regenerate's ledger row, so on their own -- or with --ledger /
+    # --mark-rebuilt, which never regenerate -- they would be silently ignored.
+    if (accepted_in is not None or no_ledger_row) and not regenerate:
+        _usage_error("--accepted-in and --no-ledger-row only apply to --regenerate")
+    if accepted_in is not None and no_ledger_row:
+        _usage_error("--accepted-in and --no-ledger-row are mutually exclusive")
+    if accepted_in is not None and not accepted_in.strip():
+        _usage_error("--accepted-in needs a PR or branch name")
+
     if mark_rebuilt is not None:
         # A standalone action, like --regenerate: it takes its OWN dataset name, so a
         # positional `dataset` / --all / --regenerate alongside it would be ambiguous
@@ -96,6 +137,11 @@ def drift_cmd(
         except KeyError:
             click.echo(f"dataset not in ledger: {mark_rebuilt}", err=True)
             raise SystemExit(EXIT_REGISTRY_ERROR)
+        except drift_ledger.LedgerError as exc:
+            # Read leniently, a conflicted ledger looked empty and every name in it
+            # "was not in the ledger"; writing would have erased it. Nothing is touched.
+            click.echo(f"{exc}; nothing was written", err=True)
+            raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"marked rebuilt: {mark_rebuilt}")
         return
 
@@ -159,8 +205,21 @@ def drift_cmd(
             _usage_error("--regenerate requires a specific dataset name")
         if as_json:
             _usage_error("--regenerate does not support --json")
+        if not no_ledger_row:
+            # Before the probe runs: the row is written after the fingerprint, and a
+            # ledger that cannot be parsed must stop the regenerate while nothing has
+            # been rewritten yet, not after.
+            try:
+                drift_ledger.load_ledger(LEDGER_PATH, strict=True)
+            except drift_ledger.LedgerError as exc:
+                click.echo(
+                    f"{exc}; repair it before regenerating {dataset}. Nothing was "
+                    "written.",
+                    err=True,
+                )
+                raise SystemExit(EXIT_PROBE_FAILED)
         try:
-            _regenerate_fingerprint(reg, dataset, timeout=timeout)
+            previous, observed = _regenerate_fingerprint(reg, dataset, timeout=timeout)
         except KeyError:
             click.echo(f"unknown dataset: {dataset}", err=True)
             _echo_unknown_dataset_hint(reg)
@@ -205,6 +264,15 @@ def drift_cmd(
             )
             raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"regenerated: {dataset}")
+        if not no_ledger_row:
+            # Before the load-error exit below: the new baseline is already on disk, so
+            # its row belongs beside it whatever this run's exit code turns out to be.
+            _record_ledger_row(
+                dataset,
+                previous,
+                observed,
+                accepted_in or drift_ledger.MANUAL_ACCEPTED_IN,
+            )
         if load_errors:
             # The exit-code block below is never reached on this path, so the #351 guard
             # did not apply to --regenerate. Only units relevant to THIS dataset are in
@@ -348,9 +416,53 @@ def _echo_unknown_dataset_hint(reg) -> None:
         )
 
 
-def _regenerate_fingerprint(reg, dataset_name: str, *, timeout: int) -> None:
+def _regenerate_fingerprint(
+    reg, dataset_name: str, *, timeout: int
+) -> tuple[dict | None, dict]:
+    """Regenerate ``dataset_name``'s baseline; return (the baseline it replaced, the
+    new one). The old one is read first because the regenerate overwrites it, and the
+    ledger row depends on what actually changed."""
     spec = reg.get_dataset(dataset_name)
-    drift_runner.regenerate_fingerprint(spec, timeout=timeout)
+    previous = drift_ledger.read_baseline(Path(spec.test_paths.drift_fingerprint))
+    observed = drift_runner.regenerate_fingerprint(spec, timeout=timeout)
+    return previous, observed
+
+
+def _record_ledger_row(
+    dataset_name: str, previous: dict | None, observed: dict, accepted_in: str
+) -> None:
+    """Record the rebuild-ledger row for a regenerate that captured an upstream change,
+    or say why it recorded none (`drift_ledger.record_regeneration` decides).
+
+    The fingerprint is already rewritten when this runs, so a failed ledger write must
+    say so: a plain re-run would find the baseline unchanged and record nothing. Any
+    failure exits EXIT_PROBE_FAILED, never a traceback's 1 (== EXIT_DRIFTED), for the
+    reason the regenerate branch above gives.
+    """
+    try:
+        row, skipped = drift_ledger.record_regeneration(
+            dataset_name,
+            previous=previous,
+            regenerated=observed,
+            accepted_in=accepted_in,
+            path=LEDGER_PATH,
+        )
+    except Exception as exc:  # noqa: BLE001
+        click.echo(
+            f"the fingerprint for {dataset_name} was regenerated, but its rebuild-ledger "
+            f"row could not be written to {LEDGER_PATH}: {exc}. Restore the old "
+            "baseline and re-run, or the change goes unrecorded.",
+            err=True,
+        )
+        raise SystemExit(EXIT_PROBE_FAILED) from exc
+    if row is None:
+        click.echo(f"no ledger row recorded for {dataset_name}: {skipped}")
+        return
+    click.echo(
+        f"ledger row recorded for {dataset_name} (signal: {row['signal']}, "
+        f"accepted_in: {row['accepted_in']}); commit {LEDGER_PATH} with the "
+        "fingerprint"
+    )
 
 
 def _load_error_row(unit: str, exc: Exception) -> dict:
@@ -429,20 +541,10 @@ def _serialize(result: drift_runner.DriftResult) -> dict:
 
 
 def _load_ledger() -> dict:
-    """Read the ledger. A missing or corrupt file -- or JSON that parses but is not an
-    object (a truthy list, a bare string) -- yields {} rather than raising.
-    `json.loads(text) or {}` looks like it covers this, but `or` only substitutes on a
-    FALSY parse (`[]`, `0`, `""`, `null`); a populated list or non-empty string is
-    truthy and would pass straight through to `_stale_datasets`, which calls
-    `.items()` and raises `AttributeError` on anything that isn't a dict.
-    """
-    if not LEDGER_PATH.is_file():
-        return {}
-    try:
-        data = json.loads(LEDGER_PATH.read_text())
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    """Read the ledger at `LEDGER_PATH`. A missing or corrupt file -- or JSON that
+    parses but is not an object -- yields {}, so `_stale_datasets` never calls
+    `.items()` on a list (see `drift_ledger.load_ledger`)."""
+    return drift_ledger.load_ledger(LEDGER_PATH)
 
 
 def _parse_iso(s: str) -> datetime | None:
@@ -485,23 +587,9 @@ def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:
 
 
 def _mark_rebuilt(dataset_name: str) -> None:
-    """Set ``dataset_name``'s ledger entry ``rebuilt_at`` to now (UTC, ISO-8601) and
-    write the ledger back. Every other entry is copied through untouched.
+    """Set ``dataset_name``'s ``rebuilt_at`` to now in the ledger at `LEDGER_PATH`.
 
-    Raises ``KeyError`` if ``dataset_name`` has no ledger row -- the ledger is written
-    exclusively by the drift bot (``.github/scripts/drift_to_pr.py``) when a dataset
-    actually drifts, so a name absent from it never had a pending-rebuild signal to
-    clear. Silently fabricating a row instead would turn a typo'd dataset name (e.g.
-    a stray colon, or the singular/plural of a provider's dataset key) into a
-    phantom entry, while the real dataset the caller meant to clear stays stale and
-    the caller walks away believing it is handled -- fail loudly instead.
+    Raises ``KeyError`` when the dataset has no row and `drift_ledger.LedgerError` when
+    the ledger cannot be parsed; neither writes anything (see `drift_ledger.mark_rebuilt`).
     """
-    ledger = _load_ledger()
-    if dataset_name not in ledger:
-        raise KeyError(dataset_name)
-    updated = dict(ledger)
-    updated[dataset_name] = {
-        **ledger[dataset_name],
-        "rebuilt_at": datetime.now(timezone.utc).isoformat(),
-    }
-    LEDGER_PATH.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n")
+    drift_ledger.mark_rebuilt(dataset_name, path=LEDGER_PATH)

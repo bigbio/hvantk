@@ -360,22 +360,30 @@ def _current_umask() -> int:
 def write_fingerprint(path: Path, fingerprint: Mapping[str, Any]) -> None:
     """Write a fingerprint file atomically, in the byte format `--regenerate` always used.
 
-    Temp file in the SAME directory, then ``os.replace``: rename is atomic only within one
-    filesystem, and the drift bot runs ``--regenerate`` unattended, so an interrupted or
-    out-of-disk write must leave either the old baseline or the new one -- never a
-    truncated file, which is exactly the crash the baseline reader above now reports.
-    The serialisation is deliberately identical to what the CLI wrote before (indent=2,
-    default=str, no trailing newline) so regenerated files do not churn.
+    Atomic (see `atomic_write_text`) because the drift bot runs ``--regenerate``
+    unattended, so an interrupted or out-of-disk write must leave either the old baseline
+    or the new one -- never a truncated file, which is exactly the crash the baseline
+    reader above now reports. The serialisation is deliberately identical to what the
+    CLI wrote before (indent=2, default=str, no trailing newline) so regenerated files do
+    not churn.
+    """
+    atomic_write_text(Path(path), json.dumps(fingerprint, indent=2, default=str))
 
-    ``flush`` + ``fsync`` happen before the rename so the new bytes are durable on disk
-    before the name is ever repointed at them -- otherwise a crash could let the rename
-    outrun the write.
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Replace ``path``'s contents with ``text`` so that a reader only ever sees the old
+    file or the new one. Shared by `write_fingerprint` and the rebuild ledger.
+
+    Temp file in the SAME directory, then ``os.replace``: rename is atomic only within
+    one filesystem. ``flush`` + ``fsync`` happen before the rename so the new bytes are
+    durable on disk before the name is ever repointed at them -- otherwise a crash could
+    let the rename outrun the write.
 
     ``tempfile.mkstemp`` always creates its file mode 0600, which -- unlike the in-place
-    ``write_text`` this replaced -- would silently tighten a committed baseline's mode on
-    every regenerate. When ``path`` already exists, its current mode is copied onto the
-    temp file before the replace; for a brand-new baseline, the mode a normal file create
-    would get (0666 masked by the process umask) is applied instead.
+    ``write_text`` this replaced -- would silently tighten a committed file's mode on
+    every write. When ``path`` already exists, its current mode is copied onto the temp
+    file before the replace; for a brand-new file, the mode a normal file create would
+    get (0666 masked by the process umask) is applied instead.
     """
     path = Path(path)
     fd, tmp_name = tempfile.mkstemp(
@@ -383,7 +391,7 @@ def write_fingerprint(path: Path, fingerprint: Mapping[str, Any]) -> None:
     )
     try:
         with os.fdopen(fd, "w") as fh:
-            fh.write(json.dumps(fingerprint, indent=2, default=str))
+            fh.write(text)
             fh.flush()
             os.fsync(fh.fileno())
         if path.exists():

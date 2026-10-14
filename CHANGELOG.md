@@ -23,6 +23,9 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   (`var.index.name == "transcript_id"`) instead of silently reading its `var_names` as
   gene ids; the error names `--plugin-arg level=gene` as the fix (#455).
 - `hvantk drift` exits 4 (`EXIT_USAGE_ERROR`) on an invalid flag combination, not 2 (#449).
+- `hvantk drift --regenerate` also updates `hvantk/resources/drift_ledger.json` when
+  upstream materially changed: pass `--accepted-in "PR #N"` and commit that change with
+  the fingerprint (#459).
 
 ### Added
 
@@ -68,6 +71,26 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   folders, the v11 file layout, the documented `signif_pairs` columns) instead of the
   portal's web-app build tags. Index churn and portal redeploys no longer open
   `drift:schema` PRs (#447).
+- **The drift bot skips a regenerated fingerprint that disagrees with the drift report.**
+  `--regenerate` probes upstream a second time; when that reading differs from the
+  report's `observed` fingerprint, the dataset is skipped for the run instead of
+  committed, so a transiently stale response no longer becomes a flip-flop PR. A failed
+  regenerate in the routine batch is reported for that dataset instead of failing the
+  batch (#448).
+- **`hvantk drift --regenerate` records the rebuild-ledger row.** When the regenerated
+  fingerprint differs from the baseline it replaces (ignoring `fetched_at`,
+  `probe_version` and `informational`), it writes the dataset's row to
+  `hvantk/resources/drift_ledger.json`, with `--accepted-in` naming the PR (default
+  `manual`); a first capture or a `probe_version` change records none. The drift bot
+  passes `--no-ledger-row` and records its rows through the same code once its checks
+  pass, and a refused commit no longer leaves its rows staged for the next PR. Ledger
+  writes refuse a file that does not parse, and are atomic and locked (#459).
+- **The dbNSFP drift probe reads the release's column list.** It follows the releases
+  page's link to the latest academic release's `variant.columns.txt` and fingerprints its
+  column names under `headers` and `checksums`, so a release with unchanged columns is
+  routine and a column change opens a `drift:schema` PR. A release counts as academic
+  when it links an academic README, not when its title lacks a `c`, and both requests
+  send hvantk's User-Agent instead of `python-requests` (#459).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
   on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
 - **The plugin-contract check now ties each round trip to its dataset.** A fast check
