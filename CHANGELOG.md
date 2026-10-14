@@ -1,21 +1,29 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-10-14
 
-Four new downloaders, drift probes that watch the data they guard, and fixes from the
-0.4.0 follow-up issues.
+Every dataset without a parse stage now builds from its `--raw-dir`, four more sources
+have downloaders, and single-file downloads are atomic and no longer need the
+interpreter's CA store. The drift bot and `hvantk drift --regenerate` share one rebuild
+ledger, and the UCSC, GTEx and dbNSFP drift probes watch the data they guard. The docs
+call what a build produces a dataset.
 
 **Upgrade notes.**
 - `hvantk ptm build` into an existing `--output-ht` now stops before any download or
   mapping; pass `--overwrite` to replace the table (#445).
-- `hvantk rerank` runs the ablation and the permutation null at `Config.folds` folds, like
-  the headline score. A config that sets `folds` to anything but the default 5 gets
-  different ablation and null deltas than before (#446).
+- rerank runs the ablation and the permutation null at `Config.folds` folds, like the
+  headline score. A `Config` built in Python with `folds` other than the default 5 gets
+  different ablation and null deltas than before; the `hvantk rerank` CLI always uses 5
+  (#446).
+- rerank's `Config` is frozen: derive a variant with `dataclasses.replace(config, …)`.
+  `NullDistribution`, `BlockReport` and `SeedSpread` reject inconsistent values when built
+  by hand (#446).
 - Runs with blocks (`--blocks` or `Config.blocks`) now get a block-bootstrap interval for
   `d_lo`/`d_md`/`d_hi` (wider under family clustering); runs without blocks are unchanged
   (#453).
 - Rebuild a `cosmic-cgc:submissions` table built before this release before calling
-  `get_geneset_per_tissue()`: `tissue_type` is now `array<str>` (#442).
+  `get_geneset_per_tissue()`: `tissue_type` is now `array<str>`, and an older table raises
+  an error that says so (#442, #463).
 - `hgnc:lookup` builds `ena` and `pubmed_id` as `array<str>` and `lsdb` as
   `array<struct{name, url}>` (#443).
 - Re-download and rebuild a `gencc:submissions` table built before this release: values
@@ -38,8 +46,7 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
 - **A downloader for `cptac:expression`.** `hvantk download cptac-expression
   --cancer-type <ct>` (or `--all`) fetches the per-cancer-type whole-proteome matrix
   and clinical-metadata CSV via the `cptac` Python package; `hvantk reprocess
-  cptac:expression` runs it automatically. The clinical-metadata half, previously
-  unverified against a live response, is now confirmed working end to end (#451).
+  cptac:expression` runs it automatically (#451).
 - **A downloader for `gevir:metrics`.** `hvantk download gevir` fetches the GeVIR
   paper's Supplementary Table 2 workbook and derives the bgzipped metrics TSV itself
   (stdlib `zipfile`/`xml.etree`, no new dependency), restoring the ~29 gene symbols
@@ -94,7 +101,8 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   when it links an academic README, not when its title lacks a `c`, and both requests
   send hvantk's User-Agent instead of `python-requests` (#459).
 - **CI runs once per push.** `python-package-conda.yml` runs on pushes to `main`/`dev` and
-  on pull requests, and the PR workflows cancel a superseded pull-request run (#444).
+  on pull requests, and the PR workflows cancel a superseded pull-request run. A branch
+  without an open pull request no longer gets a CI run (#444).
 - **The plugin-contract check now ties each round trip to its dataset.** A fast check
   confirms each dataset's `tests.command` is shaped like a real CI invocation (`pytest
   hvantk/skills/<provider>/...`, with `-m hail` exactly when the backend is hail); a
@@ -119,6 +127,9 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   produces a dataset, and `AnnotationTable`, `ExpressionMatrix`, `VariantMatrix` and
   `GeneSet` the four dataset types. Code names, such as `Artifact` and the manifest's
   `artifact_type`, are unchanged (#462).
+- **Hail tests run with the test session's settings.** The `hail` marker now sets up
+  `hail_session`, which honours `PYSPARK_MASTER`, `SPARK_DRIVER_MEMORY` and its other
+  documented variables; before, Hail started with its defaults (#463).
 
 ### Fixed
 
@@ -154,7 +165,7 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `algorithms/`**, which `hvantk/tests/test_dependency_directions.py` forbids. They now show
   the enforced rule: `tools/` imports both, and `skills/` and `algorithms/` meet only through
   `core/`. The diagram also lists the current tools and algorithms and `VariantMatrix`, and
-  the README states the real prerequisites (Java 8 or 11, Poetry 2) (#461).
+  the README states the real prerequisites (Java 11, Poetry 2) (#461).
 - **Fixture licences:** audited every plugin's test fixture except GeVIR's (handled in a
   separate pull request) for real-vs-synthetic status; added `THIRD_PARTY_DATA.md`
   entries for eight previously-undocumented real fixtures (ClinVar, gnomAD, GTEx, GWAS
@@ -184,8 +195,8 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   `--verify-md5`, the `clingen` and `gencc` `--list-versions` and `uniprot-ptm`'s version
   listing. Downloaders that write one file now share an atomic, `requests`-based
   `stream_to_file()` (`hvantk/core/utils/http.py`), so a failed or truncated download
-  leaves no partial file and keeps a previous copy; the checks use `tls_context()`, which
-  adds certifi's bundle to the system trust store (#460).
+  never leaves a partial file; the checks use `tls_context()`, which adds certifi's bundle
+  to the system trust store (#460).
 - **`gencc:submissions` failed to build from the current GenCC export, and mangled values
   containing quotes**: `sanitize_tsv` wrote quoted values back quoted, but
   `hl.import_table` reads without quote handling, so a tab inside a quoted value (100 rows
@@ -194,6 +205,22 @@ Four new downloaders, drift probes that watch the data they guard, and fixes fro
   is now written unquoted, with tabs and line breaks inside a value replaced by spaces. A
   row whose field count still differs from the header's fails the download, and the
   rejected file is removed (#460).
+- **`hvantk reprocess gtex-eqtl:eqtls` failed in two ways.** The default source crashed in a
+  fresh process with `'JavaPackage' object is not callable`, because the builder started
+  Spark before Hail; `--plugin-arg source=eqtlgen` passed the `--raw-dir` directory to
+  Hail. Hail now starts first, and the eQTLGen file is found inside the directory (#463).
+- **Expression Atlas builds could fail on a complete download and succeed on a broken
+  one.** With both `<accession>-tpms.tsv` and `-transcripts-tpms.tsv` in `--raw-dir`, as
+  an unfiltered download leaves them, the builder now takes the file whose columns are
+  the SDRF's runs; the gene-level file can have one column per assay group instead, as
+  E-MTAB-6798's does. A failed FTP transfer left a partial file that the build then used,
+  exiting 0; it now fails the download and leaves nothing behind (#463).
+- **`cptac:phospho` stayed stuck after a failed clinical download**: later runs skipped
+  the download because the matrix existed, and the build failed on the missing
+  metadata. The download is now skipped only when both files exist (#463).
+- **`hvantk drift --ledger` reported "no datasets pending rebuild" for a ledger it could
+  not read**, such as one with a merge conflict; it now exits 2 with the reason, like
+  `--mark-rebuilt` (#463).
 
 ## 0.4.0 — 2026-10-08
 

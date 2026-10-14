@@ -39,7 +39,7 @@ Stable note (not in catalog): GTEx ships per-tissue parquet files named `<Tissue
 
 The post-import transform is shared across all three (inline in `build_eqtl_associations`): variant ID parsing, gene-version stripping, p-value filtering, triple-keying. Output schema is identical regardless of dispatch source.
 
-**Spark/Parquet bridge note.** v11 ingestion uses `pyspark.sql.SparkSession.builder.getOrCreate()` → `spark.read.parquet(...)` → `hl.Table.from_spark(sdf)`. This is the first hvantk skill to document this path. The Spark session is reachable from within Hail (Hail itself runs on Spark); `_import_gtex_parquet` calls `Path(fp).resolve()` because Spark requires absolute paths for parquet (per the builder docstring's "prototype lesson #4" annotation).
+**Spark/Parquet bridge note.** v11 ingestion starts Hail with `init_hail()`, then uses `pyspark.sql.SparkSession.builder.getOrCreate()` → `spark.read.parquet(...)` → `hl.Table.from_spark(sdf)`. This is the first hvantk skill to document this path. Hail must start first: `getOrCreate()` then returns Hail's own Spark session, while called before Hail it launches a JVM without Hail's jar and `hl.Table.from_spark` fails with `'JavaPackage' object is not callable`. `_import_gtex_parquet` calls `Path(fp).resolve()` because Spark requires absolute paths for parquet (per the builder docstring's "prototype lesson #4" annotation).
 
 ## 4. Raw format & gotchas
 
@@ -152,7 +152,7 @@ Per `_conventions` § 9:
 - **drift_fingerprint:** `hvantk/skills/gtex_eqtl/tests/drift_fingerprint.json`.
 - **command:** `pytest hvantk/skills/gtex_eqtl/tests -m hail`.
 
-Round-trip test asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. Test uses `source="gtex_v11"`, `tissue="Liver"`, `p_threshold=0` (retain all rows in the fixture). Spark session is initialized on demand by `_import_gtex_parquet`; the `hail_session` fixture ensures Hail (and therefore Spark) is up.
+Round-trip test asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. Test uses `source="gtex_v11"`, `tissue="Liver"`, `p_threshold=0` (retain all rows in the fixture). `_import_gtex_parquet` starts Hail itself before it asks for the Spark session, so the build does not depend on the `hail_session` fixture having run.
 
 Regenerate via `--regenerate-snapshots` when:
 - The shared transform in `build_eqtl_associations` adds / removes / renames fields.

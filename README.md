@@ -29,7 +29,7 @@ interpret genetic variants. It uses [Hail](https://hail.is/) for genome-scale ta
 
 ## Installation
 
-Requires Python 3.10–3.12, Java 8 or 11 (for Hail and Spark) and
+Requires Python 3.10–3.12, Java 11 (for Hail and Spark) and
 [Poetry](https://python-poetry.org/) 2.x.
 
 ```bash

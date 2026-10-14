@@ -11,6 +11,7 @@ builder (UCSC, CPTAC, ...).
 
 from __future__ import annotations
 
+import csv
 import glob
 import logging
 import os
@@ -43,29 +44,30 @@ def _resolve_expression_atlas_inputs(parsed_input):
     SDRF's accession is ignored for counting purposes, and if none remain this
     raises naming the mismatch.
 
-    **Among same-accession TPM files, the expression matrix prefers the
-    gene-level one.** A plain ``--plugin-arg accession=...`` download (no
+    **Among same-accession TPM files, the expression matrix is chosen by its
+    columns, not its name.** A plain ``--plugin-arg accession=...`` download (no
     ``config_path`` filter) fetches every file in the experiment's FTP directory
-    via ``ftp.nlst()`` (``hvantk/skills/expression_atlas/cli.py``), and an
-    experiment that ships a transcript-level TPM file usually ships the
-    gene-level ``<accession>-tpms.tsv`` alongside it -- so requiring exactly one
-    ``*-tpms.tsv`` match (as this function first did) could never build from an
-    unfiltered download. When exactly one gene-level file (``*-tpms.tsv``, NOT
-    ``*-transcripts-tpms.tsv``) is present, it is used and any transcript-level
-    file is ignored. The transcript-level file is used instead ONLY when there
-    is no gene-level candidate at all (the experiment shipped only a
-    transcript-level matrix, or a ``config_path`` download filtered to just that
-    file) and exactly one transcript-level candidate exists; several gene-level
-    candidates do not fall through to it -- that would silently prefer an
-    unrelated transcript file over an ambiguous gene-level set. A
-    transcript-level pick is transcript-keyed and needs ``--plugin-arg
+    via ``ftp.nlst()`` (``hvantk/skills/expression_atlas/cli.py``), so the
+    directory can hold both ``<accession>-tpms.tsv`` and
+    ``<accession>-transcripts-tpms.tsv``. The gene-level file can have one column
+    per assay group (E-MTAB-6798's: ``g1`` ... ``g94``, each cell a string of
+    quartiles) rather than per run, and then it cannot be built. So only the
+    header line of each candidate is read, and a file is kept when its columns
+    include at least one run id from the SDRF. Exactly one kept file is used;
+    of several, the gene-level one (``*-tpms.tsv``, NOT
+    ``*-transcripts-tpms.tsv``), since a per-run gene file needs no aggregation.
+    A transcript-level pick is transcript-keyed and needs ``--plugin-arg
     level=gene`` before the generic gene-level consumers (``hvantk expression
     markers``/``summarize``, the PTM constraint loader) can read it. The file
-    actually chosen is logged at INFO. This raises when the choice is still
-    ambiguous or nothing matches.
+    actually chosen is logged at INFO. This raises when no candidate has a run
+    column, or the choice is still ambiguous.
     """
     if isinstance(parsed_input, dict):
         return str(parsed_input["expression_matrix"]), str(parsed_input["sdrf"])
+
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        convert_sdrf_to_dataframe,
+    )
 
     root = str(parsed_input)
     sdrf_candidates = sorted(glob.glob(os.path.join(root, "*.condensed-sdrf.tsv")))
@@ -91,32 +93,51 @@ def _resolve_expression_atlas_inputs(parsed_input):
             "point --raw-dir at a single accession's download directory."
         )
 
-    transcript_tpm = [f for f in accession_tpm if f.endswith("-transcripts-tpms.tsv")]
-    gene_tpm = [f for f in accession_tpm if f not in transcript_tpm]
+    run_ids = set(map(str, convert_sdrf_to_dataframe(sdrf_path).index))
+    per_run = [f for f in accession_tpm if run_ids.intersection(_header_columns(f))]
+    if not per_run:
+        raise FileNotFoundError(
+            f"Expression Atlas builder: none of the TPM files for accession "
+            f"{accession!r} under {root!r} ({accession_tpm}) has a column named for "
+            f"a run in {sdrf_path!r}. Their columns are not run ids (e.g. "
+            "assay-group summaries g1...gN), so there is no per-run expression "
+            "matrix to build from. Add the accession's per-run TPM file (e.g. "
+            f"{accession}-transcripts-tpms.tsv) to --raw-dir."
+        )
 
-    if len(gene_tpm) == 1:
+    gene_tpm = [f for f in per_run if not f.endswith("-transcripts-tpms.tsv")]
+    if len(per_run) == 1:
+        tpm_path = per_run[0]
+    elif len(gene_tpm) == 1:
         tpm_path = gene_tpm[0]
+    else:
+        raise FileNotFoundError(
+            f"Expression Atlas builder: could not find exactly one gene-level "
+            f"*-tpms.tsv among the TPM files whose columns are the SDRF's runs "
+            f"(found {per_run}) for accession {accession!r} under {root!r}. Point "
+            "--raw-dir at a single accession's download directory, or call "
+            "build_expression_atlas directly with parsed_input="
+            "{'expression_matrix': ..., 'sdrf': ...}."
+        )
+
+    if tpm_path in gene_tpm:
         logger.info(
             "Expression Atlas builder: using gene-level expression matrix %s",
             tpm_path,
         )
-    elif len(gene_tpm) == 0 and len(transcript_tpm) == 1:
-        tpm_path = transcript_tpm[0]
+    else:
         logger.info(
             "Expression Atlas builder: using transcript-level expression matrix "
             "%s (pass --plugin-arg level=gene for a gene-keyed result)",
             tpm_path,
         )
-    else:
-        raise FileNotFoundError(
-            f"Expression Atlas builder: could not find exactly one gene-level "
-            f"*-tpms.tsv (found {gene_tpm}), nor -- failing that -- exactly one "
-            f"transcript-level *-transcripts-tpms.tsv (found {transcript_tpm}), "
-            f"for accession {accession!r} under {root!r}. Point --raw-dir at a "
-            "single accession's download directory, or call build_expression_atlas "
-            "directly with parsed_input={'expression_matrix': ..., 'sdrf': ...}."
-        )
     return tpm_path, sdrf_path
+
+
+def _header_columns(path):
+    """The column names on the first line of the tab-separated file *path*."""
+    with open(path, newline="", encoding="utf-8") as fh:
+        return next(csv.reader(fh, delimiter="\t"), [])
 
 
 def build_expression_atlas(
@@ -140,9 +161,8 @@ def build_expression_atlas(
         Either a mapping with ``expression_matrix`` (path to gene x sample TSV)
         and ``sdrf`` (path to SDRF metadata file) keys, or a raw download
         directory. The SDRF must be unambiguous; the expression matrix is scoped
-        to the SDRF's accession and prefers that accession's gene-level TPM file
-        when exactly one is present, falling back to the transcript-level one
-        only when there is no gene-level candidate at all (see
+        to the SDRF's accession and is the TPM file whose columns are the SDRF's
+        runs (the gene-level one when both files qualify; see
         ``_resolve_expression_atlas_inputs``).
     ctx : hvantk.core.models.BuildContext
         Platform-provided context; supplies provenance.
@@ -150,14 +170,13 @@ def build_expression_atlas(
         ``"transcript"`` (default) or ``"gene"``. Forwarded verbatim to
         ``create_anndata_from_expression_atlas`` -- see there for what each
         value does. Only relevant when the resolved input is transcript-level
-        (the experiment shipped no gene-level file, or a ``config_path``
-        download filtered to just the transcript-level one): set
+        (the only file with a column per run, as for E-MTAB-6798, whose
+        gene-level file has a column per assay group): set
         ``--plugin-arg level=gene`` on `hvantk reprocess` to make that build
         usable by the generic gene-level consumers (e.g. `hvantk expression
         markers`/`summarize` or the PTM constraint loader, neither of which
         understands a transcript-keyed `var`). A no-op when the input is
-        already gene-level, which is the common case for an unfiltered
-        download (see ``_resolve_expression_atlas_inputs``).
+        already gene-level (see ``_resolve_expression_atlas_inputs``).
     accession, config_path : str, optional
         Accepted and otherwise ignored by the build stage. ``hvantk reprocess``
         forwards every ``--plugin-arg`` to all three lifecycle stages (download,
@@ -165,7 +184,7 @@ def build_expression_atlas(
         ``config_path`` to know which experiment to fetch (there is no single
         canonical "latest" Expression Atlas file), but the build stage needs
         neither -- ``_resolve_expression_atlas_inputs`` locates the two input
-        files by name within ``--raw-dir``. Declared explicitly (not swallowed
+        files within ``--raw-dir``. Declared explicitly (not swallowed
         by a bare ``**params``) so an actual typo in a ``--plugin-arg`` name
         still raises ``TypeError`` instead of being silently absorbed.
 

@@ -116,7 +116,7 @@ Input is a standard Ensembl GTF: tab-separated, 9 columns
   resolves a directory input to `<dir>/<ENSEMBL_GTF_FILENAME>` (the name the downloader
   writes) and returns a file-path input unchanged. This matters because
   `parse_gtf_structure` opens its input with plain `open()`/`gzip.open()`, which raises
-  `IsADirectoryError` on a directory -- unlike `hl.import_table`, which tolerates one
+  `IsADirectoryError` on a directory, as `hl.import_table` fails on one too
   (`builder.py`'s `_resolve_gtf_path` docstring).
 
 ## 5. Output contract

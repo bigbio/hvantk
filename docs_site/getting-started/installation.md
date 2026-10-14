@@ -39,7 +39,7 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 | `ancestry` | scikit-learn, matplotlib, seaborn | `hvantk ancestry-inference` |
 | `psroc` | scikit-learn, matplotlib, plotly | `hvantk psroc` |
 | `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
-| `ptm` | cptac, sorted-nearest | CPTAC PTM downloads |
+| `ptm` | cptac, sorted-nearest | CPTAC downloads (`cptac-phospho`, `cptac-expression`) |
 | `constraint` | tspex, matplotlib, seaborn, statsmodels | `hvantk ptm constraint`, `hvantk ptm test` |
 | `enrichex` | matplotlib, seaborn | `hvantk enrichex overlap` / `burden` |
 | `cohort` | | `hvantk cohort burden` -- scipy is now a base dependency, so this extra pulls in nothing extra; kept empty for `pip install hvantk[cohort]` compatibility |
@@ -78,4 +78,4 @@ those analyses.
 
 - **Python** ≥ 3.10
 - **Hail** ≥ 0.2.137
-- **Java** 8 or 11 (required by Hail/Spark)
+- **Java** 11 (Hail is built for Java 11 and warns on any other version)

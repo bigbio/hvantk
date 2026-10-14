@@ -4,12 +4,14 @@ import zipfile
 from unittest import mock
 
 import pytest
+import requests
 
 from hvantk.core.utils.file_utils import (
     compress_files,
     convert_gz_to_bgz,
     decompress_files,
     detect_compression,
+    download_file,
     is_bgzf,
     is_gzipped,
     resolve_compression,
@@ -357,3 +359,23 @@ def test_sanitize_tsv_writes_rows_hail_splits_correctly(tmp_path):
     bad_path.write_text("id\tname\tnotes\n1\tok\tfine\n2\tshort\n")
     with pytest.raises(ValueError, match=r"row 2 of .* has 2 field\(s\), expected 3"):
         sanitize_tsv(str(bad_path))
+
+
+def test_download_file_removes_destination_on_failure(tmp_path):
+    """A failed download must remove a stale destination rather than leave it in
+    place: a refresh that fails should not keep the previous release's copy around
+    for a later build to pick up, which is what kept paired downloads (a VCF plus
+    its ``.tbi``, a matrix plus its metadata) from mixing releases.
+    """
+    dest = tmp_path / "existing.txt"
+    dest.write_text("stale copy from a previous release")
+
+    with mock.patch(
+        "requests.get", side_effect=requests.exceptions.ConnectionError("network down")
+    ):
+        with pytest.raises(Exception):
+            download_file(
+                "https://example.org/existing.txt", str(tmp_path), "existing.txt"
+            )
+
+    assert not dest.exists()

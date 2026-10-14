@@ -101,7 +101,7 @@ echo $HOME; df -h $HOME            # home quota (code only)
 # project/work + scratch paths & quotas are site-specific (check docs / `quota`)
 which apptainer || which singularity
 apptainer build --fakeroot --help 2>&1 | head -1   # is --fakeroot allowed?
-java -version                      # default Java — MUST be 8 or 11 for Hail
+java -version                      # default Java — MUST be 11 for Hail
 ```
 
 Note the **scratch path** (often `/scratch/$USER` or `/lscratch/$SLURM_JOB_ID`),
@@ -119,8 +119,8 @@ The repo's `poetry.lock` encodes a tested triad: Hail **0.2.137** + pyspark
 `hvantk/core/utils/hail_context.py` that Hail 0.2.x needs under NumPy 2). Build from
 the lock; do not regenerate or loosen it. And:
 
-> **Java 11, not 17.** Hail 0.2.137 / Spark 3.5 (Scala 2.12) support **Java 8 or 11
-> only**. HPC `module load java` frequently defaults to 17/21, which breaks Hail.
+> **Java 11, not 17.** Hail 0.2.137 is built and tested with **Java 11 only** and warns
+> on any other version. HPC `module load java` frequently defaults to 17/21, which breaks Hail.
 > Bake Java 11 into the container so the host's Java module is irrelevant.
 
 ### 3.2 `hvantk.def` (build from the locked environment)
@@ -135,8 +135,8 @@ Two choices in it are load-bearing and must not be "modernised" without re-valid
 - **Base image is `python:3.10-slim-bullseye`, not bookworm.** Debian 12 (bookworm) has
   no `openjdk-11` package at all — `apt-get install openjdk-11-jdk-headless` fails with
   *"Package 'openjdk-11-jdk-headless' has no installation candidate … the following
-  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.x / Spark 3.5 support Java 8
-  or 11 **only**, so a bookworm base either fails the build or silently gives you
+  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.137 supports Java 11
+  **only**, so a bookworm base either fails the build or silently gives you
   Java 17. Debian 11 (bullseye) ships `openjdk-11-jdk-headless` (11.0.32.1).
 - **Extras include `expression`.** The set
   `hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression`

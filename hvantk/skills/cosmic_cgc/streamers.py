@@ -281,6 +281,13 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
             logger.warning("tissue_type field not found in table")
             return {}
 
+        if ht.tissue_type.dtype == hl.tstr:
+            raise ValueError(
+                "tissue_type is a string, so this table was built before hvantk "
+                "0.5.0 (tissue_type became array<str>); rebuild it with "
+                "`hvantk reprocess cosmic-cgc:submissions`."
+            )
+
         exploded = ht.explode("tissue_type")
         exploded = exploded.filter(
             hl.is_defined(exploded.tissue_type) & (exploded.tissue_type != "")

@@ -650,10 +650,10 @@ class TestBuildVariantClassesFromPresets:
         assert classes["missense_constrained"].min_score == 25.0
         assert classes["missense_constrained"].max_af == 0.001
 
-    def test_build_from_presets_unknown_class(self):
-        """Test error for unknown variant class name."""
-        with pytest.raises(ValueError, match="Unknown variant class preset"):
-            build_variant_classes_from_presets(["nonexistent"])
+    def test_build_from_presets_treats_unknown_name_as_custom_class(self):
+        """A name that is not a preset is a custom class matching itself."""
+        classes = build_variant_classes_from_presets(["csq_hcLOF"])
+        assert classes["csq_hcLOF"].consequences == ["csq_hcLOF"]
 
 
 @pytest.mark.hail
