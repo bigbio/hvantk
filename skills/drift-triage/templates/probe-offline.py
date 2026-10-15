@@ -1,32 +1,46 @@
 """Answer hvantk's drift probes from a local file instead of the network.
 
-Coverage: probes that call the module-level ``requests.head`` / ``requests.get``
-functions directly -- ``hvantk/skills/clingen/drift_probe.py`` and
-``hvantk/skills/hgnc/drift_probe.py`` both do. A probe built on ``requests.Session`` or
-any other HTTP client is NOT covered: this module patches only the two module-level
-functions, and a probe that never calls them observes nothing different.
+Coverage: probes that call the module-level ``requests.head``, ``requests.get`` or
+``requests.request`` functions. clingen and hgnc call ``head``/``get`` directly; gencc
+goes through ``hvantk.core.utils.http.request_with_retry``, which -- called with no
+``session=`` argument, as the gencc probe does -- calls module-level
+``requests.request``, so it is served too. A probe built on its OWN
+``requests.Session`` (gnomad-metrics) is NOT served: for the duration of the context
+below, ``requests.Session.send`` is patched to raise
+``RuntimeError("probe-offline: the probe attempted a network call the offline form "
+"does not serve")`` instead, so such a probe fails loudly -- as a ``DriftProbeError``,
+which ``hvantk drift`` reports as ``probe_failed`` -- rather than silently reaching the
+real network or answering for the wrong file.
 
 Needs ``hvantk`` importable (run inside the container image, or with the checkout on
-``PYTHONPATH``); no Hail session is started -- the clingen/hgnc probes this covers need
-none, and nothing here calls ``init_hail()``.
+``PYTHONPATH``); no Hail session is started -- the probes this covers need none, and
+nothing here calls ``init_hail()``.
 
 Three subcommands:
 
     probe-offline.py fingerprint --dataset PROVIDER:DATASET --file PATH
         Print the probe's fingerprint for PATH, as if PATH were served at the probe's
-        own URL.
+        own URL. Exits 5 if the probe made no head/get/request call at all (Session-based
+        or otherwise uncovered) -- there is nothing to print.
 
     probe-offline.py diff --dataset PROVIDER:DATASET --file NEW --against OLD
-        Print, per header filename key, the columns NEW adds and removes relative to
-        OLD -- the {added, removed} shape of a drift diff
-        (hvantk.core.plugin.drift_runner._compare_fingerprints), restricted to
-        `headers`. NEW is "observed", OLD is "expected", matching that same convention.
+        Print, per header filename key, the COLUMNS NEW adds and removes relative to
+        OLD. This is narrower than a full fingerprint's own top-level ``added``/
+        ``removed`` (hvantk.core.plugin.drift_runner._compare_fingerprints, which the
+        `drift` subcommand below surfaces unabridged) -- here it is always just the
+        `headers` entry's column list. NEW is "observed", OLD is "expected", matching
+        that same convention. Exits 5 under the same condition as `fingerprint`.
 
     probe-offline.py drift --dataset PROVIDER:DATASET --file PATH -- [hvantk drift options]
         Run `hvantk drift PROVIDER:DATASET [options]` in-process with upstream answered
         from PATH, and exit with the CLI's own exit code (hvantk/tools/plugins/drift_cli.py:
-        0 clean, 1 drifted, 2 probe failed, 3 registry error, 4 usage error). The
-        pass-through options must follow a literal `--`.
+        0 clean, 1 drifted, 2 probe failed -- including a Session-blocked probe --,
+        3 registry error, 4 usage error). The pass-through options must follow a
+        literal `--`. An argparse error on THIS template's own arguments (a missing
+        --dataset, an unknown subcommand) exits 2, like any other argparse usage error.
+
+Any other failure in this template itself (an unreadable file, an unknown dataset,
+anything not covered by the two paths above) exits 5.
 
 Used where the real probe cannot reach upstream (a sandboxed eval, a login node or
 compute node with no egress) or where the signal must be pinned to one specific file
@@ -43,14 +57,29 @@ import sys
 from pathlib import Path
 
 
+class _ServedCalls:
+    """How many head/get/request calls `_answer_from_file` actually served."""
+
+    def __init__(self):
+        self.count = 0
+
+
+_BLOCKED_MESSAGE = (
+    "probe-offline: the probe attempted a network call the offline form does not serve"
+)
+
+
 @contextlib.contextmanager
 def _answer_from_file(path):
-    """Patch ``requests.head``/``requests.get`` so every call answers from ``path``.
+    """Patch ``requests.head``/``get``/``request`` so every call answers from ``path``,
+    and block anything going through a ``requests.Session`` instead.
 
     Builds a fresh ``requests.Response`` per call: status 200, headers carrying
     Content-Length / Last-Modified / Content-Type for ``path``, and body bytes read
-    from ``path`` (empty for HEAD, matching a real HEAD response). Restores both
-    functions on exit, even if the probe raises.
+    from ``path`` (empty for HEAD, matching a real HEAD response). Yields a
+    `_ServedCalls` counter so the caller can tell whether the probe actually used one
+    of the three served entry points. Restores everything on exit, even if the probe
+    raises.
     """
     import requests
     from requests.structures import CaseInsensitiveDict
@@ -58,8 +87,10 @@ def _answer_from_file(path):
     file_path = Path(path)
     data = file_path.read_bytes()
     last_modified = email.utils.formatdate(file_path.stat().st_mtime, usegmt=True)
+    served = _ServedCalls()
 
     def _make_response(url, body):
+        served.count += 1
         resp = requests.Response()
         resp.status_code = 200
         resp.reason = "OK"
@@ -83,12 +114,26 @@ def _answer_from_file(path):
     def fake_get(url, *args, **kwargs):
         return _make_response(url, data)
 
-    orig_head, orig_get = requests.head, requests.get
-    requests.head, requests.get = fake_head, fake_get
+    def fake_request(method, url, *args, **kwargs):
+        body = b"" if str(method).upper() == "HEAD" else data
+        return _make_response(url, body)
+
+    def _blocked_send(self, request, **kwargs):
+        raise RuntimeError(_BLOCKED_MESSAGE)
+
+    orig_head, orig_get, orig_request = requests.head, requests.get, requests.request
+    orig_send = requests.Session.send
+    requests.head, requests.get, requests.request = fake_head, fake_get, fake_request
+    requests.Session.send = _blocked_send
     try:
-        yield
+        yield served
     finally:
-        requests.head, requests.get = orig_head, orig_get
+        requests.head, requests.get, requests.request = (
+            orig_head,
+            orig_get,
+            orig_request,
+        )
+        requests.Session.send = orig_send
 
 
 def _dataset_probe(dataset):
@@ -98,20 +143,35 @@ def _dataset_probe(dataset):
     return get_registry().get_dataset(dataset).drift_probe
 
 
+def _not_served_error(dataset: str) -> None:
+    print(
+        f"error: the offline form served no requests.head/get/request call for "
+        f"{dataset}'s probe; it may use requests.Session (not covered here) or "
+        "another HTTP client entirely",
+        file=sys.stderr,
+    )
+
+
 def cmd_fingerprint(args) -> int:
     probe = _dataset_probe(args.dataset)
-    with _answer_from_file(args.file):
+    with _answer_from_file(args.file) as served:
         fingerprint = probe()
+    if served.count == 0:
+        _not_served_error(args.dataset)
+        return 5
     print(json.dumps(fingerprint, indent=2, default=str))
     return 0
 
 
 def cmd_diff(args) -> int:
     probe = _dataset_probe(args.dataset)
-    with _answer_from_file(args.file):
+    with _answer_from_file(args.file) as new_served:
         new_fp = probe()
-    with _answer_from_file(args.against):
+    with _answer_from_file(args.against) as old_served:
         old_fp = probe()
+    if new_served.count == 0 or old_served.count == 0:
+        _not_served_error(args.dataset)
+        return 5
     new_headers = new_fp.get("headers") or {}
     old_headers = old_fp.get("headers") or {}
     out = {}
@@ -186,7 +246,7 @@ def main() -> int:
         return args.fn(args)
     except Exception as exc:  # noqa: BLE001 - a CLI entry point, not a library call
         print(f"error: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return 1
+        return 5
 
 
 if __name__ == "__main__":

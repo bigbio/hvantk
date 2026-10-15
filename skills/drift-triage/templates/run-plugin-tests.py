@@ -1,20 +1,27 @@
-"""Run one plugin's own test suite from the checkout root.
+"""Run one dataset's own test command from the checkout root.
 
-A plugin's round-trip test resolves its fixture path (for example
-``hvantk/skills/clingen/tests/testdata/raw/clingen/...``) relative to the current
-working directory, not to the test file -- see `hvantk/skills/_conventions/SKILL.md`
-section 8 ("fixture paths are relative to the checkout root") and the plugin's own test
-module. Running pytest from anywhere else makes every fixture read fail with a path
-that looks right but is not, so this script chdirs into the checkout before invoking
-pytest rather than relying on the caller's own working directory.
+A plugin's round-trip test resolves its fixture path relative to the current working
+directory, not to the test file -- see `hvantk/skills/_conventions/SKILL.md` section 8
+and the plugin's own test module. Running pytest from anywhere else makes every
+fixture read fail with a path that looks right but is not, so this script chdirs into
+the checkout before running anything, rather than relying on the caller's own working
+directory.
 
-    python run-plugin-tests.py --repo /path/to/checkout --provider clingen [-- -k gene_disease]
+The command itself is not hardcoded: it is read from the dataset's own manifest
+(`plugin.yaml`'s `tests.command`, surfaced as `DatasetSpec.test_paths.command`), so a
+provider whose test command differs from the usual `pytest .../tests -m hail` --
+multi-dataset providers sometimes narrow it with `-k`, for example -- still runs
+correctly.
+
+    python run-plugin-tests.py --repo /path/to/checkout --provider:dataset clingen:gene-disease [-- -k gene_disease]
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import shlex
+import subprocess
 import sys
 
 
@@ -24,33 +31,35 @@ def main() -> int:
         "--repo", required=True, help="hvantk checkout root; becomes the cwd"
     )
     ap.add_argument(
-        "--provider", required=True, help="plugin directory name under hvantk/skills/"
+        "--dataset", required=True, metavar="PROVIDER:DATASET", dest="dataset"
     )
     ap.add_argument(
-        "pytest_args",
+        "extra_args",
         nargs=argparse.REMAINDER,
-        metavar="-- [pytest args]",
-        help="extra pytest arguments, after a literal --",
+        metavar="-- [extra args]",
+        help="extra arguments appended to the resolved command, after a literal --",
     )
     args = ap.parse_args()
 
-    extra = args.pytest_args
+    extra = args.extra_args
     if extra and extra[0] == "--":
         extra = extra[1:]
 
     os.chdir(args.repo)
-    import pytest
 
-    return pytest.main(
-        [
-            f"hvantk/skills/{args.provider}/tests",
-            "-m",
-            "hail",
-            "-p",
-            "no:cacheprovider",
-            *extra,
-        ]
-    )
+    from hvantk.core.plugin.loader import get_registry
+
+    command = get_registry().get_dataset(args.dataset).test_paths.command
+    cmd = shlex.split(command)
+    if not cmd:
+        print(f"error: empty tests.command for {args.dataset!r}", file=sys.stderr)
+        return 1
+
+    if cmd[0] == "pytest":
+        import pytest
+
+        return pytest.main([*cmd[1:], "-p", "no:cacheprovider", *extra])
+    return subprocess.run([*cmd, *extra]).returncode
 
 
 if __name__ == "__main__":
