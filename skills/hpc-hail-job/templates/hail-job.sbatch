@@ -19,6 +19,11 @@ set -euo pipefail
 # shellcheck disable=SC1090
 source "$HVANTK_SITE_PROFILE"
 : "${HVANTK_REPO:?}" "${HVANTK_SIF:?}" "${HVANTK_WORK:?}"
+# An image other than the profile's default, for verifying a freshly built one: the
+# submit script passes it as HVANTK_SIF_OVERRIDE, because sourcing the profile above
+# would otherwise reset HVANTK_SIF.
+HVANTK_SIF="${HVANTK_SIF_OVERRIDE:-$HVANTK_SIF}"
+[[ -e "$HVANTK_SIF" ]] || { echo "ERROR: image not found: $HVANTK_SIF" >&2; exit 2; }
 (( $# > 0 )) || { echo "ERROR: no command given (expected: hvantk ... | python ...)" >&2; exit 2; }
 
 CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"

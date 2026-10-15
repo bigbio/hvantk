@@ -96,7 +96,7 @@ export is overwritten.
 
 ## 5. Measured: the `eval/` folder
 
-Five files, always, none empty:
+Five files, always, none empty (a stage may add a helper script next to them):
 
 | file | role |
 | --- | --- |

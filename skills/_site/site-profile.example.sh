@@ -25,3 +25,4 @@ HVANTK_LOG_DIR=""           # job logs; default $HVANTK_WORK/hvantk-logs
 HVANTK_READONLY_MOUNTS=""   # paths mounted read-only on compute nodes, comma-separated
 HVANTK_EGRESS=""            # open or blocked: can compute nodes reach the internet?
 HVANTK_EVAL_DATA=""         # where eval slices are staged; default $HVANTK_WORK/hvantk-eval
+HVANTK_CLUSTER_REMOTE=""    # name of the cluster remote in the clone you push from, e.g. hpc

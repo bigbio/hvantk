@@ -2,7 +2,7 @@
 # Submit one hvantk command as a single-node Hail job.
 #
 #   submit-hail-job.sh [--name NAME] [--cpus N] [--mem-gb G] [--time D-HH:MM:SS]
-#                      [--partition <P>] [--exclusive] [--dry-run] [--wait]
+#                      [--partition <P>] [--exclusive] [--sif <image>] [--dry-run] [--wait]
 #                      -- <hvantk ...|python ...>
 #
 # Reads every site value from $HVANTK_SITE_PROFILE (skills/_site/SITE-PROFILE.md).
@@ -19,7 +19,7 @@ bash "$SITE_DIR/check-site-profile.sh" >/dev/null
 source "$HVANTK_SITE_PROFILE"
 
 NAME="hvantk-hail"; CPUS=4; MEM_GB=16; TIME="0-01:00:00"; PARTITION="$HVANTK_CPU_PARTITION"
-EXCLUSIVE=0; DRY=0; WAIT=0
+EXCLUSIVE=0; DRY=0; WAIT=0; SIF_OVERRIDE=""
 while (( $# )); do
   case "$1" in
     --name) NAME="$2"; shift 2 ;;
@@ -28,6 +28,7 @@ while (( $# )); do
     --time) TIME="$2"; shift 2 ;;
     --partition) PARTITION="$2"; shift 2 ;;
     --exclusive) EXCLUSIVE=1; shift ;;
+    --sif) SIF_OVERRIDE="$2"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
     --wait) WAIT=1; shift ;;
     --) shift; break ;;
@@ -48,12 +49,16 @@ mkdir -p "$LOG_DIR"
 ARGS=(--parsable --job-name="$NAME" --partition="$PARTITION"
       --cpus-per-task="$CPUS" --mem="${MEM_GB}G" --time="$TIME"
       --output="$LOG_DIR/%x_%j.out" --export=ALL)
+if [[ -n "$SIF_OVERRIDE" ]]; then
+  [[ "$SIF_OVERRIDE" == /* && -e "$SIF_OVERRIDE" ]] || { echo "ERROR: --sif needs an absolute path to an existing image: $SIF_OVERRIDE" >&2; exit 2; }
+fi
+export HVANTK_SIF_OVERRIDE="$SIF_OVERRIDE"   # exported even when empty, so a leftover value cannot redirect a job
 [[ -n "${HVANTK_ACCOUNT:-}" ]] && ARGS+=(--account="$HVANTK_ACCOUNT")
 [[ -n "${HVANTK_QOS:-}" ]] && ARGS+=(--qos="$HVANTK_QOS")
 (( EXCLUSIVE )) && ARGS+=(--exclusive)
 [[ -n "${SLURM_EMAIL_NOTIFICATION:-}" ]] && ARGS+=(--mail-type=END,FAIL --mail-user="$SLURM_EMAIL_NOTIFICATION")
 
-echo "request: name=$NAME partition=$PARTITION cpus=$CPUS mem=${MEM_GB}G time=$TIME exclusive=$EXCLUSIVE" >&2
+echo "request: name=$NAME partition=$PARTITION cpus=$CPUS mem=${MEM_GB}G time=$TIME exclusive=$EXCLUSIVE image=${SIF_OVERRIDE:-profile}" >&2
 echo "command: $*" >&2
 if (( DRY )); then
   sbatch --test-only "${ARGS[@]}" "$HERE/hail-job.sbatch" "$@"

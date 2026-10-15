@@ -123,6 +123,9 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
   not copy them file by file across the network, and archive with `tar` when moving.
 - Many independent builds: submit one array job over a task list rather than many
   jobs; `sbatch --array=1-N%K` with one line of the list per task.
+- Another image than the profile's default, for example one just built: `--sif <image>`
+  on the submit script; the job template honours it, where a shell export of
+  `HVANTK_SIF` would be overwritten when the job sources the profile.
 - Multi-node Spark through the cluster's own launcher is possible
   (`HVANTK_SKIP_HAIL_INIT` makes hvantk adopt an existing session) and almost never
   worth it: both the scheduler and Spark must agree on resources, and the failure modes

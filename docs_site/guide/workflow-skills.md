@@ -33,10 +33,12 @@ bash skills/_site/check-site-profile.sh
 
 Then install the skills into your agent (Claude Code: `/plugin marketplace add bigbio/hvantk`
 and `/plugin install hvantk@hvantk`; other harnesses: point them at `skills/`) and ask
-it, for example, to build a dataset on the cluster. The first shipped skill,
-`hpc-hail-job`, runs any Hail-backed hvantk command as a single-node Slurm job from the
-container image; see the [HPC migration guide](hpc-migration.md) for how that image is
-built.
+it, for example, to build a dataset on the cluster. The shipped skills cover running any
+Hail-backed hvantk command as a single-node Slurm job from the container image, keeping a
+cluster clone in step with GitHub, building and promoting the image, joint genotyping,
+delivering a sample subset of a callset, and ancestry inference; the catalog in
+`skills/README.md` is the current list. See the [HPC migration guide](hpc-migration.md)
+for the cluster setup those skills assume.
 
 ## The two kinds of skill
 
