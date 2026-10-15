@@ -23,8 +23,10 @@ staged.
 - Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`. The harness sets
   `HVANTK_RUN_ID` and `HVANTK_EVAL_OUT` (a directory under `HVANTK_EVAL_DATA`, so jobs
   can see it) in your environment before you start.
-- Budget per array task: one node, at most 4 cores, 16 GB of memory, 30 minutes, at most
-  three tasks running at once.
+- Budget per job (an array task or any other job you submit): one node, at most 4
+  cores, 16 GB of memory, 30 minutes; at most three array tasks running at once.
+- The plugin's committed schema snapshot is the contract (its key and declared
+  fields); do not edit it.
 - When every build has completed, write `$HVANTK_EVAL_OUT/run-notes.md` containing one
   line `commit: <git commit of the checkout>`, one line `container: <sha256 of the
   image file>`, and one line `job: <id>` for every job you submitted (the array

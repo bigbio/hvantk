@@ -1,31 +1,44 @@
 """Deterministic check for the dataset-build-at-scale eval task.
 
 Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
-writes ``verdict.json`` and ``receipt.json`` next to the outputs, and exits 0 on pass.
-Runs inside the container on a compute node (it needs Hail). Slurm accounting is read
-from a file captured on the login node (``--sacct-file``), because the container has no
-Slurm client; without a file it tries ``sacct`` and records M2 and M3 as null when that
-is unavailable or fails.
+writes ``verdict.json`` and ``receipt.json``, and exits 0 on pass. Runs inside the
+container on a compute node (it needs Hail). Slurm accounting is read from a file
+captured on the login node (``--sacct-file``), because the container has no Slurm
+client; without a file it tries ``sacct`` and records M2 and M3 as null when that is
+unavailable or fails.
+
+M4 checks each output against its plugin's committed schema snapshot as a CONTRACT
+(``schema_contract``, read from THIS checkout's own ``REPO_ROOT``, never from
+``reference.json`` or whatever checkout produced the output): a snapshot is
+fixture-derived and a full build may carry more columns than its fixture did (GenCC:
+31 upstream columns, 13 in the fixture) while still satisfying the plugin's contract.
+M5's ``content_ok`` is the stricter, exact check that this run REPRODUCES the
+reference build: schema equal to the reference's stored schema, row counts equal, and
+``rows_digest`` equal over a fixed, deterministically-chosen sample of keys -- never a
+plugin's own ``SAMPLE_KEYS`` or committed ``sample_rows.json``, whose keys (ClinGen's
+fixture invents its MONDO ids) are not guaranteed to exist in a real build.
 
 Array-aware, unlike a single-job eval's check.py: the task asks for one array job
-covering all three datasets, so M3's "every listed job exists in accounting" allows a
+covering all three datasets. M3's "every listed job exists in accounting" allows a
 notes id ``A`` to be satisfied by an accounting row ``A`` *or* ``A_<task>`` (an array
 submission writes one ``job: <A>`` line; every finished task is only ever accounted
-under ``<A>_<task>``, never bare ``A``). ``array_used`` and ``array_parents`` record
-whether the prefixed accounting rows actually show array-task-shaped ids, so the
-negative control (the same three builds as three separate single-job submissions) can
-be told apart from the positive one on more than content alone.
+under ``<A>_<task>``, never bare ``A``). ``array_used`` is None when there is no
+accounting, or no accounting row at all under this run's name prefix; otherwise it is
+true only when some one array parent completed at least 2 of its tasks AND the
+prefixed array-shaped tasks completed at least 3 in total -- true for one 3-task array
+(or a 3-task array with one failure resubmitted as a 1-task array), false for three
+separate one-task "arrays" or three plain jobs. ``array_parents`` is kept for
+diagnostics.
 
-    python check.py --list TASKS.tsv --run-notes NOTES.md --reference reference.json \
+    python check.py --out-dir DIR --run-notes NOTES.md --reference reference.json \
         --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \
         [--sacct-file FILE | --since now-2days | --no-slurm] [--site-profile FILE] \
-        [--expect-fail]
-    python check.py --list TASKS.tsv --reference reference.json --write-reference \
+        [--verdict-dir DIR] [--expect-fail]
+    python check.py --out-dir DIR --reference reference.json --write-reference \
         --expect-commit SHA --expect-sif-sha256 HEX --input-sha256 HEX
 
-TASKS.tsv is the same task list the skill's templates read:
-``<provider:dataset>\\t<raw dir>\\t<output path>[\\t<extra options>]`` (only the first
-and third fields are used here). The accounting file is the output of
+DIR holds the three fixed-name outputs (see DATASETS below). The accounting file is
+the output of
 ``sacct -X -n -P -S <since> -o JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition``.
 """
 
@@ -44,20 +57,25 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 BUDGET = {"max_cpus": 4, "max_mem_gb": 16, "max_minutes": 30}
 SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 SUCCESS_STATES = ("COMPLETED",)
+N_SAMPLE_KEYS = 12
 
-#: One entry per dataset the eval builds. ``schema_snapshot`` and the sample-keys
-#: import are the plugin's own committed test contract, never duplicated by value here.
+#: Fixed output names under --out-dir, one per dataset the eval builds.
+#: ``schema_snapshot`` is the plugin's own committed contract, read fresh from THIS
+#: checkout every time -- never copied by value, never read from reference.json.
 DATASETS = {
     "hgnc:lookup": {
+        "output": "hgnc-lookup.ht",
         "schema_id": "hgnc-lookup-v1",
         "schema_snapshot": REPO_ROOT / "hvantk/skills/hgnc/tests/snapshots/schema.json",
     },
     "clingen:gene-disease": {
+        "output": "clingen-gene-disease.ht",
         "schema_id": "clingen-gene-disease-v1",
         "schema_snapshot": REPO_ROOT
         / "hvantk/skills/clingen/tests/snapshots/schema.json",
     },
     "gencc:submissions": {
+        "output": "gencc-submissions.ht",
         "schema_id": "gencc-submissions-v1",
         "schema_snapshot": REPO_ROOT
         / "hvantk/skills/gencc/tests/snapshots/schema.json",
@@ -72,34 +90,195 @@ _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 _ARRAY_TASK_ID = re.compile(r"^\d+_\d+$")
 
 
-def sample_keys_for(dataset: str) -> list[dict]:
-    """The plugin's own committed ``SAMPLE_KEYS``, imported rather than copied."""
-    if dataset == "hgnc:lookup":
-        from hvantk.skills.hgnc.tests.test_builder import SAMPLE_KEYS
-    elif dataset == "clingen:gene-disease":
-        from hvantk.skills.clingen.tests.test_builder import SAMPLE_KEYS
-    elif dataset == "gencc:submissions":
-        from hvantk.skills.gencc.tests.test_builder import SAMPLE_KEYS
-    else:
-        raise KeyError(dataset)
-    return SAMPLE_KEYS
+# --- schema contract (floor, not equality); see templates/verify-builds.py for the
+# --- twin copy this is deliberately kept in sync with by hand (each eval/check.py in
+# --- this repository is self-contained; see e.g. hpc-hail-job's). ---------------------
 
 
-def sample_rows_sha256(rows: list[dict]) -> str:
-    blob = json.dumps(rows, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode()).hexdigest()
-
-
-def load_list(path: str) -> list[tuple[str, Path]]:
-    pairs = []
-    for line in Path(path).read_text().splitlines():
-        if not line.strip():
+def _fields_contract(
+    built: dict, snapshot: dict, prefix: str = ""
+) -> tuple[list[str], dict, list[str]]:
+    missing: list[str] = []
+    mismatches: dict = {}
+    for name, expected in snapshot.items():
+        path = f"{prefix}{name}"
+        if name not in built:
+            missing.append(path)
             continue
-        fields = line.split("\t")
-        if len(fields) < 3:
-            raise ValueError(f"{path}: line is missing fields: {line!r}")
-        pairs.append((fields[0], Path(fields[2])))
-    return pairs
+        got = built[name]
+        if isinstance(expected, dict):
+            if not isinstance(got, dict):
+                mismatches[path] = {"expected": expected, "got": got}
+                continue
+            sub_missing, sub_mismatches, _ = _fields_contract(
+                got, expected, prefix=f"{path}."
+            )
+            missing.extend(sub_missing)
+            mismatches.update(sub_mismatches)
+        elif got != expected:
+            mismatches[path] = {"expected": expected, "got": got}
+    extra = sorted(set(built) - set(snapshot))
+    return missing, mismatches, extra
+
+
+def schema_contract(built: dict, snapshot: dict) -> dict:
+    """Does *built* satisfy *snapshot* as a floor? Extra built fields are allowed.
+
+    All three eval datasets are Hail Tables (``{"key", "row"}``); the MatrixTable,
+    AnnData and parquet branches are kept for parity with ``verify-builds.py`` and are
+    unreachable here, but a future fourth eval dataset should not need them rewritten.
+    """
+    if "obs_columns" in snapshot:
+        missing = sorted(
+            [
+                c
+                for c in snapshot.get("obs_columns", [])
+                if c not in built.get("obs_columns", [])
+            ]
+            + [
+                c
+                for c in snapshot.get("var_columns", [])
+                if c not in built.get("var_columns", [])
+            ]
+        )
+        mismatches = {}
+        if built.get("X_format") != snapshot.get("X_format"):
+            mismatches["X_format"] = {
+                "expected": snapshot.get("X_format"),
+                "got": built.get("X_format"),
+            }
+        extra = sorted(
+            (set(built.get("obs_columns", [])) - set(snapshot.get("obs_columns", [])))
+            | (set(built.get("var_columns", [])) - set(snapshot.get("var_columns", [])))
+        )
+        return {
+            "ok": not missing and not mismatches,
+            "missing_fields": missing,
+            "type_mismatches": mismatches,
+            "extra_fields": extra,
+        }
+    if "columns" in snapshot and "dtypes" in snapshot:
+        missing = [c for c in snapshot["columns"] if c not in built.get("columns", [])]
+        mismatches = {}
+        for c in snapshot["columns"]:
+            if c in built.get("columns", []):
+                exp = snapshot.get("dtypes", {}).get(c)
+                got = built.get("dtypes", {}).get(c)
+                if got != exp:
+                    mismatches[c] = {"expected": exp, "got": got}
+        extra = sorted(set(built.get("columns", [])) - set(snapshot.get("columns", [])))
+        return {
+            "ok": not missing and not mismatches,
+            "missing_fields": sorted(missing),
+            "type_mismatches": mismatches,
+            "extra_fields": extra,
+        }
+    if "row_key" in snapshot:
+        missing = []
+        mismatches = {}
+        key_ok = built.get("row_key") == snapshot.get("row_key") and built.get(
+            "col_key"
+        ) == snapshot.get("col_key")
+        if built.get("row_key") != snapshot.get("row_key"):
+            mismatches["row_key"] = {
+                "expected": snapshot.get("row_key"),
+                "got": built.get("row_key"),
+            }
+        if built.get("col_key") != snapshot.get("col_key"):
+            mismatches["col_key"] = {
+                "expected": snapshot.get("col_key"),
+                "got": built.get("col_key"),
+            }
+        extra = []
+        for part in ("row", "col", "entry"):
+            m, t, e = _fields_contract(
+                built.get(part, {}), snapshot.get(part, {}), prefix=f"{part}."
+            )
+            missing.extend(m)
+            mismatches.update(t)
+            extra.extend(f"{part}.{x}" for x in e)
+        ok = key_ok and not missing and not mismatches
+        return {
+            "ok": ok,
+            "missing_fields": sorted(missing),
+            "type_mismatches": mismatches,
+            "extra_fields": sorted(extra),
+        }
+    # Hail Table: {"key": [...], "row": {...}} -- every eval dataset's own shape.
+    key_ok = built.get("key") == snapshot.get("key")
+    mismatches = {}
+    if not key_ok:
+        mismatches["key"] = {"expected": snapshot.get("key"), "got": built.get("key")}
+    missing, row_mismatches, extra = _fields_contract(
+        built.get("row", {}), snapshot.get("row", {})
+    )
+    mismatches.update(row_mismatches)
+    ok = key_ok and not missing and not mismatches
+    return {
+        "ok": ok,
+        "missing_fields": sorted(missing),
+        "type_mismatches": mismatches,
+        "extra_fields": sorted(extra),
+    }
+
+
+# --- deterministic sample keys and the order-insensitive row digest ----------------
+
+
+def choose_sample_keys(ht, n_keys: int = N_SAMPLE_KEYS) -> list[dict]:
+    """``n_keys`` keys chosen from *ht* by even position, not by any plugin's
+    hand-picked (and possibly fixture-only) SAMPLE_KEYS."""
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    import hail as hl
+
+    n = ht.count()
+    if n == 0:
+        return []
+    positions = sorted({(i * n) // n_keys for i in range(n_keys)})
+    key_field_names = list(ht.key)
+    indexed = ht.add_index("_i")
+    chosen = indexed.filter(hl.literal(positions).contains(indexed["_i"])).select(
+        *key_field_names
+    )
+    keys = [
+        {name: _to_jsonable(row[name]) for name in key_field_names}
+        for row in chosen.collect()
+    ]
+    keys.sort(key=lambda k: json.dumps(k, sort_keys=True))
+    return keys
+
+
+def rows_digest(ht, keys: list[dict]) -> str:
+    """SHA-256 over every row of *ht* whose key is in *keys*, order-insensitive and
+    duplicate-key-safe. A key absent from *ht* is simply absent from the result (via
+    semi_join, which never raises) rather than a crash: a real content difference then
+    shows up as a digest mismatch, which is what M5 is for."""
+    if not keys:
+        return hashlib.sha256(b"").hexdigest()
+    from hvantk.tests._snapshot_utils import _jsonable_to_hail_python, _to_jsonable
+
+    import hail as hl
+
+    key_field_names = list(ht.key)
+    key_dtype = ht.key.dtype
+    key_rows = [
+        {
+            name: _jsonable_to_hail_python(k.get(name), key_dtype[name])
+            for name in key_field_names
+        }
+        for k in keys
+    ]
+    requested = hl.Table.parallelize(key_rows, schema=key_dtype, key=key_field_names)
+    collected = ht.semi_join(requested).collect()
+    strings = sorted(
+        json.dumps(_to_jsonable(dict(row)), sort_keys=True, separators=(",", ":"))
+        for row in collected
+    )
+    return hashlib.sha256("\n".join(strings).encode()).hexdigest()
+
+
+# --- run notes and Slurm accounting (M1-M3) -----------------------------------------
 
 
 def parse_notes(path: Path) -> dict:
@@ -188,18 +367,13 @@ def load_sacct(sacct_file: str | None, since: str) -> tuple[list[dict] | None, s
 
 
 def job_known(job_id: str, all_ids: set[str]) -> bool:
-    """True if *job_id* (from run-notes) is ``A`` or starts an array task ``A_<i>``.
-
-    An array submission's run-notes line is the array's own id (``job: <A>``), but
-    every finished task is accounted only as ``<A>_<i>``, never bare ``<A>`` -- the
-    plain membership test a single-job eval uses would never match an array run.
-    """
+    """True if *job_id* (from run-notes) is ``A`` or starts an array task ``A_<i>``."""
     return job_id in all_ids or any(i.startswith(job_id + "_") for i in all_ids)
 
 
 def grade_slurm(
     run_id: str, notes: dict, rows: list[dict], profile: Path | None
-) -> tuple[bool, bool, bool, list[str], dict]:
+) -> tuple[bool, bool, bool | None, list[str], dict]:
     jobs = [j for j in rows if j["name"].startswith(run_id)]
     allowed = allowed_partitions(profile)
     within = []
@@ -226,17 +400,26 @@ def grade_slurm(
         and any(j["state"].startswith(SUCCESS_STATES) for j in jobs)
         and all(job_known(n, all_ids) for n in notes["jobs"])
     )
+
     array_rows = [j for j in jobs if _ARRAY_TASK_ID.match(j["id"])]
-    completed_array_rows = [j for j in array_rows if j["state"] == "COMPLETED"]
-    array_used = len(completed_array_rows) >= 3
     array_parents = sorted({j["id"].split("_", 1)[0] for j in array_rows})
-    return (
-        m2,
-        m3,
-        array_used,
-        array_parents,
-        {"jobs": jobs, "within_budget": within},
-    )
+    if not jobs:
+        # No accounting row at all under this run's name prefix: we cannot tell an
+        # array run from anything else, so this is unknown, not "not an array".
+        array_used: bool | None = None
+    else:
+        completed_per_parent: dict[str, int] = {}
+        for j in array_rows:
+            if j["state"] == "COMPLETED":
+                parent = j["id"].split("_", 1)[0]
+                completed_per_parent[parent] = completed_per_parent.get(parent, 0) + 1
+        some_parent_has_2 = any(c >= 2 for c in completed_per_parent.values())
+        total_completed = sum(completed_per_parent.values())
+        array_used = bool(some_parent_has_2 and total_completed >= 3)
+    return m2, m3, array_used, array_parents, {"jobs": jobs, "within_budget": within}
+
+
+# --- reading a built table and grading one dataset ----------------------------------
 
 
 def read_table(output: Path):
@@ -248,11 +431,12 @@ def read_table(output: Path):
     return hl.read_table(str(output))
 
 
-def grade_one_dataset(dataset: str, output: Path, reference: dict | None):
-    """(m4, content_ok, details) for one dataset. ``content_ok`` is False until a
-    reference is available (write-reference mode never calls this)."""
-    from hvantk.tests._snapshot_utils import collect_sample_rows, hail_schema_to_dict
+def grade_one_dataset(
+    dataset: str, output: Path, reference: dict | None
+) -> tuple[bool, bool, dict]:
+    from hvantk.tests._snapshot_utils import hail_schema_to_dict
 
+    info = DATASETS[dataset]
     details: dict = {"output": str(output)}
     details["success_marker"] = (output / "_SUCCESS").exists()
     sidecar = output.with_name(output.name + ".provenance.json")
@@ -266,53 +450,62 @@ def grade_one_dataset(dataset: str, output: Path, reference: dict | None):
     ht = read_table(output)
     schema = hail_schema_to_dict(ht)
     details["row_count"] = ht.count()
-    ref_ds = reference["datasets"][dataset] if reference else None
-    expected_schema = ref_ds["schema"] if ref_ds else None
-    details["schema_matches"] = (
-        expected_schema is not None and schema == expected_schema
-    )
-    m4 = details["schema_id"] == DATASETS[dataset]["schema_id"] and bool(
-        details["schema_matches"]
-    )
-    if ref_ds is None:
+
+    # M4: the contract against the committed snapshot in THIS checkout, never from
+    # reference.json and never from whatever checkout produced the output.
+    committed_schema = json.loads(info["schema_snapshot"].read_text())
+    contract = schema_contract(schema, committed_schema)
+    details["schema_contract_ok"] = contract["ok"]
+    details["missing_fields"] = contract["missing_fields"]
+    details["type_mismatches"] = contract["type_mismatches"]
+    details["extra_fields"] = contract["extra_fields"]
+    m4 = details["schema_id"] == info["schema_id"] and bool(contract["ok"])
+
+    if reference is None:
         return m4, False, details
 
+    ref_ds = reference["datasets"][dataset]
+    details["schema_equals_reference"] = schema == ref_ds["schema"]
     details["row_count_matches"] = details["row_count"] == ref_ds["row_count"]
-    try:
-        rows = collect_sample_rows(ht, keys=sample_keys_for(dataset))
-        details["sample_keys_present"] = True
-        details["sample_rows_sha256"] = sample_rows_sha256(rows)
-    except KeyError:
-        details["sample_keys_present"] = False
-        details["sample_rows_sha256"] = None
-    details["sample_rows_match"] = (
-        details["sample_rows_sha256"] == ref_ds["sample_rows_sha256"]
-    )
+    digest = rows_digest(ht, ref_ds["sample_keys"])
+    details["rows_sha256"] = digest
+    details["rows_digest_matches"] = digest == ref_ds["rows_sha256"]
     content_ok = bool(
-        details["row_count_matches"]
-        and details["sample_keys_present"]
-        and details["sample_rows_match"]
+        details["schema_equals_reference"]
+        and details["row_count_matches"]
+        and details["rows_digest_matches"]
     )
     return m4, content_ok, details
 
 
-def write_reference(args, pairs: list[tuple[str, Path]]) -> None:
-    from hvantk.tests._snapshot_utils import collect_sample_rows
+def write_reference(args) -> None:
+    from hvantk.tests._snapshot_utils import hail_schema_to_dict
 
+    out_dir = Path(args.out_dir)
     datasets = {}
-    for dataset, output in pairs:
-        info = DATASETS[dataset]
-        schema = json.loads(info["schema_snapshot"].read_text())
+    for ds, info in DATASETS.items():
+        output = out_dir / info["output"]
         ht = read_table(output)
-        keys = sample_keys_for(dataset)
-        rows = collect_sample_rows(ht, keys=keys)
-        datasets[dataset] = {
-            "output": output.name,
+        schema = hail_schema_to_dict(ht)
+        committed_schema = json.loads(info["schema_snapshot"].read_text())
+        contract = schema_contract(schema, committed_schema)
+        if not contract["ok"]:
+            print(
+                f"ERROR: --write-reference: {ds}'s build at {output} does not satisfy "
+                f"its own committed schema snapshot ({info['schema_snapshot']}); the "
+                f"committed snapshot and this build disagree on the contract -- "
+                f"investigate before baselining. Detail: {json.dumps(contract)}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        keys = choose_sample_keys(ht)
+        datasets[ds] = {
+            "output": info["output"],
             "schema_id": info["schema_id"],
             "schema": schema,
             "row_count": ht.count(),
             "sample_keys": keys,
-            "sample_rows_sha256": sample_rows_sha256(rows),
+            "rows_sha256": rows_digest(ht, keys),
         }
     ref = {
         "datasets": datasets,
@@ -331,8 +524,9 @@ def write_reference(args, pairs: list[tuple[str, Path]]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--list", dest="list_path", required=True)
+    ap.add_argument("--out-dir", required=True, help="holds the three fixed outputs")
     ap.add_argument("--reference", required=True)
+    ap.add_argument("--verdict-dir", default=None, help="default: --out-dir")
     ap.add_argument("--run-notes")
     ap.add_argument("--run-id", default="")
     ap.add_argument("--expect-commit", default="")
@@ -346,18 +540,15 @@ def main() -> int:
     ap.add_argument("--write-reference", action="store_true")
     args = ap.parse_args()
 
-    pairs = load_list(args.list_path)
-    unknown = [ds for ds, _ in pairs if ds not in DATASETS]
-    if unknown:
-        ap.error(f"unknown dataset(s) in {args.list_path}: {unknown}")
-
     if args.write_reference:
-        write_reference(args, pairs)
+        write_reference(args)
         return 0
     for required in ("run_id", "expect_commit", "expect_sif_sha256"):
         if not getattr(args, required):
             ap.error(f"--{required.replace('_', '-')} is required when grading")
 
+    out_dir = Path(args.out_dir)
+    pairs = [(ds, out_dir / info["output"]) for ds, info in DATASETS.items()]
     reference = json.loads(Path(args.reference).read_text())
     notes = parse_notes(
         Path(args.run_notes) if args.run_notes else Path("/nonexistent")
@@ -415,13 +606,11 @@ def main() -> int:
         "datasets": datasets_out,
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
-    first_output = pairs[0][1] if pairs else None
-    out_dir = (
-        first_output.parent
-        if first_output is not None and first_output.parent.exists()
-        else Path(".")
+    verdict_dir = Path(args.verdict_dir) if args.verdict_dir else out_dir
+    verdict_dir.mkdir(parents=True, exist_ok=True)
+    (verdict_dir / "verdict.json").write_text(
+        json.dumps(verdict, indent=2, default=str)
     )
-    (out_dir / "verdict.json").write_text(json.dumps(verdict, indent=2, default=str))
     receipt = {
         "datasets": {
             ds: {
@@ -436,7 +625,7 @@ def main() -> int:
         ).hexdigest(),
         "checked_at": verdict["checked_at"],
     }
-    (out_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
+    (verdict_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
     print(
         json.dumps(
             {
