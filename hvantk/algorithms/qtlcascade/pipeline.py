@@ -343,15 +343,7 @@ class CascadePipeline:
         backend = meta.backends[0]
         logger.info("Coloc backend: %s", backend.value)
 
-        # Get cascade gene IDs (genes with both eQTL and pQTL signals —
-        # includes both eqtl_mediated and discordant classes)
-        ht = hl.read_table(result.cascade_ht_path)
-        both_classes = hl.set(["eqtl_mediated", "discordant"])
-        cascade_genes = list(
-            ht.filter(both_classes.contains(ht.cascade_class)).aggregate(
-                hl.agg.collect_as_set(ht.gene_id)
-            )
-        )
+        cascade_genes = coloc_gene_ids(hl.read_table(result.cascade_ht_path))
         if not cascade_genes:
             logger.info("No genes with both eQTL and pQTL — skipping coloc")
             return result
@@ -550,6 +542,23 @@ class CascadePipeline:
             from hvantk.core.utils.hail_context import init_hail
 
             init_hail()
+
+
+def coloc_gene_ids(cascade_ht) -> List[str]:
+    """Gene IDs with both an eQTL and a pQTL signal, sorted.
+
+    Those are the ``eqtl_mediated`` and ``discordant`` classes of a cascade table.
+    The aggregation reads ``gene_id`` from the filtered table itself: an expression
+    from the unfiltered table is a different Hail source and fails with
+    ``'Table.aggregate': source mismatch``. Sorted so coloc runs genes in a stable
+    order.
+    """
+    import hail as hl
+
+    both = cascade_ht.filter(
+        hl.set(["eqtl_mediated", "discordant"]).contains(cascade_ht.cascade_class)
+    )
+    return sorted(both.aggregate(hl.agg.collect_as_set(both.gene_id)))
 
 
 def _sanitize(name: str) -> str:
