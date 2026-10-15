@@ -65,7 +65,7 @@ def main() -> int:
     shifted = labels[len(labels) // 2 :] + labels[: len(labels) // 2]
     mapping = hl.literal({p.s: lab for p, lab in zip(pairs, shifted)})
     ref.annotate_cols(super_pop=mapping[ref.s]).write(
-        str(out / "reference_shuffled.mt"), overwrite=True
+        str(ctl / "reference_shuffled.mt"), overwrite=True
     )
 
     r = hl.read_matrix_table(str(out / "reference.mt"))
