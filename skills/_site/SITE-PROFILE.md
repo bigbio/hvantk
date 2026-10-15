@@ -35,6 +35,7 @@ that meets an empty value stops and asks the user. It never guesses.
 | `HVANTK_READONLY_MOUNTS` | paths that are read-only on compute nodes | none known |
 | `HVANTK_EGRESS` | `open` or `blocked`: compute-node internet | unknown; treat as blocked |
 | `HVANTK_EVAL_DATA` | where eval slices are staged | `$HVANTK_WORK/hvantk-eval` |
+| `HVANTK_CLUSTER_REMOTE` | the name of the cluster remote in the clone you push from (`git remote -v`) | unset; the sync skill asks |
 
 ## Things that never go in a profile
 

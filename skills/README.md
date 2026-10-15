@@ -15,9 +15,10 @@ There are two kinds of skill in this repository. **Resource specs** under
 | skill | use it when |
 | --- | --- |
 | `hvantk:hpc-hail-job` | you want to run any Hail-backed hvantk command (`reprocess`, `hgc`, `annotate`, `cohort`, `qtlcascade`) on a Slurm cluster from the container image: sizing, scratch, submission, waiting, triage, verification |
+| `hvantk:hpc-sync` | a cluster clone or bare remote must be brought in step with GitHub without losing cluster-side commits, branches must be pushed to the cluster remote by explicit refspec, or a job ran a commit you did not review |
 
-More skills follow the same contract and land in batches: the container build, keeping a
-cluster clone in step, joint genotyping, callset subsetting, ancestry inference, building
+More skills follow the same contract and land in batches: the container build, joint
+genotyping, callset subsetting, ancestry inference, building
 datasets at scale, drift triage, the gene index, cohort attachment and burden, re-ranking
 and evaluation, and the QTL cascade.
 
