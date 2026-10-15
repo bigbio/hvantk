@@ -13,7 +13,7 @@ provider whose test command differs from the usual `pytest .../tests -m hail` --
 multi-dataset providers sometimes narrow it with `-k`, for example -- still runs
 correctly.
 
-    python run-plugin-tests.py --repo /path/to/checkout --provider:dataset clingen:gene-disease [-- -k gene_disease]
+    python run-plugin-tests.py --repo /path/to/checkout --dataset clingen:gene-disease [-- -k gene_disease]
 """
 
 from __future__ import annotations

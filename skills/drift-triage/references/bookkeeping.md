@@ -16,13 +16,13 @@ the automated workflow); this file is the operational sequence, not a restatemen
   (null until marked rebuilt).
 
 The fingerprint is written only through the tooling, never by hand. What "rejected"
-actually means is narrower than it sounds: only a baseline shaped like a stub, or one
-carrying the specific placeholder markers a hand-seeded file leaves (an empty checksum,
-a sentinel string, `fetched_at` at the Unix epoch), is refused outright as
-`probe_failed`. Any OTHER hand-edit is accepted as a file -- there is no general
-"this was not written by the tool" detector -- it just then never equals a live
-observation again, so the dataset reports `drifted` on every run forever. Either way the
-fix is the same: `--regenerate`, never a manual edit.
+actually means is narrower than it sounds: only a baseline shaped like a placeholder --
+carrying the specific markers a hand-seeded file leaves (an empty checksum, a sentinel
+string, `fetched_at` at the Unix epoch) -- is refused outright as `probe_failed`. Any
+OTHER hand-edit is accepted as a file -- there is no general "this was not written by
+the tool" detector -- it just then never equals a live observation again, so the
+dataset reports `drifted` on every run forever. Either way the fix is the same:
+`--regenerate`, never a manual edit.
 
 The ledger is written the same way in the NORMAL case, but it has one documented,
 narrow exception: a hand-added row, for the specific case where `--regenerate` records
@@ -48,15 +48,23 @@ easy to get silently wrong as any other one.
 3. `hvantk drift --ledger` -- lists every dataset never rebuilt, or rebuilt before its
    own `last_upstream_change`. The dataset just handled must not appear in that list.
 
-Run 1 BEFORE 2, always -- and not only because 2 "requires" 1's row. If the dataset has
-no ledger row at all yet, running `--mark-rebuilt` first does fail outright, obviously
-wrong. But `clingen:gene-disease` (and most datasets that have ever drifted before)
-already HAS a row, from some earlier, unrelated signal -- and `--mark-rebuilt` run
-before `--regenerate` happily marks THAT OLD row rebuilt instead, succeeds with no
-error, and `--ledger` then reports clean even though the signal you are triaging right
-now was never recorded at all. The only way to notice is to check that the row's
-`last_upstream_change` is from THIS run, not a stale one -- which is also why step 3's
-`--ledger` passing is necessary but not sufficient; read the row itself too.
+Run 1 BEFORE 2, always -- but the risk is subtler than "2 fails without 1's row". If
+the dataset has no ledger row at all yet, running `--mark-rebuilt` first does fail
+outright, obviously wrong. The REAL mechanism: `hvantk drift --regenerate` that
+records a row (`ledger_update` in `hvantk/core/plugin/drift_ledger.py`) REPLACES the
+dataset's row outright -- a fresh `last_upstream_change`, and `rebuilt_at` reset to
+`null` -- so a `--mark-rebuilt` run before it is simply overwritten by the regenerate
+that follows; wrong order alone is self-correcting, not silently dangerous.
+
+The genuinely false-clean case is different: `--regenerate` records NO row at all (a
+first capture, or a `probe_version`-only change -- step 1 above) while
+`clingen:gene-disease` (or any dataset that has drifted before) already HAS an older
+row from some earlier, unrelated signal. `--mark-rebuilt` then marks THAT stale row
+rebuilt, succeeds with no error, and `--ledger` reports clean even though the signal
+you are triaging right now was never recorded at all. The only way to notice is to
+check that the row's `last_upstream_change` is from THIS run, not a stale one -- which
+is also why step 3's `--ledger` passing is necessary but not sufficient; read the row
+itself too.
 
 ## The offline form
 

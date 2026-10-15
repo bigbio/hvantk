@@ -51,7 +51,12 @@ its text before doing anything:
 | no committed baseline, or one that was never captured from a live probe | "missing expected fingerprint" or "... was never captured from a live probe" | `--regenerate` |
 | the probe's own code is broken | a parse error, a missing marker, anything that is not network- or baseline-shaped | fix `hvantk/skills/<provider>/drift_probe.py`; bump `PROBE_VERSION` only if the probe's OUTPUT shape changed -- any version difference at all suppresses the next `--regenerate`'s ledger row (`references/bookkeeping.md`) |
 
-None of the three is itself a drift signal about the dataset's content.
+A network error or a missing/never-captured baseline (the first two causes) is not
+itself a signal about the dataset -- proceed once egress or a baseline exists. The
+third cause is different: a probe that raised while parsing content it DID
+successfully fetch (a missing header marker, say) is not something to proceed past
+the way those two are. It IS a signal, same standing as a `drifted` schema result --
+triage it, don't wave it off as "just an infra hiccup".
 
 ## What the drift bot does and does not do
 

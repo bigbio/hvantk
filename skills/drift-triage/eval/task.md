@@ -33,3 +33,5 @@ the dataset building again.
 
 You are done when the dataset exists, the checkout carries the repair and the records,
 the run notes are written, and every job you submitted has left the queue.
+
+Leave the repair and the records in the working tree; do not create commits.

@@ -23,13 +23,21 @@ Three subcommands:
         own URL. Exits 5 if the probe made no head/get/request call at all (Session-based
         or otherwise uncovered) -- there is nothing to print.
 
-    probe-offline.py diff --dataset PROVIDER:DATASET --file NEW --against OLD
+    probe-offline.py diff --dataset PROVIDER:DATASET --file NEW (--against OLD | --against-committed)
         Print, per header filename key, the COLUMNS NEW adds and removes relative to
         OLD. This is narrower than a full fingerprint's own top-level ``added``/
         ``removed`` (hvantk.core.plugin.drift_runner._compare_fingerprints, which the
         `drift` subcommand below surfaces unabridged) -- here it is always just the
         `headers` entry's column list. NEW is "observed", OLD is "expected", matching
-        that same convention. Exits 5 under the same condition as `fingerprint`.
+        that same convention. Exactly one of ``--against``/``--against-committed`` is
+        required: ``--against FILE`` probes a second local file the same way as NEW;
+        ``--against-committed`` skips probing anything for OLD and instead reads the
+        dataset's own committed ``drift_fingerprint.json`` (via
+        ``get_registry().get_dataset(ds).test_paths.drift_fingerprint``) and uses ITS
+        ``headers`` entry -- the real baseline a repair must match, as opposed to a
+        plugin's test fixture, which can carry far fewer columns than upstream ever
+        did. Exits 5 under the same condition as `fingerprint` (for NEW; the committed
+        fingerprint is read directly, not probed, so it has no such failure mode).
 
     probe-offline.py drift --dataset PROVIDER:DATASET --file PATH -- [hvantk drift options]
         Run `hvantk drift PROVIDER:DATASET [options]` in-process with upstream answered
@@ -167,12 +175,24 @@ def cmd_diff(args) -> int:
     probe = _dataset_probe(args.dataset)
     with _answer_from_file(args.file) as new_served:
         new_fp = probe()
-    with _answer_from_file(args.against) as old_served:
-        old_fp = probe()
-    if new_served.count == 0 or old_served.count == 0:
+    if new_served.count == 0:
         _not_served_error(args.dataset)
         return 5
     new_headers = new_fp.get("headers") or {}
+
+    if args.against_committed:
+        from hvantk.core.plugin.loader import get_registry
+
+        fp_path = Path(
+            get_registry().get_dataset(args.dataset).test_paths.drift_fingerprint
+        )
+        old_fp = json.loads(fp_path.read_text())
+    else:
+        with _answer_from_file(args.against) as old_served:
+            old_fp = probe()
+        if old_served.count == 0:
+            _not_served_error(args.dataset)
+            return 5
     old_headers = old_fp.get("headers") or {}
     out = {}
     for name in sorted(set(new_headers) | set(old_headers)):
@@ -225,7 +245,13 @@ def main() -> int:
     df = sub.add_parser("diff", help="diff two files' header columns through a probe")
     df.add_argument("--dataset", required=True, metavar="PROVIDER:DATASET")
     df.add_argument("--file", required=True, help='the new file ("observed")')
-    df.add_argument("--against", required=True, help='the old file ("expected")')
+    df_against = df.add_mutually_exclusive_group(required=True)
+    df_against.add_argument("--against", help='the old file ("expected")')
+    df_against.add_argument(
+        "--against-committed",
+        action="store_true",
+        help="compare against the dataset's committed drift_fingerprint.json headers",
+    )
     df.set_defaults(fn=cmd_diff)
 
     dr = sub.add_parser(
