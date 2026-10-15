@@ -25,6 +25,18 @@ COMMIT="$(git -C "$R" rev-parse HEAD)"
 SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"
 REFERENCE="$HERE/reference.json"
 CHECK="$HERE/check.py"
+# check.py needs Python 3.10; login nodes often have an older one, so it runs through the
+# image (no Hail, no job): bind the checkout and the eval directory.
+CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"
+BINDS=(-B "$HVANTK_WORK:$HVANTK_WORK")
+for p in "$HVANTK_REPO" "$EVAL"; do case "$p" in "$HVANTK_WORK"|"$HVANTK_WORK"/*) ;; *) BINDS+=(-B "$p:$p") ;; esac; done
+check() {
+  if command -v "$CONTAINER_BIN" >/dev/null 2>&1; then
+    "$CONTAINER_BIN" exec "${BINDS[@]}" --env PYTHONPATH="$HVANTK_REPO" "$HVANTK_SIF" python3 "$CHECK" "$@"
+  else  # a laptop without a container runtime: plain python3 (3.10 or later)
+    python3 "$CHECK" "$@"
+  fi
+}
 verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v[sys.argv[2]])" "$1" "$2"; }
 notes() { printf 'commit: %s\ncontainer: %s\n' "$COMMIT" "$SIF_SHA" > "$1"; }
 
@@ -33,7 +45,7 @@ echo "control run -> $OUT (commit $COMMIT)"
 # --- positive: the skill's procedure, no agent ---
 bash "$HERE/stage.sh" "$OUT/pos/scenario" >/dev/null
 if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
-  python3 "$CHECK" --scenario "$OUT/pos/scenario" --reference "$REFERENCE" --write-reference \
+  check --scenario "$OUT/pos/scenario" --reference "$REFERENCE" --write-reference \
     --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA"
 fi
 [[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
@@ -50,7 +62,7 @@ fi
   done
 )
 notes "$OUT/pos/run-notes.md"
-python3 "$CHECK" --scenario "$OUT/pos/scenario" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
+check --scenario "$OUT/pos/scenario" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
   --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" >/dev/null
 for s in M1 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true" >&2; exit 1; }; done
 echo "positive control: PASS (M1 M4 M5 true; M2 M3 null: no job)"
@@ -59,7 +71,7 @@ echo "positive control: PASS (M1 M4 M5 true; M2 M3 null: no job)"
 bash "$HERE/stage.sh" "$OUT/neg/scenario" >/dev/null
 ( cd "$OUT/neg/scenario/laptop" && git push -q cluster main dev )
 notes "$OUT/neg/run-notes.md"
-python3 "$CHECK" --scenario "$OUT/neg/scenario" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
+check --scenario "$OUT/neg/scenario" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
   --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --expect-fail >/dev/null
 [[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "False" && "$(verdict_stage "$OUT/neg/verdict.json" M5)" == "True" ]] \
   || { echo "ERROR: negative control did not fail the way the trap predicts (M4=$(verdict_stage "$OUT/neg/verdict.json" M4) M5=$(verdict_stage "$OUT/neg/verdict.json" M5))" >&2; exit 1; }

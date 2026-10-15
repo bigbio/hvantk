@@ -20,20 +20,23 @@ cd "$TARGET"
 
 export GIT_AUTHOR_NAME=eval GIT_AUTHOR_EMAIL=eval@example.org
 export GIT_COMMITTER_NAME=eval GIT_COMMITTER_EMAIL=eval@example.org
-export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+# Per-command settings instead of GIT_CONFIG_GLOBAL, which older git ignores: a user's
+# gpgsign or autocrlf setting would otherwise change the hashes.
+G=(git -c commit.gpgsign=false -c core.autocrlf=false -c init.defaultBranch=main)
 n=0
 commit() {  # commit <file> <message>: deterministic content and timestamps
   n=$((n + 1))
   printf '%s\n' "$1 at step $n" > "$1"
-  git add "$1"
+  "${G[@]}" add "$1"
   GIT_AUTHOR_DATE="2026-01-01T00:00:0${n}+0000" GIT_COMMITTER_DATE="2026-01-01T00:00:0${n}+0000" \
-    git commit -q -m "$2"
+    "${G[@]}" commit -q -m "$2"
 }
 
-git init -q --bare -b main github.git
-git init -q --bare -b main cluster.git
+"${G[@]}" init -q --bare github.git
+"${G[@]}" init -q --bare cluster.git
 
-git init -q -b main build
+"${G[@]}" init -q build
+git -C build symbolic-ref HEAD refs/heads/main   # portable: older git has no init.defaultBranch
 ( cd build
   commit README.md "c1 readme"
   commit a.txt "c2 add a"
