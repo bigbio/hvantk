@@ -29,9 +29,12 @@ echo "extra:  ${EXTRA:-(none)}"
 echo "==============================================="
 # EXTRA is deliberately unquoted: it is the task-list author's own extra reprocess
 # options (e.g. --plugin-arg k=v --intermediate /abs/path), meant to word-split the way
-# they wrote it, not a single opaque token. The split is on plain whitespace with no
-# quote handling at all (there is no shell re-parse here, just bash's own word
-# splitting): a value containing a space -- `--plugin-arg key="a value with spaces"` --
-# cannot be expressed in this column. Keep every value in EXTRA space-free.
+# they wrote it, not a single opaque token. `set -f` just below turns off pathname
+# expansion first, so the split is on plain whitespace ONLY -- no globbing, no quote
+# handling at all (there is no shell re-parse here, just bash's own word splitting): a
+# value containing a space -- `--plugin-arg key="a value with spaces"` -- cannot be
+# expressed in this column. Keep every value in EXTRA space-free.
+set -f
 bash "$HAIL_JOB" hvantk reprocess "$DATASET" --raw-dir "$RAW" --output "$OUT" --skip-download --no-check-drift $EXTRA
+set +f
 echo "== done $DATASET =="

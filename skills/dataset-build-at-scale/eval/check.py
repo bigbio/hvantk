@@ -11,24 +11,30 @@ M4 checks each output against its plugin's committed schema snapshot as a CONTRA
 (``schema_contract``, read from THIS checkout's own ``REPO_ROOT``, never from
 ``reference.json`` or whatever checkout produced the output): a snapshot is
 fixture-derived and a full build may carry more columns than its fixture did (GenCC:
-31 upstream columns, 13 in the fixture) while still satisfying the plugin's contract.
-M5's ``content_ok`` is the stricter, exact check that this run REPRODUCES the
-reference build: schema equal to the reference's stored schema, row counts equal, and
-``rows_digest`` equal over a fixed, deterministically-chosen sample of keys -- never a
-plugin's own ``SAMPLE_KEYS`` or committed ``sample_rows.json``, whose keys (ClinGen's
-fixture invents its MONDO ids) are not guaranteed to exist in a real build.
+31 upstream columns, 14 in the fixture) while still satisfying the plugin's contract.
+Grading one dataset never crashes the run: ``grade_one_dataset`` is called inside a
+try/except in ``main()``, so a corrupt or wrong-type output records ``error`` in that
+dataset's own details and fails M4 for it alone -- ``verdict.json`` is still written
+for every dataset, graded or not. M5's ``content_ok`` is the stricter, exact check
+that this run REPRODUCES the reference build: schema equal to the reference's stored
+schema, row counts equal, and ``rows_digest`` equal over a fixed,
+deterministically-chosen sample of keys -- never a plugin's own ``SAMPLE_KEYS`` or
+committed ``sample_rows.json``, whose keys (ClinGen's fixture invents its MONDO ids)
+are not guaranteed to exist in a real build.
 
 Array-aware, unlike a single-job eval's check.py: the task asks for one array job
 covering all three datasets. M3's "every listed job exists in accounting" allows a
 notes id ``A`` to be satisfied by an accounting row ``A`` *or* ``A_<task>`` (an array
 submission writes one ``job: <A>`` line; every finished task is only ever accounted
-under ``<A>_<task>``, never bare ``A``). ``array_used`` is None when there is no
-accounting, or no accounting row at all under this run's name prefix; otherwise it is
-true only when some one array parent completed at least 2 of its tasks AND the
-prefixed array-shaped tasks completed at least 3 in total -- true for one 3-task array
-(or a 3-task array with one failure resubmitted as a 1-task array), false for three
-separate one-task "arrays" or three plain jobs. ``array_parents`` is kept for
-diagnostics.
+under ``<A>_<task>``, never bare ``A``). ``array_used`` is None ONLY when accounting
+itself could not be read at all (``rows is None``); once accounting IS read, it is a
+plain bool, False when there is no row at all under this run's name prefix. Otherwise
+it is true iff some one prefixed array parent has at least 3 task rows in ANY state
+(proof that an array of that size was actually submitted) AND the prefixed COMPLETED
+array tasks total at least 3 across every parent (proof enough of them finished) --
+true for one 3-task array, or a 3-task array with one failed task plus a 1-task
+resubmission; false for a 2-task array plus a separate 1-task one, or for three
+separate one-task "arrays". ``array_parents`` is kept for diagnostics.
 
     python check.py --out-dir DIR --run-notes NOTES.md --reference reference.json \
         --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \
@@ -252,8 +258,12 @@ def choose_sample_keys(ht, n_keys: int = N_SAMPLE_KEYS) -> list[dict]:
     return keys
 
 
-def rows_digest(ht, keys: list[dict]) -> str:
-    """SHA-256 over every row of *ht* whose key is in *keys*, order-insensitive and
+def rows_digest(ht, keys: list[dict], fields: list[str]) -> str:
+    """SHA-256 over every row of *ht* whose key is in *keys*, projected down to
+    *fields* first (the dataset's CONTRACT: its committed snapshot's key fields plus
+    its row field names -- never the live schema's full field list, so a full build's
+    extra columns beyond the fixture-derived snapshot can never turn an
+    otherwise-reproducing build into a digest mismatch). Order-insensitive and
     duplicate-key-safe. A key absent from *ht* is simply absent from the result (via
     semi_join, which never raises) rather than a crash: a real content difference then
     shows up as a digest mismatch, which is what M5 is for."""
@@ -273,7 +283,12 @@ def rows_digest(ht, keys: list[dict]) -> str:
         for k in keys
     ]
     requested = hl.Table.parallelize(key_rows, schema=key_dtype, key=key_field_names)
-    collected = ht.semi_join(requested).collect()
+    matched = ht.semi_join(requested)
+    # Table.select() rejects key-field names ("cannot overwrite key field ... with
+    # select"); key fields stay on the row regardless, so only the non-key contract
+    # fields are named here.
+    non_key_fields = [f for f in fields if f not in key_field_names]
+    collected = matched.select(*non_key_fields).collect()
     strings = sorted(
         json.dumps(_to_jsonable(dict(row)), sort_keys=True, separators=(",", ":"))
         for row in collected
@@ -376,7 +391,7 @@ def job_known(job_id: str, all_ids: set[str]) -> bool:
 
 def grade_slurm(
     run_id: str, notes: dict, rows: list[dict], profile: Path | None
-) -> tuple[bool, bool, bool | None, list[str], dict]:
+) -> tuple[bool, bool, bool, list[str], dict]:
     jobs = [j for j in rows if j["name"].startswith(run_id)]
     allowed = allowed_partitions(profile)
     within = []
@@ -407,18 +422,29 @@ def grade_slurm(
     array_rows = [j for j in jobs if _ARRAY_TASK_ID.match(j["id"])]
     array_parents = sorted({j["id"].split("_", 1)[0] for j in array_rows})
     if not jobs:
-        # No accounting row at all under this run's name prefix: we cannot tell an
-        # array run from anything else, so this is unknown, not "not an array".
-        array_used: bool | None = None
+        # Accounting WAS read (grade_slurm is only called when it was); there is
+        # simply no row under this run's name prefix. A plain False, not None --
+        # None is reserved for "accounting itself is unavailable" (main()'s
+        # rows-is-None branch, which never reaches this function).
+        array_used = False
     else:
+        rows_per_parent: dict[str, int] = {}
         completed_per_parent: dict[str, int] = {}
         for j in array_rows:
+            parent = j["id"].split("_", 1)[0]
+            rows_per_parent[parent] = rows_per_parent.get(parent, 0) + 1
             if j["state"] == "COMPLETED":
-                parent = j["id"].split("_", 1)[0]
                 completed_per_parent[parent] = completed_per_parent.get(parent, 0) + 1
-        some_parent_has_2 = any(c >= 2 for c in completed_per_parent.values())
+        # Some one parent must show at least 3 task rows (in any state -- proof an
+        # array of that size was actually submitted, a failed task included), AND
+        # the prefixed COMPLETED array tasks must total at least 3 across every
+        # parent (proof enough of them actually finished, failed-task resubmissions
+        # included). Either condition alone is not enough: a 2-task array plus a
+        # separate 1-task one totals 3 completed but no parent ever reached 3 rows,
+        # and three one-task "arrays" never satisfy either condition.
+        some_parent_has_3_rows = any(c >= 3 for c in rows_per_parent.values())
         total_completed = sum(completed_per_parent.values())
-        array_used = bool(some_parent_has_2 and total_completed >= 3)
+        array_used = bool(some_parent_has_3_rows and total_completed >= 3)
     return m2, m3, array_used, array_parents, {"jobs": jobs, "within_budget": within}
 
 
@@ -468,16 +494,21 @@ def grade_one_dataset(
         return m4, False, details
 
     ref_ds = reference["datasets"][dataset]
+    if "contract_fields" not in ref_ds:
+        raise ValueError(
+            "reference predates contract_fields; rerun the control with "
+            "WRITE_REFERENCE=1"
+        )
+    # Informational only: a full build legitimately carries more fields than the
+    # fixture-derived snapshot the reference's digest is restricted to (M4's
+    # contract already covers the schema), so schema equality is no longer part of
+    # content_ok below.
     details["schema_equals_reference"] = schema == ref_ds["schema"]
     details["row_count_matches"] = details["row_count"] == ref_ds["row_count"]
-    digest = rows_digest(ht, ref_ds["sample_keys"])
+    digest = rows_digest(ht, ref_ds["sample_keys"], ref_ds["contract_fields"])
     details["rows_sha256"] = digest
     details["rows_digest_matches"] = digest == ref_ds["rows_sha256"]
-    content_ok = bool(
-        details["schema_equals_reference"]
-        and details["row_count_matches"]
-        and details["rows_digest_matches"]
-    )
+    content_ok = bool(details["row_count_matches"] and details["rows_digest_matches"])
     return m4, content_ok, details
 
 
@@ -502,13 +533,21 @@ def write_reference(args) -> None:
             )
             raise SystemExit(1)
         keys = choose_sample_keys(ht)
+        # The CONTRACT, not the live schema: the committed snapshot's key fields plus
+        # its own row field names, sorted -- what the digest below is restricted to,
+        # so a later full build's extra columns can never cost it a digest match.
+        contract_fields = sorted(
+            set(committed_schema.get("key", []))
+            | set(committed_schema.get("row", {}).keys())
+        )
         datasets[ds] = {
             "output": info["output"],
             "schema_id": info["schema_id"],
             "schema": schema,
             "row_count": ht.count(),
             "sample_keys": keys,
-            "rows_sha256": rows_digest(ht, keys),
+            "contract_fields": contract_fields,
+            "rows_sha256": rows_digest(ht, keys, contract_fields),
         }
     ref = {
         "datasets": datasets,
@@ -586,7 +625,13 @@ def main() -> int:
     m4_all = True
     content_ok_all = True
     for dataset, output in pairs:
-        m4, content_ok, details = grade_one_dataset(dataset, output, reference)
+        try:
+            m4, content_ok, details = grade_one_dataset(dataset, output, reference)
+        except Exception as exc:  # noqa: BLE001 -- a corrupt or wrong-type output
+            # must not crash the whole verdict; record it and fail M4 for this
+            # dataset alone, same as verify-builds.py does per dataset.
+            m4, content_ok = False, False
+            details = {"output": str(output), "error": f"{type(exc).__name__}: {exc}"}
         datasets_out[dataset] = details
         m4_all = m4_all and m4
         content_ok_all = content_ok_all and content_ok

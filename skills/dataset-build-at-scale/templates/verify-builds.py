@@ -16,7 +16,7 @@ artifact type (``hl.read_table`` for ``.ht``, ``hl.read_matrix_table`` for ``.mt
 ``anndata.read_h5ad`` for ``.h5ad``, ``pandas.read_parquet`` for ``.parquet``), and
 checks it against the plugin's committed ``schema_snapshot`` as a CONTRACT, not exact
 equality: a snapshot is fixture-derived, and a full build routinely carries more
-columns than its fixture did (GenCC: 31 upstream columns, 13 in its fixture) while
+columns than its fixture did (GenCC: 31 upstream columns, 14 in its fixture) while
 still satisfying the plugin's contract. The contract passes when every field the
 snapshot declares is present in the built schema with the same type; extra built
 fields are allowed and listed (``extra_fields``). The committed ``row_snapshot``'s keys

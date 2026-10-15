@@ -51,8 +51,12 @@ while (( $# )); do
 done
 [[ -n "$LIST" ]] || { echo "ERROR: --list FILE is required" >&2; exit 2; }
 [[ -f "$LIST" ]] || { echo "ERROR: task list not found: $LIST" >&2; exit 2; }
-# Resolved to an absolute path before it is handed to sbatch: build-array.sbatch's own
-# working directory is the log directory, not wherever this script was run from.
+# Resolved to an absolute path before it is handed to sbatch: build-array.sbatch
+# itself runs in the submission directory (Slurm's default when no --chdir is given,
+# which this script does not pass), not the log directory -- only hail-job.sbatch,
+# which it calls, changes into the log directory. A relative $LIST would therefore
+# resolve against wherever sbatch happens to be invoked from, not against anything
+# predictable inside the job.
 LIST="$(cd "$(dirname "$LIST")" && pwd -P)/$(basename "$LIST")"
 PARTITION="${PARTITION:-$HVANTK_CPU_PARTITION}"   # an empty fat-partition value falls back
 if [[ "$PARTITION" == "$HVANTK_CPU_PARTITION" ]]; then
@@ -70,6 +74,12 @@ N=0
 declare -A SEEN_OUTPUTS=()
 while IFS=$'\t' read -r DATASET RAW OUT _EXTRA || [[ -n "${DATASET:-}" ]]; do
   N=$((N + 1))
+  # A CRLF line ending lands on whichever field has no tab after it (OUT, or _EXTRA
+  # when present); read -r never strips \r. Caught here, not deep inside the field
+  # checks below, where a trailing \r would just make every message confusing.
+  case "$DATASET$RAW$OUT${_EXTRA:-}" in
+    *$'\r'*) echo "ERROR: $LIST line $N contains a carriage return (CRLF line ending); convert the file to LF line endings" >&2; exit 2 ;;
+  esac
   [[ -n "$DATASET" && "$DATASET" != '#'* ]] || { echo "ERROR: $LIST line $N is blank or a comment; every physical line must be a build (array task N reads physical line N)" >&2; exit 2; }
   [[ -n "${RAW:-}" && -n "${OUT:-}" ]] || { echo "ERROR: $LIST line $N: need at least three tab-separated fields" >&2; exit 2; }
   [[ "$DATASET" =~ ^[a-z0-9_-]+:[a-z0-9_-]+$ ]] || { echo "ERROR: $LIST line $N: dataset must look like provider:dataset, got '$DATASET'" >&2; exit 2; }
@@ -81,6 +91,24 @@ while IFS=$'\t' read -r DATASET RAW OUT _EXTRA || [[ -n "${DATASET:-}" ]]; do
 done < "$LIST"
 (( N > 0 )) || { echo "ERROR: $LIST has no build lines" >&2; exit 2; }
 
+# --- validate --tasks before submitting: only digits, commas and dashes (a literal
+# sbatch array spec, never a convenience syntax of this script's own), and every
+# index or range endpoint between 1 and N -- sbatch would otherwise either reject the
+# whole submission or, for an out-of-range index sbatch itself tolerates, silently
+# queue a task that reads a line past the end of the list. ---
+if [[ -n "$TASKS" ]]; then
+  [[ "$TASKS" =~ ^[0-9,-]+$ ]] || { echo "ERROR: --tasks must contain only digits, commas and dashes (a literal sbatch array spec), got '$TASKS'" >&2; exit 2; }
+  IFS=',' read -r -a TASK_PARTS <<< "$TASKS"
+  for PART in "${TASK_PARTS[@]}"; do
+    if [[ "$PART" == *-* ]]; then
+      LO="${PART%%-*}"; HI="${PART##*-}"
+    else
+      LO="$PART"; HI="$PART"
+    fi
+    [[ "$LO" =~ ^[0-9]+$ && "$HI" =~ ^[0-9]+$ ]] || { echo "ERROR: --tasks '$PART' is not a valid index or range" >&2; exit 2; }
+    (( LO >= 1 && LO <= N && HI >= 1 && HI <= N && LO <= HI )) || { echo "ERROR: --tasks index/range '$PART' is out of bounds 1-$N" >&2; exit 2; }
+  done
+fi
 ARRAY_SPEC="${TASKS:-1-$N}"
 LOG_DIR="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}"
 mkdir -p "$LOG_DIR"
