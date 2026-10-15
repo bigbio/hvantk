@@ -1,21 +1,35 @@
 """Deterministic check for the drift-triage eval task.
 
 Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
-writes ``verdict.json`` and ``receipt.json`` next to the output, and exits 0 on pass.
-Runs inside the container on a compute node (it needs Hail to read the built table).
-Slurm accounting is read from a file captured on the login node (``--sacct-file``),
-because the container has no Slurm client; without a file it tries ``sacct`` and
-records M2 and M3 as null when that is unavailable or fails.
+writes ``verdict.json`` and ``receipt.json``, and exits 0 on pass. Runs inside the
+container on a compute node (it needs Hail to read the built table and, separately,
+to run a small subprocess build -- see `grade_repair_effective`). Slurm accounting is
+read from a file captured on the login node (``--sacct-file``), because the container
+has no Slurm client; without a file it tries ``sacct`` and records M2 and M3 as null
+when that is unavailable or fails.
 
-Unlike a plain build-and-verify check, this task grades TWO things that can vary
-independently: the built table's content (M4, and the ``content_ok`` half of M5) and
-the state of the checkout that produced it -- its fingerprint, its ledger row, and
-whether its committed snapshots were left alone (the rest of M5). ``--repo`` names the
-checkout to read those from; it may be a copy of the real checkout, which is exactly
-how the positive and negative controls exercise it.
+This grades THREE things that can vary independently: the built table's content (M4,
+and the ``content_ok`` half of M5), whether the GRADED checkout's own code can
+actually reproduce that repair from scratch (``repair_effective``, part of M5, proven
+by a small isolated subprocess build -- a big ``--output`` table could in principle
+have been produced some other way), and the state of the checkout that produced it --
+its fingerprint, its ledger row, and whether its committed snapshots were left alone
+(the rest of M5). ``--repo`` names the checkout to read the latter two from; it may be
+a copy of the real checkout, which is exactly how the positive and negative controls
+exercise it.
+
+The schema check is a CONTRACT, not an equality, against the committed
+``hvantk/skills/clingen/tests/snapshots/schema.json`` -- read from THIS script's own
+checkout (never ``--repo``, so a tampered copy's own snapshot cannot loosen the
+contract): the key must match exactly, and every field the snapshot declares must be
+present with the same type, but a full build may legitimately carry MORE fields than
+a small fixture-derived snapshot does (the gencc fixture, for one, ships 13 of
+upstream's 31 columns). ``content_ok`` is stricter: it requires the EXACT schema the
+reference's own build recorded, since that is the same fixture built the same way.
 
     python check.py --output OUT.ht --repo REPO --reference reference.json \
-        --run-notes NOTES.md --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \
+        [--verdict-dir DIR] --run-notes NOTES.md --run-id PREFIX \
+        --expect-commit SHA --expect-sif-sha256 HEX \
         [--sacct-file FILE | --since now-2days | --no-slurm] [--site-profile FILE] \
         [--expect-fail]
     python check.py --output OUT.ht --repo REPO --reference reference.json \
@@ -33,10 +47,17 @@ import datetime as dt
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+#: This script's own checkout root (skills/drift-triage/eval/check.py -> eval ->
+#: drift-triage -> skills -> repo root), deliberately NEVER ``--repo``: the schema
+#: CONTRACT and the fixture `grade_repair_effective` builds from must come from a
+#: checkout this script trusts, not from whatever copy is under grading.
+OWN_REPO = Path(__file__).resolve().parents[3]
 
 DATASET = "clingen:gene-disease"
 SCHEMA_ID = "clingen-gene-disease-v1"
@@ -44,9 +65,12 @@ FILENAME = "Clingen-Gene-Disease-Summary.csv"
 LEDGER = "hvantk/resources/drift_ledger.json"
 FINGERPRINT = "hvantk/skills/clingen/tests/drift_fingerprint.json"
 SNAPSHOTS = "hvantk/skills/clingen/tests/snapshots"
+FIXTURE = "hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv"
 BUDGET = {"max_cpus": 4, "max_mem_gb": 16, "max_minutes": 30}
 SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 SUCCESS_STATES = ("COMPLETED",)
+N_SAMPLE_KEYS = 12
+REPAIR_TIMEOUT_S = 600
 
 _COMMIT = re.compile(r"^commit:\s*([0-9a-f]{7,40})\s*$", re.M)
 _CONTAINER = re.compile(r"^container:\s*([0-9a-f]{64})\s*$", re.M)
@@ -54,7 +78,53 @@ _JOB = re.compile(r"^job:\s*(\d+(?:_\d+)?)", re.M)
 _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 
-# --- the common pattern (shared, near-verbatim, with skills/hpc-hail-job/eval/check.py) ---
+# Run in its own subprocess (never in-process, and always before this process starts
+# Hail), with --repo on PYTHONPATH: a from-scratch build of the committed ClinGen
+# fixture, header-mutated the same way the eval's staged file is, proves the GRADED
+# checkout's own code -- not whatever produced --output -- can build the repaired
+# layout. Reads the fixture path and nothing else from the environment, so quoting the
+# path into this source is never a concern.
+_REPAIR_SNIPPET = """
+import json
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+fixture = Path(os.environ["DRIFT_TRIAGE_FIXTURE"])
+anchor = '"GENE ID (HGNC)"'
+replacement = '"HGNC ID"'
+
+try:
+    tmp_dir = tempfile.mkdtemp(prefix="drift-triage-repair-")
+    mutated = Path(tmp_dir) / fixture.name
+    out_lines = []
+    replaced = False
+    for line in fixture.read_text().splitlines(True):
+        if not replaced and line.lstrip().startswith('"GENE SYMBOL"'):
+            line = line.replace(anchor, replacement, 1)
+            replaced = True
+        out_lines.append(line)
+    mutated.write_text("".join(out_lines))
+
+    from hvantk.core.utils.hail_context import init_hail
+
+    init_hail(quiet=True)
+
+    from hvantk.core.plugin.loader import get_registry
+    from hvantk.tests._snapshot_utils import phase_b_snapshot_adapter
+
+    spec = get_registry().get_dataset("clingen:gene-disease")
+    adapter = phase_b_snapshot_adapter(spec.builder, "clingen:gene-disease")
+    out_path = str(Path(tmp_dir) / "out.ht")
+    ht = adapter(input_path=tmp_dir, output_path=out_path)
+    print(json.dumps({"ok": True, "key": list(ht.key), "n_rows": ht.count()}))
+except Exception as exc:
+    print(json.dumps({"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}))
+    sys.exit(1)
+"""
+
+# --- the common pattern, shared (near-verbatim) with skills/hpc-hail-job/eval/check.py ---
 
 
 def parse_notes(path: Path) -> dict:
@@ -174,25 +244,137 @@ def grade_slurm(
     return m2, m3, {"jobs": jobs, "within_budget": within}
 
 
+# --- robustness helpers (fix D): naive timestamps read as UTC; a fingerprint or
+#     ledger that is not a JSON object -- at any nesting level this code reads --
+#     counts as absent rather than raising. ---
+
+
 def _parse_iso(s: str | None) -> dt.datetime | None:
     if not s:
         return None
     try:
-        return dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        parsed = dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
     except (ValueError, AttributeError, TypeError):
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed
+
+
+def _read_json_object(path: Path) -> dict | None:
+    """``path`` read as a JSON object, or None: missing, unreadable, unparseable, or
+    parsing to something other than a JSON object (a list, a string, ...) are all
+    "absent", never a crash -- a fingerprint or ledger a repair never touched is
+    exactly this shape in a freshly-copied, never-regenerated checkout."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _nested_get(d, *keys):
+    """``d.get(keys[0]).get(keys[1])...``, returning None the moment anything along
+    the way is not a dict, instead of raising ``AttributeError``."""
+    cur = d
+    for k in keys:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(k)
+    return cur
 
 
 def sha256_file(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
 
-def sample_rows_sha256(rows: list[dict]) -> str:
-    blob = json.dumps(rows, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+# --- dataset/content specific (fix A: no SAMPLE_KEYS; fix B: schema contract) ---
 
 
-# --- dataset/content specific ---
+def schema_contract(schema: dict, committed: dict) -> tuple[bool, dict]:
+    """True if ``schema`` satisfies ``committed``'s CONTRACT: the same key, and every
+    row field ``committed`` declares present with the same type. Extra fields in
+    ``schema`` beyond what ``committed`` declares are fine -- a committed snapshot is
+    a FLOOR, not an exact description of a full build (the gencc fixture carries 13
+    of upstream's 31 columns, and every builder imports and renames every column
+    present, so a full build legitimately carries more).
+    """
+    details: dict = {}
+    key_ok = schema.get("key") == committed.get("key")
+    details["key_ok"] = key_ok
+    row = schema.get("row") if isinstance(schema.get("row"), dict) else {}
+    committed_row = (
+        committed.get("row") if isinstance(committed.get("row"), dict) else {}
+    )
+    missing = [f for f in committed_row if f not in row]
+    wrong_type = [
+        {"field": f, "expected": committed_row[f], "got": row.get(f)}
+        for f in committed_row
+        if f in row and row[f] != committed_row[f]
+    ]
+    details["missing_fields"] = missing
+    details["wrong_type_fields"] = wrong_type
+    ok = bool(key_ok and not missing and not wrong_type)
+    return ok, details
+
+
+def select_sample_keys(ht) -> list[dict]:
+    """``N_SAMPLE_KEYS`` keys chosen deterministically from the table's row order,
+    independent of content -- a dataset's hand-authored SAMPLE_KEYS is not guaranteed
+    to exist in a real build (confirmed on the cluster: ``collect_sample_rows`` raised
+    ``KeyError`` for a committed ClinGen key against a real build), so this selects
+    from whatever table is actually in front of it.
+    """
+    import hail as hl
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    n = ht.count()
+    if n == 0:
+        return []
+    positions = sorted({(i * n) // N_SAMPLE_KEYS for i in range(N_SAMPLE_KEYS)})
+    indexed = ht.add_index("_row_index")
+    chosen = indexed.filter(
+        hl.literal(set(positions), dtype=hl.tset(hl.tint64)).contains(
+            indexed["_row_index"]
+        )
+    )
+    chosen = chosen.select()  # Table.select() always keeps the key
+    key_field_names = list(ht.key)
+    rows = chosen.collect()
+    return [{k: _to_jsonable(row[k]) for k in key_field_names} for row in rows]
+
+
+def rows_digest(ht, keys: list[dict]) -> str:
+    """sha256 over every row of ``ht`` whose key is in ``keys``: order-insensitive
+    (the per-row JSON strings are collected then SORTED before joining) and
+    duplicate-key-safe (a semi-join against ``ht``'s own unique keys contributes each
+    matching row once, however many times its key appears in ``keys``).
+    """
+    import hail as hl
+    from hvantk.tests._snapshot_utils import _jsonable_to_hail_python, _to_jsonable
+
+    if not keys:
+        return hashlib.sha256(b"").hexdigest()
+    key_field_names = list(ht.key)
+    key_dtype = ht.key.dtype
+    key_rows = [
+        {
+            name: _jsonable_to_hail_python(k[name], key_dtype[name])
+            for name in key_field_names
+        }
+        for k in keys
+    ]
+    requested = hl.Table.parallelize(key_rows, schema=key_dtype, key=key_field_names)
+    collected = ht.semi_join(requested).collect()
+    strings = sorted(
+        json.dumps(
+            {k: _to_jsonable(v) for k, v in dict(row).items()},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        for row in collected
+    )
+    return hashlib.sha256("\n".join(strings).encode("utf-8")).hexdigest()
 
 
 def read_table(output: Path):
@@ -204,9 +386,12 @@ def read_table(output: Path):
     return hl.read_table(str(output))
 
 
-def grade_content(output: Path, reference: dict) -> tuple[bool, bool, dict]:
-    """M4 (schema/contract) and the content half of M5, from --output alone."""
-    from hvantk.tests._snapshot_utils import collect_sample_rows, hail_schema_to_dict
+def grade_content(
+    output: Path, reference: dict, committed_schema: dict
+) -> tuple[bool, bool, dict]:
+    """M4 (the schema CONTRACT) and the content half of M5 (exact reproducibility
+    against the reference's own build), from --output and the reference alone."""
+    from hvantk.tests._snapshot_utils import hail_schema_to_dict
 
     details: dict = {}
     sidecar = output.with_name(output.name + ".provenance.json")
@@ -218,66 +403,117 @@ def grade_content(output: Path, reference: dict) -> tuple[bool, bool, dict]:
     details["schema_id"] = prov.get("schema_id")
     ht = read_table(output)
     schema = hail_schema_to_dict(ht)
-    details["schema_matches_reference"] = schema == reference["schema"]
-    m4 = prov.get("schema_id") == SCHEMA_ID and details["schema_matches_reference"]
+
+    contract_ok, contract_details = schema_contract(schema, committed_schema)
+    details["schema_contract"] = contract_details
+    m4 = bool(prov.get("schema_id") == SCHEMA_ID and contract_ok)
+
+    details["schema_matches_reference_exactly"] = schema == reference["schema"]
     details["row_count"] = ht.count()
     row_count_ok = details["row_count"] == reference["row_count"]
-    try:
-        rows = collect_sample_rows(ht, keys=reference["sample_keys"])
-        details["sample_rows_sha256"] = sample_rows_sha256(rows)
-        sample_rows_ok = (
-            details["sample_rows_sha256"] == reference["sample_rows_sha256"]
-        )
-    except KeyError:
-        details["sample_rows_sha256"] = None
-        sample_rows_ok = False
+    rows_sha = rows_digest(ht, reference["sample_keys"])
+    details["rows_sha256"] = rows_sha
+    rows_ok = rows_sha == reference["rows_sha256"]
     details["row_count_ok"] = row_count_ok
-    details["sample_rows_ok"] = sample_rows_ok
-    content_ok = bool(row_count_ok and sample_rows_ok)
+    details["rows_ok"] = rows_ok
+    content_ok = bool(
+        details["schema_matches_reference_exactly"] and row_count_ok and rows_ok
+    )
     return m4, content_ok, details
 
 
+def grade_repair_effective(repo: Path, contract_key) -> tuple[bool, dict]:
+    """Prove ``repo``'s OWN code builds the mutated layout, independent of whatever
+    produced ``--output``: a fresh, tiny subprocess build of the committed (here,
+    header-mutated) ClinGen fixture, with ``repo`` on PYTHONPATH. Always run before
+    this process starts its own Hail/JVM, so only one JVM is ever up at a time.
+
+    ``cwd=repo`` matters as much as ``PYTHONPATH=repo`` here: ``python -c`` puts the
+    *current working directory* at the front of ``sys.path`` (exactly like
+    ``python -m``), ahead of ``PYTHONPATH``. Without pinning it, the subprocess
+    inherits whatever directory this check happened to be run from, and if that
+    directory also has an ``hvantk/`` package next to it (the real checkout, say),
+    ``import hvantk`` resolves there instead of into ``repo`` -- silently grading the
+    wrong code. Pointing ``cwd`` at ``repo`` makes the two agree instead of race.
+    """
+    fixture = OWN_REPO / FIXTURE
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(repo)
+    env["PYSPARK_SUBMIT_ARGS"] = "--master local[1] --driver-memory 1500m pyspark-shell"
+    env["DRIFT_TRIAGE_FIXTURE"] = str(fixture)
+    details: dict = {}
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _REPAIR_SNIPPET],
+            env=env,
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=REPAIR_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired as exc:
+        details["error"] = f"timed out after {REPAIR_TIMEOUT_S}s"
+        details["stderr_tail"] = (exc.stderr or "")[-2000:]
+        return False, details
+
+    details["returncode"] = proc.returncode
+    details["stderr_tail"] = proc.stderr[-2000:] if proc.stderr else ""
+    last_line = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
+    try:
+        payload = json.loads(last_line)
+    except ValueError:
+        details["parse_error"] = True
+        return False, details
+    details["payload"] = payload
+    ok = bool(
+        payload.get("ok") is True
+        and payload.get("key") == contract_key
+        and isinstance(payload.get("n_rows"), int)
+        and payload.get("n_rows") >= 1
+    )
+    return ok, details
+
+
 def grade_bookkeeping(repo: Path, reference: dict) -> tuple[bool, bool, bool, dict]:
-    """The rest of M5: snapshots untouched, fingerprint regenerated, ledger row recorded."""
+    """The rest of M5: snapshots untouched, fingerprint regenerated, ledger row
+    recorded. Everything read from ``repo`` -- unlike the schema contract -- because
+    this IS a question about what ``repo`` itself recorded.
+    """
     details: dict = {}
 
     schema_sha = sha256_file(repo / SNAPSHOTS / "schema.json")
-    rows_sha = sha256_file(repo / SNAPSHOTS / "sample_rows.json")
+    rows_sha_snap = sha256_file(repo / SNAPSHOTS / "sample_rows.json")
     details["schema_snapshot_sha256"] = schema_sha
-    details["row_snapshot_sha256"] = rows_sha
+    details["row_snapshot_sha256"] = rows_sha_snap
     snapshots_unchanged = bool(
         schema_sha == reference["snapshots"]["schema_sha256"]
-        and rows_sha == reference["snapshots"]["sample_rows_sha256"]
+        and rows_sha_snap == reference["snapshots"]["sample_rows_sha256"]
     )
     details["snapshots_unchanged"] = snapshots_unchanged
 
-    fp_path = repo / FINGERPRINT
-    try:
-        fp = json.loads(fp_path.read_text())
-    except (OSError, ValueError):
-        fp = None
+    fp = _read_json_object(repo / FINGERPRINT)
     details["fingerprint_parses"] = fp is not None
     expected_fp = reference["expected_fingerprint"]
     fingerprint_regenerated = bool(
         fp is not None
-        and (fp.get("headers") or {}).get(FILENAME) == expected_fp["headers"]
-        and (fp.get("checksums") or {}).get(FILENAME) == expected_fp["checksum"]
+        and _nested_get(fp, "headers", FILENAME) == expected_fp["headers"]
+        and _nested_get(fp, "checksums", FILENAME) == expected_fp["checksum"]
     )
     details["fingerprint_regenerated"] = fingerprint_regenerated
 
-    ledger_path = repo / LEDGER
-    try:
-        ledger = json.loads(ledger_path.read_text())
-    except (OSError, ValueError):
-        ledger = {}
-    row = ledger.get(DATASET) if isinstance(ledger, dict) else None
+    ledger = _read_json_object(repo / LEDGER) or {}
+    row = ledger.get(DATASET)
     details["ledger_row"] = row
     ledger_row_ok = False
     if isinstance(row, dict):
         last_change = _parse_iso(row.get("last_upstream_change"))
         rebuilt_at = _parse_iso(row.get("rebuilt_at"))
         committed = reference.get("committed_ledger_row") or {}
-        committed_change = _parse_iso(committed.get("last_upstream_change"))
+        committed_change = _parse_iso(
+            committed.get("last_upstream_change")
+            if isinstance(committed, dict)
+            else None
+        )
         accepted_in = row.get("accepted_in")
         ledger_row_ok = bool(
             row.get("signal") == "schema"
@@ -303,39 +539,44 @@ def _load_probe_offline():
 
 
 def write_reference(args) -> None:
-    from hvantk.skills.clingen.tests.test_builder import SAMPLE_KEYS
-    from hvantk.tests._snapshot_utils import collect_sample_rows, hail_schema_to_dict
+    from hvantk.tests._snapshot_utils import hail_schema_to_dict
 
     repo = Path(args.repo)
     ht = read_table(Path(args.output))
     schema = hail_schema_to_dict(ht)
-    schema_snapshot_path = repo / SNAPSHOTS / "schema.json"
-    committed_schema = json.loads(schema_snapshot_path.read_text())
-    if schema != committed_schema:
+
+    committed_schema_path = OWN_REPO / SNAPSHOTS / "schema.json"
+    committed_schema = json.loads(committed_schema_path.read_text())
+    contract_ok, contract_details = schema_contract(schema, committed_schema)
+    if not contract_ok:
         raise SystemExit(
-            "the live build's schema does not match the committed snapshot at "
-            f"{schema_snapshot_path}; investigate before writing a reference from it"
+            "the live build's schema does not satisfy the committed contract at "
+            f"{committed_schema_path}: {contract_details}; investigate before "
+            "writing a reference from it"
         )
-    rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
+
+    keys = select_sample_keys(ht)
+    rows_sha = rows_digest(ht, keys)
 
     probe_offline = _load_probe_offline()
     probe = probe_offline._dataset_probe(DATASET)
     with probe_offline._answer_from_file(args.staged_file):
         observed = probe()
 
-    ledger_path = repo / LEDGER
-    ledger = json.loads(ledger_path.read_text()) if ledger_path.is_file() else {}
-    committed_row = ledger.get(DATASET) if isinstance(ledger, dict) else None
+    ledger = _read_json_object(repo / LEDGER) or {}
+    committed_row = ledger.get(DATASET)
 
     ref = {
         "schema_id": SCHEMA_ID,
         "schema": schema,
         "row_count": ht.count(),
-        "sample_keys": SAMPLE_KEYS,
-        "sample_rows_sha256": sample_rows_sha256(rows),
+        "sample_keys": keys,
+        "rows_sha256": rows_sha,
         "snapshots": {
-            "schema_sha256": sha256_file(schema_snapshot_path),
-            "sample_rows_sha256": sha256_file(repo / SNAPSHOTS / "sample_rows.json"),
+            "schema_sha256": sha256_file(committed_schema_path),
+            "sample_rows_sha256": sha256_file(
+                OWN_REPO / SNAPSHOTS / "sample_rows.json"
+            ),
         },
         "expected_fingerprint": {
             "file": FILENAME,
@@ -352,7 +593,7 @@ def write_reference(args) -> None:
         },
     }
     Path(args.reference).write_text(json.dumps(ref, indent=2) + "\n")
-    print(f"wrote {args.reference}: row_count={ref['row_count']}")
+    print(f"wrote {args.reference}: row_count={ref['row_count']}, keys={len(keys)}")
 
 
 def main() -> int:
@@ -360,6 +601,9 @@ def main() -> int:
     ap.add_argument("--output", required=True)
     ap.add_argument("--repo", required=True, help="checkout to read bookkeeping from")
     ap.add_argument("--reference", required=True)
+    ap.add_argument(
+        "--verdict-dir", default=None, help="default: --output's parent directory"
+    )
     ap.add_argument("--run-notes")
     ap.add_argument("--run-id", default="")
     ap.add_argument("--expect-commit", default="")
@@ -409,12 +653,22 @@ def main() -> int:
             profile = Path(args.site_profile) if args.site_profile else None
             m2, m3, slurm_details = grade_slurm(args.run_id, notes, rows, profile)
 
-    m4, content_ok, content_details = grade_content(output, reference)
+    # repair_effective FIRST, in its own subprocess, before this process touches Hail.
+    committed_schema = json.loads((OWN_REPO / SNAPSHOTS / "schema.json").read_text())
+    repair_effective, repair_details = grade_repair_effective(
+        repo, committed_schema.get("key")
+    )
+
+    m4, content_ok, content_details = grade_content(output, reference, committed_schema)
     snapshots_unchanged, fingerprint_regenerated, ledger_row_ok, bk_details = (
         grade_bookkeeping(repo, reference)
     )
     m5 = bool(
-        content_ok and snapshots_unchanged and fingerprint_regenerated and ledger_row_ok
+        content_ok
+        and snapshots_unchanged
+        and fingerprint_regenerated
+        and ledger_row_ok
+        and repair_effective
     )
     passed = bool(m4 and m5)
 
@@ -431,12 +685,21 @@ def main() -> int:
         "output": {
             **content_details,
             "content_ok": content_ok,
+            "repair_effective": repair_effective,
+            "repair_effective_details": repair_details,
             **bk_details,
         },
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
-    out_dir = output.parent if output.parent.exists() else Path(".")
-    (out_dir / "verdict.json").write_text(json.dumps(verdict, indent=2, default=str))
+    verdict_dir = (
+        Path(args.verdict_dir)
+        if args.verdict_dir
+        else (output.parent if output.parent.exists() else Path("."))
+    )
+    verdict_dir.mkdir(parents=True, exist_ok=True)
+    (verdict_dir / "verdict.json").write_text(
+        json.dumps(verdict, indent=2, default=str)
+    )
     sidecar = output.with_name(output.name + ".provenance.json")
     receipt = {
         "output": str(output),
@@ -446,9 +709,10 @@ def main() -> int:
         "reference_sha256": sha256_file(Path(args.reference)),
         "fingerprint_sha256": sha256_file(repo / FINGERPRINT),
         "ledger_sha256": sha256_file(repo / LEDGER),
+        "repair_effective": repair_effective,
         "checked_at": verdict["checked_at"],
     }
-    (out_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
+    (verdict_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
     print(json.dumps({k: verdict[k] for k in ("M1", "M2", "M3", "M4", "M5", "pass")}))
     if args.expect_fail:
         return 0 if not passed else 1
