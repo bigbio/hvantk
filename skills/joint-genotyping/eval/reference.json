@@ -1,0 +1,18 @@
+{
+  "samples": [
+    "NA06894_2_R",
+    "NA12878_3_R",
+    "NA12881_2_R"
+  ],
+  "mt_rows": 4559,
+  "vcf_records": 1339,
+  "max_cpus": 8,
+  "max_mem_gb": 32,
+  "max_minutes": 30,
+  "produced_by": {
+    "commit": "eb49e528d360d2cd234c5c4d35af4e73482b8f29",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74",
+    "input_sha256": "286bde3294bffa16224fbd887924d768e42a35cb9270d4d786f16d68a6f9720f",
+    "at": "2026-10-15T07:31:46.154228+00:00"
+  }
+}
