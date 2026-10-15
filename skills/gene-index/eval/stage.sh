@@ -15,23 +15,31 @@ STAGE="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}/gene-index"
 RAW="$STAGE/raw"
 mkdir -p "$RAW/ensembl-gene" "$RAW/hgnc"
 
-# The Ensembl GTF's filename carries the pinned release number, so match it by
-# extension rather than hard-coding a release that will move. The `hgnc:lookup`
-# downloader always writes the one fixed filename.
+# The Ensembl GTF's filename carries the pinned release number
+# (hvantk/resources/ensembl_release.py), not a calendar date. `hvantk download
+# ensembl-structure` already checks for that exact pinned filename and silently
+# reuses it when present, so call it unconditionally -- it is a safe no-op on a
+# re-run. The point of the assertion AFTER it, rather than an existence check BEFORE
+# it, is to fail loudly on a stale GTF from an older pin: a leftover
+# Homo_sapiens.GRCh38.<old>.gtf.gz does not satisfy the current downloader's own
+# cache check, so it downloads the current pin fresh and leaves two .gtf.gz files
+# behind, which the assertion below catches instead of silently building from
+# whichever one happens to glob first.
+bash "$RUN_IN_IMAGE" -- hvantk download ensembl-structure --raw-dir "$RAW/ensembl-gene"
 shopt -s nullglob
 ensembl_existing=("$RAW"/ensembl-gene/*.gtf.gz)
 shopt -u nullglob
+(( ${#ensembl_existing[@]} == 1 )) || { echo "ERROR: $RAW/ensembl-gene must hold exactly one .gtf.gz after staging (a stale GTF from an older Ensembl pin alongside the current one?); found ${#ensembl_existing[@]}: ${ensembl_existing[*]:-(none)}" >&2; exit 1; }
 
-if (( ${#ensembl_existing[@]} > 0 )); then
-  echo "already staged: ${ensembl_existing[0]}"
-else
-  bash "$RUN_IN_IMAGE" -- hvantk download ensembl-structure --raw-dir "$RAW/ensembl-gene"
+# Unlike the Ensembl downloader, `hvantk download hgnc --output` raises
+# (FileExistsError) if its target already exists, even an empty one left behind by an
+# interrupted previous run -- `os.path.exists` does not care about size. Remove an
+# empty file first so the download call below succeeds; a non-empty file is kept and
+# skipped.
+if [[ -e "$RAW/hgnc/hgnc_complete_set.txt" && ! -s "$RAW/hgnc/hgnc_complete_set.txt" ]]; then
+  echo "removing empty (interrupted?) download: $RAW/hgnc/hgnc_complete_set.txt"
+  rm -f "$RAW/hgnc/hgnc_complete_set.txt"
 fi
-shopt -s nullglob
-ensembl_existing=("$RAW"/ensembl-gene/*.gtf.gz)
-shopt -u nullglob
-(( ${#ensembl_existing[@]} == 1 )) || { echo "ERROR: $RAW/ensembl-gene must hold exactly one .gtf.gz after staging; found ${#ensembl_existing[@]}" >&2; exit 1; }
-
 if [[ -s "$RAW/hgnc/hgnc_complete_set.txt" ]]; then
   echo "already staged: $RAW/hgnc/hgnc_complete_set.txt"
 else

@@ -45,19 +45,29 @@ authoring a new annotation-source plugin (a resource spec under
 3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
 4. Inputs and outputs: confirm where the two raw directories and the three output paths
    (the two built datasets and the gene index) live, and that they are writable from
-   compute nodes.
+   compute nodes. The procedure below writes them under `$HVANTK_WORK/out`; if the user
+   passes `--out DIR`, use that directory in place of `$HVANTK_WORK/out` everywhere a
+   command below names it.
 5. Ensembl release: the checkout pins one release in `hvantk/resources/ensembl_release.py`
    (`ENSEMBL_RELEASE`, GRCh38 only -- `annotate spine` takes no genome argument). Confirm
    it is the release you intend, and that `ensembl-gene:structure` and `hgnc:lookup` were
    both built by THIS checkout -- a stale build from an older pin or an older HGNC dump
-   joins silently against the wrong gene set. Their `.provenance.json` sidecars name the
-   `builder_commit` that built them (`references/inputs-and-release.md`).
+   joins silently against the wrong gene set. `builder_commit` on their
+   `.provenance.json` sidecars does not help here: it is `null` whenever a dataset is
+   built through `hvantk reprocess` (the normal path), so same-checkout is established
+   by the run notes' own `commit:` line and the job ids that produced each input, not by
+   the sidecar (`references/inputs-and-release.md`).
 6. Biotype: default `protein_coding`; `all` keeps every biotype; anything else filters to
    that literal `gene_biotype` string with no validation against the input, so a typo
    (e.g. `protien_coding`) builds a table of zero rows rather than failing. If unsure
-   what values exist, read them off the built `ensembl-gene:structure` table first (a
-   quick job running `ht.aggregate(hl.agg.collect_as_set(ht.gene_biotype))`), rather than
-   guessing.
+   what values exist, list them off the built `ensembl-gene:structure` table first, as a
+   job:
+   ```bash
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
+     --name <run>-biotypes --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+     python -c "import hail as hl; from hvantk.core.utils.hail_context import init_hail; init_hail(quiet=True); ht = hl.read_table('$HVANTK_WORK/out/ensembl-gene-structure.ht'); print(sorted(ht.aggregate(hl.agg.collect_as_set(ht.gene_biotype))))"
+   ```
+   rather than guessing.
 
 ## 3. Procedure
 
@@ -68,9 +78,12 @@ authoring a new annotation-source plugin (a resource spec under
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
      hvantk download hgnc --output "$HVANTK_WORK/raw/hgnc/hgnc_complete_set.txt"
    ```
-   Each command skips the fetch when its target already exists, unless you pass
-   `--overwrite`. The uniform `dataset-build-at-scale` staging form
-   (`reprocess <provider:dataset> ... --skip-build`) works equally for either.
+   The two downloaders do not behave the same on a re-run: `ensembl-structure` silently
+   reuses the cached pinned file, but `hvantk download hgnc` (and the equivalent
+   `reprocess hgnc:lookup ... --skip-build` download stage) exits 1 with "File already
+   exists" if its target is already there, even if a previous run left it empty. Test
+   `[[ -s FILE ]]` yourself before calling it, or pass `--overwrite`
+   (`--plugin-arg overwrite=true` through `reprocess`) to force a re-download either way.
 2. **Build the two input datasets, each as a job** (resource notes and sidecar format in
    `references/inputs-and-release.md`):
    ```bash
@@ -85,7 +98,8 @@ authoring a new annotation-source plugin (a resource spec under
    ```
    or fan both out as one array through `dataset-build-at-scale` instead of two
    submissions.
-3. **Build the gene index as a job**, and copy its two printed lines into your run notes:
+3. **Build the gene index as a job**, and record its two reported values in your run
+   notes:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-gene-index --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
@@ -95,7 +109,8 @@ authoring a new annotation-source plugin (a resource spec under
    ```
    `submit-hail-job.sh --wait` prints the job's log path on stderr (`log: ...`); the
    command's own two lines -- `spine: N genes -> OUT` and `HGNC mapping rate: X%` -- are
-   in that log. Copy both into your run notes.
+   in that log. Write their VALUES into your run notes as their own lines, `genes: N`
+   and `mapping_rate: X%`, not the printed lines themselves verbatim.
 4. **Describe it and write the receipt**, as a job:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
@@ -143,8 +158,13 @@ remove.
 - `HGNC join changed the row count (a -> b); the lookup is not unique per gene_id`.
   Cause: the HGNC table being joined is not a genuine `hgnc:lookup` build (a hand-edited
   or corrupted copy) and maps more than one record onto the same Ensembl gene in a way
-  the dedup step cannot resolve. Fix: rebuild `hgnc:lookup` from a fresh download rather
-  than editing a table by hand.
+  the dedup step cannot resolve. This is NOT what happens on an ordinary HGNC table:
+  HGNC genuinely does map more than one `hgnc_id` to the same Ensembl gene sometimes,
+  and `build_spine` collapses those to one record (lowest `hgnc_id` wins) BEFORE the
+  join, silently and successfully, every normal run -- this error only fires when
+  something else broke that dedup (a hand-made input, or a `spine.py` regression). Fix:
+  rebuild `hgnc:lookup` from a fresh download rather than editing a table by hand; if it
+  persists on a genuine build, that is worth reporting.
 - A mapping rate far below the usual protein-coding norm (upper-90s%). Cause: either a
   stale or wrong-vintage HGNC table, or you built with `--biotype all`, where most
   non-coding biotypes have no HGNC record at all. Fix: compare like with like -- rebuild
@@ -173,6 +193,12 @@ remove.
   is only on `PATH` inside the image, and `python -m hvantk` run from the login node puts
   the current directory first on `sys.path`. Fix: route every `hvantk`/`python`
   invocation through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
+- A small, consistent number of protein-coding genes (observed: 25) never joining onto a
+  cohort's VCF, even though their biotype and chromosome both look right. Cause: those
+  genes sit on unplaced or unlocalised scaffolds (`KI270...`, `GL000...`), not on
+  `1`-`22`/`X`/`Y`/`MT`, and a VCF naming its contigs `chrUn_KI270728v1`-style never
+  matches the gene index's own contig spelling for them. Fix: expected and small; do not
+  treat it as a join bug unless the count is much larger than a couple dozen genes.
 
 ## 6. Verification
 
@@ -182,8 +208,10 @@ remove.
 present, `content_sha256` (a digest over every row and field, since the gene index has no
 sidecar of its own), and the two input datasets' `.provenance.json` sha256 digests.
 Expect: exactly one biotype present when you filtered to one (`protein_coding` or your
-literal choice), several when you built with `all`; chromosomes `1`-`22`, `X`, `Y`, `MT`
-only; nearly every protein-coding gene mapped to an HGNC record (a rate well below that
-means a stale or mismatched HGNC build -- `references/inputs-and-release.md`).
-Cross-check that the run notes' `spine: N genes` and `HGNC mapping rate: X%` lines agree
-with the receipt's `n_genes` and `mapping_rate`.
+literal choice), several when you built with `all`; chromosomes `1`-`22`, `X`, `Y`, `MT`,
+plus a small number of protein-coding genes (observed: 25) on unplaced or unlocalised
+scaffolds (`KI270...`, `GL000...` -- Traps); nearly every protein-coding gene mapped to
+an HGNC record (a rate well below that means a stale or mismatched HGNC build --
+`references/inputs-and-release.md`). Cross-check that the run notes' `genes:` and
+`mapping_rate:` lines (the VALUES from the build command's `spine: N genes` and `HGNC
+mapping rate: X%` output) agree with the receipt's `n_genes` and `mapping_rate`.

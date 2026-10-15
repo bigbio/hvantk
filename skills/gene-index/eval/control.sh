@@ -75,16 +75,44 @@ print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass','conten
 # stderr (captured to $1 by the caller), never its stdout (which carries only the job
 # id); the two printed lines themselves are inside that log file, because Slurm's
 # --output captures the submitted command's own stdout. Echoes "N_GENES MAPPING_PCT".
+# Every internal pipeline ends `|| true`: under errexit+pipefail, a `grep` that finds
+# no match exits non-zero, and without `|| true` that would abort the function on the
+# failing assignment itself -- before reaching the explicit `[[ -n ... ]] || { echo
+# ERROR; ... }` checks below, which is what is actually supposed to report the problem.
 parse_gi_log() {
   local stderr_file="$1" log_path genes_line rate_line n_genes mapping_pct
-  log_path="$(grep -m1 '^log: ' "$stderr_file" | cut -d' ' -f2-)"
+  log_path="$(grep -m1 '^log: ' "$stderr_file" | cut -d' ' -f2- || true)"
   [[ -n "$log_path" && -f "$log_path" ]] || { echo "ERROR: could not find the gene-index job's log path in $stderr_file" >&2; return 1; }
-  genes_line="$(grep -Eo 'spine: [0-9]+ genes' "$log_path" | tail -1)"
-  rate_line="$(grep -Eo 'HGNC mapping rate: [0-9.]+%' "$log_path" | tail -1)"
-  n_genes="$(echo "$genes_line" | grep -Eo '[0-9]+' | head -1)"
-  mapping_pct="$(echo "$rate_line" | grep -Eo '[0-9.]+' | head -1)"
+  genes_line="$(grep -Eo 'spine: [0-9]+ genes' "$log_path" | tail -1 || true)"
+  rate_line="$(grep -Eo 'HGNC mapping rate: [0-9.]+%' "$log_path" | tail -1 || true)"
+  n_genes="$(echo "$genes_line" | grep -Eo '[0-9]+' | head -1 || true)"
+  mapping_pct="$(echo "$rate_line" | grep -Eo '[0-9.]+' | head -1 || true)"
   [[ -n "$n_genes" && -n "$mapping_pct" ]] || { echo "ERROR: could not parse 'spine: N genes' / 'HGNC mapping rate: X%' out of $log_path (stderr: $stderr_file)" >&2; return 1; }
   echo "$n_genes $mapping_pct"
+}
+
+# Submits one of the three build jobs (each sized 4 cores / 16 GB / 30 minutes),
+# capturing its stderr to *stderr_file* (parse_gi_log reads the gene-index build's
+# stderr for the job's log path; the input builds' stderr is captured purely for
+# diagnostics). Under `set -e`, a failing submission (the job did not reach
+# COMPLETED) would otherwise abort this script on the failing command substitution
+# with nothing but a bare non-zero exit -- print the captured stderr (the submit
+# script's own request:/command: lines, its accounting dump, and its log: line)
+# before exiting, so a real build failure is diagnosable from this script's own
+# output.
+submit_build() {
+  local name="$1" stderr_file="$2" job_id rc
+  shift 2
+  set +e
+  job_id="$(bash "$SUBMIT" --name "$name" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- "$@" 2> "$stderr_file" | tail -1)"
+  rc=$?
+  set -e
+  if (( rc != 0 )); then
+    echo "ERROR: job $name did not complete; captured stderr ($stderr_file):" >&2
+    cat "$stderr_file" >&2
+    exit 1
+  fi
+  echo "$job_id"
 }
 
 echo "control run $RUN_ID -> $OUT (commit $COMMIT)"
@@ -92,7 +120,7 @@ if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" ]]; then
   REF_INPUT="$(ref_field input_sha256)"
   if [[ -n "$REF_INPUT" && "$REF_INPUT" != "$INPUT_SHA" ]]; then
     echo "ERROR: the staged inputs ($INPUT_SHA) differ from the ones the reference was produced from ($REF_INPUT)." >&2
-    echo "       Ensembl or HGNC changed upstream, or a re-stage moved the GTF's dated release filename." >&2
+    echo "       Ensembl or HGNC changed upstream, or a re-stage moved to a different Ensembl release-numbered GTF filename." >&2
     echo "       Re-stage (eval/stage.sh) and rerun with WRITE_REFERENCE=1 to re-baseline." >&2
     exit 1
   fi
@@ -100,18 +128,17 @@ fi
 
 # --- positive: the two inputs, each its own job, then the gene index as a third job,
 #     at the command's own default --biotype (protein_coding) ---
-JOB_POS_ENSEMBL="$(bash "$SUBMIT" --name "$RUN_POS-ensembl" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
+JOB_POS_ENSEMBL="$(submit_build "$RUN_POS-ensembl" "$OUT/pos/ensembl-submit.stderr" \
   hvantk reprocess ensembl-gene:structure --raw-dir "$RAW/ensembl-gene" \
-    --output "$OUT/pos/ensembl-gene-structure.ht" --skip-download --no-check-drift | tail -1)"
-JOB_POS_HGNC="$(bash "$SUBMIT" --name "$RUN_POS-hgnc" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
+    --output "$OUT/pos/ensembl-gene-structure.ht" --skip-download --no-check-drift)"
+JOB_POS_HGNC="$(submit_build "$RUN_POS-hgnc" "$OUT/pos/hgnc-submit.stderr" \
   hvantk reprocess hgnc:lookup --raw-dir "$RAW/hgnc" \
-    --output "$OUT/pos/hgnc-lookup.ht" --skip-download --no-check-drift | tail -1)"
+    --output "$OUT/pos/hgnc-lookup.ht" --skip-download --no-check-drift)"
 
 POS_STDERR="$OUT/pos/gi-submit.stderr"
-JOB_POS_GI="$(bash "$SUBMIT" --name "$RUN_POS-gi" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
+JOB_POS_GI="$(submit_build "$RUN_POS-gi" "$POS_STDERR" \
   hvantk annotate spine --gene-table "$OUT/pos/ensembl-gene-structure.ht" \
-    --hgnc "$OUT/pos/hgnc-lookup.ht" --output "$OUT/pos/gene-index.ht" \
-  2> "$POS_STDERR" | tail -1)"
+    --hgnc "$OUT/pos/hgnc-lookup.ht" --output "$OUT/pos/gene-index.ht")"
 read -r POS_GENES POS_RATE < <(parse_gi_log "$POS_STDERR")
 
 printf 'commit: %s\ncontainer: %s\njob: %s\njob: %s\njob: %s\ngenes: %s\nmapping_rate: %s%%\n' \
@@ -139,11 +166,17 @@ for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == 
 echo "positive control: PASS (M1..M5 true, content_ok true, reported_ok true)"
 
 # --- negative: --biotype all, reusing the SAME two built inputs (no rebuild) ---
+# check.py's M4 now requires --out-dir to itself contain both input builds (so an
+# agent cannot pass by copying a finished gene index with no build of its own); copy
+# the positive's two input builds AND their sidecars into neg/ so the negative keeps
+# M4 true and fails on content_ok alone, exactly as the brief requires.
+cp -a "$OUT/pos/ensembl-gene-structure.ht" "$OUT/pos/ensembl-gene-structure.ht.provenance.json" "$OUT/neg/"
+cp -a "$OUT/pos/hgnc-lookup.ht" "$OUT/pos/hgnc-lookup.ht.provenance.json" "$OUT/neg/"
+
 NEG_STDERR="$OUT/neg/gi-submit.stderr"
-JOB_NEG_GI="$(bash "$SUBMIT" --name "$RUN_NEG-gi" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
-  hvantk annotate spine --gene-table "$OUT/pos/ensembl-gene-structure.ht" \
-    --hgnc "$OUT/pos/hgnc-lookup.ht" --output "$OUT/neg/gene-index.ht" --biotype all \
-  2> "$NEG_STDERR" | tail -1)"
+JOB_NEG_GI="$(submit_build "$RUN_NEG-gi" "$NEG_STDERR" \
+  hvantk annotate spine --gene-table "$OUT/neg/ensembl-gene-structure.ht" \
+    --hgnc "$OUT/neg/hgnc-lookup.ht" --output "$OUT/neg/gene-index.ht" --biotype all)"
 read -r NEG_GENES NEG_RATE < <(parse_gi_log "$NEG_STDERR")
 
 printf 'commit: %s\ncontainer: %s\njob: %s\ngenes: %s\nmapping_rate: %s%%\n' \

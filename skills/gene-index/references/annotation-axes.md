@@ -3,10 +3,13 @@
 `annotate prepare` and `annotate compose` (`hvantk/tools/annotation/annotate_cli.py`)
 turn the gene index plus a feature-spec YAML into one gene x feature matrix -- the
 Layer-1 matrix `cohort attach --layer1` can take, in place of the gene index alone.
-`hvantk annotate prepare --help` and `hvantk annotate compose --help` are the
-authoritative source for every flag; this page covers the spec format
-(`hvantk/algorithms/annotation/spec.py::load_spec`,
-`hvantk/resources/schemas/feature_spec.schema.json`) and the two commands' own rules.
+`hvantk annotate prepare --help` and `hvantk annotate compose --help` list every flag,
+but do not fully document the rule for when `--hgnc` is required (its own help text
+names only the `hgnc_id`/`symbol` cases, not `uniprot_id` or the `variant`-aggregate
+case the code also enforces -- see "`annotate prepare`" below for the real rule). This
+page covers the spec format (`hvantk/algorithms/annotation/spec.py::load_spec`,
+`hvantk/resources/schemas/feature_spec.schema.json`) and the two commands' own rules,
+verified against that code, not against `--help` alone.
 
 ## The feature spec
 
@@ -30,9 +33,25 @@ entry's actual mapping rate onto `gene_id` falls below it); `collapse`
 (`max`/`min`/`mean`/`sum` -- required whenever a source key maps many rows onto one
 `gene_id`, e.g. `insider:interfaces` or `uniprot-ptm:sites`, otherwise `prepare` raises
 rather than silently picking one); `aggregate` (required when, and only when, `key:
-variant` -- aggregates per-variant scores up to a gene via `by`, `to`, `scores`, and an
-optional `filter`); `matrix` (for a `genes x groups` expression or specificity source --
-requires `key: symbol`, since the reduced table it produces is symbol-keyed).
+variant` -- aggregates per-variant scores up to a gene; see below); `matrix` (for a
+`genes x groups` expression or specificity source -- requires `key: symbol`, since the
+reduced table it produces is symbol-keyed); `origin` and `ablate_separately` (parsed
+onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but as
+of this checkout neither is read by `prepare` or `compose` themselves; accepted spec
+metadata, not yet a lever either command acts on).
+
+`aggregate`'s own keys: `by` (the source column carrying the gene identifier(s) to
+aggregate onto -- dbNSFP's is a `;`-delimited string, exploded to one row per gene),
+`to` (the gene-key space the aggregate targets: `gene_id`, `hgnc_id`, `symbol` or
+`uniprot_id`), `scores` (a map of output name -> `{column, stats}`, `stats` being
+`mean`/`max`/`min`/`count`/`frac_gt_<threshold>`), and optionally `filter` (a named
+predicate), `reduce` (`max` or `identity` -- how to collapse a per-transcript dict
+column, such as dbNSFP's, to one scalar per variant BEFORE the group-by; default
+`max`; use `identity` for a source whose score columns are already plain scalars,
+e.g. a PTM site's `n_observations` or a GTEx eQTL pair's `slope`, where `max` would
+raise), and `count_name` (the emitted row-count column's name; default
+`n_possible_missense`, true only for dbNSFP -- a source counting something else must
+set this, or two aggregate axes collide on one column name at compose time).
 
 A duplicate `axis` label, or an entry whose `key: variant` presence disagrees with
 whether it carries an `aggregate` block, fails to load before any Hail call runs.
@@ -46,7 +65,10 @@ hvantk annotate prepare --spec features.yaml --axis constraint \
   --input gnomad_metrics.ht --spine gene-index.ht --output constraint.ht
 ```
 
-(`--spine` is the flag's name; it takes the gene index's path either way.) `prepare`
+(`--spine` is the flag's name; it takes the gene index's path either way.) `--input` is
+a built `.ht` for an ordinary entry, or a built AnnData `.h5ad` for an entry carrying a
+`matrix` block (a `genes x groups` expression or specificity source) -- `prepare`
+dispatches on whether the entry declares `matrix`, not on the file extension. `prepare`
 maps the source's key onto the gene index's `gene_id`, keeps only the entry's declared
 columns, and enforces `min_mapping_rate`. Pass `--hgnc <hgnc:lookup .ht>` whenever the
 entry's `key` is `hgnc_id`, `symbol` or `uniprot_id`, or a `variant` entry whose

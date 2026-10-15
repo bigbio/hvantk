@@ -30,15 +30,27 @@
     --output <out>.ht --skip-download --no-check-drift
   ```
   Unlike the Ensembl downloader, which silently returns the cached path when the target
-  already exists, `hvantk download hgnc` raises if its `--output` file exists and
-  `--overwrite` is not given -- check for an existing file yourself before calling it
-  unconditionally in a script.
+  already exists, `hvantk download hgnc --output FILE` exits 1 with "File already
+  exists" if `FILE` is already there, even an empty one left behind by an interrupted
+  run -- `os.path.exists` does not care about size. The `reprocess hgnc:lookup ...
+  --skip-build` download-stage form hits the same error, through the same
+  `download_dataset` function. Test `[[ -s FILE ]]` yourself before calling it
+  unconditionally in a script, or pass `--overwrite` (`--plugin-arg overwrite=true`
+  through `reprocess`) to force a re-download either way.
 
 Both builds write a sidecar `<output>.provenance.json` next to the table
 (`hvantk/core/io/_manifest.py`), with fields `plugin`, `dataset`, `plugin_version`,
 `source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit`, `parents` and
-`build_parameters`. `builder_commit` is how you confirm two inputs (or an input and the
-checkout building the gene index) come from the same checkout.
+`build_parameters`. `builder_commit` is **always `null`** when a dataset is built
+through `hvantk reprocess` (the normal path here) -- it is populated only when a
+builder is invoked directly from Python with a real commit to record
+(`hvantk/core/plugin/run_builder.py`; `dataset-build-at-scale`'s own
+`references/verification.md` says the same for its own datasets). Same-checkout is
+established a different way: the run notes' own `commit:` line, plus the job ids that
+produced each input, both already captured by the procedure above. The sidecar is
+still worth keeping: it records each build's `plugin_version`, `build_timestamp` and
+`source_fingerprint`, and its own sha256 is what a receipt cites to tie a build to
+exactly one artifact.
 
 ## The Ensembl release pin
 

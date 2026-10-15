@@ -7,24 +7,36 @@ captured on the login node (``--sacct-file``), because the container has no Slur
 client; without a file it tries ``sacct`` and records M2 and M3 as null when that is
 unavailable or fails.
 
-M4 is the schema CONTRACT: the gene index's key must be ``["gene_id"]`` and every name
-in THIS checkout's own ``SPINE_FIELDS`` (``hvantk.algorithms.annotation.spine``) must be
-present with the type ``reference.json``'s ``schema`` recorded for it -- extra fields
-beyond ``SPINE_FIELDS`` are allowed. There is no fixture-derived schema snapshot for the
-gene index (unlike a plugin's own committed contract): the reference IS the only
-schema-type source there is, because `annotate spine` stamps no sidecar of its own.
+M4 is the schema CONTRACT plus proof the two inputs were actually built, not just the
+gene index: the gene index's key must be ``["gene_id"]``, every name in THIS
+checkout's own ``SPINE_FIELDS`` (``hvantk.algorithms.annotation.spine``) must be
+present with the type ``reference.json``'s ``schema`` recorded for it (extra fields
+beyond ``SPINE_FIELDS`` are allowed, and the key field itself is never counted as
+"extra" even though Hail's own row schema always includes it), AND ``--out-dir``
+must contain, up to 3 directories deep, a built table whose ``.provenance.json``
+sidecar names ``schema_id: ensembl-gene-structure-v1`` and one whose sidecar names
+``schema_id: hgnc-lookup-v1`` (the two schema ids the ``ensembl-gene`` and ``hgnc``
+plugin manifests declare). Without that last check, an agent could pass the task by
+copying a finished gene index from another skill's staged data, with no build of its
+own. There is no fixture-derived schema snapshot for the gene index itself (unlike a
+plugin's own committed contract): the reference IS the only schema-type source there
+is, because `annotate spine` stamps no sidecar of its own.
 
 M5 is ``content_ok`` (this run reproduces the reference build: row count, HGNC mapping
-rate within 1e-9, and a digest over every row restricted to the contract fields -- key
-plus ``SPINE_FIELDS`` -- all equal to the reference) AND ``reported_ok`` (the run notes'
-own ``genes:`` and ``mapping_rate:`` lines are self-consistent with the table actually
-graded, independent of whether that table matches the reference). The negative control
-is a build that is perfectly self-consistent (``reported_ok`` true) but does not
-reproduce the reference (``content_ok`` false) -- see eval/control.sh.
+rate within a tolerance, and a digest over every row restricted to the contract fields
+-- key plus ``SPINE_FIELDS`` -- all equal to the reference) AND ``reported_ok`` (the
+run notes' own ``genes:`` and ``mapping_rate:`` lines are self-consistent with the
+table actually graded, independent of whether that table matches the reference). Both
+tolerances come from ``reference.json``'s own ``tolerances`` object (written by
+``--write-reference``), falling back to this module's defaults for an older reference
+that predates it. The negative control is a build that is perfectly self-consistent
+(``reported_ok`` true) but does not reproduce the reference (``content_ok`` false) --
+see eval/control.sh.
 
-Grading never crashes the run: the read-and-grade step is called inside a try/except in
-``main()``, so a corrupt or wrong-type output records ``error`` in the details and fails
-M4/M5 alone -- ``verdict.json`` is still written.
+Grading never crashes the run: reading the table, checking the inputs, and grading the
+run notes are all called inside one try/except in ``main()``, so a corrupt or
+wrong-type output, or a malformed reported value, records ``error`` in the details and
+fails M4/M5 alone -- ``verdict.json`` and ``receipt.json`` are still written.
 
     python check.py --out-dir DIR --run-notes NOTES.md --reference reference.json \
         --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \
@@ -33,7 +45,8 @@ M4/M5 alone -- ``verdict.json`` is still written.
     python check.py --out-dir DIR --reference reference.json --write-reference \
         --expect-commit SHA --expect-sif-sha256 HEX --input-sha256 HEX
 
-DIR holds the fixed-name output ``gene-index.ht``. The accounting file is the output of
+DIR holds the fixed-name output ``gene-index.ht``, plus (somewhere within 3 directories
+of it) the two input builds. The accounting file is the output of
 ``sacct -X -n -P -S <since> -o JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition``.
 """
 
@@ -48,7 +61,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 BUDGET = {"max_cpus": 4, "max_mem_gb": 16, "max_minutes": 30}
 SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 SUCCESS_STATES = ("COMPLETED",)
@@ -56,12 +68,18 @@ GENE_INDEX_NAME = "gene-index.ht"
 EXPECTED_KEY = ["gene_id"]
 MAPPING_RATE_TOLERANCE = 1e-9
 REPORTED_RATE_TOLERANCE = 6e-5
+#: The two input datasets' schema ids, from their plugin manifests
+#: (hvantk/skills/ensembl_gene/plugin.yaml, hvantk/skills/hgnc/plugin.yaml).
+ENSEMBL_SCHEMA_ID = "ensembl-gene-structure-v1"
+HGNC_SCHEMA_ID = "hgnc-lookup-v1"
+#: How many directories below --out-dir the two input builds may sit.
+INPUTS_MAX_DEPTH = 3
 
 _COMMIT = re.compile(r"^commit:\s*([0-9a-f]{7,40})\s*$", re.M)
 _CONTAINER = re.compile(r"^container:\s*([0-9a-f]{64})\s*$", re.M)
 _JOB = re.compile(r"^job:\s*(\d+(?:_\d+)?)", re.M)
 _GENES = re.compile(r"^genes:\s*(\d+)\s*$", re.M)
-_MAPPING_RATE = re.compile(r"^mapping_rate:\s*([0-9.]+%?)\s*$", re.M)
+_MAPPING_RATE = re.compile(r"^mapping_rate:\s*(\d+(?:\.\d+)?%?)\s*$", re.M)
 _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 
@@ -104,21 +122,71 @@ def rows_digest(ht, fields: list) -> str:
 
 
 # --- schema contract (a floor: SPINE_FIELDS names present with reference's stored
-# --- type; extra fields allowed) -----------------------------------------------------
+# --- type; extra fields allowed; the key field is never "extra" even though Hail's
+# --- own row schema always carries it alongside the row-value fields) ----------------
 
 
-def schema_contract(built_row: dict, ref_row: dict, spine_fields: list) -> dict:
+def schema_contract(
+    built_row: dict, ref_row: dict, spine_fields: list, key_fields: list
+) -> dict:
     missing = [f for f in spine_fields if f not in built_row]
     mismatches = {}
     for f in spine_fields:
         if f in built_row and f in ref_row and built_row[f] != ref_row[f]:
             mismatches[f] = {"expected": ref_row[f], "got": built_row[f]}
-    extra = sorted(set(built_row) - set(spine_fields))
+    extra = sorted(set(built_row) - set(spine_fields) - set(key_fields))
     return {
         "ok": not missing and not mismatches,
         "missing_fields": missing,
         "type_mismatches": mismatches,
         "extra_fields": extra,
+    }
+
+
+# --- proof the two inputs were actually built (M4), not merely assumed -------------
+
+
+def find_input_sidecars(out_dir: Path, max_depth: int = INPUTS_MAX_DEPTH) -> list:
+    """Every ``*.provenance.json`` sidecar under *out_dir*, at most *max_depth*
+    directories below it (depth 0: directly inside ``out_dir``)."""
+    out_dir = out_dir.resolve()
+    found = []
+    for p in out_dir.rglob("*.provenance.json"):
+        rel = p.relative_to(out_dir)
+        if len(rel.parts) - 1 <= max_depth:
+            found.append(p)
+    return found
+
+
+def check_inputs_built(out_dir: Path) -> dict:
+    """Did ``--out-dir`` actually receive a real ``ensembl-gene:structure`` build and a
+    real ``hgnc:lookup`` build, each identified by its sidecar's own ``schema_id`` --
+    never by filename, which the task leaves to the agent ("anywhere under
+    $HVANTK_EVAL_OUT")."""
+    by_schema: dict = {}
+    for sidecar in find_input_sidecars(out_dir):
+        try:
+            payload = json.loads(sidecar.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        schema_id = payload.get("schema_id")
+        if (
+            schema_id in (ENSEMBL_SCHEMA_ID, HGNC_SCHEMA_ID)
+            and schema_id not in by_schema
+        ):
+            suffix = ".provenance.json"
+            table = sidecar.with_name(sidecar.name[: -len(suffix)])
+            by_schema[schema_id] = {
+                "table": str(table),
+                "sidecar": str(sidecar),
+                "sidecar_sha256": hashlib.sha256(sidecar.read_bytes()).hexdigest(),
+            }
+    ensembl = by_schema.get(ENSEMBL_SCHEMA_ID)
+    hgnc = by_schema.get(HGNC_SCHEMA_ID)
+    return {
+        "ok": bool(ensembl and hgnc),
+        "ensembl_gene_structure": ensembl,
+        "hgnc_lookup": hgnc,
     }
 
 
@@ -151,14 +219,24 @@ def parse_notes(path: Path) -> dict:
 
 
 def parse_reported_rate(raw: str | None) -> float | None:
-    """``mapping_rate:``'s value as a fraction -- a trailing ``%`` means percentage,
-    otherwise it is already a fraction."""
+    """``mapping_rate:``'s value as a fraction, or ``None`` if it cannot be parsed
+    (never raises -- a malformed value must fail ``reported_ok``, not crash the run).
+
+    A trailing ``%`` always means percentage. With no ``%``, a value greater than 1
+    is still read as a percentage written without the sign (e.g. an agent writing
+    ``96.66`` instead of ``96.66%`` or ``0.9666``); a value at or below 1 is already a
+    fraction.
+    """
     if raw is None:
         return None
     raw = raw.strip()
-    if raw.endswith("%"):
-        return float(raw[:-1]) / 100.0
-    return float(raw)
+    try:
+        if raw.endswith("%"):
+            return float(raw[:-1]) / 100.0
+        value = float(raw)
+    except ValueError:
+        return None
+    return value / 100.0 if value > 1 else value
 
 
 def mem_to_gb(s: str, cpus: int) -> float | None:
@@ -232,6 +310,15 @@ def load_sacct(sacct_file: str | None, since: str):
     return parse_sacct(out), ""
 
 
+def job_known(job_id: str, all_ids: set) -> bool:
+    """True if *job_id* (from run-notes) is ``A`` or starts an array task ``A_<i>``
+    (an array submission writes one ``job: A`` line; a finished task is only ever
+    accounted under ``A_<i>``, never bare ``A`` -- see dataset-build-at-scale's
+    check.py, which this is copied from; the gene-index procedure recommends an array
+    for the two input builds)."""
+    return job_id in all_ids or any(i.startswith(job_id + "_") for i in all_ids)
+
+
 def grade_slurm(run_id: str, notes: dict, rows: list, profile: Path | None):
     jobs = [j for j in rows if j["name"].startswith(run_id)]
     allowed = allowed_partitions(profile)
@@ -256,7 +343,7 @@ def grade_slurm(run_id: str, notes: dict, rows: list, profile: Path | None):
     m3 = (
         bool(notes["jobs"])
         and any(j["state"].startswith(SUCCESS_STATES) for j in jobs)
-        and all(n in all_ids for n in notes["jobs"])
+        and all(job_known(n, all_ids) for n in notes["jobs"])
     )
     return m2, m3, {"jobs": jobs, "within_budget": within}
 
@@ -277,8 +364,11 @@ def grade_gene_index(output: Path, reference: dict | None):
     from hvantk.algorithms.annotation.spine import SPINE_FIELDS, spine_mapping_rate
     from hvantk.tests._snapshot_utils import hail_schema_to_dict
 
+    out_dir = output.parent
     details: dict = {"output": str(output)}
     details["success_marker"] = (output / "_SUCCESS").exists()
+    details["inputs_built"] = check_inputs_built(out_dir)
+
     if not details["success_marker"]:
         return False, False, details
 
@@ -304,33 +394,55 @@ def grade_gene_index(output: Path, reference: dict | None):
             "control with WRITE_REFERENCE=1"
         )
     ref_row = reference["schema"].get("row", {})
-    contract = schema_contract(schema.get("row", {}), ref_row, SPINE_FIELDS)
+    missing_from_reference = [f for f in SPINE_FIELDS if f not in ref_row]
+    if missing_from_reference:
+        raise ValueError(
+            "reference.json's stored schema is missing SPINE_FIELDS "
+            f"{missing_from_reference}; rerun the control with WRITE_REFERENCE=1"
+        )
+    contract = schema_contract(
+        schema.get("row", {}), ref_row, SPINE_FIELDS, EXPECTED_KEY
+    )
     details["schema_contract_ok"] = contract["ok"]
     details["missing_fields"] = contract["missing_fields"]
     details["type_mismatches"] = contract["type_mismatches"]
     details["extra_fields"] = contract["extra_fields"]
-    m4 = bool(details["success_marker"] and key_ok and contract["ok"])
+    m4 = bool(
+        details["success_marker"]
+        and key_ok
+        and contract["ok"]
+        and details["inputs_built"]["ok"]
+    )
+
+    tolerances = reference.get("tolerances", {})
+    mapping_rate_tol = tolerances.get("mapping_rate", MAPPING_RATE_TOLERANCE)
 
     digest = rows_digest(ht, reference["contract_fields"])
     details["content_sha256"] = digest
     content_ok = bool(
         details["row_count"] == reference["row_count"]
-        and abs(details["mapping_rate"] - reference["mapping_rate"])
-        <= MAPPING_RATE_TOLERANCE
+        and abs(details["mapping_rate"] - reference["mapping_rate"]) <= mapping_rate_tol
         and digest == reference["content_sha256"]
     )
     details["content_ok"] = content_ok
     return m4, content_ok, details
 
 
-def grade_reported(notes: dict, row_count: int, mapping_rate: float) -> bool:
-    if notes["genes"] is None or notes["mapping_rate_raw"] is None:
+def grade_reported(
+    notes: dict, row_count, mapping_rate, tol: float = REPORTED_RATE_TOLERANCE
+) -> bool:
+    """Self-consistency between the run notes' own ``genes:``/``mapping_rate:`` lines
+    and the table actually graded -- independent of ``content_ok``. Never raises: a
+    missing or malformed value (on either side) is simply ``False``."""
+    if row_count is None or mapping_rate is None:
+        return False
+    if notes.get("genes") is None or notes.get("mapping_rate_raw") is None:
         return False
     reported_rate = parse_reported_rate(notes["mapping_rate_raw"])
+    if reported_rate is None:
+        return False
     return bool(
-        notes["genes"] == row_count
-        and reported_rate is not None
-        and abs(reported_rate - mapping_rate) <= REPORTED_RATE_TOLERANCE
+        notes["genes"] == row_count and abs(reported_rate - mapping_rate) <= tol
     )
 
 
@@ -354,6 +466,15 @@ def write_reference(args) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    inputs = check_inputs_built(Path(args.out_dir))
+    if not inputs["ok"]:
+        print(
+            f"ERROR: --write-reference: {args.out_dir} does not contain both input "
+            f"builds (ensembl-gene:structure schema_id={ENSEMBL_SCHEMA_ID!r}, "
+            f"hgnc:lookup schema_id={HGNC_SCHEMA_ID!r}); found: {inputs}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     schema = hail_schema_to_dict(ht)
     row_count = ht.count()
@@ -370,6 +491,10 @@ def write_reference(args) -> None:
         "row_count": row_count,
         "mapping_rate": mapping_rate,
         "content_sha256": digest,
+        "tolerances": {
+            "mapping_rate": MAPPING_RATE_TOLERANCE,
+            "reported_mapping_rate": REPORTED_RATE_TOLERANCE,
+        },
         **BUDGET,
         "produced_by": {
             "commit": args.expect_commit,
@@ -435,16 +560,27 @@ def main() -> int:
             profile = Path(args.site_profile) if args.site_profile else None
             m2, m3, slurm_details = grade_slurm(args.run_id, notes, rows, profile)
 
+    # Reading the table, checking the two inputs, and grading the run notes against it
+    # all happen in one try/except: a crash anywhere in here must still leave
+    # verdict.json and receipt.json written (with the error recorded), not abort the
+    # script before either file exists.
     try:
         m4, content_ok, gi_details = grade_gene_index(output, reference)
-    except Exception as exc:  # noqa: BLE001 -- a corrupt or wrong-type output must not
-        # crash the whole verdict; record it and fail M4/content_ok alone.
-        m4, content_ok = False, False
+        reported_tol = reference.get("tolerances", {}).get(
+            "reported_mapping_rate", REPORTED_RATE_TOLERANCE
+        )
+        reported_ok = grade_reported(
+            notes,
+            gi_details.get("row_count"),
+            gi_details.get("mapping_rate"),
+            reported_tol,
+        )
+    except Exception as exc:  # noqa: BLE001 -- a corrupt/wrong-type output or a
+        # reference-schema problem must not crash the whole verdict; record it and
+        # fail M4/M5 alone.
+        m4, content_ok, reported_ok = False, False, False
         gi_details = {"output": str(output), "error": f"{type(exc).__name__}: {exc}"}
 
-    reported_ok = grade_reported(
-        notes, gi_details.get("row_count"), gi_details.get("mapping_rate")
-    )
     m5 = bool(content_ok and reported_ok)
     passed = bool(m4 and m5)
 
@@ -473,6 +609,7 @@ def main() -> int:
         "content_sha256": gi_details.get("content_sha256"),
         "row_count": gi_details.get("row_count"),
         "mapping_rate": gi_details.get("mapping_rate"),
+        "inputs_built": gi_details.get("inputs_built"),
         "pass": passed,
         "reference_sha256": hashlib.sha256(
             Path(args.reference).read_bytes()

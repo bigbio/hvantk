@@ -14,8 +14,11 @@ the staged files are complete.
   - `raw/ensembl-gene/` (one pinned-release `.gtf.gz`) for `ensembl-gene:structure`
   - `raw/hgnc/hgnc_complete_set.txt` for `hgnc:lookup`
 - Build, as Slurm jobs, inside the image:
-  1. `ensembl-gene:structure` and `hgnc:lookup` from the staged raw directories, each
-     written anywhere under `$HVANTK_EVAL_OUT/`.
+  1. `ensembl-gene:structure` and `hgnc:lookup` from the staged raw directories. Both
+     builds, with their `.provenance.json` sidecars, MUST be written somewhere under
+     `$HVANTK_EVAL_OUT/` (the exact path and filename are yours to choose; the check
+     finds each one by its sidecar's own `schema_id`, searching up to 3 directories
+     below `$HVANTK_EVAL_OUT`).
   2. The protein-coding gene index (`hvantk annotate spine`, its default `--biotype`)
      from those two builds, into `$HVANTK_EVAL_OUT/gene-index.ht`.
 - Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`. The harness sets

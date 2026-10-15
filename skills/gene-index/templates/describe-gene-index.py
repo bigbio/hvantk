@@ -6,8 +6,10 @@ the genes with no HGNC record, and a content digest over every row and field -- 
 checksum the receipt binds to, because the gene index itself carries no
 ``.provenance.json`` sidecar of its own (``references/inputs-and-release.md``).
 Optionally records the two input datasets' own sidecar digests (their
-``.provenance.json``, read but never re-parsed), so the receipt also answers "what two
-inputs made this".
+``.provenance.json`` IS parsed, for a few identifying fields -- plugin, dataset,
+schema_id, plugin_version, build_timestamp, source_fingerprint -- but never re-built
+into a full Provenance object or re-validated against anything), so the receipt also
+answers "what two inputs made this".
 
     python describe-gene-index.py --gene-index GI.ht [--gene-table G.ht] [--hgnc H.ht] \
         --receipt RECEIPT.json
@@ -62,8 +64,13 @@ def content_sha256(ht) -> str:
 
 
 def sidecar_info(path_str) -> dict | None:
-    """The sha256 of ``<path_str>.provenance.json``, read but not re-parsed into a
-    build -- just enough to bind the receipt to exactly that input build."""
+    """The sha256 of ``<path_str>.provenance.json`` plus a few identifying fields --
+    just enough to bind the receipt to exactly that input build, never re-built into a
+    full Provenance object. ``builder_commit`` is deliberately not one of these fields:
+    it is always null when the input was built through ``hvantk reprocess`` (the normal
+    path), so ``plugin_version``, ``build_timestamp`` and ``source_fingerprint`` are
+    what actually distinguish one build from another here
+    (``references/inputs-and-release.md``)."""
     if not path_str:
         return None
     sidecar = Path(str(path_str) + ".provenance.json")
@@ -77,7 +84,9 @@ def sidecar_info(path_str) -> dict | None:
         "plugin": payload.get("plugin"),
         "dataset": payload.get("dataset"),
         "schema_id": payload.get("schema_id"),
-        "builder_commit": payload.get("builder_commit"),
+        "plugin_version": payload.get("plugin_version"),
+        "build_timestamp": payload.get("build_timestamp"),
+        "source_fingerprint": payload.get("source_fingerprint"),
     }
 
 
@@ -127,27 +136,33 @@ def main() -> int:
         {"gene_id": row.gene_id, "gene_name": row.gene_name} for row in examples_rows
     ]
     digest = content_sha256(ht)
+    chromosome_counts_sorted = dict(sorted(chromosome_counts.items()))
+    biotype_counts_sorted = dict(sorted(biotype_counts.items()))
+    gene_table_sidecar = sidecar_info(args.gene_table)
+    hgnc_sidecar = sidecar_info(args.hgnc)
 
     receipt = {
         "gene_index": str(args.gene_index),
         "n_genes": n_genes,
         "mapping_rate": mapping_rate,
-        "chromosome_counts": dict(sorted(chromosome_counts.items())),
-        "biotype_counts": dict(sorted(biotype_counts.items())),
+        "chromosome_counts": chromosome_counts_sorted,
+        "biotype_counts": biotype_counts_sorted,
         "n_without_hgnc": n_without_hgnc,
         "missing_hgnc_examples": hgnc_examples,
         "content_sha256": digest,
-        "gene_table_sidecar": sidecar_info(args.gene_table),
-        "hgnc_sidecar": sidecar_info(args.hgnc),
+        "gene_table_sidecar": gene_table_sidecar,
+        "hgnc_sidecar": hgnc_sidecar,
     }
     Path(args.receipt).write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
 
     print(f"gene index: {n_genes} genes -> {args.gene_index}")
     print(f"HGNC mapping rate: {mapping_rate:.4%} (full precision: {mapping_rate!r})")
-    print(f"chromosomes: {sorted(chromosome_counts)}")
-    print(f"biotypes: {sorted(biotype_counts)}")
-    print(f"without HGNC: {n_without_hgnc}")
+    print(f"chromosome counts: {chromosome_counts_sorted}")
+    print(f"biotype counts: {biotype_counts_sorted}")
+    print(f"without HGNC: {n_without_hgnc}; examples: {hgnc_examples}")
     print(f"content_sha256: {digest}")
+    print(f"gene-table sidecar: {gene_table_sidecar}")
+    print(f"hgnc sidecar: {hgnc_sidecar}")
     print(f"receipt written: {args.receipt}")
     return 0
 
