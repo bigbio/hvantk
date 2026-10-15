@@ -240,7 +240,10 @@ def choose_sample_keys(ht, n_keys: int = N_SAMPLE_KEYS) -> list[dict]:
     indexed = ht.add_index("_i")
     # select() with no arguments keeps exactly the key fields; naming a key field in
     # select() raises ("cannot overwrite key field ... with select").
-    chosen = indexed.filter(hl.literal(positions).contains(indexed["_i"])).select()
+    # add_index is int64; a bare hl.literal of Python ints is array<int32>, and
+    # contains() has no int32 -> int64 conversion, so the literal is typed explicitly.
+    wanted = hl.literal(set(positions), hl.tset(hl.tint64))
+    chosen = indexed.filter(wanted.contains(indexed["_i"])).select()
     keys = [
         {name: _to_jsonable(row[name]) for name in key_field_names}
         for row in chosen.collect()
