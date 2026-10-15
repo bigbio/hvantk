@@ -1,1 +1,301 @@
-{"produced_by": null}
+{
+  "datasets": {
+    "clingen:gene-disease": {
+      "output": "clingen-gene-disease.ht",
+      "row_count": 3705,
+      "rows_sha256": "dcc0db9893ae9ccb7bb39b40741a80b370527e498e74747f8eff682b1a444e10",
+      "sample_keys": [
+        {
+          "hgnc_id": "10004",
+          "mondo_id": "0012033"
+        },
+        {
+          "hgnc_id": "11566",
+          "mondo_id": "0011476"
+        },
+        {
+          "hgnc_id": "13575",
+          "mondo_id": "0000508"
+        },
+        {
+          "hgnc_id": "16692",
+          "mondo_id": "0013341"
+        },
+        {
+          "hgnc_id": "19353",
+          "mondo_id": "0044699"
+        },
+        {
+          "hgnc_id": "22954",
+          "mondo_id": "0015152"
+        },
+        {
+          "hgnc_id": "26257",
+          "mondo_id": "0019588"
+        },
+        {
+          "hgnc_id": "29832",
+          "mondo_id": "0030077"
+        },
+        {
+          "hgnc_id": "3808",
+          "mondo_id": "0019625"
+        },
+        {
+          "hgnc_id": "559",
+          "mondo_id": "0012251"
+        },
+        {
+          "hgnc_id": "7230",
+          "mondo_id": "0016419"
+        },
+        {
+          "hgnc_id": "8617",
+          "mondo_id": "0018094"
+        }
+      ],
+      "schema": {
+        "key": [
+          "hgnc_id",
+          "mondo_id"
+        ],
+        "row": {
+          "classification": "str",
+          "classification_date": "str",
+          "classification_level": "int32",
+          "disease_label": "str",
+          "gene_curation_expert_panel": "str",
+          "gene_symbol": "str",
+          "hgnc_id": "str",
+          "mode_of_inheritance": "str",
+          "mondo_id": "str",
+          "report_url": "str",
+          "sop_version": "str"
+        }
+      },
+      "schema_id": "clingen-gene-disease-v1"
+    },
+    "gencc:submissions": {
+      "output": "gencc-submissions.ht",
+      "row_count": 30345,
+      "rows_sha256": "12b0f55dc2d1d8edd682ad5ecd0c853edec73bde0e5d18f5aee0242a0118c7fb",
+      "sample_keys": [
+        {
+          "hgnc_id": "10001",
+          "mondo_id": "0007781",
+          "submitter": "Labcorp Genetics (formerly Invitae)"
+        },
+        {
+          "hgnc_id": "11449",
+          "mondo_id": "0009504",
+          "submitter": "G2P"
+        },
+        {
+          "hgnc_id": "13433",
+          "mondo_id": "0020790",
+          "submitter": "Labcorp Genetics (formerly Invitae)"
+        },
+        {
+          "hgnc_id": "16491",
+          "mondo_id": "0030785",
+          "submitter": "PanelApp Australia"
+        },
+        {
+          "hgnc_id": "19167",
+          "mondo_id": "0000170",
+          "submitter": "PanelApp Australia"
+        },
+        {
+          "hgnc_id": "2260",
+          "mondo_id": "0033635",
+          "submitter": "G2P"
+        },
+        {
+          "hgnc_id": "26114",
+          "mondo_id": "0019502",
+          "submitter": "Orphanet"
+        },
+        {
+          "hgnc_id": "2993",
+          "mondo_id": "0060533",
+          "submitter": "Ambry Genetics"
+        },
+        {
+          "hgnc_id": "3754",
+          "mondo_id": "0015942",
+          "submitter": "Orphanet"
+        },
+        {
+          "hgnc_id": "5181",
+          "mondo_id": "0013143",
+          "submitter": "Genomics England PanelApp"
+        },
+        {
+          "hgnc_id": "6884",
+          "mondo_id": "0032755",
+          "submitter": "PanelApp Australia"
+        },
+        {
+          "hgnc_id": "869",
+          "mondo_id": "0010651",
+          "submitter": "PanelApp Australia"
+        }
+      ],
+      "schema": {
+        "key": [
+          "hgnc_id",
+          "mondo_id",
+          "submitter"
+        ],
+        "row": {
+          "classification": "str",
+          "classification_curie": "str",
+          "classification_level": "int32",
+          "disease_label": "str",
+          "disease_original_id": "str",
+          "disease_original_label": "str",
+          "gene_symbol": "str",
+          "hgnc_id": "str",
+          "mode_of_inheritance": "str",
+          "moi_curie": "str",
+          "mondo_id": "str",
+          "pmids": "str",
+          "report_url": "str",
+          "sgc_id": "str",
+          "submission_date": "str",
+          "submitted_as_assertion_criteria_url": "str",
+          "submitted_as_classification_id": "str",
+          "submitted_as_classification_name": "str",
+          "submitted_as_disease_id": "str",
+          "submitted_as_disease_name": "str",
+          "submitted_as_hgnc_id": "str",
+          "submitted_as_hgnc_symbol": "str",
+          "submitted_as_moi_id": "str",
+          "submitted_as_moi_name": "str",
+          "submitted_as_notes": "str",
+          "submitted_as_submission_id": "str",
+          "submitted_as_submitter_id": "str",
+          "submitted_as_submitter_name": "str",
+          "submitted_run_date": "str",
+          "submitter": "str",
+          "submitter_curie": "str",
+          "version_number": "str"
+        }
+      },
+      "schema_id": "gencc-submissions-v1"
+    },
+    "hgnc:lookup": {
+      "output": "hgnc-lookup.ht",
+      "row_count": 45277,
+      "rows_sha256": "68b6ec0bd172080c82f350a14de2c6897b7af0a58f0f003b718cf75feb1c93fb",
+      "sample_keys": [
+        {
+          "hgnc_id": "HGNC:100"
+        },
+        {
+          "hgnc_id": "HGNC:14629"
+        },
+        {
+          "hgnc_id": "HGNC:18986"
+        },
+        {
+          "hgnc_id": "HGNC:24452"
+        },
+        {
+          "hgnc_id": "HGNC:29106"
+        },
+        {
+          "hgnc_id": "HGNC:33516"
+        },
+        {
+          "hgnc_id": "HGNC:37362"
+        },
+        {
+          "hgnc_id": "HGNC:41834"
+        },
+        {
+          "hgnc_id": "HGNC:46260"
+        },
+        {
+          "hgnc_id": "HGNC:50150"
+        },
+        {
+          "hgnc_id": "HGNC:54309"
+        },
+        {
+          "hgnc_id": "HGNC:59046"
+        }
+      ],
+      "schema": {
+        "key": [
+          "hgnc_id"
+        ],
+        "row": {
+          "agr": "str",
+          "alias_names": "array<str>",
+          "alias_symbols": "array<str>",
+          "bioparadigms_slc": "str",
+          "ccds_id": "array<str>",
+          "cd": "str",
+          "cosmic": "str",
+          "date_approved": "str",
+          "date_modified": "str",
+          "date_name_changed": "str",
+          "date_symbol_changed": "str",
+          "ena": "array<str>",
+          "ensembl_gene_id": "str",
+          "entrez_id": "str",
+          "enzyme_id": "str",
+          "gencc": "str",
+          "gene_group": "array<str>",
+          "gene_group_id": "array<str>",
+          "gene_name": "str",
+          "gene_symbol": "str",
+          "gtrnadb": "str",
+          "hgnc_id": "str",
+          "homeodb": "str",
+          "horde_id": "str",
+          "imgt": "str",
+          "intermediate_filament_db": "str",
+          "iuphar": "str",
+          "kznf_gene_catalog": "str",
+          "lncipedia": "str",
+          "lncrnadb": "str",
+          "location": "str",
+          "locus_group": "str",
+          "locus_type": "str",
+          "lsdb": "array<struct{name: str, url: str}>",
+          "mamit-trnadb": "str",
+          "mane_select": "array<str>",
+          "merops": "str",
+          "mgd_id": "str",
+          "mirbase": "str",
+          "omim_id": "array<str>",
+          "orphanet_id": "str",
+          "prev_names": "array<str>",
+          "prev_symbols": "array<str>",
+          "pseudogene.org": "str",
+          "pubmed_id": "array<str>",
+          "refseq_id": "str",
+          "rgd_id": "str",
+          "rna_central_id": "str",
+          "snornabase": "str",
+          "status": "str",
+          "ucsc_id": "str",
+          "uniprot_ids": "array<str>",
+          "vega_id": "str"
+        }
+      },
+      "schema_id": "hgnc-lookup-v1"
+    }
+  },
+  "max_cpus": 4,
+  "max_mem_gb": 16,
+  "max_minutes": 30,
+  "produced_by": {
+    "at": "2026-10-15T17:34:54.728722+00:00",
+    "commit": "877334c4e7285c6885d6f090f689f5718d0842dd",
+    "input_sha256": "ff68950ac74ae9253ad3544c4af6bcee721a0952445689fa8df4c14a81d5a177",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74"
+  }
+}
