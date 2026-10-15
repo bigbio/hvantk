@@ -23,8 +23,11 @@ OUT="$EVAL/control/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT/pos" "$OUT/neg"
 COMMIT="$(git -C "$R" rev-parse HEAD)"
 SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"
-REFERENCE="$HERE/reference.json"
-CHECK="$HERE/check.py"
+# Paths handed to the container use the profile's spelling of the checkout, which is
+# what gets bound; the resolved path above is only for the containment test.
+REL="${HERE#"$R"/}"
+REFERENCE="$HVANTK_REPO/$REL/reference.json"
+CHECK="$HVANTK_REPO/$REL/check.py"
 # check.py needs Python 3.10; login nodes often have an older one, so it runs through the
 # image (no Hail, no job): bind the checkout and the eval directory.
 CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"
