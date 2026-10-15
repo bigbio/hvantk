@@ -22,9 +22,8 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:ancestry-inference` | samples must be assigned a continental ancestry against a labelled reference built from 1000 Genomes, with the PCA and random-forest pipeline as a job |
 | `hvantk:dataset-build-at-scale` | one or many `hvantk reprocess` datasets must be built from staged raw files as Slurm jobs — fanned out as one array job, each output verified against its plugin's committed schema contract |
 
-More skills follow the same contract and land in batches: building datasets at scale,
-drift triage, the gene index, cohort attachment and burden, re-ranking and evaluation,
-and the QTL cascade.
+More skills follow the same contract and land in batches: the gene index, cohort
+attachment and burden, re-ranking and evaluation, and the QTL cascade.
 
 ## Install
 
