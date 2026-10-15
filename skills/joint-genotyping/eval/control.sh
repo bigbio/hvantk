@@ -43,9 +43,9 @@ if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" && "$(ref_field input_sh
 fi
 
 # --- positive ---
-JOB_POS="$(bash "$PIPE" --gvcf-dir "$STAGE/gvcfs" --out "$OUT/pos/cohort" --prefix cohort --build GRCh38 \
-  --cpus 8 --mem-gb 32 --time 0-00:30:00 --name "$RUN_ID-pipeline" --wait | tail -1)"
-printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$SIF_SHA" "$JOB_POS" > "$OUT/pos/run-notes.md"
+mapfile -t JOBS_POS < <(bash "$PIPE" --gvcf-dir "$STAGE/gvcfs" --out "$OUT/pos/cohort" --prefix cohort \
+  --cpus 8 --mem-gb 32 --time 0-00:30:00 --name "$RUN_ID-hgc")
+{ printf 'commit: %s\ncontainer: %s\n' "$COMMIT" "$SIF_SHA"; printf 'job: %s\n' "${JOBS_POS[@]}"; } > "$OUT/pos/run-notes.md"
 if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
   check_job "$RUN_ID-ref" --output "$OUT/pos/cohort" --reference "$REFERENCE" --write-reference \
     --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA"
@@ -60,9 +60,9 @@ for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == 
 echo "positive control: PASS (M1..M5 true)"
 
 # --- negative: two of the three samples ---
-JOB_NEG="$(bash "$PIPE" --gvcf-dir "$STAGE/gvcfs_two" --out "$OUT/neg/cohort" --prefix cohort --build GRCh38 \
-  --cpus 8 --mem-gb 32 --time 0-00:30:00 --name "$RUN_ID-neg" --wait | tail -1)"
-printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$SIF_SHA" "$JOB_NEG" > "$OUT/neg/run-notes.md"
+mapfile -t JOBS_NEG < <(bash "$PIPE" --gvcf-dir "$STAGE/gvcfs_two" --out "$OUT/neg/cohort" --prefix cohort \
+  --cpus 8 --mem-gb 32 --time 0-00:30:00 --name "$RUN_ID-neg")
+{ printf 'commit: %s\ncontainer: %s\n' "$COMMIT" "$SIF_SHA"; printf 'job: %s\n' "${JOBS_NEG[@]}"; } > "$OUT/neg/run-notes.md"
 sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$OUT/neg/sacct.psv"
 check_job "$RUN_ID-negcheck" --output "$OUT/neg/cohort" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \

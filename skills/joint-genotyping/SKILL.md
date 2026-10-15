@@ -44,21 +44,26 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
 
 ## 3. Procedure
 
-1. Dry-run the plan: the pipeline prints its stages and paths with `--dry-run` and
-   exits. Run it through the job template so the paths resolve on a compute node:
+1. Print the chain the template will run, then submit it. The chain is four jobs, each
+   waiting for the previous one: `gvcf-combine` (gVCFs to a VDS), `vds2mt` (dense
+   MatrixTable), `compute-qc` (sample and variant QC under `qc/`), `mt2vcf` (biallelic
+   cohort VCF). It blocks until the last job ends, so run it in the background and poll
+   the job ids (`hpc-hail-job` section 3).
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/joint-genotyping/templates/pipeline-job.sh" \
      --gvcf-dir "$HVANTK_WORK/gvcfs" --out "$HVANTK_WORK/callsets/<name>" --prefix <name> \
-     --build GRCh38 --cpus 8 --mem-gb 32 --time 0-00:30:00 --name <run>-plan --dry-run-pipeline
+     --cpus 8 --mem-gb 32 --time 0-00:30:00 --name <run>-hgc --plan      # then without --plan
    ```
-2. Submit the real run with the same template without `--dry-run-pipeline`; add
-   `--wait` to block, or run it in the background and poll the job id (`hpc-hail-job`
-   section 3). The template passes `--reference-genome`, `--output-prefix` and, when
-   you give it, `--n-partitions` for the dense MatrixTable.
-3. Read `<out>/.pipeline_state.json` and `<out>/logs/`: each stage records its start,
-   end and output path. A stage that failed leaves the earlier outputs in place; resume
-   with `--skip-combine-gvcfs --vds-path <out>/<prefix>.vds` (and the other `--skip-*`
-   flags the state file justifies) rather than starting over.
+   `--n-partitions` sets the dense MatrixTable's partition count; `--min-ac` the VCF's.
+2. The orchestrated form, `hvantk hgc pipeline`, does the same stages in one process and
+   is the only command that takes `--reference-genome GRCh37`. At the time of writing a
+   fresh run of it fails at the densify stage (the combine output is recorded under a
+   different key than the next stage reads), so the chain above is what runs; GRCh37
+   gVCFs need that defect fixed, or the Python API with `reference_genome` set.
+3. A step that failed leaves the earlier outputs in place; `<out>/recipe.txt` lists the
+   four commands, so resume by submitting the remaining ones through `hpc-hail-job`
+   rather than starting over. The template refuses to overwrite an existing VDS,
+   MatrixTable or VCF.
 4. QC: `hvantk hgc qc-summary -d <out>/qc -o <out>/qc/summary.md` as a small job, and
    `hvantk hgc qc-report -i <out>/<prefix>.mt -o <out>/qc/report.html` when a report is
    wanted. `references/outputs.md` says what each QC file holds and what it leaves out.
@@ -89,9 +94,9 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
 - Row counts look far too high. Cause: gVCF placeholder alleles (`<*>`, `<NON_REF>`,
   `*`) are rows in the dense MatrixTable. Fix: count variants from the QC tables or the
   VCF, which drop them; `compute-qc` drops star alleles by default.
-- The variant QC CSV has 10,000 rows for a cohort with millions. Cause: the pipeline
-  caps that export. Fix: the full table is `qc/<prefix>_variant_qc.ht`; the standalone
-  `compute-qc` writes a full `.tsv`.
+- The variant QC file is tab-separated and the sample QC file comma-separated. Cause:
+  `compute-qc` writes `<prefix>_variant_qc.tsv` and `<prefix>_sample_qc.csv`. Fix: read
+  them accordingly; the orchestrated pipeline would write a CSV capped at 10,000 rows.
 - `mt2vcf` refuses with an `adj` error. Cause: the `adj` entry field is missing or
   mostly missing, so filtering on it would delete genotypes. Fix: run `vds2mt` with
   genotype adjustment on (the default), or export with `--no-filter-adj` deliberately.
@@ -113,7 +118,7 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
 
 1. `<out>/<prefix>.vds/reference_data/_SUCCESS`, `<out>/<prefix>.vds/variant_data/_SUCCESS`
    and `<out>/<prefix>.mt/_SUCCESS` exist; `<out>/qc/<prefix>_sample_qc.csv` has one row
-   per sample; `<out>/<prefix>.vcf.bgz` exists.
+   per sample and `<out>/qc/<prefix>_variant_qc.tsv` exists; `<out>/<prefix>.vcf.bgz` exists.
 2. Counts, through the image as a small job (`templates/pipeline-job.sh --describe <out> --prefix <name>`):
    the sample set of the MatrixTable, its row count, and the VCF record count. Put all
    three in the run notes; a recipient compares against them.

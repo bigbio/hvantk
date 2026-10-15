@@ -1,6 +1,19 @@
-# What the pipeline writes
+# What a run writes
 
-Under the output directory, with `<prefix>` from `--output-prefix` (default `cohort`):
+The chain the template runs (`gvcf-combine`, `vds2mt`, `compute-qc`, `mt2vcf`) writes,
+under the output directory with the prefix you chose:
+
+| path | what it is |
+| --- | --- |
+| `<prefix>.vds/` | the lossless VDS (`reference_data/`, `variant_data/`, each with `_SUCCESS`) |
+| `<prefix>.mt/` | the dense MatrixTable, columns keyed and sorted by sample |
+| `qc/<prefix>_sample_qc.csv` | per-sample QC, full, comma-separated |
+| `qc/<prefix>_variant_qc.tsv` | per-variant QC, full, tab-separated; star alleles dropped |
+| `<prefix>.vcf.bgz` | biallelic cohort VCF, `adj` filtered, `min_ac` as given; no index |
+| `recipe.txt` | the four commands, for resuming or for a recipient |
+
+The orchestrated `hvantk hgc pipeline` writes the layout below when it runs; with
+`<prefix>` from `--output-prefix` (default `cohort`):
 
 | path | what it is | notes |
 | --- | --- | --- |
