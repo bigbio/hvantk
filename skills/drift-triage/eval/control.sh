@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Positive and negative control for the drift-triage eval. Login-node orchestrator: it
-# copies the checkout, applies the plugin repair itself (no agent), submits the builds
-# and runs the bookkeeping through the image, then grades both copies with check.py.
+# Positive and two negative controls for the drift-triage eval. Login-node
+# orchestrator: it copies the checkout, applies the plugin repair itself (no agent),
+# submits the builds and runs the bookkeeping through the image, then grades every
+# copy with check.py.
 #
 #   HVANTK_SITE_PROFILE=... [WRITE_REFERENCE=1] bash skills/drift-triage/eval/control.sh
 #
@@ -12,6 +13,10 @@
 #   the POSITIVE's own built table; check.py --expect-fail must pass, showing the
 #   content is fine and the code genuinely repaired (M4 true, repair_effective true)
 #   while the records are not (M5 false: fingerprint and ledger row both missing).
+# Neg-unrepaired: a third copy with NEITHER the repair NOR bookkeeping, also graded
+#   against the POSITIVE's own built table; check.py --expect-fail must pass, showing
+#   the content is still a valid build (M4 true, content_ok true) but the unrepaired
+#   checkout's own code cannot reproduce the repair at all (repair_effective false).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SKILL="$(cd "$HERE/.." && pwd -P)"
@@ -33,6 +38,14 @@ STAGE="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}/drift-triage"
 [[ -s "$STAGE/staged.sha256" ]] || { echo "ERROR: not staged; run eval/stage.sh first" >&2; exit 1; }
 ( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) \
   || { echo "ERROR: staged inputs do not match staged.sha256; delete the stage directory and run eval/stage.sh again" >&2; exit 1; }
+# sha256sum -c only checks that the files IT lists still match; it says nothing about
+# an extra file dropped into raw/clingen or raw-original/clingen since staging.
+# Compare the set of paths, not just their hashes (the DBS eval's own control.sh does
+# the same check).
+EXPECTED_PATHS="$(cut -d' ' -f3- "$STAGE/staged.sha256" | sort)"
+ACTUAL_PATHS="$(cd "$STAGE" && printf '%s\n' raw-original/clingen/* raw/clingen/* drift-report.json | sort)"
+[[ "$EXPECTED_PATHS" == "$ACTUAL_PATHS" ]] \
+  || { echo "ERROR: the stage directory no longer holds exactly the files staged.sha256 lists (an extra CSV under raw/clingen or raw-original/clingen?); delete the stale files and run eval/stage.sh again" >&2; echo "  expected: $EXPECTED_PATHS" >&2; echo "  actual:   $ACTUAL_PATHS" >&2; exit 1; }
 ORIGINAL="$(find "$STAGE/raw-original/clingen" -maxdepth 1 -name '*.csv' -print -quit)"
 MUTATED="$STAGE/raw/clingen/$(basename "$ORIGINAL")"
 # One digest over the whole (multi-line) staged.sha256, so it changes if ANY staged
@@ -40,7 +53,7 @@ MUTATED="$STAGE/raw/clingen/$(basename "$ORIGINAL")"
 # not just the first line of it.
 INPUT_SHA="$(sha256sum "$STAGE/staged.sha256" | cut -d' ' -f1)"
 OUT="$STAGE/control/$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$OUT/pos" "$OUT/neg"
+mkdir -p "$OUT/pos" "$OUT/neg" "$OUT/neg-unrepaired"
 RUN_ID="ctl-dt-$(date -u +%H%M%S)"
 SINCE="$(date +%Y-%m-%dT%H:%M:%S)"   # local time: sacct -S reads the node's clock, not UTC
 COMMIT="$(git -C "$R" rev-parse HEAD)"
@@ -122,6 +135,8 @@ fi
 # --- optional: (re)write the reference from the real checkout's own (unrepaired)
 #     builder, against the ORIGINAL (unmutated) raw file ---
 if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
+  REF_SHA_BEFORE=""
+  [[ -s "$REFERENCE" ]] && REF_SHA_BEFORE="$(sha256sum "$REFERENCE" | cut -d' ' -f1)"
   JOB_REF="$(bash "$SUBMIT" --name "$RUN_ID-ref-build" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
     hvantk reprocess clingen:gene-disease --raw-dir "$(dirname "$ORIGINAL")" \
       --output "$OUT/pos/clingen-gene-disease.ref.ht" --skip-download --no-check-drift | tail -1)"
@@ -131,7 +146,12 @@ if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
     --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA" >/dev/null
   [[ "$(ref_field "$REFERENCE" input_sha256)" == "$INPUT_SHA" ]] \
     || { echo "ERROR: the reference was not (re)written: the ref-check job failed; read its log" >&2; exit 1; }
-  echo "reference written: $REFERENCE"
+  # input_sha256 matching is necessary but not sufficient -- it would also match a
+  # write that silently no-op'd. The file's own sha256 must differ before vs after.
+  REF_SHA_AFTER="$(sha256sum "$REFERENCE" | cut -d' ' -f1)"
+  [[ "$REF_SHA_AFTER" != "$REF_SHA_BEFORE" ]] \
+    || { echo "ERROR: $REFERENCE's sha256 did not change across the write (before=$REF_SHA_BEFORE after=$REF_SHA_AFTER)" >&2; exit 1; }
+  echo "reference written: $REFERENCE (sha256 ${REF_SHA_BEFORE:-<none>} -> $REF_SHA_AFTER)"
 fi
 [[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
 
@@ -207,4 +227,29 @@ print_verdict "$OUT/neg/verdict.json"
    && "$(verdict_output "$OUT/neg/verdict.json" ledger_row_ok)" == "False" ]] \
   || { echo "ERROR: negative control did not fail for the expected reason (content_ok/repair_effective/fingerprint_regenerated/ledger_row_ok)" >&2; exit 1; }
 echo "negative control: PASS (M4 true, M5 false: content is fine and the code is genuinely repaired, but the records are not)"
-echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json"
+
+# --- neg-unrepaired: a copy with NEITHER the repair NOR bookkeeping, graded against
+#     the POSITIVE's own built table. The negative above already proves repair_effective
+#     can be true while the records are missing; this proves the converse -- without
+#     the repair itself, repair_effective is false even though --output (the
+#     positive's own table) is still a perfectly valid build. ---
+UNREPAIRED_REPO="$OUT/neg-unrepaired/repo"
+echo "preparing the neg-unrepaired copy ($UNREPAIRED_REPO, no repair, no bookkeeping) ..."
+rsync -a "${RSYNC_EXCLUDES[@]}" "$HVANTK_REPO"/ "$UNREPAIRED_REPO/"
+
+printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$SIF_SHA" "$JOB_BUILD" > "$OUT/neg-unrepaired/run-notes.md"
+capture_sacct "$OUT/neg-unrepaired/sacct.psv"
+check_job "$RUN_ID-unrepairedcheck" --output "$OUT/pos/clingen-gene-disease.ht" --repo "$UNREPAIRED_REPO" \
+  --verdict-dir "$OUT/neg-unrepaired" --run-notes "$OUT/neg-unrepaired/run-notes.md" --reference "$REFERENCE" \
+  --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \
+  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/neg-unrepaired/sacct.psv" --expect-fail >/dev/null
+print_verdict "$OUT/neg-unrepaired/verdict.json"
+[[ "$(verdict_stage "$OUT/neg-unrepaired/verdict.json" M4)" == "True" ]] \
+  || { echo "ERROR: neg-unrepaired control did not keep M4 true (the table graded is the positive's own build)" >&2; exit 1; }
+[[ "$(verdict_stage "$OUT/neg-unrepaired/verdict.json" M5)" == "False" ]] \
+  || { echo "ERROR: neg-unrepaired control did not fail M5" >&2; exit 1; }
+[[ "$(verdict_output "$OUT/neg-unrepaired/verdict.json" content_ok)" == "True" \
+   && "$(verdict_output "$OUT/neg-unrepaired/verdict.json" repair_effective)" == "False" ]] \
+  || { echo "ERROR: neg-unrepaired control did not fail for the expected reason (content_ok=$(verdict_output "$OUT/neg-unrepaired/verdict.json" content_ok) repair_effective=$(verdict_output "$OUT/neg-unrepaired/verdict.json" repair_effective))" >&2; exit 1; }
+echo "neg-unrepaired control: PASS (M4 true, M5 false: content is still the positive's valid build, but unrepaired code cannot reproduce the repair)"
+echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json $OUT/neg-unrepaired/verdict.json"
