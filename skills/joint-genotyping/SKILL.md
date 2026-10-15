@@ -57,10 +57,12 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    ```
    `--n-partitions` sets the dense MatrixTable's partition count; `--min-ac` the VCF's.
 2. The orchestrated form, `hvantk hgc pipeline`, does the same stages in one process and
-   is the only command that takes `--reference-genome GRCh37`. At the time of writing a
-   fresh run of it fails at the densify stage (the combine output is recorded under a
-   different key than the next stage reads), so the chain above is what runs; GRCh37
-   gVCFs need that defect fixed, or the Python API with `reference_genome` set.
+   is the only command that takes `--reference-genome GRCh37` (a stage-handoff defect
+   that broke a fresh run of it was fixed on `dev` after 0.5.0 (PR #470); a 0.5.0
+   checkout still fails at the densify stage). The template keeps the chain
+   above because each stage is then its own job with its own request and the run resumes
+   by stage; GRCh37 gVCFs go through `hvantk hgc pipeline --reference-genome GRCh37` as
+   one job through `hpc-hail-job`.
 3. A step that failed leaves the earlier outputs in place; `<out>/recipe.txt` lists the
    four commands, so resume by submitting the remaining ones through `hpc-hail-job`
    rather than starting over. The template refuses to overwrite an existing VDS,

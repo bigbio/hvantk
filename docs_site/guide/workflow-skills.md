@@ -36,7 +36,9 @@ and `/plugin install hvantk@hvantk`; other harnesses: point them at `skills/`) a
 it, for example, to build a dataset on the cluster. The shipped skills cover running any
 Hail-backed hvantk command as a single-node Slurm job from the container image, keeping a
 cluster clone in step with GitHub, building and promoting the image, joint genotyping,
-delivering a sample subset of a callset, and ancestry inference; the catalog in
+delivering a sample subset of a callset, ancestry inference, building many datasets as
+one array job with their outputs verified, and triaging a drift signal (repairing the
+plugin, rebuilding, and recording the fingerprint and the rebuild ledger); the catalog in
 `skills/README.md` is the current list. See the [HPC migration guide](hpc-migration.md)
 for the cluster setup those skills assume.
 

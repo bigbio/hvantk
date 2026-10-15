@@ -24,7 +24,9 @@ job id.
 
 Use it for every Hail-backed command: `reprocess`, `hgc`, `annotate`, `cohort`,
 `qtlcascade`, `utils check-install`. Use it for small commands too. Nothing runs on the
-login node except `git`, file inspection, downloads and job submission.
+login node except `git`, file inspection, downloads and job submission, and the small
+commands `templates/run-in-image.sh` runs inside the image there (downloads, drift
+probes, bookkeeping, a verification of a few seconds).
 
 Not this skill: building the image (not covered here), multi-node Spark (section 4
 says when, and that it is rarely worth it), commands with no Hail in them (they still
@@ -56,8 +58,9 @@ run fine through the same template, with a small request).
    `$HVANTK_READONLY_MOUNTS`. Pass absolute paths: the job's working directory is the
    log directory, not the checkout.
 5. Egress: if `$HVANTK_EGRESS` is `blocked` or unset, treat compute nodes as offline.
-   Downloads happen on the login node first, through the image, and the build then
-   runs with `--skip-download --no-check-drift`:
+   Downloads happen on the login node first, through the image -- in practice via
+   `templates/run-in-image.sh`, which wraps the same exec call the template itself
+   runs below -- and the build then runs with `--skip-download --no-check-drift`:
    ```bash
    "${HVANTK_CONTAINER_BIN:-singularity}" exec -B "$HVANTK_WORK:$HVANTK_WORK" \
      -B "$HVANTK_REPO:$HVANTK_REPO" --env PYTHONPATH="$HVANTK_REPO" "$HVANTK_SIF" \

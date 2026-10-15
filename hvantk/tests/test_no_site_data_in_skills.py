@@ -58,6 +58,9 @@ ALLOWED_HOSTS = {
     "registry-1.docker.io",
     "docker.io",
     "ftp.1000genomes.ebi.ac.uk",
+    # An HGNC column name (`pseudogene.org`) that appears as a field in a stored
+    # schema; a public resource, not a site.
+    "pseudogene.org",
 }
 #: The only domains an e-mail address may use: placeholders.
 ALLOWED_EMAIL_DOMAINS = {"example.org", "example.com"}
