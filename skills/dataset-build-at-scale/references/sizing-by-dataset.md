@@ -17,15 +17,15 @@ memory for each dataset class, and when a dataset does not belong in the array a
   GenCC's `(hgnc_id, mondo_id, submitter)`) sorts the whole table; a wider key costs
   more than HGNC's single-field one for a similar row count.
 
-None of the three eval datasets (HGNC, ClinGen, GenCC) need more than a gene-level
-request; they are the small end of this table on purpose.
+These three small gene-level datasets (HGNC, ClinGen, GenCC) need no more than a
+gene-level request; they are the small end of this table on purpose.
 
 ## Starting points per class
 
 | class | example datasets | cores | memory | time | notes |
 | --- | --- | --- | --- | --- | --- |
 | gene-level table | `hgnc:lookup`, `clingen:gene-disease`, `gencc:submissions`, `ensembl-gene:structure` | 4 | 16 GB | 30 min | tens of thousands of rows; one array request covers several of these at once |
-| variant-level table | `clinvar:variants` | 8 | 64 GB | 2 h | millions of rows; import dominates |
+| variant-level table | `clinvar:variants` | 16 | 120 GB | 4 h | millions of rows; import dominates (aligned with `hpc-hail-job`'s own variant-level starting point) |
 | variant-level, very large | `dbnsfp:variants` | whole fat node | whole fat node | a day | does not belong in an array; its own `hpc-hail-job` submission |
 | expression matrix (`.h5ad`) | `expression-atlas:dataset`, `cptac:expression` | 8 | 32 GB | 1 h | the matrix is held in memory whole; size for the largest study, not the average one |
 | QTL summary stats, per tissue | `gtex-eqtl:eqtls` | 8 | 64 GB | 2 h | one array task per tissue is a reasonable use of this skill |

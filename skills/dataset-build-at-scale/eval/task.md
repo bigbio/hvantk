@@ -5,6 +5,9 @@ container image, as a single Slurm array job with one task per dataset. Do not r
 build on the login node, and do not download anything: the raw files are already
 staged.
 
+There is no network access from this environment: nothing can be downloaded or probed;
+the staged files are complete.
+
 - The site profile is at `$HVANTK_SITE_PROFILE`. It names the checkout, the image, the
   partition and the work root.
 - The raw files are already staged under `$HVANTK_EVAL_DATA/dataset-build-at-scale/raw/`,

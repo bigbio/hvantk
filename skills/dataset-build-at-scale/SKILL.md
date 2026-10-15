@@ -35,7 +35,7 @@ Not this skill: writing or repairing a plugin (the resource specs under
 2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
 3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
 4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
-5. What each dataset needs: there is no single command for this. `hvantk plugins describe <provider>` prints only the name, version, each dataset's domain/backend and its committed fingerprint path -- nothing about artifact type, lifecycle or acquisition. Read the manifest itself, `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply the raw files yourself (the reason and any instructions are printed by `reprocess`'s own error at build time; see Traps).
+5. What each dataset needs: there is no single command for this. `hvantk plugins describe <provider>` prints the name, version, and each dataset's domain/backend, skill path and committed fingerprint path -- nothing about artifact type, lifecycle or acquisition. Read the manifest itself, `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply the raw files yourself (the reason and any instructions are printed by `reprocess`'s own error at build time; see Traps).
 6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login node (`references/raw-dir-conventions.md`); the build jobs themselves always run with `--skip-download`, so egress changes who runs the download command and when, not the procedure below.
 
 ## 3. Procedure
@@ -62,8 +62,10 @@ Not this skill: writing or repairing a plugin (the resource specs under
    spending a job on the build, check upstream has not drifted against the committed
    fingerprint: `hvantk drift provider:dataset` through the same `run-in-image.sh`
    line. A `drifted` result whose diff touches `headers` or `checksums` is a schema
-   signal: stop and use `drift-triage` first. A clean or `routine` result, or
-   `probe_failed`, means it is safe to proceed (Traps).
+   signal: stop and use `drift-triage` first. A clean or `routine` result means it is
+   safe to proceed; so does a `probe_failed` caused by a network error ("unavailable,
+   proceed"), but any OTHER `probe_failed` (the probe raised on content it did fetch)
+   is itself a signal, same as `drifted` -- use `drift-triage` (Traps).
 3. **Write the task list**: a TSV, one build per line, absolute paths —
    `<provider:dataset>\t<raw dir>\t<output path>[\t<extra reprocess options>]`. Extra
    options are build-stage ones, split on plain whitespace exactly as written, with no
@@ -73,7 +75,7 @@ Not this skill: writing or repairing a plugin (the resource specs under
 4. **Submit the array**:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/dataset-build-at-scale/templates/submit-build-array.sh" \
-     --list "$HVANTK_WORK/out/tasks.tsv" --name run-build --cpus 4 --mem-gb 16 \
+     --list "$HVANTK_WORK/out/tasks.tsv" --name <run>-build --cpus 4 --mem-gb 16 \
      --time 0-00:30:00 --max-concurrent 3 --dry-run
    ```
    then without `--dry-run`. It prints the array job id; write it into your run notes
@@ -87,15 +89,19 @@ Not this skill: writing or repairing a plugin (the resource specs under
 6. **Verify every output as a job**:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
-     --name run-verify --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+     --name <run>-verify --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/dataset-build-at-scale/templates/verify-builds.py" \
        --list "$HVANTK_WORK/out/tasks.tsv" --receipt "$HVANTK_WORK/out/verify.json"
    ```
    Details in `references/verification.md`.
-7. **Finish the run notes.** If a build refreshed a dataset whose rebuild-ledger row
-   (`hvantk drift --ledger`) was pending, run `hvantk drift --mark-rebuilt
-   provider:dataset` on the login node and commit the ledger alongside the change that
-   motivated the rebuild.
+7. **Finish the run notes.** If a build refreshed a dataset whose rebuild-ledger row was
+   pending (`run-in-image.sh -- hvantk drift --ledger`, same as every other login-node
+   command here), run it the same way:
+   ```bash
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
+     hvantk drift --mark-rebuilt provider:dataset
+   ```
+   and commit the ledger alongside the change that motivated the rebuild.
 
 ## 4. Scale-up
 
@@ -141,8 +147,10 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   node has no egress to reach upstream with. Fix: nothing -- the build is fine. The
   real signal is step 2's login-node `hvantk drift provider:dataset`, run *before* the
   build, which compares what upstream serves right now against the committed
-  fingerprint (never your staged file); its own `probe_failed` there also just means
-  "unavailable", never "stop".
+  fingerprint (never your staged file); a `probe_failed` there from a network error
+  just means "unavailable, proceed" -- but any OTHER `probe_failed` (the probe raised
+  on content it did fetch) is itself a signal, same as a `drifted` schema result: use
+  `drift-triage`.
 - `sacct` showing one row `<A>_[2-3]` for a while after submission. Cause: tasks still
   pending can be reported collapsed into one range row. Fix: wait for every task to
   reach a terminal state, not for that row to disappear.
@@ -151,14 +159,18 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   JobID,State`), never the submission's own exit code alone.
 - A built table's values differing from the committed `sample_rows.json`, or an extra
   column the committed `schema.json` does not list. Cause: the committed snapshot is
-  fixture-derived, a floor, not an equality target (GenCC's full build carries 18 more
-  columns than its 13-column fixture). Fix: `verify-builds.py` checks the snapshot as a
+  fixture-derived, a floor, not an equality target (GenCC's full build carries 17 more
+  columns than its 14-column fixture). Fix: `verify-builds.py` checks the snapshot as a
   contract (every declared field present, extra allowed) and the sample keys only
   informationally; compare row values across your own builds, never against the
   fixture's.
 - A relative path in the task list. Cause: an array task's working directory is the log
   directory, not the checkout. Fix: absolute paths only, both columns.
-- `hvantk: command not found` outside the image. Fix: `python -m hvantk`.
+- `hvantk: command not found` outside the image. Cause: the console script lives
+  inside the image; it is not installed on the login node. Fix: route the command
+  through `run-in-image.sh` (`bash skills/hpc-hail-job/templates/run-in-image.sh --
+  hvantk ...`); never `python -m hvantk` from another directory -- it puts the current
+  directory first on `sys.path` and can import, and write, into the wrong checkout.
 - An output moved without its sidecar. Cause: `.provenance.json` sits next to the
   output, not inside it, and does not record the raw file's path (see
   `references/verification.md` for its actual fields). Fix: move both together, or
@@ -173,7 +185,8 @@ partial array failure, under a fresh job id rather than a retry of the old one.
 1. `sacct -j <A> -X -n -o JobID,State` — every task row `COMPLETED`; `<A>` and `<A>_<i>`
    both count as the array's own ids.
 2. `verify-builds.py`'s receipt (`references/verification.md`): per dataset,
-   `schema_contract_ok` true, `schema_id_matches` true, the row count and sample rows
+   `schema_contract_ok` true, `schema_id_matches` true, the row count and the
+   committed snapshot keys' presence (`snapshot_keys_present`; no sample rows)
    recorded for your own comparison against the next build, and `provenance_sha256`
    tying the verdict to exactly this output.
 3. Each output carries `_SUCCESS` (or, for a single-file `.h5ad`/`.parquet` artifact,

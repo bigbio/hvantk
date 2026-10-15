@@ -27,8 +27,12 @@ leftover can still appear, though: `hvantk/core/utils/http.py::stream_to_file` w
 to a temporary `<name>.<random>` path and renames it into place only on success,
 cleaning the temp file up itself on any raised exception (an HTTP error, a short
 read) -- but an ungraceful interruption (the process killed outright, not an
-exception) skips that cleanup and leaves the temp file sitting in the raw dir as a
-second, non-hidden match.
+exception) skips that cleanup and leaves the temp file sitting in the raw dir. Its
+random suffix means it does NOT match `resolve_raw_file`'s own fnmatch pattern, so the
+builder's own "found N" check never sees it as a second candidate. What actually
+catches it is a separate staging rule: a raw directory must hold exactly the expected
+files and nothing else -- a check you make yourself when staging by hand, since
+`resolve_raw_file` itself has no way to.
 
 ## Dated files and `latest_dated`
 
@@ -51,8 +55,11 @@ picking between two different things.
 A dataset whose manifest declares `lifecycle.parse` (`uniprot-ptm:sites` is one) reads
 its raw directory at the parse stage and writes a parsed intermediate. `--intermediate`
 is optional: omitted, it defaults to `<raw-dir>/<provider>_<dataset>.intermediate`,
-which is *inside* the raw directory — exactly the kind of second file
-`resolve_raw_file` cannot tell from a stray download on the next run. Give
+which is *inside* the raw directory. Its own extension never matches the dataset's
+raw-file pattern, so `resolve_raw_file` itself never sees it as a second candidate --
+keeping it there is a tidiness problem, not a resolver one: a stray `.intermediate`
+file clutters a directory meant to hold only that dataset's raw file, and gets
+re-parsed by accident if the parse stage ever runs again without `--skip-parse`. Give
 `--intermediate` an explicit path outside the raw directory for any dataset you will
 `reprocess` more than once from the same raw directory, which in practice means every
 parse-stage dataset in this skill's procedure: stage it once with that explicit path,

@@ -17,8 +17,8 @@ A plugin's committed `tests/snapshots/schema.json` is a floor, not a target to m
 exactly: it is generated from a tiny committed test fixture
 (`hvantk/skills/<provider>/tests/testdata/`), and a full build from the real upstream
 file routinely carries more columns than the fixture did. GenCC's upstream file has 31
-columns; its committed snapshot declares 13 row fields; a full build legitimately has
-18 more fields than the snapshot lists. `verify-builds.py` therefore checks that every
+columns; its committed snapshot declares 14 row fields; a full build legitimately has
+17 more fields than the snapshot lists. `verify-builds.py` therefore checks that every
 field the snapshot declares is present in the built schema with the same type
 (`schema_contract_ok`) and separately lists whatever extra fields the build has
 (`extra_fields`) -- an extra field is not a failure, a missing or retyped one is.
@@ -27,10 +27,11 @@ The committed `tests/snapshots/sample_rows.json`'s *keys* are informational only
 (`snapshot_keys_present`), never a pass/fail condition: some plugins' fixtures are
 hand-authored rather than sub-sampled from a real file, so their keys can be
 identifiers that do not exist anywhere upstream. ClinGen's fixture invents its own
-MONDO ids for exactly this reason -- the first time this skill's own eval ran on a
-cluster, grading against those invented keys crashed outright with a `KeyError`,
-which is why this is informational rather than a failure: a missing key here tells you
-the fixture and the real file disagree on identifiers, not that the build is wrong.
+MONDO ids for exactly this reason: a build from the real upstream file is not
+guaranteed to contain those same gene-disease pairings, so treating a missing key as a
+hard failure would punish the mismatch between a hand-authored fixture and reality, not
+an actual problem with the build. A missing key here tells you the fixture and the
+real file disagree on identifiers, not that the build is wrong.
 
 ## What the receipt holds
 
