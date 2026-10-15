@@ -163,14 +163,13 @@ regardless of cohort size -- they never need to be chunked.
   ...`. Cause: `validate` only reads the table's header, never a data row -- it cannot
   see duplicate keys. Fix: aggregate the table to exactly one row per gene before
   attaching.
-- A blank (empty-string) gene key is not the same as a missing one, and corrupts
-  output silently. Cause: `hl.is_defined` (the check burden and attach use to drop
-  genuinely missing/`NA` keys) treats a literal empty string `""` as defined -- it
-  survives as its own bogus gene (keyed on `""`), collecting whatever variants or
-  genes had a blank key instead of being dropped. Fix: check for blank strings
-  explicitly upstream (`inspect-cohort-mt.py`'s undefined-gene count does not catch
-  this -- it only counts truly missing values); never assume "not NA" means "a real
-  identifier".
+- A gene field holding empty strings becomes a gene of its own in burden. Cause:
+  burden drops variants whose gene is missing (`hl.is_defined`), and an empty string
+  is defined, so every variant with a blank gene is counted under a gene keyed `""`.
+  Fix: set blank values to missing upstream (`hl.or_missing(hl.len(g) > 0, g)`);
+  `inspect-cohort-mt.py`'s undefined-gene count counts only missing values. A cohort
+  TABLE is different: `cohort attach` reads an empty key cell as missing (after
+  0.5.0), and rerank's pandas loader refuses blank keys.
 - `cohort table ... has no column 'symbol' (key_column)`. Cause: `key` names the
   identifier *space* (`gene_id`/`hgnc_id`/`symbol`); `key_column` names the *column* in
   the table that actually holds those values, and real tables often differ (a
