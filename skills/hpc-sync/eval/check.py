@@ -3,7 +3,8 @@
 Grades one run against the staged scenario: M1 from ``run-notes.md``; M2 and M3 are
 null because the task needs no job; M4 is "the cluster remote's main and dev equal the
 GitHub remote's"; M5 is "the cluster-only branch is untouched and the GitHub remote was
-not changed", both against ``reference.json``. Git only, no Hail, no Slurm.
+not changed", both against ``reference.json``. No git, Hail or Slurm: refs are read from the
+bare repositories' files, so it runs inside the image on a login node.
 
     python check.py --scenario DIR --run-notes NOTES.md --reference reference.json \
         --expect-commit SHA --expect-sif-sha256 HEX [--expect-fail]
@@ -18,7 +19,6 @@ import datetime as dt
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -43,12 +43,18 @@ def parse_notes(path: Path) -> dict:
 
 
 def ref(repo: Path, name: str) -> str | None:
-    r = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"refs/heads/{name}"],
-        capture_output=True,
-        text=True,
-    )
-    return r.stdout.strip() or None
+    """The commit a branch of a bare repository points at, read from the repository's
+    own files: no git binary is needed, and the image has none."""
+    loose = repo / "refs" / "heads" / name
+    if loose.is_file():
+        return loose.read_text().strip() or None
+    packed = repo / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text().splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == f"refs/heads/{name}":
+                return parts[0]
+    return None
 
 
 def refs(repo: Path, names: tuple[str, ...]) -> dict[str, str | None]:

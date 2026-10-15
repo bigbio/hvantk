@@ -55,6 +55,8 @@ ALLOWED_HOSTS = {
     "schedmd.com",
     "python.org",
     "readthedocs.io",
+    "registry-1.docker.io",
+    "docker.io",
 }
 #: The only domains an e-mail address may use: placeholders.
 ALLOWED_EMAIL_DOMAINS = {"example.org", "example.com"}
