@@ -6,7 +6,7 @@ file on this cluster, without root, as a Slurm job; then prove it works by runni
 
 - The site profile is at `$HVANTK_SITE_PROFILE`. It names the checkout, the current
   default image, the partition and the work root.
-- Write the new image to `$HVANTK_EVAL_OUT/hvantk.sif`, with its provenance record next
+- Write the new image to `$HVANTK_EVAL_OUT/hvantk-eval.sif`, with its provenance record next
   to it. Do not touch the default image.
 - The harness sets `HVANTK_EVAL_OUT` and `HVANTK_RUN_ID` in your environment before you
   start. Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`.

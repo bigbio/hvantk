@@ -17,10 +17,11 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:hpc-hail-job` | you want to run any Hail-backed hvantk command (`reprocess`, `hgc`, `annotate`, `cohort`, `qtlcascade`) on a Slurm cluster from the container image: sizing, scratch, submission, waiting, triage, verification |
 | `hvantk:hpc-sync` | a cluster clone or bare remote must be brought in step with GitHub without losing cluster-side commits, branches must be pushed to the cluster remote by explicit refspec, or a job ran a commit you did not review |
 | `hvantk:hpc-container` | the container image must be built from the lock file without root, validated with the install check, recorded with provenance, or promoted as the default; or a job runs old dependencies although the code is current |
+| `hvantk:joint-genotyping` | single-sample gVCFs must become a joint callset (VDS, MatrixTable, QC, cohort VCF) with the HGC pipeline, for a few samples in one job or thousands per contig |
 
-More skills follow the same contract and land in batches: joint genotyping, callset subsetting, ancestry inference, building
-datasets at scale, drift triage, the gene index, cohort attachment and burden, re-ranking
-and evaluation, and the QTL cascade.
+More skills follow the same contract and land in batches: callset subsetting, ancestry
+inference, building datasets at scale, drift triage, the gene index, cohort attachment
+and burden, re-ranking and evaluation, and the QTL cascade.
 
 ## Install
 

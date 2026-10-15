@@ -38,15 +38,15 @@ verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); p
 echo "control run $RUN_ID -> $OUT (commit $COMMIT)"
 
 # --- positive: the skill's own build ---
-JOB="$(bash "$SUBMIT" --out "$OUT/pos/hvantk.sif" --name "$RUN_ID-build" --wait | tail -1)"
-NEW_SHA="$(sha256sum "$OUT/pos/hvantk.sif" | cut -d' ' -f1)"
+JOB="$(bash "$SUBMIT" --out "$OUT/pos/hvantk-eval.sif" --name "$RUN_ID-build" --wait | tail -1)"
+NEW_SHA="$(sha256sum "$OUT/pos/hvantk-eval.sif" | cut -d' ' -f1)"
 printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$NEW_SHA" "$JOB" > "$OUT/pos/run-notes.md"
 if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
-  check --output "$OUT/pos/hvantk.sif" --reference "$REFERENCE" --write-reference --expect-commit "$COMMIT"
+  check --output "$OUT/pos/hvantk-eval.sif" --reference "$REFERENCE" --write-reference --expect-commit "$COMMIT"
 fi
 [[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
 sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$OUT/pos/sacct.psv"
-check --output "$OUT/pos/hvantk.sif" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
+check --output "$OUT/pos/hvantk-eval.sif" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$NEW_SHA" \
   --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv" >/dev/null
 for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true" >&2; exit 1; }; done
@@ -55,10 +55,10 @@ echo "positive control: PASS (M1..M5 true)"
 # --- negative: the default image, built from another commit ---
 DEFAULT_REAL="$(readlink -f "$HVANTK_SIF")"
 [[ -f "$DEFAULT_REAL.provenance.json" ]] || { echo "ERROR: the default image has no provenance record; cannot run the negative control" >&2; exit 1; }
-ln -sfn "$DEFAULT_REAL" "$OUT/neg/hvantk.sif"
-ln -sfn "$DEFAULT_REAL.provenance.json" "$OUT/neg/hvantk.sif.provenance.json"
+ln -sfn "$DEFAULT_REAL" "$OUT/neg/hvantk-eval.sif"
+ln -sfn "$DEFAULT_REAL.provenance.json" "$OUT/neg/hvantk-eval.sif.provenance.json"
 printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$(sha256sum "$DEFAULT_REAL" | cut -d' ' -f1)" "$JOB" > "$OUT/neg/run-notes.md"
-check --output "$OUT/neg/hvantk.sif" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
+check --output "$OUT/neg/hvantk-eval.sif" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --site-profile "$HVANTK_SITE_PROFILE" \
   --sacct-file "$OUT/pos/sacct.psv" --expect-fail >/dev/null
 [[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "False" ]] || { echo "ERROR: negative control did not fail M4 on the default image's commit" >&2; exit 1; }
