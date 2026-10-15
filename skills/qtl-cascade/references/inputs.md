@@ -11,13 +11,14 @@
 | --- | --- | --- | --- |
 | `gtex_v11` (default) | Per-tissue parquet (`spark.read.parquet`) | GRCh38 | `af` read directly; `maf = min(af, 1-af)`. Needs Hail initialised before Spark touches the file — see Traps in `SKILL.md`. |
 | `gtex_v8` | Per-tissue gzipped TSV (`hl.import_table`) | GRCh38 | Carries `maf` directly, not `af`; both fields are set equal to it (v8 loses ALT-direction information). |
-| `eqtlgen` | One gzipped TSV, whole-genome | **GRCh37** | No `tissue`/`source` filename dispatch; `tissue` is hardcoded `"Blood"`. Provides a Z-score, not a `beta`/`se` pair (`beta`/`se` are null). Never cascade this against a GRCh38 pQTL table — the join key includes `locus`, and nothing on GRCh37 equals anything on GRCh38. |
+| `eqtlgen` | One gzipped TSV, whole-genome | **GRCh37** | No `tissue`/`source` filename dispatch; `tissue` is hardcoded `"Blood"`. **Cannot feed the cascade or coloc at all**: its builder leaves `beta`/`se` null unconditionally (`_import_eqtlgen`, `hvantk/skills/gtex_eqtl/builder.py`), so `has_eqtl = hl.is_defined(ht.eqtl_beta)` is always False for a row built from it, and it never classifies as `eqtl_mediated`/`discordant`/`eqtl_only` in the cascade. Separately, it is GRCh37: built with `reference_genome="GRCh37"` and joined against a GRCh38 table, the cascade raises `'join': key mismatch` (different `locus` Hail types); built with the default GRCh38 instead, the join does not raise but its GRCh37 positions are silently claimed to be GRCh38 positions — wrong loci, no error either way. |
 
 `--plugin-arg tissue=<name>` (for `gtex_v11`/`gtex_v8`) selects one tissue's file by
 filename prefix before the first dot (`scan_tissue_files`,
 `hvantk/core/utils/qtl_helpers.py`) — matching is exact and case-sensitive; a
-misspelled or miscased tissue name raises `No eQTL parquet/TSV files matched`, not a
-silent empty table.
+misspelled or miscased tissue name RAISES (`FileNotFoundError`): `No eQTL parquet
+files matched (tissue=T)` for `gtex_v11`, `No eQTL TSV files matched (tissue=T)` for
+`gtex_v8` — never a silent empty table.
 
 `--plugin-arg p_threshold=` filters by `p_value <= p_threshold`; the builder's own
 default is `5e-8` for every source (it is one shared parameter applied after the
@@ -38,7 +39,8 @@ STAT P` (no SE column — the builder derives `se = |BETA / STAT|`, and drops an
 with `STAT == 0` first, since that SE would be undefined). Real files are named
 `<Tissue>.allpairs_nobsGE72.txt.gz`; the same `scan_tissue_files` filename-prefix
 convention applies, so always pass `--plugin-arg tissue=<Tissue>` when the raw
-directory might hold other `.txt.gz`/`.tsv.gz` files.
+directory might hold other `.txt.gz`/`.tsv.gz` files — a mismatch RAISES `No pQTL
+allpairs files matched (tissue=T)`, same as the eQTL side.
 
 **Gene-symbol mapping is required for a cascade-compatible table.** Fang rows carry a
 gene *symbol* (`gene_name`); the eQTL side is keyed by Ensembl ID. Pass
@@ -61,9 +63,14 @@ so simply not passing `p_threshold` is enough.
 ## All-pairs vs significant-pairs — where coloc's input actually comes from
 
 Colocalisation needs every variant-gene pair in the regional window around the lead
-eQTL variant, not only the pairs that cleared a significance threshold — `coloc`
-skips a gene outright below 2 shared variants, and a significant-pairs-only table
-rarely has that many within one window. Where to get an all-pairs table per source:
+eQTL variant (the lowest eQTL p-value among the variants shared with the pQTL
+table), not only the pairs that cleared a significance threshold. Feeding it a
+significant-pairs-only table does not error and does not generally return "no
+genes" either — `coloc` only skips a gene outright below 2 shared variants, which a
+significant-pairs table can still clear; the real effect is that it runs on far
+fewer shared variants than the true all-pairs window would have, which inflates
+`H4` and makes the result unreliable without being obviously wrong. Where to get an
+all-pairs table per source:
 
 - `gtex_v8`/`gtex_v11`: the anonymous public GTEx bucket that this skill's downloader
   story covers ships **significant pairs only** for the per-tissue files this skill
@@ -81,8 +88,9 @@ rarely has that many within one window. Where to get an all-pairs table per sour
   own machinery, `references/gwas-coloc.md`), not a bulk downloader — use it to build
   a small, genuinely-all-pairs slice when the GTEx bucket only offers significant
   pairs.
-- `eqtlgen`: distributes only its own cis-eQTL file; there is no separate
-  "significant" vs "all" split to worry about for this source.
+- `eqtlgen`: moot — see the eQTL sources table above: it cannot feed the cascade
+  or coloc at all (null `beta`/`se`), regardless of which file or threshold it is
+  built from.
 - Fang pQTL: the one allpairs file per tissue already is all-pairs (see above).
 
 ## Tissue vocabularies do not line up

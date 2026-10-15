@@ -1,8 +1,11 @@
 # QTL cascade: components, options, classes, and output layout
 
-`hvantk qtlcascade` (`hvantk/tools/qtl/qtlcascade_cli.py`) has four subcommands.
-`run` chains `cascade` + `coloc` + the gene summary + the report; the component
-commands below are for driving one stage at a time.
+`hvantk qtlcascade` (`hvantk/tools/qtl/qtlcascade_cli.py`) has five subcommands:
+`cascade`, `coloc`, `run`, `report`, and `gwas-coloc` (a separate pipeline, covered
+in `references/gwas-coloc.md`, not here). `run` chains `cascade` + `coloc` + the
+gene summary + the report; the component commands below are for driving one stage
+at a time. There is no standalone "gene-summary" command — only `run` ever writes
+`gene_summary.ht`/`.tsv`, as part of its own pipeline.
 
 ## `cascade` — the join and classification
 
@@ -44,12 +47,15 @@ hvantk qtlcascade coloc --eqtl-allpairs E --pqtl-allpairs P \
 
 `--cascade-genes` is a file, one gene_id per line — normally the cascade genes with
 *both* eQTL and pQTL evidence (`eqtl_mediated` + `discordant`; `pipeline.py`'s own
-`_stage_coloc` builds this set that way). For each gene: inner-join the two allpairs
-tables on `(locus, alleles, gene_id)` (optionally filtered to `--tissue` first),
-take the window within `--window-kb` of the position of the **lead eQTL variant**
-(lowest eQTL p-value in that gene), skip the gene if fewer than 2 variants fall in
-that window, and run single-variant ABF (Wakefield 2009 / Giambartolomei et al. 2014)
-over the window:
+`coloc_gene_ids()` builds this set that way). For each gene: inner-join the two
+allpairs tables on `(locus, alleles, gene_id)` (optionally filtered to `--tissue`
+first) — **every** shared pair for that gene is collected before any windowing
+happens (see Scale-up in `SKILL.md`: `--window-kb` does not bound this collection,
+only the ABF input afterwards) — take the window within `--window-kb` of the
+position of the **lead eQTL variant** (lowest eQTL p-value among the variants
+SHARED with the pQTL table for that gene, not the lowest genome-wide), skip the
+gene if fewer than 2 variants fall in that window, and run single-variant ABF
+(Wakefield 2009 / Giambartolomei et al. 2014) over the window:
 
 - Priors: `p1 = p2 = 1e-4` (causal for one trait only), `p12 = 1e-5` (causal for
   both), prior effect-size variance `W = 0.04`.
@@ -63,7 +69,12 @@ over the window:
   (`eqtl_mediated`) gene is not guaranteed to.
 
 Output TSV columns: `gene_id`, `tissue` (the `--tissue` value, or `"unknown"` if
-none), `H0`, `H1`, `H2`, `H3`, `H4`, `n_variants`.
+none), `H0`, `H1`, `H2`, `H3`, `H4`, `n_variants`. Unlike `cascade`, `coloc` has
+**no `--overwrite` option at all** and always overwrites `-o`'s file when it
+writes one — but if a later run finds no cascade gene to test (an empty
+`--cascade-genes` list, or none clearing the 2-shared-variant floor), it returns
+before writing anything, leaving an earlier run's file in place and now stale.
+Delete the file (or the whole output directory) before a rerun if that matters.
 
 ## `run` — the full per-tissue pipeline
 
@@ -81,10 +92,13 @@ pqtl_allpairs_ht are required for colocalization (or omit both to skip coloc).`)
 `oe_lof_upper`) and `--disease-genes-ht` (any table keyed by `gene_id`) are optional
 overlays added to the gene summary. `--tissues` (comma-separated) runs one tissue at
 a time and writes a combined report; omit it to run once with no tissue filter.
-`--dry-run` prints the plan (tissues, coloc on/off, output dir, the stage list) with
-no Hail work. With one tissue filter, `run` prints `Cascade genes: <n>` and
-`Class counts: <dict>`; with `--tissues` (even a single name), it prints
-`Completed: <n> tissue(s)` and, per tissue, `  <tissue>: <n> genes, <m> colocalised`.
+`--dry-run` prints the plan (tissues, coloc on/off, output dir, the stage list) —
+no Hail *table* is read, but the pipeline object's constructor still creates
+`per_tissue/` and (unless `--no-plots`) `plots/` under `-o` before the dry-run
+check ever runs. Without `--tissues` at all, `run` prints `Cascade genes: <n>` and
+`Class counts: <dict>`, and writes under `per_tissue/all`; given `--tissues` (even
+a single name), it instead prints `Completed: <n> tissue(s)` and, per tissue,
+`  <tissue>: <n> genes, <m> colocalised`, writing under `per_tissue/<tissue>`.
 
 ### Per-run output layout
 
@@ -109,10 +123,14 @@ names such as `Liver` are unchanged.
 
 `gene_summary.ht`/`.tsv`, keyed `gene_id`: `n_eqtl_variants`, `n_pqtl_variants`,
 `n_concordant` (`eqtl_mediated` rows), `n_discordant`, `best_eqtl_pvalue` (min),
-`best_pqtl_pvalue` (min), `has_complete_cascade` (`n_concordant > 0`); `tissues` (set
-of tissue values seen, when the cascade table carries one). When `--constraint-ht`
-was given: `oe_lof_upper`. When `--disease-genes-ht` was given: `is_disease_gene`.
-When coloc ran: `coloc_max_h4` (max `H4` across tested tissues for that gene) and
+`best_pqtl_pvalue` (min), `has_complete_cascade` (`n_concordant > 0`); `tissues`
+(set of tissue values seen) is **always** present for a cascade table built by this
+skill's own procedure — `cascade.ht` always carries a `tissue` field regardless of
+whether `--tissue`/`--tissues` was used (its values are simply all-missing when no
+filter was applied), and `gene_summary.py` adds the `tissues` column whenever that
+field exists on the input, unconditionally. When `--constraint-ht` was given:
+`oe_lof_upper`. When `--disease-genes-ht` was given: `is_disease_gene`. When coloc
+ran: `coloc_max_h4` (max `H4` across tested tissues for that gene) and
 `coloc_n_tissues` (count of tissues where `H4 > 0.8`).
 
 ## `report` — HTML from existing results

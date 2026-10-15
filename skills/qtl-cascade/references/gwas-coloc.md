@@ -14,7 +14,10 @@ every time it runs, with no local-file substitute for the FinnGen side. The eQTL
 alone accepts a local tabix path or URL in place of a dataset id (`--eqtl`). Run this
 on a node that has egress (typically the login node, through `run-in-image.sh`); a
 compute node with no egress fails with a connection error, not a helpful message
-about the data being missing.
+about the data being missing. The `qtlcascade` tool manifest
+(`hvantk/tools/qtl/qtlcascade_cli.tool.yaml`) declares `network: false` for the
+WHOLE command group — true for `cascade`/`coloc`/`run`/`report`, wrong for this one
+subcommand. Do not trust that manifest field for `gwas-coloc`.
 
 pysam's remote tabix (what both fetch functions use) downloads the remote file's
 index (a `.tbi`) into the **current working directory**, not a temp location. Run
@@ -63,8 +66,10 @@ genes even though both sides returned data.
 
 `gwas-catalog:associations` (downloader exists; not consumed by any `qtlcascade`
 command) is a plain table of published GWAS associations, keyed `(locus, alleles)`
-with a sentinel `N` for the ALT allele when the catalog does not record one, and no
-standard error column. Use it to pick a `--chrom`/`--lead` pair for a trait of
+with `alleles = [risk_allele, "N"]` — the ALT allele is ALWAYS the sentinel `"N"`
+(`hvantk/skills/gwas_catalog/builder.py:151`; the catalog's risk-allele rows never
+carry a real ALT, not just sometimes), and there is no standard error column. Use
+it to pick a `--chrom`/`--lead` pair for a trait of
 interest (e.g. the most significant published variant for a phenotype you then look
 up a matching FinnGen endpoint for) — it is a locus-selection aid, not an input
 `gwas-coloc` itself reads.

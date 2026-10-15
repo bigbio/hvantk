@@ -1,12 +1,17 @@
 """Deterministic check for the qtl-cascade eval task.
 
 M1 from run-notes.md; M2 and M3 from an accounting file captured on the login node
-(no array: four plain jobs — the three table builds and the cascade run). M4 = the
-per-tissue `cascade.ht` exists with `_SUCCESS`, is keyed `(locus, alleles, gene_id)`
-and satisfies its field contract (read fresh from THIS checkout's own schema below,
-never from `reference.json`); `gene_summary.tsv` and `coloc_results.tsv` carry their
-expected columns; the report file exists and contains the tissue name and the coloc
-section's exact heading from `report.py`. M5 has three parts:
+(no array: five plain jobs — the three table builds, the cascade run, and
+summarize-cascade.py). M4 = the per-tissue `cascade.ht` exists with `_SUCCESS`, is
+keyed `(locus, alleles, gene_id)` and satisfies its field contract (read fresh from
+THIS checkout's own schema below, never from `reference.json`); `gene_summary.tsv`
+and `coloc_results.tsv` carry their expected columns; the report file exists and
+contains the effective tissue label and the coloc section's exact heading from
+`report.py`. The per-tissue directory and that label are resolved by
+`resolve_tissue_dir`: `qtlcascade run --tissues <tissue>` writes under
+`per_tissue/<_sanitize(tissue)>`, but a run given no `--tissues` filter at all
+writes under `per_tissue/all` instead (identical numbers, for this eval's
+single-tissue tables) — both are accepted. M5 has three parts:
 
 - ``cascade_ok``: the cascade class counts equal the reference's, and a sha256 over
   `gene_summary.tsv`'s cascade-only contract columns (deliberately excluding the
@@ -336,10 +341,32 @@ def read_coloc(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, sep="\t")
 
 
+def resolve_tissue_dir(out_dir: Path, tissue: str) -> tuple[Path, str]:
+    """The per-tissue directory ``qtlcascade run`` actually wrote to, and the
+    label that run used for it.
+
+    ``run --tissues <tissue>`` writes under ``per_tissue/<_sanitize(tissue)>``
+    (``pipeline.py``'s own sanitiser, imported rather than re-derived, so this can
+    never disagree with it); ``run`` given no ``--tissues`` filter at all writes
+    under ``per_tissue/all`` instead, with the report's own tissue label also
+    ``"all"`` — numerically identical to a single-tissue run for this eval's
+    single-tissue tables, so both are accepted and the label that was actually
+    used is returned for the report-content check.
+    """
+    from hvantk.algorithms.qtlcascade.pipeline import _sanitize
+
+    named = out_dir / "per_tissue" / _sanitize(tissue)
+    if named.exists():
+        return named, tissue
+    return out_dir / "per_tissue" / "all", "all"
+
+
 def grade_output(out_dir: Path, tissue: str, reference: dict | None) -> tuple:
     """Returns (m4, m5, details)."""
     details: dict = {}
-    tissue_dir = out_dir / "per_tissue" / tissue
+    tissue_dir, tissue_label = resolve_tissue_dir(out_dir, tissue)
+    details["tissue_dir"] = str(tissue_dir)
+    details["tissue_label"] = tissue_label
     cascade_ht = tissue_dir / "cascade.ht"
     gene_summary_tsv = tissue_dir / "gene_summary.tsv"
     coloc_tsv = tissue_dir / "coloc_results.tsv"
@@ -376,7 +403,7 @@ def grade_output(out_dir: Path, tissue: str, reference: dict | None) -> tuple:
     details["coloc_colocalised"] = int((coloc_df["H4"] > H4_THRESHOLD).sum())
 
     report_text = report_html.read_text(encoding="utf-8", errors="replace")
-    details["report_has_tissue"] = tissue in report_text
+    details["report_has_tissue"] = tissue_label in report_text
     details["report_has_coloc_heading"] = "Colocalization Results" in report_text
 
     m4 = bool(
@@ -442,16 +469,16 @@ def grade_output(out_dir: Path, tissue: str, reference: dict | None) -> tuple:
 
 def write_reference(args) -> None:
     out_dir = Path(args.out_dir)
-    _, _, details = grade_output(out_dir, args.tissue, reference=None)
-    if not details.get("cascade_schema_ok"):
+    m4, _, details = grade_output(out_dir, args.tissue, reference=None)
+    if not m4:
         print(
-            "ERROR: --write-reference: cascade.ht does not satisfy its own field "
-            f"contract: {details.get('cascade_row_contract')}",
+            "ERROR: --write-reference refuses because M4 is not true for this "
+            f"output; details: {json.dumps(details, indent=2, default=str)}",
             file=sys.stderr,
         )
         raise SystemExit(1)
 
-    tissue_dir = out_dir / "per_tissue" / args.tissue
+    tissue_dir, _ = resolve_tissue_dir(out_dir, args.tissue)
     coloc_df = read_coloc(tissue_dir / "coloc_results.tsv")
     genes = {
         str(r["gene_id"]): {
@@ -514,7 +541,6 @@ def main() -> int:
             ap.error(f"--{required.replace('_', '-')} is required when grading")
 
     out_dir = Path(args.out_dir)
-    reference = json.loads(Path(args.reference).read_text())
     notes = parse_notes(
         Path(args.run_notes) if args.run_notes else Path("/nonexistent")
     )
@@ -538,10 +564,14 @@ def main() -> int:
             m2, m3, slurm_details = grade_slurm(args.run_id, notes, rows, profile)
 
     try:
+        # Loaded inside the try, alongside grade_output: a missing or corrupt
+        # reference.json must still leave a verdict.json on disk (M4 can still be
+        # computed; M5 cannot), never crash before anything is written.
+        reference = json.loads(Path(args.reference).read_text())
         m4, m5, details = grade_output(out_dir, args.tissue, reference)
-    except Exception as exc:  # noqa: BLE001 -- a corrupt/missing output must not
-        # crash the verdict; record it and fail M4/M5, same pattern as this
-        # project's other evals.
+    except Exception as exc:  # noqa: BLE001 -- a corrupt/missing output or
+        # reference must not crash the verdict; record it and fail M4/M5, same
+        # pattern as this project's other evals.
         m4, m5 = False, False
         details = {"error": f"{type(exc).__name__}: {exc}"}
 
@@ -574,14 +604,16 @@ def main() -> int:
     (verdict_dir / "verdict.json").write_text(
         json.dumps(verdict, indent=2, default=str)
     )
+    try:
+        reference_sha256 = hashlib.sha256(Path(args.reference).read_bytes()).hexdigest()
+    except OSError:
+        reference_sha256 = None
     receipt = {
         "tissue": args.tissue,
         "pass": passed,
         "gene_summary_sha256": details.get("gene_summary_sha256"),
         "coloc_gene_ids_sha256": details.get("coloc_gene_ids_sha256"),
-        "reference_sha256": hashlib.sha256(
-            Path(args.reference).read_bytes()
-        ).hexdigest(),
+        "reference_sha256": reference_sha256,
         "checked_at": verdict["checked_at"],
     }
     (verdict_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
