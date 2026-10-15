@@ -15,11 +15,22 @@ the automated workflow); this file is the operational sequence, not a restatemen
   `last_upstream_change`, `accepted_in`, `signal` (`routine` or `schema`), `rebuilt_at`
   (null until marked rebuilt).
 
-Both files are written only through `hvantk.core.plugin.drift_runner` /
-`drift_ledger`, never by hand: a hand-edited fingerprint is rejected as a baseline that
-was never captured from a live probe (and so can never equal a real observation again),
-and a hand-edited ledger row is just as easy to get silently wrong as any other
-hand-maintained provenance record.
+The fingerprint is written only through the tooling, never by hand. What "rejected"
+actually means is narrower than it sounds: only a baseline shaped like a stub, or one
+carrying the specific placeholder markers a hand-seeded file leaves (an empty checksum,
+a sentinel string, `fetched_at` at the Unix epoch), is refused outright as
+`probe_failed`. Any OTHER hand-edit is accepted as a file -- there is no general
+"this was not written by the tool" detector -- it just then never equals a live
+observation again, so the dataset reports `drifted` on every run forever. Either way the
+fix is the same: `--regenerate`, never a manual edit.
+
+The ledger is written the same way in the NORMAL case, but it has one documented,
+narrow exception: a hand-added row, for the specific case where `--regenerate` records
+none because the two baselines differ only in `probe_version` (step 1 below) while
+upstream genuinely also moved in that same window -- the dbnsfp and uniprot-ptm
+fingerprint bumps both did this by hand. Outside that one case, write it through
+`--regenerate`/the bot, not by hand: a hand-maintained provenance record is exactly as
+easy to get silently wrong as any other one.
 
 ## Sequence
 
@@ -37,15 +48,22 @@ hand-maintained provenance record.
 3. `hvantk drift --ledger` -- lists every dataset never rebuilt, or rebuilt before its
    own `last_upstream_change`. The dataset just handled must not appear in that list.
 
-Run 1 and 2 in that order: `--mark-rebuilt` requires the row `--regenerate` writes, and
-fails outright if it runs first.
+Run 1 BEFORE 2, always -- and not only because 2 "requires" 1's row. If the dataset has
+no ledger row at all yet, running `--mark-rebuilt` first does fail outright, obviously
+wrong. But `clingen:gene-disease` (and most datasets that have ever drifted before)
+already HAS a row, from some earlier, unrelated signal -- and `--mark-rebuilt` run
+before `--regenerate` happily marks THAT OLD row rebuilt instead, succeeds with no
+error, and `--ledger` then reports clean even though the signal you are triaging right
+now was never recorded at all. The only way to notice is to check that the row's
+`last_upstream_change` is from THIS run, not a stale one -- which is also why step 3's
+`--ledger` passing is necessary but not sufficient; read the row itself too.
 
 ## The offline form
 
 `templates/probe-offline.py drift --dataset <provider:dataset> --file <path> --
---regenerate --accepted-in "<PR or branch>"` does the same as step 1, except the probe's
-`requests.head`/`requests.get` calls are answered from `<path>` instead of the network.
-Reach for it when:
+--regenerate --accepted-in "<PR or branch>"` does the same as step 1, except the
+probe's HTTP calls (see coverage, below) are answered from `<path>` instead of the
+network. Reach for it when:
 
 - the machine running the triage has no egress (a compute node, a sandboxed
   evaluation), or
@@ -55,9 +73,13 @@ Reach for it when:
   regenerate call, and the committed baseline should describe the file the dataset
   actually came from, not a third, unvalidated fetch.
 
-Coverage is probes that call the module-level `requests.head`/`requests.get` functions
-directly -- clingen and hgnc both do. A probe built on `requests.Session` or any other
-HTTP client is not covered; `templates/probe-offline.py`'s own module docstring says so.
+Coverage is probes that call the module-level `requests.head`, `requests.get` or
+`requests.request` functions -- clingen and hgnc call `head`/`get` directly; gencc goes
+through `hvantk.core.utils.http.request_with_retry`, which calls `requests.request`, so
+it is served too. A probe built on its own `requests.Session` (gnomad-metrics) is NOT
+served: it is actively BLOCKED for the duration, so it fails loudly as `probe_failed`
+rather than silently reaching the real network or recording a fingerprint for the wrong
+file. `templates/probe-offline.py`'s own module docstring has the exact mechanism.
 
 ## What the pull request must carry
 
