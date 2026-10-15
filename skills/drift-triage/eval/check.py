@@ -338,10 +338,12 @@ def select_sample_keys(ht) -> list[dict]:
             indexed["_row_index"]
         )
     )
-    chosen = chosen.select()  # Table.select() always keeps the key
-    key_field_names = list(ht.key)
+    chosen = chosen.select()  # Table.select() with NO args: keeps exactly the key
+    # fields. select(*key_field_names) would raise ExpressionException ("cannot
+    # overwrite key field ... with annotate, select or drop") since the key fields
+    # are already there implicitly -- naming them again is an overwrite, not a select.
     rows = chosen.collect()
-    return [{k: _to_jsonable(row[k]) for k in key_field_names} for row in rows]
+    return [{k: _to_jsonable(v) for k, v in dict(row).items()} for row in rows]
 
 
 def rows_digest(ht, keys: list[dict]) -> str:
