@@ -238,9 +238,9 @@ def choose_sample_keys(ht, n_keys: int = N_SAMPLE_KEYS) -> list[dict]:
     positions = sorted({(i * n) // n_keys for i in range(n_keys)})
     key_field_names = list(ht.key)
     indexed = ht.add_index("_i")
-    chosen = indexed.filter(hl.literal(positions).contains(indexed["_i"])).select(
-        *key_field_names
-    )
+    # select() with no arguments keeps exactly the key fields; naming a key field in
+    # select() raises ("cannot overwrite key field ... with select").
+    chosen = indexed.filter(hl.literal(positions).contains(indexed["_i"])).select()
     keys = [
         {name: _to_jsonable(row[name]) for name in key_field_names}
         for row in chosen.collect()
