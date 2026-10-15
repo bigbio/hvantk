@@ -211,3 +211,36 @@ if __name__ == "__main__":
     print("  ✓ Pipeline stages enum works")
 
     print("\n✅ All tests passed!")
+
+
+def test_densify_stage_reads_the_vds_the_combine_stage_wrote(monkeypatch, tmp_path):
+    """A fresh run (no ``--vds-path``) must hand the combine stage's VDS to the densify
+    stage. The stage runner recorded the output under the stage name only, while
+    ``_run_vds_to_mt`` reads ``outputs["vds"]``, so ``convert_vds_to_mt`` received
+    ``vds_path=None`` and the pipeline died at its second stage on every real input.
+    """
+    from unittest.mock import MagicMock
+
+    from hvantk.algorithms.hgc import pipeline as pipeline_module
+
+    monkeypatch.setattr(PipelineRunner, "_initialize_hail", lambda self: None)
+    combine = MagicMock(name="combine_gvcfs")
+    densify = MagicMock(name="convert_vds_to_mt")
+    monkeypatch.setattr(pipeline_module, "combine_gvcfs", combine)
+    monkeypatch.setattr(pipeline_module, "convert_vds_to_mt", densify)
+
+    config = PipelineConfig(
+        input_dir=str(tmp_path),
+        output_dir=str(tmp_path / "out"),
+        output_prefix="cohort",
+    )
+    runner = PipelineRunner(config)
+    runner._run_stage(PipelineStage.COMBINE_GVCFS)
+    runner._run_stage(PipelineStage.VDS_TO_MT)
+
+    assert runner.state.outputs["vds"] == runner.paths["vds"]
+    assert (
+        runner.state.outputs[PipelineStage.COMBINE_GVCFS.value] == runner.paths["vds"]
+    )
+    assert densify.call_args.kwargs["vds_path"] == runner.paths["vds"]
+    assert runner.state.outputs["mt"] == runner.paths["mt"]

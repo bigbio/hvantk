@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `hvantk hgc pipeline` runs its densify stage again on a fresh run: the combine
+  stage's VDS is now recorded under the key the next stage reads (`outputs["vds"]`),
+  where before it was stored under the stage name only and the converter received no
+  path. A sibling fix records the dense MatrixTable under `outputs["mt"]` the same way.
+
 ## 0.5.0 — 2026-10-14
 
 Every dataset without a parse stage now builds from its `--raw-dir`, four more sources
