@@ -70,6 +70,19 @@
       "mondo_id": "0018094"
     }
   ],
+  "contract_fields": [
+    "classification",
+    "classification_date",
+    "classification_level",
+    "disease_label",
+    "gene_curation_expert_panel",
+    "gene_symbol",
+    "hgnc_id",
+    "mode_of_inheritance",
+    "mondo_id",
+    "report_url",
+    "sop_version"
+  ],
   "rows_sha256": "dcc0db9893ae9ccb7bb39b40741a80b370527e498e74747f8eff682b1a444e10",
   "snapshots": {
     "schema_sha256": "7a4cb05b169879aeb8bf4cab251585cf606af9301295bb2983616f084f59746e",
@@ -101,9 +114,9 @@
   "max_mem_gb": 16,
   "max_minutes": 30,
   "produced_by": {
-    "commit": "b606e42bbcb5ad34f5f5bafb48067c07bbbd61d9",
+    "commit": "e846f6f978cd9f8c6d4a5c824ec4147d0d82f45b",
     "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74",
     "input_sha256": "a746d51dab3e998b5c41fa1e3f0e76de254aa2d18fd9814fcf480ae3333309b6",
-    "at": "2026-10-15T17:42:21.276179+00:00"
+    "at": "2026-10-15T21:48:37.618307+00:00"
   }
 }
