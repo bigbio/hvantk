@@ -37,7 +37,7 @@
   },
   "gwas-catalog:associations": {
     "accepted_in": "drift/gwas-catalog-associations",
-    "last_upstream_change": "2026-09-15T10:45:37.955370+00:00",
+    "last_upstream_change": "2026-10-15T10:37:54.874502+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   },
