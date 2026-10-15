@@ -7,13 +7,13 @@
   },
   "clingen:gene-disease": {
     "accepted_in": "drift/routine-batch",
-    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
+    "last_upstream_change": "2026-10-15T10:37:34.163534+00:00",
     "rebuilt_at": null,
     "signal": "routine"
   },
   "clinvar:variants": {
     "accepted_in": "drift/routine-batch",
-    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
+    "last_upstream_change": "2026-10-15T10:37:34.163534+00:00",
     "rebuilt_at": null,
     "signal": "routine"
   },
@@ -25,7 +25,7 @@
   },
   "gencc:submissions": {
     "accepted_in": "drift/routine-batch",
-    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
+    "last_upstream_change": "2026-10-15T10:37:34.163534+00:00",
     "rebuilt_at": null,
     "signal": "routine"
   },
@@ -42,10 +42,10 @@
     "signal": "schema"
   },
   "hgnc:lookup": {
-    "accepted_in": "PR #381",
-    "last_upstream_change": "2026-09-30T19:43:52+00:00",
+    "accepted_in": "drift/routine-batch",
+    "last_upstream_change": "2026-10-15T10:37:34.163534+00:00",
     "rebuilt_at": null,
-    "signal": "schema"
+    "signal": "routine"
   },
   "ucsc-cellbrowser:adult-ctx": {
     "accepted_in": "PR #447",
