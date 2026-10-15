@@ -30,6 +30,13 @@ CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"
 command -v "$CONTAINER_BIN" >/dev/null || { echo "ERROR: $CONTAINER_BIN not on PATH" >&2; exit 2; }
 LOG_DIR="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}"
 mkdir -p "$LOG_DIR"
+# An array task gets its own Hail log directory: Hail names its log by the minute, so
+# tasks that start together would otherwise write one file.
+HAIL_DIR="$LOG_DIR"
+if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+  HAIL_DIR="$LOG_DIR/${SLURM_JOB_NAME:-array}_${SLURM_ARRAY_JOB_ID:-0}_${SLURM_ARRAY_TASK_ID}"
+  mkdir -p "$HAIL_DIR"
+fi
 
 # --- node-local scratch (never home, never the parallel filesystem) ---
 SCRATCH_ROOT="${HVANTK_SCRATCH_ROOT:-${SLURM_TMPDIR:-/tmp}}"
@@ -57,7 +64,7 @@ bind_outside_work "$HVANTK_REPO"
 [[ -n "${HVANTK_BIND:-}" ]] && BINDS+=(-B "$HVANTK_BIND")
 
 [[ -d "$HVANTK_REPO/hvantk" ]] || { echo "ERROR: checkout $HVANTK_REPO is not visible on $(hostname); the job would silently run the image's own copy" >&2; exit 2; }
-cd "$LOG_DIR"
+cd "$HAIL_DIR"
 echo "== hvantk hail job =="
 echo "date:      $(date -Is)"
 echo "host:      $(hostname)"
@@ -65,7 +72,7 @@ echo "job:       ${SLURM_JOB_ID:-?}  cpus=$CPUS mem_mb=$MEM_MB driver_mb=$DRIVER
 echo "image:     $(readlink -f "$HVANTK_SIF")"
 echo "repo:      $HVANTK_REPO"
 echo "scratch:   $SCRATCH"
-echo "logs:      $LOG_DIR"
+echo "logs:      $HAIL_DIR"
 echo "command:   $*"
 echo "====================="
 
@@ -75,7 +82,7 @@ echo "====================="
   --env SPARK_LOCAL_DIRS="$SCRATCH" --env TMPDIR="$SCRATCH" --env HAIL_TMPDIR="$SCRATCH" \
   --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
   --env JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
-  --env PYTHONPATH="$HVANTK_REPO" --env HAIL_LOG_DIR="$LOG_DIR" \
+  --env PYTHONPATH="$HVANTK_REPO" --env HAIL_LOG_DIR="$HAIL_DIR" \
   --env OMP_NUM_THREADS="$CPUS" --env OPENBLAS_NUM_THREADS="$CPUS" \
   --env MKL_NUM_THREADS="$CPUS" --env NUMEXPR_NUM_THREADS="$CPUS" \
   "$HVANTK_SIF" "$@"
