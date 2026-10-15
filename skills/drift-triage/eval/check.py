@@ -9,13 +9,17 @@ has no Slurm client; without a file it tries ``sacct`` and records M2 and M3 as 
 when that is unavailable or fails.
 
 This grades THREE things that can vary independently: the built table's content (M4,
-and the ``content_ok`` half of M5), whether the GRADED checkout's own code can
-actually reproduce that repair from scratch (``repair_effective``, part of M5, proven
-by a small isolated subprocess build -- a big ``--output`` table could in principle
-have been produced some other way), and the state of the checkout that produced it --
-its fingerprint, its ledger row, and whether its committed snapshots were left alone
-(the rest of M5). ``--repo`` names the checkout to read the latter two from; it may be
-a copy of the real checkout, which is exactly how the positive and negative controls
+and the ``content_ok`` half of M5; ``grade_content`` is called inside a try/except in
+``main()``, so a corrupt or wrong-type output records ``error`` in its own details and
+fails M4/``content_ok`` alone), whether the GRADED checkout's own code can actually
+reproduce the repair from scratch (``repair_effective``, part of M5, proven by two
+small isolated subprocess builds -- a big ``--output`` table could in principle have
+been produced some other way; one build is the header-mutated fixture, the other is
+the fixture UNCHANGED, because a correct repair must keep the old source name working
+too, not just add the new one), and the state of the checkout that produced it -- its
+fingerprint, its ledger row, and whether its committed snapshots were left alone (the
+rest of M5). ``--repo`` names the checkout to read the latter two from; it may be a
+copy of the real checkout, which is exactly how the positive and negative controls
 exercise it.
 
 The schema check is a CONTRACT, not an equality, against the committed
@@ -23,9 +27,13 @@ The schema check is a CONTRACT, not an equality, against the committed
 checkout (never ``--repo``, so a tampered copy's own snapshot cannot loosen the
 contract): the key must match exactly, and every field the snapshot declares must be
 present with the same type, but a full build may legitimately carry MORE fields than
-a small fixture-derived snapshot does (the gencc fixture, for one, ships 13 of
-upstream's 31 columns). ``content_ok`` is stricter: it requires the EXACT schema the
-reference's own build recorded, since that is the same fixture built the same way.
+a small fixture-derived snapshot does (the gencc fixture, for one, ships 14 of
+upstream's 31 columns). ``content_ok`` respects the same floor rather than tightening
+it back into an equality: the rows digest is computed only over ``contract_fields``
+(the committed snapshot's key fields plus its row field names, stored in
+``reference.json`` at ``--write-reference`` time) -- row count and digest equal is the
+whole of ``content_ok``; schema equality against the reference is recorded for
+information only, since M4's contract above already covers the schema.
 
     python check.py --output OUT.ht --repo REPO --reference reference.json \
         [--verdict-dir DIR] --run-notes NOTES.md --run-id PREFIX \
@@ -79,11 +87,15 @@ _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 
 # Run in its own subprocess (never in-process, and always before this process starts
-# Hail), with --repo on PYTHONPATH: a from-scratch build of the committed ClinGen
-# fixture, header-mutated the same way the eval's staged file is, proves the GRADED
-# checkout's own code -- not whatever produced --output -- can build the repaired
-# layout. Reads the fixture path and nothing else from the environment, so quoting the
-# path into this source is never a concern.
+# Hail), with --repo on PYTHONPATH: builds BOTH the committed ClinGen fixture
+# header-mutated the same way the eval's staged file is, AND the fixture unmodified --
+# proving the GRADED checkout's own code (not whatever produced --output) can build
+# the repaired layout AND still builds the OLD source name, which a correct repair
+# must keep (the plugin's own tests build from the unmutated fixture and would break
+# if the old rename were replaced instead of extended). Asserts the anchor was
+# replaced exactly once before building either layout. Reads the fixture path and
+# nothing else from the environment, so quoting the path into this source is never a
+# concern.
 _REPAIR_SNIPPET = """
 import json
 import os
@@ -96,16 +108,11 @@ anchor = '"GENE ID (HGNC)"'
 replacement = '"HGNC ID"'
 
 try:
-    tmp_dir = tempfile.mkdtemp(prefix="drift-triage-repair-")
-    mutated = Path(tmp_dir) / fixture.name
-    out_lines = []
-    replaced = False
-    for line in fixture.read_text().splitlines(True):
-        if not replaced and line.lstrip().startswith('"GENE SYMBOL"'):
-            line = line.replace(anchor, replacement, 1)
-            replaced = True
-        out_lines.append(line)
-    mutated.write_text("".join(out_lines))
+    original_text = fixture.read_text()
+    if original_text.count(anchor) != 1:
+        print(json.dumps({"ok": False, "reason": "mutation did not apply"}))
+        sys.exit(1)
+    mutated_text = original_text.replace(anchor, replacement, 1)
 
     from hvantk.core.utils.hail_context import init_hail
 
@@ -116,9 +123,32 @@ try:
 
     spec = get_registry().get_dataset("clingen:gene-disease")
     adapter = phase_b_snapshot_adapter(spec.builder, "clingen:gene-disease")
-    out_path = str(Path(tmp_dir) / "out.ht")
-    ht = adapter(input_path=tmp_dir, output_path=out_path)
-    print(json.dumps({"ok": True, "key": list(ht.key), "n_rows": ht.count()}))
+
+    def build(contents):
+        tmp_dir = tempfile.mkdtemp(prefix="drift-triage-repair-")
+        raw = Path(tmp_dir) / fixture.name
+        raw.write_text(contents)
+        out_path = str(Path(tmp_dir) / "out.ht")
+        ht = adapter(input_path=tmp_dir, output_path=out_path)
+        return list(ht.key), ht.count()
+
+    # BOTH layouts, built by the GRADED checkout's own code: the header-mutated
+    # fixture (the new source name) and the unmodified committed fixture (the old
+    # source name) -- a repair that replaced the old rename instead of adding to it
+    # would build the first and fail the second.
+    key_new, n_rows_new = build(mutated_text)
+    key_old, n_rows_old = build(original_text)
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "key_new": key_new,
+                "n_rows_new": n_rows_new,
+                "key_old": key_old,
+                "n_rows_old": n_rows_old,
+            }
+        )
+    )
 except Exception as exc:
     print(json.dumps({"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}))
     sys.exit(1)
@@ -295,7 +325,7 @@ def schema_contract(schema: dict, committed: dict) -> tuple[bool, dict]:
     """True if ``schema`` satisfies ``committed``'s CONTRACT: the same key, and every
     row field ``committed`` declares present with the same type. Extra fields in
     ``schema`` beyond what ``committed`` declares are fine -- a committed snapshot is
-    a FLOOR, not an exact description of a full build (the gencc fixture carries 13
+    a FLOOR, not an exact description of a full build (the gencc fixture carries 14
     of upstream's 31 columns, and every builder imports and renames every column
     present, so a full build legitimately carries more).
     """
@@ -346,11 +376,15 @@ def select_sample_keys(ht) -> list[dict]:
     return [{k: _to_jsonable(v) for k, v in dict(row).items()} for row in rows]
 
 
-def rows_digest(ht, keys: list[dict]) -> str:
-    """sha256 over every row of ``ht`` whose key is in ``keys``: order-insensitive
-    (the per-row JSON strings are collected then SORTED before joining) and
-    duplicate-key-safe (a semi-join against ``ht``'s own unique keys contributes each
-    matching row once, however many times its key appears in ``keys``).
+def rows_digest(ht, keys: list[dict], fields: list[str]) -> str:
+    """sha256 over every row of ``ht`` whose key is in ``keys``, projected down to
+    *fields* first (the dataset's CONTRACT: its committed snapshot's key fields plus
+    its row field names -- never the live schema's full field list, so a build that
+    legitimately carries more columns than the fixture-derived snapshot never fails
+    the digest over that alone): order-insensitive (the per-row JSON strings are
+    collected then SORTED before joining) and duplicate-key-safe (a semi-join against
+    ``ht``'s own unique keys contributes each matching row once, however many times
+    its key appears in ``keys``).
     """
     import hail as hl
     from hvantk.tests._snapshot_utils import _jsonable_to_hail_python, _to_jsonable
@@ -367,7 +401,11 @@ def rows_digest(ht, keys: list[dict]) -> str:
         for k in keys
     ]
     requested = hl.Table.parallelize(key_rows, schema=key_dtype, key=key_field_names)
-    collected = ht.semi_join(requested).collect()
+    matched = ht.semi_join(requested)
+    # Table.select() rejects key-field names; key fields stay on the row regardless,
+    # so only the non-key contract fields are named here.
+    non_key_fields = [f for f in fields if f not in key_field_names]
+    collected = matched.select(*non_key_fields).collect()
     strings = sorted(
         json.dumps(
             {k: _to_jsonable(v) for k, v in dict(row).items()},
@@ -410,25 +448,36 @@ def grade_content(
     details["schema_contract"] = contract_details
     m4 = bool(prov.get("schema_id") == SCHEMA_ID and contract_ok)
 
+    if "contract_fields" not in reference:
+        raise ValueError(
+            "reference predates contract_fields; rerun the control with "
+            "WRITE_REFERENCE=1"
+        )
+    # Informational only: M4's contract above already covers the schema, and a full
+    # build may legitimately carry more fields than the fixture-derived snapshot the
+    # reference's digest is restricted to, so schema equality is not part of
+    # content_ok below.
     details["schema_matches_reference_exactly"] = schema == reference["schema"]
     details["row_count"] = ht.count()
     row_count_ok = details["row_count"] == reference["row_count"]
-    rows_sha = rows_digest(ht, reference["sample_keys"])
+    rows_sha = rows_digest(ht, reference["sample_keys"], reference["contract_fields"])
     details["rows_sha256"] = rows_sha
     rows_ok = rows_sha == reference["rows_sha256"]
     details["row_count_ok"] = row_count_ok
     details["rows_ok"] = rows_ok
-    content_ok = bool(
-        details["schema_matches_reference_exactly"] and row_count_ok and rows_ok
-    )
+    content_ok = bool(row_count_ok and rows_ok)
     return m4, content_ok, details
 
 
 def grade_repair_effective(repo: Path, contract_key) -> tuple[bool, dict]:
-    """Prove ``repo``'s OWN code builds the mutated layout, independent of whatever
-    produced ``--output``: a fresh, tiny subprocess build of the committed (here,
-    header-mutated) ClinGen fixture, with ``repo`` on PYTHONPATH. Always run before
-    this process starts its own Hail/JVM, so only one JVM is ever up at a time.
+    """Prove ``repo``'s OWN code builds BOTH the mutated and the unmutated layout,
+    independent of whatever produced ``--output``: two fresh, tiny subprocess builds
+    of the committed ClinGen fixture (header-mutated, and as committed), with ``repo``
+    on PYTHONPATH. A repair that renamed the column instead of adding the new name
+    alongside the old one would build the first and fail the second -- exactly the
+    regression the plugin's own tests (run from the unmutated fixture) exist to catch.
+    Always run before this process starts its own Hail/JVM, so only one JVM is ever up
+    at a time.
 
     ``cwd=repo`` matters as much as ``PYTHONPATH=repo`` here: ``python -c`` puts the
     *current working directory* at the front of ``sys.path`` (exactly like
@@ -469,9 +518,12 @@ def grade_repair_effective(repo: Path, contract_key) -> tuple[bool, dict]:
     details["payload"] = payload
     ok = bool(
         payload.get("ok") is True
-        and payload.get("key") == contract_key
-        and isinstance(payload.get("n_rows"), int)
-        and payload.get("n_rows") >= 1
+        and payload.get("key_new") == contract_key
+        and isinstance(payload.get("n_rows_new"), int)
+        and payload.get("n_rows_new") >= 1
+        and payload.get("key_old") == contract_key
+        and isinstance(payload.get("n_rows_old"), int)
+        and payload.get("n_rows_old") >= 1
     )
     return ok, details
 
@@ -557,8 +609,15 @@ def write_reference(args) -> None:
             "writing a reference from it"
         )
 
+    # The CONTRACT, not the live schema: the committed snapshot's key fields plus its
+    # own row field names, sorted -- what the digest below is restricted to, so a
+    # later full build's extra columns can never cost it a digest match.
+    contract_fields = sorted(
+        set(committed_schema.get("key", []))
+        | set(committed_schema.get("row", {}).keys())
+    )
     keys = select_sample_keys(ht)
-    rows_sha = rows_digest(ht, keys)
+    rows_sha = rows_digest(ht, keys, contract_fields)
 
     probe_offline = _load_probe_offline()
     probe = probe_offline._dataset_probe(DATASET)
@@ -573,6 +632,7 @@ def write_reference(args) -> None:
         "schema": schema,
         "row_count": ht.count(),
         "sample_keys": keys,
+        "contract_fields": contract_fields,
         "rows_sha256": rows_sha,
         "snapshots": {
             "schema_sha256": sha256_file(committed_schema_path),
@@ -661,7 +721,14 @@ def main() -> int:
         repo, committed_schema.get("key")
     )
 
-    m4, content_ok, content_details = grade_content(output, reference, committed_schema)
+    try:
+        m4, content_ok, content_details = grade_content(
+            output, reference, committed_schema
+        )
+    except Exception as exc:  # noqa: BLE001 -- a corrupt or wrong-type output must
+        # not crash the whole verdict; record it and fail M4/content_ok for it alone.
+        m4, content_ok = False, False
+        content_details = {"error": f"{type(exc).__name__}: {exc}"}
     snapshots_unchanged, fingerprint_regenerated, ledger_row_ok, bk_details = (
         grade_bookkeeping(repo, reference)
     )
