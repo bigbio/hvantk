@@ -5,7 +5,9 @@
 #                         [--time D-HH:MM:SS] [--partition <P>] [--max-concurrent K]
 #                         [--tasks i,j] [--sif <image>] [--dry-run] [--wait]
 #
-# FILE is a TSV, one build per line, absolute paths:
+# FILE is a TSV, one build per line, absolute paths, NO blank or comment lines
+# (build-array.sbatch reads task i as FILE's own physical line i via `sed -n ip`, so
+# every physical line must be a real build):
 #   <provider:dataset>\t<raw dir>\t<output path>[\t<extra reprocess options>]
 # The fourth field, when present, is extra `hvantk reprocess` options
 # (e.g. `--plugin-arg reference_genome=GRCh38`), word-split as written.
@@ -13,9 +15,11 @@
 # Reads every site value from $HVANTK_SITE_PROFILE (skills/_site/SITE-PROFILE.md). One
 # request sizes every task in the array: size it for the list's largest dataset, and
 # give an unusually large dataset its own hpc-hail-job submission instead of a line
-# here. Prints the array job id. With --dry-run, runs `sbatch --test-only`. With --wait,
-# polls accounting every 30s until no task is PENDING/RUNNING/REQUEUED/COMPLETING,
-# prints the per-task table, and exits 0 only if every task reached COMPLETED.
+# here. --tasks is a literal sbatch array spec (e.g. "2,3" or "2-3"), not a convenience
+# syntax of this script's own -- sbatch's own `--array=` rules apply. Prints the array
+# job id. With --dry-run, runs `sbatch --test-only`. With --wait, polls accounting
+# every 30s until every task has reached a terminal state, prints the per-task table,
+# and exits 0 only if every task reached COMPLETED.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -47,24 +51,33 @@ while (( $# )); do
 done
 [[ -n "$LIST" ]] || { echo "ERROR: --list FILE is required" >&2; exit 2; }
 [[ -f "$LIST" ]] || { echo "ERROR: task list not found: $LIST" >&2; exit 2; }
+# Resolved to an absolute path before it is handed to sbatch: build-array.sbatch's own
+# working directory is the log directory, not wherever this script was run from.
+LIST="$(cd "$(dirname "$LIST")" && pwd -P)/$(basename "$LIST")"
 PARTITION="${PARTITION:-$HVANTK_CPU_PARTITION}"   # an empty fat-partition value falls back
 if [[ "$PARTITION" == "$HVANTK_CPU_PARTITION" ]]; then
   (( CPUS <= HVANTK_NODE_CPUS )) || { echo "ERROR: --cpus $CPUS exceeds the CPU partition's $HVANTK_NODE_CPUS per node" >&2; exit 2; }
   (( MEM_GB <= HVANTK_NODE_MEM_GB )) || { echo "ERROR: --mem-gb $MEM_GB exceeds the CPU partition's $HVANTK_NODE_MEM_GB per node" >&2; exit 2; }
 fi
 
-# --- validate the list: non-empty lines, >=3 tab-separated fields, a provider:dataset
-# shape, an existing absolute raw directory, an absolute output path. Checked here
-# (login node) because a bad line would otherwise fail deep inside one array task. ---
+# --- validate the list: no blank or comment line (every physical line becomes one
+# array task; a skipped line here would desync "line N" from "task N"), >=3
+# tab-separated fields, a provider:dataset shape, an existing absolute raw directory,
+# an absolute output path not repeated on another line. Checked here (login node)
+# because a bad line would otherwise fail deep inside one array task, or -- for a
+# repeated output -- race silently between two tasks. ---
 N=0
+declare -A SEEN_OUTPUTS=()
 while IFS=$'\t' read -r DATASET RAW OUT _EXTRA || [[ -n "${DATASET:-}" ]]; do
-  [[ -n "${DATASET:-}" ]] || continue   # tolerate a trailing blank line
   N=$((N + 1))
+  [[ -n "$DATASET" && "$DATASET" != '#'* ]] || { echo "ERROR: $LIST line $N is blank or a comment; every physical line must be a build (array task N reads physical line N)" >&2; exit 2; }
   [[ -n "${RAW:-}" && -n "${OUT:-}" ]] || { echo "ERROR: $LIST line $N: need at least three tab-separated fields" >&2; exit 2; }
   [[ "$DATASET" =~ ^[a-z0-9_-]+:[a-z0-9_-]+$ ]] || { echo "ERROR: $LIST line $N: dataset must look like provider:dataset, got '$DATASET'" >&2; exit 2; }
   [[ "$RAW" == /* ]] || { echo "ERROR: $LIST line $N: raw dir must be an absolute path, got '$RAW'" >&2; exit 2; }
   [[ -d "$RAW" ]] || { echo "ERROR: $LIST line $N: raw dir does not exist: $RAW" >&2; exit 2; }
   [[ "$OUT" == /* ]] || { echo "ERROR: $LIST line $N: output must be an absolute path, got '$OUT'" >&2; exit 2; }
+  [[ -z "${SEEN_OUTPUTS[$OUT]:-}" ]] || { echo "ERROR: $LIST line $N: output $OUT repeats line ${SEEN_OUTPUTS[$OUT]}; two tasks would race on writing it" >&2; exit 2; }
+  SEEN_OUTPUTS[$OUT]=$N
 done < "$LIST"
 (( N > 0 )) || { echo "ERROR: $LIST has no build lines" >&2; exit 2; }
 
@@ -95,21 +108,35 @@ JOB_ID="${JOB_ID%%;*}"
 echo "$JOB_ID"
 (( WAIT )) || exit 0
 
-# Wait on accounting, not on squeue (see hpc-hail-job/templates/submit-hail-job.sh for
-# why). A still-pending task can appear as one collapsed row (state PENDING) before it
-# is assigned its own <A>_<i> id, so the in-flight check matches on state, not shape.
-IN_FLIGHT='^(PENDING|RUNNING|REQUEUED|COMPLETING)$'
+# Wait on accounting, not on squeue, exactly as submit-hail-job.sh does for a single
+# job: an empty squeue answer can also be a transient RPC failure, and accounting is
+# the record the verdict is graded from. Terminal states are an allow-list (prefix
+# match, as submit-hail-job.sh uses), not an "in-flight" list: an unrecognized state
+# then means "keep waiting", the safe default, rather than "done". A still-pending
+# task can also be reported collapsed into one range row (<A>_[i-j]) before it is
+# split into its own <A>_<i> row, so that shape is treated as in-flight on sight,
+# whatever its State column says.
+TERMINAL='^(COMPLETED|FAILED|CANCELLED|TIMEOUT|OUT_OF_MEMORY|NODE_FAIL|PREEMPTED|BOOT_FAIL|DEADLINE|REVOKED)'
 STATES=""; UNKNOWN=0
 while :; do
   sleep 30
   STATES="$(sacct -j "$JOB_ID" -X -n -P -o JobID,State 2>/dev/null || true)"
   if [[ -z "$STATES" ]]; then
-    (( ++UNKNOWN < 10 )) || { echo "ERROR: array job $JOB_ID has no accounting rows after repeated polling; is accounting enabled?" >&2; exit 1; }
+    if [[ -z "$(squeue -j "$JOB_ID" -h -o %T 2>/dev/null)" ]]; then
+      (( ++UNKNOWN < 10 )) || { echo "ERROR: array job $JOB_ID is unknown to both sacct and squeue; is accounting enabled?" >&2; exit 1; }
+    fi
     continue
   fi
   UNKNOWN=0
-  cut -d'|' -f2 <<< "$STATES" | grep -Eq "$IN_FLIGHT" || break
+  # Count-based, never `grep -q`/`grep -Eq` on a pipe: on a large array, grep's early
+  # exit on the first match can send the upstream command (cut) a SIGPIPE, which
+  # set -o pipefail then reports as the whole pipeline's exit status -- independent of
+  # what grep itself found, and able to flip a true "still waiting" into a false "done".
+  RANGE_ROWS=$(grep -c '_\[' <<< "$STATES" || true)
+  NON_TERMINAL=$(cut -d'|' -f2 <<< "$STATES" | grep -vEc "$TERMINAL" || true)
+  (( RANGE_ROWS == 0 && NON_TERMINAL == 0 )) && break
 done
 sacct -j "$JOB_ID" -X -o JobID,JobName%30,State,ExitCode,Elapsed,ReqMem,AllocCPUS >&2
 echo "log: $LOG_DIR/${NAME}_${JOB_ID}_<task>.out (one file per task)" >&2
-! cut -d'|' -f2 <<< "$STATES" | grep -qv '^COMPLETED$'
+NOT_COMPLETED=$(cut -d'|' -f2 <<< "$STATES" | grep -vc '^COMPLETED$' || true)
+(( NOT_COMPLETED == 0 ))
