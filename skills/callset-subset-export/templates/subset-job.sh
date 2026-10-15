@@ -42,10 +42,11 @@ COMMON=(--cpus "$CPUS" --mem-gb "$MEM_GB" --time "$TIME" --wait)
 NAME="${NAME:-subset-$PREFIX}"
 
 if [[ -n "$LIST" ]]; then
+  [[ "$LIST" == /* ]] || { echo "ERROR: --list-samples needs an absolute path" >&2; exit 2; }
   exec bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-list" -- python "$T/subset-vds.py" --list-samples "$LIST"
 fi
 [[ -n "$VDS" && -n "$SAMPLES" && -n "$OUT" ]] || { echo "ERROR: --vds, --samples and --out are required" >&2; exit 2; }
-[[ "$VDS" == /* && "$SAMPLES" == /* && "$OUT" == /* ]] || { echo "ERROR: give absolute paths; jobs run from the log directory" >&2; exit 2; }
+[[ "$VDS" == /* && "$SAMPLES" == /* && "$OUT" == /* && ( -z "$REQUESTED" || "$REQUESTED" == /* ) ]] || { echo "ERROR: give absolute paths; jobs run from the log directory" >&2; exit 2; }
 mkdir -p "$OUT"
 COMMIT="$(git -C "$HVANTK_REPO" rev-parse HEAD 2>/dev/null || echo unknown)"
 IMAGE_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"
@@ -55,12 +56,14 @@ RECIPE="$OUT/recipe.txt"
   echo "python subset-vds.py --vds $VDS --samples $SAMPLES --out $OUT/$PREFIX.vds"
   echo "hvantk hgc vds2mt -i $OUT/$PREFIX.vds -o $OUT/$PREFIX.mt ${NP[*]:-}"
   echo "hvantk hgc mt2vcf -i $OUT/$PREFIX.mt -o $OUT/$PREFIX.vcf.bgz --min-ac $MIN_AC"
-  echo "python verify-export.py $OUT --prefix $PREFIX --samples $SAMPLES"
+  echo "python verify-export.py $OUT --prefix $PREFIX --samples $SAMPLES --min-ac $MIN_AC"
 } > "$RECIPE"
 
-bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-1subset" -- python "$T/subset-vds.py" --vds "$VDS" --samples "$SAMPLES" --out "$OUT/$PREFIX.vds" | tail -1
-bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-2vds2mt" -- hvantk hgc vds2mt -i "$OUT/$PREFIX.vds" -o "$OUT/$PREFIX.mt" "${NP[@]}" | tail -1
-bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-3mt2vcf" -- hvantk hgc mt2vcf -i "$OUT/$PREFIX.mt" -o "$OUT/$PREFIX.vcf.bgz" --min-ac "$MIN_AC" | tail -1
+bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-1subset" -- python "$T/subset-vds.py" --vds "$VDS" --samples "$SAMPLES" --out "$OUT/$PREFIX.vds"
+bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-2vds2mt" -- hvantk hgc vds2mt -i "$OUT/$PREFIX.vds" -o "$OUT/$PREFIX.mt" ${NP[@]+"${NP[@]}"}
+bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-3mt2vcf" -- hvantk hgc mt2vcf -i "$OUT/$PREFIX.mt" -o "$OUT/$PREFIX.vcf.bgz" --min-ac "$MIN_AC"
 REQ=(); [[ -n "$REQUESTED" ]] && REQ=(--requested-samples "$REQUESTED")
-bash "$SUBMIT" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait --name "$NAME-4verify" -- python "$T/verify-export.py" "$OUT" \
-  --prefix "$PREFIX" --samples "$SAMPLES" --source "$VDS" --commit "$COMMIT" --image-sha256 "$IMAGE_SHA" --recipe "$RECIPE" "${REQ[@]}" | tail -1
+# The verify job reads and hashes the whole VCF single-threaded: it gets the chain's time.
+VERIFY=(--cpus 2 --mem-gb 8 --time "$TIME" --wait); [[ -n "$PARTITION" ]] && VERIFY+=(--partition "$PARTITION")
+bash "$SUBMIT" "${VERIFY[@]}" --name "$NAME-4verify" -- python "$T/verify-export.py" "$OUT" \
+  --prefix "$PREFIX" --samples "$SAMPLES" --source "$VDS" --commit "$COMMIT" --image-sha256 "$IMAGE_SHA" --recipe "$RECIPE" --min-ac "$MIN_AC" ${REQ[@]+"${REQ[@]}"}

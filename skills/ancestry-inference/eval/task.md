@@ -11,8 +11,6 @@ Slurm job inside the container image, and produce predictions for every query sa
   their variants. Do not download anything.
 - Write the outputs under `$HVANTK_EVAL_OUT/`: at least `predictions.ht` and
   `predictions.tsv`, plus the pipeline's statistics file.
-- The reference and query share about 20,000 variants, fewer than the pipeline's default
-  minimum; choose the pipeline's options accordingly.
 - The harness sets `HVANTK_EVAL_OUT` and `HVANTK_RUN_ID` in your environment before you
   start. Name every Slurm job you submit with the prefix `$HVANTK_RUN_ID`.
 - Budget per job: one node, at most 16 cores, 64 GB of memory, 60 minutes.

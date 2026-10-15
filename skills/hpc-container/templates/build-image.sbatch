@@ -8,7 +8,7 @@
 #
 # Builds the hvantk image from the checkout's def file and lock file, without root
 # (fakeroot where /etc/subuid allows it, a static proot otherwise), gates the Java and
-# Hail versions inside the image, runs `hvantk utils check-install` through node-local
+# Hail versions inside the image (Java gated, Hail recorded), runs `hvantk utils check-install` through node-local
 # scratch, and writes <image>.provenance.json next to the image before the final gate.
 set -euo pipefail
 
@@ -17,7 +17,7 @@ set -euo pipefail
 source "$HVANTK_SITE_PROFILE"
 : "${HVANTK_REPO:?}" "${HVANTK_WORK:?}"
 : "${BUILD_OUT:?BUILD_OUT not set (submit-build-image.sh exports it)}"
-: "${BUILD_DEF:?}" "${BUILD_GIT_SHA:?}" "${BUILD_GIT_BRANCH:?}" "${BUILD_GIT_DIRTY:?}"
+: "${BUILD_DEF:?}" "${BUILD_GIT_SHA:?}" "${BUILD_GIT_BRANCH:?}" "${BUILD_GIT_DIRTY:?}" "${BUILD_LOCK_MD5:?}"
 
 CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"
 command -v "$CONTAINER_BIN" >/dev/null || { echo "ERROR: $CONTAINER_BIN not on PATH" >&2; exit 2; }
@@ -34,7 +34,7 @@ mkdir -p "$SINGULARITY_CACHEDIR" "$SINGULARITY_TMPDIR"
 
 # --- unprivileged build method ---
 BUILD_FLAGS=()
-if [[ "$(grep -c "^$USER:" /etc/subuid 2>/dev/null || true)" -gt 0 ]]; then
+if [[ "$(grep -cE "^($USER|$(id -u)):" /etc/subuid 2>/dev/null || true)" -gt 0 ]]; then
   METHOD="fakeroot"; BUILD_FLAGS=(--fakeroot)
 elif command -v proot >/dev/null 2>&1; then
   METHOD="unprivileged + proot"
@@ -48,6 +48,8 @@ CODE="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' https://registry-1
 [[ -n "$CODE" && "$CODE" != "000" ]] || { echo "ERROR: no route to the container registry from $(hostname); build where egress exists" >&2; exit 2; }
 
 LOCK_MD5="$(md5sum "$HVANTK_REPO/poetry.lock" | cut -d' ' -f1)"
+[[ "$LOCK_MD5" == "$BUILD_LOCK_MD5" ]] || { echo "ERROR: poetry.lock changed between submission and build start; resubmit" >&2; exit 2; }
+rm -f "${BUILD_OUT}.provenance.json"   # never leave an older passing record next to a new build
 echo "== hvantk image build =="
 echo "date:    $(date -Is)"
 echo "host:    $(hostname)  job=${SLURM_JOB_ID:-none}"
@@ -60,12 +62,12 @@ echo "========================"
 
 # %files paths in the def are relative to the build directory: the repository root.
 cd "$HVANTK_REPO"
-"$CONTAINER_BIN" build -F "${BUILD_FLAGS[@]}" "$BUILD_OUT" "$BUILD_DEF"
+"$CONTAINER_BIN" build -F ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} "$BUILD_OUT" "$BUILD_DEF"
 [[ -f "$BUILD_OUT" ]] || { echo "ERROR: build reported success but $BUILD_OUT is missing" >&2; exit 1; }
 du -h "$BUILD_OUT"
 
 # --- gates inside the image ---
-JAVA_VERSION="$("$CONTAINER_BIN" exec "$BUILD_OUT" java -version 2>&1 | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+JAVA_VERSION="$("$CONTAINER_BIN" exec --cleanenv "$BUILD_OUT" java -version 2>&1 | sed -nE 's/.* version "([^"]+)".*/\1/p' | head -1)"
 [[ "$JAVA_VERSION" =~ ^(1\.8|11)\. ]] || { echo "ERROR: Java inside the image is $JAVA_VERSION; Hail needs 8 or 11" >&2; exit 1; }
 HAIL_VERSION="$("$CONTAINER_BIN" exec "$BUILD_OUT" python3 -c 'import hail; print(hail.__version__)')"
 echo "java:    $JAVA_VERSION"

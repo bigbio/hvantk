@@ -67,8 +67,8 @@ label), relatedness, and sex inference.
    `cv_accuracy`, `n_query_assigned`, `n_query_unassigned`. `references/reading-results.md`
    says what each means and when to distrust a run.
 4. Read `<out>/predictions.tsv`: `s`, `predicted_ancestry`, `ancestry_probability`,
-   the per-population probabilities and the PCs. Unassigned samples carry a missing
-   prediction; do not fill them in by hand.
+   the per-population probabilities and the PCs. A sample below the confidence
+   threshold carries the literal value `unassigned`; do not fill it in by hand.
 5. Write the run notes: commit, image digest, job ids, the reference used (path and its
    build), the shared-variant count, the accuracy, and the assigned fraction.
 
@@ -109,12 +109,11 @@ label), relatedness, and sex inference.
 ## 6. Verification
 
 1. `<out>/predictions.ht/_SUCCESS` and `<out>/predictions.tsv` exist; the TSV has the
-   `s`, `predicted_ancestry` and `ancestry_probability` columns and one row per query
-   sample.
+   `s`, `predicted_ancestry` and `ancestry_probability` columns, one row per query
+   sample (`_ancestry_source` is `query`) and, after them, the reference samples.
 2. `<out>/pipeline_stats.json` reports `n_shared_variants` at or above the minimum you
    accepted, a `cv_accuracy` you believe (section 5), and `n_query_assigned` plus
    `n_query_unassigned` summing to the query's sample count.
-3. When the query has samples of known ancestry, their predictions agree; the eval
-   measures exactly this on held-out 1000 Genomes samples.
+3. When the query has samples of known ancestry, their predictions agree.
 4. The run notes carry the commit, image digest, job ids, the reference and its build,
    and the three numbers from step 2.

@@ -35,12 +35,19 @@ PARTITION="${PARTITION:-$HVANTK_CPU_PARTITION}"
 [[ -n "$OUT" ]] || { echo "ERROR: --out <image.sif> is required" >&2; exit 2; }
 [[ "$OUT" == *.sif ]] || { echo "ERROR: --out must end in .sif" >&2; exit 2; }
 [[ -f "$DEF" ]] || { echo "ERROR: def file not found: $DEF" >&2; exit 2; }
+[[ "$OUT" == /* && "$DEF" == /* ]] || { echo "ERROR: give absolute paths for --out and --def; the job runs from the checkout" >&2; exit 2; }
 case "$(basename "$OUT")" in hvantk.sif) echo "ERROR: never build straight onto the default name; build a versioned file and promote it" >&2; exit 2 ;; esac
+if [[ -e "$HVANTK_SIF" && "$(readlink -f "$OUT" 2>/dev/null)" == "$(readlink -f "$HVANTK_SIF")" ]]; then
+  echo "ERROR: $OUT is the file the profile's default image resolves to; build under another name and promote it" >&2; exit 2
+fi
 
 export BUILD_OUT="$OUT" BUILD_DEF="$DEF"
-export BUILD_GIT_SHA="$(git -C "$HVANTK_REPO" rev-parse HEAD)"
-export BUILD_GIT_BRANCH="$(git -C "$HVANTK_REPO" rev-parse --abbrev-ref HEAD)"
-export BUILD_GIT_DIRTY="$([ -z "$(git -C "$HVANTK_REPO" status --porcelain)" ] && echo clean || echo dirty)"
+BUILD_GIT_SHA="$(git -C "$HVANTK_REPO" rev-parse HEAD)" || { echo "ERROR: cannot read the checkout's commit" >&2; exit 2; }
+BUILD_GIT_BRANCH="$(git -C "$HVANTK_REPO" rev-parse --abbrev-ref HEAD)"
+STATUS="$(git -C "$HVANTK_REPO" status --porcelain)" || { echo "ERROR: cannot read the checkout's status" >&2; exit 2; }
+BUILD_GIT_DIRTY="$([ -z "$STATUS" ] && echo clean || echo dirty)"
+BUILD_LOCK_MD5="$(md5sum "$HVANTK_REPO/poetry.lock" | cut -d' ' -f1)"
+export BUILD_GIT_SHA BUILD_GIT_BRANCH BUILD_GIT_DIRTY BUILD_LOCK_MD5
 LOG_DIR="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}"
 mkdir -p "$LOG_DIR"
 

@@ -12,8 +12,9 @@
 | `cv_accuracy` | cross-validated accuracy on the reference | 1.0 on a real panel (too few samples per label), or far below 0.9 at the continental level |
 | `n_query_assigned`, `n_query_unassigned` | samples above and below `--min-prob` | most samples unassigned: wrong reference, admixture, or a build mismatch that survived the merge |
 
-`predictions.tsv`: one row per sample; `predicted_ancestry` empty for unassigned
-samples, `ancestry_probability` the winning class's probability, `prob_<POP>` the full
+`predictions.tsv`: one row per sample, query first and the reference samples after
+them (`_ancestry_source` says which); `predicted_ancestry` is the literal `unassigned`
+for samples below the threshold, `ancestry_probability` the winning class's probability, `prob_<POP>` the full
 vector, `_known_ancestry` for reference samples in the merged table, and the PCs. A
 plot of PC1 against PC2 coloured by prediction, with the reference samples as the
 background, is the one figure worth making; the HTML report contains it.

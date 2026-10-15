@@ -146,7 +146,11 @@ def measure(out: Path, truth_path: Path) -> dict:
     preds = read_tsv(out / "predictions.tsv")
     columns = list(preds[0].keys()) if preds else []
     query = [p for p in preds if p["s"] in truth]
-    assigned = [p for p in query if p.get("predicted_ancestry") not in (None, "", "NA")]
+    assigned = [
+        p
+        for p in query
+        if p.get("predicted_ancestry") not in (None, "", "NA", "unassigned")
+    ]
     correct = sum(1 for p in assigned if p["predicted_ancestry"] == truth[p["s"]])
     return {
         "columns_ok": all(c in columns for c in REQUIRED_COLUMNS),

@@ -2,7 +2,7 @@
 name: joint-genotyping
 description: 'Use when a set of single-sample gVCFs must become a joint callset with hvantk HGC pipeline on a Slurm cluster: combining gVCFs into a VDS, densifying to a MatrixTable, sample and variant QC, and exporting a cohort VCF, for a handful of samples or for thousands per contig. Also when a combine job runs out of memory or time, when counts look inflated by placeholder alleles, when the exported VCF has no index, or when contig names do not match the build.'
 user-invocable: true
-argument-hint: "<gVCF directory> <output directory> [--prefix NAME] [--build GRCh38|GRCh37] [--per-contig]"
+argument-hint: "<gVCF directory> <output directory> [--prefix NAME] [--per-contig]"
 metadata:
   stage: cohort
   status: provisional
@@ -19,7 +19,7 @@ its section contract and its measurement contract. Jobs run through `hpc-hail-jo
 From one gVCF per sample, bgzipped and indexed, to a cohort callset: the lossless
 VDS (`<prefix>.vds`), the dense MatrixTable (`<prefix>.mt`), per-sample and per-variant
 QC tables (`qc/`), and a biallelic cohort VCF (`<prefix>.vcf.bgz`), all under one output
-directory with a state file and logs. The outcome also includes the counts a recipient
+directory with the recipe that made them. The outcome also includes the counts a recipient
 needs: samples, variant rows, VCF records, and where the QC summary is.
 
 Use it for a cohort of any size. A few samples run as one job on one node; hundreds or
@@ -34,9 +34,10 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
 2. Checkout and image as in `hpc-hail-job` (commit, digest, run notes).
 3. Inputs: one gVCF per sample, `*.g.vcf.gz` with a `.tbi` next to each, readable from
-   compute nodes. Check the contig names in a header (`zcat <file> | grep -m1 '^##contig'`)
-   against the build you will pass: `chr1` for GRCh38, `1` for GRCh37; HGC does no
-   recoding. Count the files: that is the sample count every size decision uses.
+   compute nodes, with GRCh38 contig names (`chr1`): the templates' combiner is GRCh38
+   only and HGC does no recoding. Check a header: `{ zcat <file> || true; } | grep -m1 '^##contig'`.
+   GRCh37 gVCFs need the Python API with `reference_genome` set. Count the files: that
+   is the sample count every size decision uses.
 4. Output: a directory under `$HVANTK_WORK`; the pipeline refuses to overwrite unless
    told. Never under the home directory.
 5. Size the job from the sample count with `references/sizing.md`; for more than a few
@@ -65,8 +66,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    rather than starting over. The template refuses to overwrite an existing VDS,
    MatrixTable or VCF.
 4. QC: `hvantk hgc qc-summary -d <out>/qc -o <out>/qc/summary.md` as a small job, and
-   `hvantk hgc qc-report -i <out>/<prefix>.mt -o <out>/qc/report.html` when a report is
-   wanted. `references/outputs.md` says what each QC file holds and what it leaves out.
+   `hvantk hgc qc-report -i <out>/qc/<prefix>_with_qc.mt -o <out>/qc/report.html` when a
+   report is wanted (the QC-annotated MatrixTable `compute-qc` writes, not the plain one). `references/outputs.md` says what each QC file holds and what it leaves out.
 5. Index the VCF if the site has `bcftools` or `tabix` (Hail writes none): a cluster
    module or a user install; record which. Without one, say so in the run notes.
 6. Verify (section 6) and write the run notes with the counts.
@@ -82,15 +83,18 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
   from the table in `references/sizing.md` and double memory before adding cores.
 - `--n-partitions` on the dense MatrixTable reduces part files on the parallel
   filesystem: aim for a few hundred MB per part.
-- Interval size (`--import-interval-size`) trades combiner memory against partitions;
-  the default genome intervals are right unless the combine runs out of memory.
-- Intermediates stay (`--keep-intermediates` is always on); the VDS is the lossless
-  record and the thing to archive, not the VCF.
+- Interval size trades combiner memory against partitions; the default genome intervals
+  are right unless the combine runs out of memory. The template does not pass interval
+  flags: submit `hvantk hgc gvcf-combine ... --import-interval-size N` (or
+  `--use-exome-default-intervals`) through `hpc-hail-job` yourself for that step.
+- Every intermediate stays; the VDS is the lossless record and the thing to archive,
+  not the VCF.
 
 ## 5. Traps
 
 - The combine fails on a contig it cannot find. Cause: gVCF contigs named for the other
-  build. Fix: pass the build the files use; never recode gVCFs by hand.
+  build. Fix: GRCh38-named gVCFs for the templates; the Python API with
+  `reference_genome` for GRCh37; never recode gVCFs by hand.
 - Row counts look far too high. Cause: gVCF placeholder alleles (`<*>`, `<NON_REF>`,
   `*`) are rows in the dense MatrixTable. Fix: count variants from the QC tables or the
   VCF, which drop them; `compute-qc` drops star alleles by default.

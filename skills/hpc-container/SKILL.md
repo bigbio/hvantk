@@ -40,13 +40,14 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    Build from a clean tree at the commit the user expects; a dirty or stale tree builds
    an image whose provenance names a commit that is not what went in. If the clone is
    behind, run the `hpc-sync` skill first.
-3. Unprivileged build method, once per cluster: `grep -c "^$USER:" /etc/subuid` greater
-   than zero means `--fakeroot` works; zero means the build needs a static `proot` on
-   `PATH` (`references/build-troubleshooting.md` says how to get one). Record which.
+3. Unprivileged build method, once per cluster: `grep -cE "^($USER|$(id -u)):" /etc/subuid`
+   greater than zero means `--fakeroot` works; zero means the build needs a static
+   `proot` on `PATH` with SingularityCE (`references/build-troubleshooting.md` says how
+   to get one; Apptainer sites may build without either, check your site). Record which.
 4. Egress: the build pulls the base image and wheels, so the node that builds needs
    outbound access. `HVANTK_EGRESS` says whether compute nodes have it; if they do not,
-   build on the login node only if the site allows it, otherwise build elsewhere and copy
-   the image file (section 4).
+   build elsewhere and copy the image file (section 4); the templates only build inside a
+   job.
 5. Space: cache and temporary files go under the work root (the template puts them in
    `$HVANTK_WORK/containers/{cache,tmp}`), never under the home directory; a build needs
    several GB there and the image is about 2 GB.
@@ -64,10 +65,13 @@ only (then the "build elsewhere and copy" note in section 4 applies).
      --out "$HVANTK_WORK/containers/hvantk-<id>.sif" --name <run>-build --wait
    ```
    The job builds from the repository root (the def file's `%files` are relative),
-   forces an overwrite of the named file, gates the Java and Hail versions inside the
-   image, runs `hvantk utils check-install` through the scratch pattern, and writes the
-   provenance record. Allow about twenty minutes on a shared partition; the request is
-   8 cores, 32 GB and 1h45 so a slow pull does not kill it.
+   refuses a name that resolves to the profile's default image, gates the Java version
+   and records the Hail version inside the image, runs `hvantk utils check-install`
+   through the scratch pattern, and writes the provenance record. Allow five to twenty
+   minutes on a shared partition; the request is 8 cores, 32 GB and 1h45 so a slow pull
+   does not kill it. A foreground `--wait` outlives most tool timeouts, so run it as
+   `nohup bash -c 'source "$HVANTK_SITE_PROFILE" && bash ... --wait' > <run>-build.log 2>&1 &`
+   and poll the job id.
 3. Read the job log and the record: `cat "<image>.provenance.json"`. The fields are in
    `references/provenance.md`; `check_install_rc` must be 0 and `hail_version` must be
    the locked one.
@@ -75,10 +79,13 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif"
    ```
-   It refuses while a job of yours is running, keeps the old default as
-   `hvantk-<date>.sif` with its record, points `hvantk.sif` (and its record) at the new
-   file, and submits a verification job that runs the install check through the
-   promoted name. Say in the run notes which image is now the default.
+   The default is the profile's `HVANTK_SIF`. The script refuses while a job of yours
+   is running or while the queue cannot be read; when the default is a real file it is
+   kept as `hvantk-<date>.sif` with its record, when it is a symlink the old target is
+   kept as it is; then the default (and its record) point at the new file and a
+   verification job runs the install check through the promoted name. Run it in the
+   background and poll, as for the build. Say in the run notes which image is now the
+   default.
 5. Write the run notes: commit, image digest (`sha256sum` of the new file), job ids, and
    whether the default moved.
 
@@ -139,13 +146,15 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 1. `<image>.provenance.json` exists, `check_install_rc` is 0, `git_commit` is the
    commit you built from, `worktree` is `clean`, `poetry_lock_md5` equals
    `md5sum "$HVANTK_REPO/poetry.lock"`.
-2. `hail_version` in the record equals the locked Hail version, and `java_version`
-   starts with `11`.
-3. A verification job through the final name (`hvantk.sif` after promotion, the
-   versioned name otherwise):
+2. `hail_version` in the record starts with the locked Hail version (the record carries
+   the full string, for example `0.2.137-<hash>`), and `java_version` starts with `11`.
+3. A verification job through the final name: the versioned file before promotion
+   (`--sif "$HVANTK_WORK/containers/hvantk-<id>.sif"`), the profile's default after it
+   (`--sif "$HVANTK_SIF"`):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --sif "$HVANTK_WORK/containers/hvantk-<id>.sif" --name <run>-verify --cpus 4 --mem-gb 16 --time 0-00:20:00 --wait -- hvantk utils check-install
    ```
    prints the Hail version and `All checks passed.`
 4. The run notes carry the commit, the image digest and the job ids; `references/provenance.md`
-   shows the record and how each field is read.
+   shows the record and how each field is read (every command there that reads a
+   profile value starts with `source "$HVANTK_SITE_PROFILE" &&`, as in this skill).

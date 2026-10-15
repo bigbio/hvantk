@@ -5,9 +5,9 @@
 #
 # Positive: the skill's own build job into the control directory, accounting captured
 #   here, then check.py (through the image, no Hail) must pass.
-# Negative: check.py --expect-fail against the site's current default image and its
-#   record, which names another commit; M4 must be false (the image is real but not the
-#   one asked for).
+# Negative: check.py --expect-fail against the image just built, with a copy of its
+#   record naming another commit; M4 must be false while the image and record are
+#   present, so the failure is about content, not about a missing file.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SKILL="$(cd "$HERE/.." && pwd -P)"
@@ -48,19 +48,24 @@ fi
 sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$OUT/pos/sacct.psv"
 check --output "$OUT/pos/hvantk-eval.sif" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$NEW_SHA" \
-  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv" >/dev/null
+  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv" >/dev/null || true
 for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true" >&2; exit 1; }; done
 echo "positive control: PASS (M1..M5 true)"
 
-# --- negative: the default image, built from another commit ---
-DEFAULT_REAL="$(readlink -f "$HVANTK_SIF")"
-[[ -f "$DEFAULT_REAL.provenance.json" ]] || { echo "ERROR: the default image has no provenance record; cannot run the negative control" >&2; exit 1; }
-ln -sfn "$DEFAULT_REAL" "$OUT/neg/hvantk-eval.sif"
-ln -sfn "$DEFAULT_REAL.provenance.json" "$OUT/neg/hvantk-eval.sif.provenance.json"
-printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$(sha256sum "$DEFAULT_REAL" | cut -d' ' -f1)" "$JOB" > "$OUT/neg/run-notes.md"
+# --- negative: the same image with a record that names another commit ---
+ln -sfn "$OUT/pos/hvantk-eval.sif" "$OUT/neg/hvantk-eval.sif"
+python3 - "$OUT/pos/hvantk-eval.sif.provenance.json" "$OUT/neg/hvantk-eval.sif.provenance.json" <<'PY'
+import json, sys
+rec = json.load(open(sys.argv[1]))
+rec["git_commit"] = "0" * 40
+json.dump(rec, open(sys.argv[2], "w"), indent=2)
+PY
+printf 'commit: %s\ncontainer: %s\njob: %s\n' "$COMMIT" "$NEW_SHA" "$JOB" > "$OUT/neg/run-notes.md"
 check --output "$OUT/neg/hvantk-eval.sif" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --site-profile "$HVANTK_SITE_PROFILE" \
-  --sacct-file "$OUT/pos/sacct.psv" --expect-fail >/dev/null
-[[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "False" ]] || { echo "ERROR: negative control did not fail M4 on the default image's commit" >&2; exit 1; }
-echo "negative control: PASS (M4 false: the default image's record names another commit)"
+  --sacct-file "$OUT/pos/sacct.psv" --expect-fail >/dev/null || true
+NEG_IMG="$(python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v['output']['image'], v['output']['record'])" "$OUT/neg/verdict.json")"
+[[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "False" && "$NEG_IMG" == "True True" ]] \
+  || { echo "ERROR: negative control did not fail M4 on content (M4=$(verdict_stage "$OUT/neg/verdict.json" M4), image/record present: $NEG_IMG)" >&2; exit 1; }
+echo "negative control: PASS (M4 false on a present image whose record names another commit)"
 echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json"

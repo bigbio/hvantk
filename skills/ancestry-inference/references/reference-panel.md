@@ -17,14 +17,14 @@ Citation and reuse terms are in `THIRD_PARTY_DATA.md`.
 `templates/prepare-1kg-reference.py` does, as one job:
 
 1. `hl.import_vcf` of the chromosome file (block-gzipped, so `force_bgz`), GRCh38.
-2. Biallelic SNPs only; minor allele frequency above the threshold (default 0.05),
-   computed from the genotypes, so related and unlabelled samples do not bias it after
-   the join.
-3. Thinning to a target count (default 20,000) by taking every k-th remaining variant in
-   genomic order, which is deterministic and spreads the variants along the chromosome.
-4. Join the sample table on `s`; samples without a label are dropped (the 698 related
+2. Biallelic SNPs only.
+3. Join the sample table on `s`; samples without a label are dropped (the 698 related
    samples of the 3202 are not in the 2504 panel); `super_pop` becomes a flat column.
-5. Write the MatrixTable.
+4. Minor allele frequency above the threshold (default 0.05), computed from the
+   labelled samples' genotypes.
+5. Thinning to a target count (default 20,000) by taking every k-th remaining variant in
+   genomic order, which is deterministic and spreads the variants along the chromosome;
+   then the MatrixTable is written.
 
 Several chromosomes: run it per chromosome with the same thresholds and union the
 results (`hl.MatrixTable.union_rows`) in a small job, or prepare from a few large

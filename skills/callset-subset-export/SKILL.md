@@ -59,8 +59,9 @@ and sharing controlled-access data, which is a human decision this skill never m
    records, writes `SHA256SUMS` and the `README.md`. Each step waits for the previous
    one and stops the chain on failure.
 2. Index the VCF when the site has `bcftools` or `tabix` (a module or a user install);
-   Hail writes no index. Record which tool, or that none was available.
-3. Read `<out>/verify.json`: the sample set, the record count and the checks, which the
+   Hail writes no index. Record which tool, or that none was available; a `.tbi` added
+   afterwards is not in `SHA256SUMS` unless you append it.
+3. Read `<out>/verify.json` (`references/verification.md` lists the checks): the sample set, the record count and the checks, which the
    README repeats for the recipient.
 4. Deliver: copy the directory to the target from the login node, throttled when the
    target is a shared mount, then validate the checksums at the target

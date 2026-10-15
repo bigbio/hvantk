@@ -50,9 +50,9 @@ ARGS=(--parsable --job-name="$NAME" --partition="$PARTITION"
       --cpus-per-task="$CPUS" --mem="${MEM_GB}G" --time="$TIME"
       --output="$LOG_DIR/%x_%j.out" --export=ALL)
 if [[ -n "$SIF_OVERRIDE" ]]; then
-  [[ -e "$SIF_OVERRIDE" ]] || { echo "ERROR: --sif image not found: $SIF_OVERRIDE" >&2; exit 2; }
-  export HVANTK_SIF_OVERRIDE="$SIF_OVERRIDE"
+  [[ "$SIF_OVERRIDE" == /* && -e "$SIF_OVERRIDE" ]] || { echo "ERROR: --sif needs an absolute path to an existing image: $SIF_OVERRIDE" >&2; exit 2; }
 fi
+export HVANTK_SIF_OVERRIDE="$SIF_OVERRIDE"   # exported even when empty, so a leftover value cannot redirect a job
 [[ -n "${HVANTK_ACCOUNT:-}" ]] && ARGS+=(--account="$HVANTK_ACCOUNT")
 [[ -n "${HVANTK_QOS:-}" ]] && ARGS+=(--qos="$HVANTK_QOS")
 (( EXCLUSIVE )) && ARGS+=(--exclusive)

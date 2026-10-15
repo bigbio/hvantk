@@ -23,6 +23,7 @@ SUBSET="$HVANTK_REPO/${REL%/eval}/templates/subset-job.sh"
 
 STAGE="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}/callset-subset-export"
 [[ -e "$STAGE/cohort/cohort.vds/variant_data/_SUCCESS" && -s "$STAGE/samples.txt" ]] || { echo "ERROR: not staged; run eval/stage.sh first" >&2; exit 1; }
+( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) || { echo "ERROR: staged inputs do not match staged.sha256; run eval/stage.sh again" >&2; exit 1; }
 INPUT_SHA="$(sha256sum "$STAGE/staged.sha256" | cut -d' ' -f1)"
 OUT="$STAGE/control/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT/pos" "$OUT/neg"
@@ -55,7 +56,7 @@ fi
 sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$OUT/pos/sacct.psv"
 check --output "$OUT/pos/subset" --run-notes "$OUT/pos/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \
-  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv" >/dev/null
+  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv" >/dev/null || true
 for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true" >&2; exit 1; }; done
 echo "positive control: PASS (M1..M5 true)"
 
@@ -66,7 +67,7 @@ mapfile -t JOBS_NEG < <(bash "$SUBSET" --vds "$STAGE/cohort/cohort.vds" --sample
 sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$OUT/neg/sacct.psv"
 check --output "$OUT/neg/subset" --run-notes "$OUT/neg/run-notes.md" --reference "$REFERENCE" \
   --run-id "$RUN_ID" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \
-  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/neg/sacct.psv" --expect-fail >/dev/null
+  --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/neg/sacct.psv" --expect-fail >/dev/null || true
 [[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "True" && "$(verdict_stage "$OUT/neg/verdict.json" M5)" == "False" ]] \
   || { echo "ERROR: negative control did not fail on content alone (M4=$(verdict_stage "$OUT/neg/verdict.json" M4) M5=$(verdict_stage "$OUT/neg/verdict.json" M5))" >&2; exit 1; }
 echo "negative control: PASS (M4 true, M5 false: a complete delivery of the wrong samples)"

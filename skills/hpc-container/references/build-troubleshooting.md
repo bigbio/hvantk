@@ -2,10 +2,10 @@
 
 ## Choosing the unprivileged method
 
-| `grep -c "^$USER:" /etc/subuid` | method | flag |
+| `grep -cE "^($USER|$(id -u)):" /etc/subuid` | method | flag |
 | --- | --- | --- |
 | 1 or more | fakeroot (user namespaces mapped for you) | `--fakeroot` |
-| 0, or the file does not exist | a static `proot` on `PATH`; SingularityCE 3.11+ and Apptainer pick it up | none |
+| 0, or the file does not exist | a static `proot` on `PATH` with SingularityCE 3.11 and later; Apptainer releases may build without either, so check `apptainer build --help` and your site's notes | none |
 
 Getting `proot` on a cluster without it: download the static binary from the proot
 project's release page into a directory on your `PATH` (for example `~/bin`), make it

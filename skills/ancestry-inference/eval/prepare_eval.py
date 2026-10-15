@@ -2,7 +2,7 @@
 reference, an unlabelled query of held-out samples, the held-out truth, and a reference
 with permuted labels for the negative control. Deterministic. Runs inside the image.
 
-    python prepare_eval.py --vcf <chr.vcf.gz> --samples-table <samples.ht> --out <stage dir>
+    python prepare_eval.py --vcf <chr.vcf.gz> --samples-table <samples.ht> --out <stage dir> --control-out <control dir>
 """
 
 from __future__ import annotations
@@ -29,9 +29,16 @@ def main() -> int:
     ap.add_argument("--vcf", required=True)
     ap.add_argument("--samples-table", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument(
+        "--control-out",
+        required=True,
+        help="where truth.tsv and the shuffled reference go; not shown to the agent",
+    )
     ap.add_argument("--target", type=int, default=20000)
     args = ap.parse_args()
     out = Path(args.out)
+    ctl = Path(args.control_out)
+    ctl.mkdir(parents=True, exist_ok=True)
 
     from hvantk.core.utils.hail_context import init_hail
 
@@ -47,7 +54,7 @@ def main() -> int:
 
     reference.write(str(out / "reference.mt"), overwrite=True)
     query.select_cols().write(str(out / "query.mt"), overwrite=True)
-    query.cols().select("super_pop").export(str(out / "truth.tsv"))
+    query.cols().select("super_pop").export(str(ctl / "truth.tsv"))
 
     # Permuted labels for the negative control: shift the label list by half its length
     # over the sorted sample order, which breaks the sample-to-label link while keeping

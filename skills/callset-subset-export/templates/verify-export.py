@@ -66,6 +66,7 @@ def main() -> int:
     ap.add_argument("--commit", default="")
     ap.add_argument("--image-sha256", default="")
     ap.add_argument("--recipe")
+    ap.add_argument("--min-ac", default="1")
     args = ap.parse_args()
     out = Path(args.out)
     vcf = out / f"{args.prefix}.vcf.bgz"
@@ -112,7 +113,7 @@ Produced {verify["checked_at"]} with hvantk.
 
 The subset was taken from the lossless VDS (alleles no listed sample carries are
 dropped), densified, and exported as a biallelic VCF with genotype-quality filtering
-and a minimum allele count of 1.
+and a minimum allele count of {args.min_ac}.
 
 ```
 {recipe.rstrip()}
@@ -124,6 +125,16 @@ and a minimum allele count of 1.
 was added afterwards; `tabix -p vcf {vcf.name}` or `bcftools index -t {vcf.name}` creates it.
 """
     (out / "README.md").write_text(readme)
+    # Checksums last, over every visible file but the checksum file itself (the README
+    # included; hidden files such as Hail's .crc sidecars are left out).
+    files = sorted(
+        p
+        for p in out.iterdir()
+        if p.is_file() and p.name != "SHA256SUMS" and not p.name.startswith(".")
+    )
+    (out / "SHA256SUMS").write_text(
+        "".join(f"{sha256_file(p)}  {p.name}\n" for p in files)
+    )
     print(
         json.dumps(
             {

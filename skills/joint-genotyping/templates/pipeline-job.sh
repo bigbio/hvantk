@@ -4,7 +4,7 @@
 #
 #   pipeline-job.sh --gvcf-dir DIR --out DIR --prefix NAME [--n-partitions N] [--min-ac 1]
 #                   [--cpus 8] [--mem-gb 32] [--time 0-00:30:00] [--partition <P>] [--name NAME] [--plan]
-#   pipeline-job.sh --describe DIR --prefix NAME [--cpus 2] [--mem-gb 8]
+#   pipeline-job.sh --describe DIR --prefix NAME [--cpus 8] [--mem-gb 32] [--time 0-00:30:00]
 #
 # The chain: `hvantk hgc gvcf-combine` (gVCFs to a VDS), `hvantk hgc vds2mt` (dense
 # MatrixTable), `hvantk hgc compute-qc` (sample and variant QC under <out>/qc), `hvantk
@@ -43,6 +43,7 @@ COMMON=(--cpus "$CPUS" --mem-gb "$MEM_GB" --time "$TIME" --wait)
 [[ -n "$PARTITION" ]] && COMMON+=(--partition "$PARTITION")
 
 if [[ -n "$DESCRIBE" ]]; then
+  [[ "$DESCRIBE" == /* ]] || { echo "ERROR: --describe needs an absolute path" >&2; exit 2; }
   exec bash "$SUBMIT" --cpus "$CPUS" --mem-gb "$MEM_GB" --time "$TIME" --wait --name "${NAME:-hgc-describe}" -- \
     python "$T/describe-callset.py" "$DESCRIBE" --prefix "$PREFIX"
 fi
@@ -53,7 +54,7 @@ NP=(); [[ -n "$NPART" ]] && NP=(--n-partitions "$NPART")
 STEPS=(
   "hvantk hgc gvcf-combine -g $GVCF_DIR -o $OUT/$PREFIX.vds"
   "hvantk hgc vds2mt -i $OUT/$PREFIX.vds -o $OUT/$PREFIX.mt ${NP[*]:-}"
-  "hvantk hgc compute-qc -i $OUT/$PREFIX.mt -o $OUT/qc --prefix $PREFIX --no-save-mt"
+  "hvantk hgc compute-qc -i $OUT/$PREFIX.mt -o $OUT/qc --prefix $PREFIX"
   "hvantk hgc mt2vcf -i $OUT/$PREFIX.mt -o $OUT/$PREFIX.vcf.bgz --min-ac $MIN_AC"
 )
 if (( PLAN )); then printf '%s\n' "${STEPS[@]}"; exit 0; fi
@@ -67,5 +68,5 @@ for step in "${STEPS[@]}"; do
   i=$((i + 1))
   # shellcheck disable=SC2206
   CMD=($step)
-  bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-$i" -- "${CMD[@]}" | tail -1
+  bash "$SUBMIT" "${COMMON[@]}" --name "$NAME-$i" -- "${CMD[@]}"
 done

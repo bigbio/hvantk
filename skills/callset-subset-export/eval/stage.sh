@@ -27,7 +27,7 @@ head -2 "$STAGE/samples_all.txt" > "$STAGE/samples.txt"
 head -1 "$STAGE/samples_all.txt" > "$STAGE/samples_one.txt"
 
 if [[ ! -d "$STAGE/cohort/cohort.vds" ]]; then
-  echo "building the callset (one job)"
+  echo "building the callset (four jobs through the joint-genotyping template)"
   bash "$PIPE" --gvcf-dir "$STAGE/gvcfs" --out "$STAGE/cohort" --prefix cohort \
     --cpus 8 --mem-gb 32 --time 0-00:30:00 --name stage-cse-hgc >/dev/null
 fi

@@ -34,7 +34,7 @@ SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"
 SACCT_FIELDS="JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 ref_field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['produced_by'][sys.argv[2]])" "$REFERENCE" "$1"; }
 verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v[sys.argv[2]])" "$1" "$2"; }
-check_job() { bash "$SUBMIT" --name "$1" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- python "$CHECK" "${@:2}" >/dev/null; }
+check_job() { bash "$SUBMIT" --name "$1" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- python "$CHECK" "${@:2}" >/dev/null || true; }
 
 echo "control run $RUN_ID -> $OUT (commit $COMMIT)"
 ( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) || { echo "ERROR: staged gVCFs do not match staged.sha256; run eval/stage.sh again" >&2; exit 1; }

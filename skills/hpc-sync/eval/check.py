@@ -61,6 +61,26 @@ def refs(repo: Path, names: tuple[str, ...]) -> dict[str, str | None]:
     return {n: ref(repo, n) for n in names}
 
 
+def all_ref_names(repo: Path) -> list[str]:
+    """Every branch and tag name a bare repository holds (loose files and packed-refs)."""
+    names: set[str] = set()
+    for kind in ("heads", "tags"):
+        d = repo / "refs" / kind
+        if d.is_dir():
+            names.update(
+                f"refs/{kind}/{p.relative_to(d).as_posix()}"
+                for p in d.rglob("*")
+                if p.is_file()
+            )
+    packed = repo / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text().splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1].startswith("refs/"):
+                names.add(parts[1])
+    return sorted(names)
+
+
 def write_reference(args) -> None:
     scenario = Path(args.scenario)
     reference = {
@@ -110,7 +130,9 @@ def main() -> int:
     cluster = refs(scenario / "cluster.git", BRANCHES)
     cluster_only = refs(scenario / "cluster.git", CLUSTER_ONLY)
     m4 = all(cluster[b] is not None and cluster[b] == github[b] for b in BRANCHES)
-    github_untouched = github == reference["github"]
+    github_untouched = github == reference["github"] and all_ref_names(
+        scenario / "github.git"
+    ) == [f"refs/heads/{b}" for b in sorted(BRANCHES)]
     cluster_only_kept = cluster_only == reference["cluster_only"]
     m5 = github_untouched and cluster_only_kept
     passed = bool(m4 and m5)
@@ -127,6 +149,7 @@ def main() -> int:
         "slurm": {"skipped": "task needs no job"},
         "output": {
             "github": github,
+            "github_refs": all_ref_names(scenario / "github.git"),
             "cluster": cluster,
             "cluster_only": cluster_only,
             "github_untouched": github_untouched,

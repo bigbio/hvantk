@@ -7,7 +7,7 @@ What `templates/verify-export.py` checks and writes, and how to repeat it by han
 | header samples | the `#CHROM` line's columns from the tenth on | equal to the sample list, as a set and in sorted order |
 | record count | lines not starting with `#` | the number the README states; equal across copies |
 | biallelic | `ALT` has no comma | every record |
-| checksums | `SHA256SUMS` over every file in the delivery except itself | `sha256sum -c SHA256SUMS` passes |
+| checksums | `SHA256SUMS` over every visible file in the delivery except itself, README included; a `.tbi` added later must be appended | `sha256sum -c SHA256SUMS` passes |
 
 By hand, with bcftools where the site has it:
 
@@ -20,7 +20,7 @@ sha256sum -c SHA256SUMS
 Without bcftools, the same through the image:
 
 ```bash
-source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-verify --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" --name <run>-verify --cpus 2 --mem-gb 8 --time <enough to read the whole VCF once> --wait -- \
   python "$HVANTK_REPO/skills/callset-subset-export/templates/verify-export.py" <out> --prefix <prefix> --samples <list>
 ```
 
