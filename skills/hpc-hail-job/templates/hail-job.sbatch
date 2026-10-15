@@ -11,8 +11,9 @@
 # PYTHONPATH points at the checkout, so the job runs the checkout's code inside the
 # image's environment: the commit is what runs, the image is what it runs on.
 # The command is the positional arguments and starts with `hvantk` or `python`. The
-# working directory is the log directory, so Hail's own hail-*.log lands there; pass
-# absolute paths in the command.
+# working directory is the log directory -- or, for an array task, a per-task
+# subdirectory of it (see HAIL_DIR below) -- so Hail's own hail-*.log lands there;
+# pass absolute paths in the command.
 set -euo pipefail
 
 : "${HVANTK_SITE_PROFILE:?HVANTK_SITE_PROFILE not set}"
