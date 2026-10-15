@@ -1,7 +1,11 @@
 """Evaluate a `hvantk rerank` ranked table against its own `y` labels.
 
-No Hail: pandas + scikit-learn only, so this runs inside the image (through
-run-in-image.sh for a quick check, or as a job -- it needs no JVM either way).
+No Hail: pandas + scikit-learn only. Still run as a job, through
+skills/hpc-hail-job/templates/submit-hail-job.sh (this skill does not special-case
+it onto run-in-image.sh the way a login-node-only check can): the image's Python,
+pandas and scikit-learn only exist inside the container, and submit-hail-job.sh is
+the one place that already carries the budget, accounting and run-notes convention
+every other step in this skill's procedure uses.
 
     python evaluate-ranking.py --ranked ranked.tsv --receipt eval.json \\
         [--top-decile-pct 90]

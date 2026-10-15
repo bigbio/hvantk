@@ -12,24 +12,33 @@ Three subcommands:
 
     prepare-rerank-inputs.py cohort --table TABLE --key-column COL \\
         --gene-index GENE_INDEX.ht --hgnc-tsv HGNC.txt --out OUT.tsv \\
-        [--manifest-in COHORT.yaml --manifest-out OUT.yaml]
+        [--manifest-in COHORT.yaml --manifest-out OUT.yaml] \\
+        [--min-mapping-rate 0.9]
         Needs Hail: map TABLE's --key-column (Ensembl gene_id) to an approved HGNC
         symbol via GENE_INDEX's own hgnc_id field, add it as a new 'symbol' column,
-        and write every original column alongside it. Rows with no approved symbol,
-        or whose symbol is shared by more than one gene id, are dropped and counted.
-        With --manifest-in/--manifest-out, also write a symbol-keyed cohort manifest
-        pointing at OUT, carrying the original's prior and cohort_axes over unchanged.
+        sort by it, and write every original column alongside it (row order is part
+        of the contract -- see the module-level note on determinism below). Rows
+        with no approved symbol, or whose symbol is shared by more than one gene id,
+        are dropped and the two counted separately. Exits 1 if the mapped fraction
+        of TABLE's own rows falls below --min-mapping-rate (default 0.9, the same
+        floor `hvantk cohort attach` uses). With --manifest-in/--manifest-out, also
+        write a symbol-keyed cohort manifest pointing at OUT with an ABSOLUTE
+        `table:` path, carrying the original's prior and cohort_axes over
+        unchanged.
 
     prepare-rerank-inputs.py features --ht TABLE.ht --fields F1,F2,... \\
         --hgnc-tsv HGNC.txt [--gene-index GENE_INDEX.ht] \\
-        [--restrict-to TABLE --restrict-column COL] --out OUT.tsv
+        [--restrict-to TABLE --restrict-column COL] --out OUT.tsv \\
+        [--min-mapping-rate 0.9]
         Needs Hail: read TABLE.ht (any single-key gene-keyed hvantk table), select
         --fields, map its key to an approved HGNC symbol the same way as `cohort`
         (via --gene-index if TABLE.ht itself carries no hgnc_id field; defaults to
-        TABLE.ht), and write a TSV with a literal 'gene' column (the symbol) plus the
-        requested fields -- the shape hvantk.algorithms.rerank.catalog.builders.table_axis
-        requires. --restrict-to/--restrict-column narrow the output to a universe
-        (e.g. the cohort's own mapped gene list).
+        TABLE.ht), sort by the mapped symbol, and write a TSV with a literal 'gene'
+        column (the symbol) plus the requested fields -- the shape
+        hvantk.algorithms.rerank.catalog.builders.table_axis requires.
+        --restrict-to/--restrict-column narrow the output to a universe (e.g. the
+        cohort's own mapped gene list). --min-mapping-rate as in `cohort`, checked
+        before any --restrict-to narrowing.
 
 The approved-symbol map (`build_symbol_map`) is shared by `cohort` and `features` so a
 gene id that drops out of one drops out of the other identically: it reads the HGNC
@@ -38,6 +47,17 @@ same columns `hvantk.algorithms.rerank.blocks.load_gene_groups` reads for --bloc
 NOT the built `hgnc:lookup` table, whose own builder renames `symbol` to
 `gene_symbol`), drops gene ids with no approved symbol, then drops every gene id
 whose symbol is shared by more than one gene id (both sides, not just one).
+
+Row order is sorted by gene symbol deliberately, in both subcommands: with a single
+feature axis (the common case for a small eval), `hvantk rerank` never re-sorts the
+universe (`hvantk.algorithms.rerank.features.FeatureAssembler.assemble` returns a
+lone axis's frame unchanged), so the axis file's own row order becomes the fold
+assignment's row order (`StratifiedKFold`/`StratifiedGroupKFold` partition by
+position) and the paralogue block codes' first-appearance order
+(`hvantk.algorithms.rerank.blocks.gene_blocks`) -- both of which a non-deterministic
+read order (e.g. a Hail table's own partition order, which this script reads via
+`to_pandas()`) would otherwise leave to chance from one build to the next, silently
+moving the AUC between two runs over identical content.
 """
 
 from __future__ import annotations
@@ -52,7 +72,15 @@ from pathlib import Path
 
 
 def build_symbol_map(gene_index_path: str, hgnc_tsv_path: str):
-    """``(mapping, report)``: ``mapping`` is ``{gene_id: symbol}``, unambiguous only.
+    """``(mapping, no_symbol_ids, ambiguous_ids, report)``.
+
+    ``mapping`` is ``{gene_id: symbol}``, unambiguous only. ``no_symbol_ids`` and
+    ``ambiguous_ids`` are the gene index's own ids dropped for each reason, so a
+    caller mapping some OTHER table's gene ids through ``mapping`` can classify its
+    own dropped rows precisely: an id in ``ambiguous_ids`` was dropped for sharing a
+    symbol with another id; every other id missing from ``mapping`` (whether it is
+    in ``no_symbol_ids`` or simply absent from the gene index entirely) has no
+    approved symbol to offer.
 
     Needs Hail (reads *gene_index_path* as a Hail Table); the caller is expected to
     have called ``init_hail`` already.
@@ -88,12 +116,14 @@ def build_symbol_map(gene_index_path: str, hgnc_tsv_path: str):
 
     gi["symbol"] = gi["hgnc_id"].map(symbol_by_hgnc)
     no_symbol = gi["symbol"].isna()
-    n_no_symbol = int(no_symbol.sum())
+    no_symbol_ids = set(gi.loc[no_symbol, "gene_id"])
+    n_no_symbol = len(no_symbol_ids)
     mapped = gi.loc[~no_symbol, ["gene_id", "symbol"]]
 
     dup_symbols = set(mapped["symbol"][mapped["symbol"].duplicated(keep=False)])
     ambiguous_mask = mapped["symbol"].isin(dup_symbols)
-    n_ambiguous_dropped = int(ambiguous_mask.sum())
+    ambiguous_ids = set(mapped.loc[ambiguous_mask, "gene_id"])
+    n_ambiguous_dropped = len(ambiguous_ids)
     clean = mapped.loc[~ambiguous_mask]
 
     mapping = dict(zip(clean["gene_id"], clean["symbol"]))
@@ -104,7 +134,7 @@ def build_symbol_map(gene_index_path: str, hgnc_tsv_path: str):
         "n_ambiguous_dropped": n_ambiguous_dropped,
         "n_clean": len(mapping),
     }
-    return mapping, report
+    return mapping, no_symbol_ids, ambiguous_ids, report
 
 
 def _report_line(report: dict) -> str:
@@ -118,6 +148,23 @@ def _report_line(report: dict) -> str:
 
 def _sep_for(path) -> str:
     return "\t" if str(path).endswith((".tsv", ".bgz", ".gz")) else ","
+
+
+def _check_mapping_rate(
+    label: str, n_mapped: int, n_before: int, min_rate: float, unmapped
+) -> None:
+    """Raise if *label*'s own mapped share falls below *min_rate* (default 0.9, the
+    floor `hvantk cohort attach` uses: `hvantk.algorithms.annotation.mapping.
+    enforce_rate`'s `{source} mapped {rate:.2f} of its identifiers, below the
+    required {min_rate:.2f}` message, adapted to this script's own inputs)."""
+    rate = n_mapped / n_before if n_before else 1.0
+    if rate < min_rate:
+        shown = ", ".join(sorted(unmapped)[:10])
+        raise ValueError(
+            f"{label}: only {n_mapped}/{n_before} ({rate:.2%}) row(s) mapped to an "
+            f"approved symbol, below --min-mapping-rate {min_rate:.2%}. Unmapped "
+            f"example id(s): {shown}"
+        )
 
 
 def _read_column_csv(path: str, column: str) -> set:
@@ -180,19 +227,27 @@ def cmd_cohort(args) -> int:
     init_hail(quiet=True)
     import pandas as pd
 
-    mapping, report = build_symbol_map(args.gene_index, args.hgnc_tsv)
+    mapping, no_symbol_ids, ambiguous_ids, report = build_symbol_map(
+        args.gene_index, args.hgnc_tsv
+    )
     print(_report_line(report))
 
     df = pd.read_csv(args.table, sep=_sep_for(args.table), dtype={args.key_column: str})
     if args.key_column not in df.columns:
         raise ValueError(f"{args.table}: no column {args.key_column!r}")
-    df["symbol"] = df[args.key_column].map(mapping)
+    ids = df[args.key_column]
+    df["symbol"] = ids.map(mapping)
     n_before = len(df)
-    kept = df[df["symbol"].notna()].reset_index(drop=True)
-    n_dropped = n_before - len(kept)
+    dropped_ids = set(ids[df["symbol"].isna()])
+    n_ambiguous = len(dropped_ids & ambiguous_ids)
+    n_no_symbol = len(dropped_ids) - n_ambiguous
+    kept = df[df["symbol"].notna()].sort_values("symbol").reset_index(drop=True)
     print(
-        f"cohort: kept {len(kept)}/{n_before} row(s) ({n_dropped} dropped: no "
-        "approved symbol, or a symbol shared by more than one gene id)"
+        f"cohort: kept {len(kept)}/{n_before} row(s) ({n_no_symbol} with no approved "
+        f"symbol, {n_ambiguous} with a symbol shared by more than one gene id)"
+    )
+    _check_mapping_rate(
+        f"{args.table}", len(kept), n_before, args.min_mapping_rate, dropped_ids
     )
 
     out_path = Path(args.out)
@@ -203,6 +258,21 @@ def cmd_cohort(args) -> int:
     if args.manifest_out:
         if not args.manifest_in:
             raise ValueError("--manifest-out requires --manifest-in")
+        if not out_path.is_absolute():
+            # hvantk resolves a manifest's `table:` against the READING process's
+            # working directory, not the manifest file's own location
+            # (hvantk/algorithms/cohort/frame.py) -- and a Slurm job's working
+            # directory is its log directory, never wherever this manifest and its
+            # table happen to sit. Resolving a relative --out against THIS
+            # process's cwd would silently bake in the wrong base, so this is
+            # refused rather than guessed.
+            raise ValueError(
+                f"--out {args.out!r} is not an absolute path, and --manifest-out "
+                "needs one: the written manifest's table: field would otherwise "
+                "resolve against whatever directory happens to read it later "
+                "(a Slurm job's own log directory, never this one). Pass an "
+                "absolute --out."
+            )
         import yaml
 
         from hvantk.algorithms.cohort.spec import load_cohort
@@ -212,12 +282,7 @@ def cmd_cohort(args) -> int:
             "name": manifest.name,
             "key": "symbol",
             "key_column": "symbol",
-            # Kept verbatim, exactly as the caller spelled --out: a cohort manifest's
-            # `table` is resolved by whoever reads it later, relative to ITS working
-            # directory, not to the manifest file's own location
-            # (hvantk/algorithms/cohort/frame.py), so the caller should pass the same
-            # path form (absolute, ideally) it will use to read the config later.
-            "table": str(args.out),
+            "table": str(out_path),
             "prior": {
                 "column": manifest.prior.column,
                 "direction": manifest.prior.direction,
@@ -245,7 +310,9 @@ def cmd_features(args) -> int:
     import hail as hl
 
     gene_index_path = args.gene_index or args.ht
-    mapping, report = build_symbol_map(gene_index_path, args.hgnc_tsv)
+    mapping, no_symbol_ids, ambiguous_ids, report = build_symbol_map(
+        gene_index_path, args.hgnc_tsv
+    )
     print(_report_line(report))
 
     ht = hl.read_table(args.ht)
@@ -264,10 +331,16 @@ def cmd_features(args) -> int:
         raise ValueError(f"{args.ht}: no field(s) {missing}")
 
     df = ht.select(*fields).to_pandas().rename(columns={key_field: "gene_id"})
-    df["gene"] = df["gene_id"].map(mapping)
+    ids = df["gene_id"]
+    df["gene"] = ids.map(mapping)
     n_before = len(df)
+    dropped_ids = set(ids[df["gene"].isna()])
+    n_ambiguous = len(dropped_ids & ambiguous_ids)
+    n_no_symbol = len(dropped_ids) - n_ambiguous
     df = df[df["gene"].notna()].reset_index(drop=True)
-    n_no_symbol = n_before - len(df)
+    _check_mapping_rate(
+        f"{args.ht}", len(df), n_before, args.min_mapping_rate, dropped_ids
+    )
 
     n_restricted = 0
     if args.restrict_to:
@@ -278,12 +351,13 @@ def cmd_features(args) -> int:
         df = df[df["gene"].isin(restrict)].reset_index(drop=True)
         n_restricted = n_before_restrict - len(df)
 
+    df = df.sort_values("gene").reset_index(drop=True)
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df[["gene", *fields]].to_csv(out_path, sep=_sep_for(out_path), index=False)
     print(
-        f"features: {len(df)} gene(s) written ({n_no_symbol} dropped: no approved/"
-        f"unambiguous symbol"
+        f"features: {len(df)} gene(s) written ({n_no_symbol} with no approved "
+        f"symbol, {n_ambiguous} with a symbol shared by more than one gene id"
         + (f"; {n_restricted} dropped by --restrict-to" if args.restrict_to else "")
         + f") -> {out_path}"
     )
@@ -315,6 +389,7 @@ def main() -> int:
     co.add_argument("--out", required=True)
     co.add_argument("--manifest-in", default=None)
     co.add_argument("--manifest-out", default=None)
+    co.add_argument("--min-mapping-rate", type=float, default=0.9)
     co.set_defaults(fn=cmd_cohort)
 
     fe = sub.add_parser("features", help="build a symbol-keyed feature axis TSV")
@@ -329,6 +404,7 @@ def main() -> int:
     fe.add_argument("--restrict-to", default=None)
     fe.add_argument("--restrict-column", default=None)
     fe.add_argument("--out", required=True)
+    fe.add_argument("--min-mapping-rate", type=float, default=0.9)
     fe.set_defaults(fn=cmd_features)
 
     args = ap.parse_args()

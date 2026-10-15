@@ -2,45 +2,73 @@
 
 Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
 writes ``verdict.json`` and ``receipt.json``, and exits 0 on pass. No Hail: it reads
-``config.yaml`` (PyYAML) and ``ranked.tsv`` (pandas + scikit-learn) only, so it runs
-through the image on a login node (a plain container exec, no Slurm job needed for the
-check itself) exactly like ``ancestry-inference``'s own check.py. Slurm accounting is
-read from a file captured on the login node (``--sacct-file``), because the container
-has no Slurm client; without a file it tries ``sacct`` and records M2 and M3 as null
-when that is unavailable or fails.
+``config.yaml`` (PyYAML) and ``ranked.tsv`` (pandas + scikit-learn) only, but still
+runs as a Slurm job through ``skills/hpc-hail-job/templates/submit-hail-job.sh`` (2
+cores / 8 GB / 15 minutes is enough) -- the same way
+``skills/dataset-build-at-scale/eval/control.sh`` runs its own check.py, rather than
+a plain container exec: the image's Python 3.10 (and pandas/scikit-learn) only exist
+inside the container, and the job-submission path already carries the budget,
+accounting and run-notes convention every other step in this skill's procedure uses.
+Slurm accounting is read from a file captured on the login node (``--sacct-file``),
+because the container has no Slurm client; without a file it tries ``sacct`` and
+records M2 and M3 as null when that is unavailable or fails.
 
-M4 is config-and-shape only (``config.yaml`` parses with exactly the allowed keys, one
-feature axis declared; ``ranked.tsv`` carries the nine columns ``hvantk rerank``
-always emits, with at least one label-positive and one label-negative row). M5 is
-five independent sub-checks, ANDed together:
+M4 is config-and-shape only: ``config.yaml`` (at ``--out-dir/config.yaml``) parses
+with exactly the allowed keys, one feature axis declared, and ``min_label_coverage``
+either absent or at least 0.5 (closing the trap of lowering it to paper over a
+label/universe mismatch -- see references/inputs-and-identifiers.md); ``ranked.tsv``
+(at ``--out-dir/ranked.tsv``) carries the nine columns ``hvantk rerank`` always
+emits, with at least one label-positive and one label-negative row.
+
+M5 is six independent sub-checks, ANDed together. The reference itself is read
+inside the same try/except as the ranked table (see ``main``), so a missing or
+placeholder ``reference.json`` fails the run cleanly, with the reason recorded as a
+top-level ``error`` in ``verdict.json``, rather than an uncaught traceback before
+any file is written:
 
 * ``universe_ok`` -- the digest of the ranked table's own ``gene`` column (sorted)
-  equals the reference's. This is what catches the negative control: a universe
-  built from the whole gene index instead of the cohort's tested genes changes this
-  digest while changing nothing else about how the run was configured.
+  equals the reference's. This is what the negative control's deliberately wrong
+  universe (the whole gene index, not the cohort's tested genes) is expected to
+  flip; the OTHER sub-checks below are not asserted either way by the negative
+  control -- a bigger universe plausibly changes several of them at once (more
+  unmapped ``prior_stat``, a different audited population), and this check does not
+  guess which.
 * ``labels_ok`` -- the digest of the genes with ``y == 1`` equals the reference's.
-* ``audit_ok`` -- the digest of ``(gene, flag, flag_reason)`` triples equals the
-  reference's.
-* ``metrics_ok`` -- ``roc_auc_score``/``average_precision_score`` recomputed directly
-  from ``ranked.tsv`` (never trusted from ``run-notes.md`` or a prior receipt) are
-  within 0.002 of the reference's.
+* ``audit_ok`` -- the digest of ``(gene, flag, flag_reason)`` over only the FLAGGED
+  rows equals the reference's. Restricted to flagged rows (not every row) because
+  the unflagged rows all carry the same ``("", False)`` value regardless of whether
+  the audit ran at all -- ``--write-reference`` refuses outright when zero genes are
+  flagged, since a reference built from an audit that silently never fired could
+  never tell a working audit from a broken one apart (both would digest empty).
+* ``prior_ok`` -- the digest of ``(gene, prior_stat)`` over every row equals the
+  reference's (a NaN ``prior_stat``, format-stable via ``.10g``, included).
+* ``labels_file_ok`` -- the set of genes in the config's own ``labels.path`` file
+  equals the ranked table's ``y == 1`` set, EXACTLY (not merely a subset in either
+  direction). Not compared against the reference at all: it is a structural
+  self-consistency check between two files THIS run produced, always computed
+  (including during ``--write-reference``), so a ``y`` column that silently drifted
+  from its own stated label source cannot pass by reproducing a stale reference.
+* ``metrics_ok`` -- ``roc_auc_score``/``average_precision_score`` recomputed
+  directly from ``ranked.tsv`` (never trusted from ``run-notes.md`` or a prior
+  receipt) are within 0.002 of the reference's.
 * ``reported_ok`` -- the ``auc:`` line in ``run-notes.md`` is within 0.0005 of the
   AUC this check just recomputed, i.e. the run notes were not hand-typed or copied
   from a different run.
 
-One dataset's digest never depends on row order (every digest below sorts first), and
-every digest is restricted to exactly the fields it names -- never the live table's
-full column set -- so extra columns a future config might add cannot flip a digest
-that has nothing to do with them.
+No digest below depends on row order (every one sorts first), and every digest is
+restricted to exactly the fields it names -- never the live table's full column set
+-- so an unrelated extra column a future config might add cannot flip a digest that
+has nothing to do with it.
 
-    python check.py --config config.yaml --ranked ranked.tsv --run-notes NOTES.md \\
-        --reference reference.json --run-id PREFIX --expect-commit SHA \\
-        --expect-sif-sha256 HEX [--sacct-file FILE | --since now-2days | --no-slurm] \\
-        [--site-profile FILE] [--verdict-dir DIR] [--expect-fail]
-    python check.py --config config.yaml --ranked ranked.tsv --reference reference.json \\
-        --write-reference --expect-commit SHA --expect-sif-sha256 HEX --input-sha256 HEX
+    python check.py --out-dir DIR --run-notes NOTES.md --reference reference.json \\
+        --run-id PREFIX --expect-commit SHA --expect-sif-sha256 HEX \\
+        [--sacct-file FILE | --since now-2days | --no-slurm] [--site-profile FILE] \\
+        [--verdict-dir DIR] [--expect-fail]
+    python check.py --out-dir DIR --reference reference.json --write-reference \\
+        --expect-commit SHA --expect-sif-sha256 HEX --input-sha256 HEX
 
-The accounting file is the output of
+DIR holds ``config.yaml`` and ``ranked.tsv`` (the two fixed names this check reads);
+``--verdict-dir`` defaults to DIR. The accounting file is the output of
 ``sacct -X -n -P -S <since> -o JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition``.
 """
 
@@ -61,6 +89,7 @@ AUC_TOLERANCE = 0.002
 AP_TOLERANCE = 0.002
 REPORTED_TOLERANCE = 0.0005
 TOP_DECILE_PCT = 90.0
+MIN_LABEL_COVERAGE_FLOOR = 0.5
 REQUIRED_COLUMNS = (
     "gene",
     "prior_stat",
@@ -81,6 +110,7 @@ _JOB = re.compile(r"^job:\s*(\d+(?:_\d+)?)", re.M)
 _AUC_LINE = re.compile(r"^auc:\s*([0-9.]+)\s*$", re.M)
 _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
+SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 
 
 # --- run notes and Slurm accounting (M1-M3); copied, not imported, per
@@ -180,9 +210,6 @@ def load_sacct(sacct_file: str | None, since: str) -> tuple[list[dict] | None, s
     return parse_sacct(out), ""
 
 
-SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
-
-
 def grade_slurm(
     run_id: str, notes: dict, rows: list[dict], profile: Path | None
 ) -> tuple[bool, bool, dict]:
@@ -244,7 +271,7 @@ def _to_bool(series):
     return series.astype(str).str.strip().str.lower().isin({"true", "1"})
 
 
-# --- reading the ranked table and the config -----------------------------------------
+# --- reading the ranked table, the config and the labels file ------------------------
 
 
 def load_ranked(path: Path):
@@ -261,6 +288,21 @@ def load_ranked(path: Path):
     df["flag_reason"] = df["flag_reason"].fillna("")
     df["gene"] = df["gene"].astype(str)
     return df
+
+
+def read_labels_file(path: Path) -> set[str]:
+    """The gene set a rerank config's ``labels.path`` file declares.
+
+    The exact parsing ``hvantk.algorithms.rerank.catalog.builders.genelist_labels``
+    uses: the first whitespace-separated token of every non-blank, non-``#`` line.
+    """
+    genes: set[str] = set()
+    with path.open() as fh:
+        for line in fh:
+            s = line.strip()
+            if s and not s.startswith("#"):
+                genes.add(s.split()[0])
+    return genes
 
 
 def grade_config(path: Path) -> tuple[bool, dict]:
@@ -286,11 +328,27 @@ def grade_config(path: Path) -> tuple[bool, dict]:
     details["missing_required_keys"] = missing_required
     features = doc.get("features")
     details["n_features"] = len(features) if isinstance(features, list) else None
+    mlc = doc.get("min_label_coverage", MIN_LABEL_COVERAGE_FLOOR)
+    mlc_ok = (
+        isinstance(mlc, (int, float))
+        and not isinstance(mlc, bool)
+        and mlc >= MIN_LABEL_COVERAGE_FLOOR
+    )
+    details["min_label_coverage"] = mlc
+    details["min_label_coverage_ok"] = mlc_ok
+    labels_path = (
+        (doc.get("labels") or {}).get("path")
+        if isinstance(doc.get("labels"), dict)
+        else None
+    )
+    details["labels_path"] = labels_path
     ok = (
         not unknown
         and not missing_required
         and isinstance(features, list)
         and len(features) == 1
+        and mlc_ok
+        and isinstance(labels_path, str)
     )
     return ok, details
 
@@ -340,27 +398,45 @@ def compute_metrics(df) -> dict:
     }
 
 
-def grade_content(df, reference: dict | None) -> tuple[dict, dict]:
-    """(sub_checks, details) for universe/labels/audit/metrics -- M5 minus reported_ok."""
+def grade_content(df, reference: dict | None, labels_path) -> tuple[dict, dict]:
+    """(sub_checks, details) for universe/labels/audit/prior/labels_file/metrics --
+    M5 minus reported_ok (computed in ``main``, where ``run-notes.md`` is read)."""
     universe_sha256 = _digest(sorted(df["gene"]))
     labels_sha256 = _digest(sorted(df.loc[df["y"] == 1, "gene"]))
+    flagged = df[df["flag"]]
+    n_flagged = int(len(flagged))
     audit_sha256 = _digest(
-        {"gene": g, "flag": bool(f), "flag_reason": r}
-        for g, f, r in zip(df["gene"], df["flag"], df["flag_reason"])
+        {"gene": g, "flag": True, "flag_reason": r}
+        for g, r in zip(flagged["gene"], flagged["flag_reason"])
+    )
+    prior_sha256 = _digest(
+        {"gene": g, "prior_stat": p} for g, p in zip(df["gene"], df["prior_stat"])
     )
     metrics = compute_metrics(df)
+
+    labels_from_file = read_labels_file(Path(labels_path)) if labels_path else None
+    ranked_positives = set(df.loc[df["y"] == 1, "gene"])
+    labels_file_ok = (
+        labels_from_file is not None and labels_from_file == ranked_positives
+    )
+
     details = {
         "universe_sha256": universe_sha256,
         "labels_sha256": labels_sha256,
         "audit_sha256": audit_sha256,
+        "prior_sha256": prior_sha256,
+        "n_flagged": n_flagged,
+        "labels_file_ok": labels_file_ok,
         "metrics": metrics,
     }
     if reference is None:
-        return {}, details
+        return {"labels_file_ok": labels_file_ok}, details
     checks = {
         "universe_ok": universe_sha256 == reference["universe_sha256"],
         "labels_ok": labels_sha256 == reference["labels_sha256"],
         "audit_ok": audit_sha256 == reference["audit_sha256"],
+        "prior_ok": prior_sha256 == reference["prior_sha256"],
+        "labels_file_ok": labels_file_ok,
         "metrics_ok": (
             abs(metrics["auc"] - reference["auc"]) <= AUC_TOLERANCE
             and abs(metrics["average_precision"] - reference["average_precision"])
@@ -371,29 +447,56 @@ def grade_content(df, reference: dict | None) -> tuple[dict, dict]:
 
 
 def write_reference(args) -> None:
-    config_ok, config_details = grade_config(Path(args.config))
+    out_dir = Path(args.out_dir)
+    config_path = out_dir / "config.yaml"
+    ranked_path = out_dir / "ranked.tsv"
+    config_ok, config_details = grade_config(config_path)
     if not config_ok:
         print(
-            f"ERROR: --write-reference: {args.config} does not satisfy the config "
+            f"ERROR: --write-reference: {config_path} does not satisfy the config "
             f"contract: {json.dumps(config_details)}",
             file=sys.stderr,
         )
         raise SystemExit(1)
-    df = load_ranked(Path(args.ranked))
+    df = load_ranked(ranked_path)
     shape_ok, shape_details = grade_ranked_shape(df)
     if not shape_ok:
         print(
-            f"ERROR: --write-reference: {args.ranked} does not satisfy the ranked-table "
-            f"contract: {json.dumps(shape_details)}",
+            f"ERROR: --write-reference: {ranked_path} does not satisfy the "
+            f"ranked-table contract: {json.dumps(shape_details)}",
             file=sys.stderr,
         )
         raise SystemExit(1)
-    _, details = grade_content(df, reference=None)
+    _, details = grade_content(
+        df, reference=None, labels_path=config_details["labels_path"]
+    )
+    if details["n_flagged"] == 0:
+        print(
+            f"ERROR: --write-reference: {ranked_path} has zero flagged genes; a "
+            "reference built from this run could never detect a missing or broken "
+            "case/control architecture audit (its digest over zero flagged rows is "
+            "the same whether the audit ran or not). Check the cohort manifest's "
+            "architecture axis (n_case_var, conc, driver_af) made it through "
+            "unchanged -- see references/audit-and-leakage.md -- then rerun.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if not details["labels_file_ok"]:
+        print(
+            f"ERROR: --write-reference: {ranked_path}'s y==1 genes do not exactly "
+            f"match {config_details['labels_path']}'s own gene set; the labels file "
+            "and the ranked table have drifted apart. Investigate before baselining.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     metrics = details["metrics"]
     ref = {
         "universe_sha256": details["universe_sha256"],
         "labels_sha256": details["labels_sha256"],
         "audit_sha256": details["audit_sha256"],
+        "prior_sha256": details["prior_sha256"],
+        "n_flagged": details["n_flagged"],
+        "flag_counts": metrics["flag_counts"],
         "auc": metrics["auc"],
         "average_precision": metrics["average_precision"],
         "n_genes": metrics["n_genes"],
@@ -410,14 +513,29 @@ def write_reference(args) -> None:
     Path(args.reference).write_text(json.dumps(ref, indent=2, sort_keys=True) + "\n")
     print(
         f"wrote {args.reference}: n_genes={metrics['n_genes']} "
-        f"n_positive={metrics['n_positive']} auc={metrics['auc']:.4f}"
+        f"n_positive={metrics['n_positive']} n_flagged={details['n_flagged']} "
+        f"auc={metrics['auc']:.4f}"
     )
+
+
+def _load_reference(path: Path) -> dict:
+    """The committed reference, or a clear ``ValueError`` when it is still the
+    placeholder (``{"produced_by": null}``) or otherwise missing the keys
+    ``--write-reference`` writes -- never a bare ``KeyError`` three calls later
+    inside ``grade_content``."""
+    doc = json.loads(path.read_text())
+    if not isinstance(doc, dict) or "universe_sha256" not in doc:
+        raise ValueError(
+            f"{path} has no 'universe_sha256' key -- it looks like the committed "
+            'placeholder ({"produced_by": null}) rather than a real reference. '
+            "Rerun this control with WRITE_REFERENCE=1 first."
+        )
+    return doc
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", required=True)
-    ap.add_argument("--ranked", required=True)
+    ap.add_argument("--out-dir", required=True, help="holds config.yaml and ranked.tsv")
     ap.add_argument("--reference", required=True)
     ap.add_argument("--run-notes")
     ap.add_argument("--run-id", default="")
@@ -440,8 +558,9 @@ def main() -> int:
         if not getattr(args, required):
             ap.error(f"--{required.replace('_', '-')} is required when grading")
 
-    ranked_path = Path(args.ranked)
-    reference = json.loads(Path(args.reference).read_text())
+    out_dir = Path(args.out_dir)
+    config_path = out_dir / "config.yaml"
+    ranked_path = out_dir / "ranked.tsv"
     notes = parse_notes(
         Path(args.run_notes) if args.run_notes else Path("/nonexistent")
     )
@@ -465,25 +584,33 @@ def main() -> int:
             profile = Path(args.site_profile) if args.site_profile else None
             m2, m3, slurm_details = grade_slurm(args.run_id, notes, rows, profile)
 
-    config_ok, config_details = grade_config(Path(args.config))
+    config_ok, config_details = grade_config(config_path)
+
+    error: str | None = None
+    shape_ok, shape_details = False, {}
+    content_checks: dict = {}
+    content_details: dict = {}
     try:
+        reference = _load_reference(Path(args.reference))
         df = load_ranked(ranked_path)
         shape_ok, shape_details = grade_ranked_shape(df)
-        content_checks, content_details = grade_content(df, reference)
+        content_checks, content_details = grade_content(
+            df, reference, config_details.get("labels_path")
+        )
         reported_ok = bool(
             notes["auc"] is not None
             and abs(notes["auc"] - content_details["metrics"]["auc"])
             <= REPORTED_TOLERANCE
         )
         content_checks["reported_ok"] = reported_ok
-        m5 = bool(content_checks) and all(content_checks.values())
-    except Exception as exc:  # noqa: BLE001 -- a corrupt or missing ranked table
-        # must not crash the whole verdict; record it and fail M5 (M4 still reflects
-        # the config/shape checks that did succeed).
-        shape_ok, shape_details = False, {"error": f"{type(exc).__name__}: {exc}"}
-        content_checks, content_details = {}, {"error": f"{type(exc).__name__}: {exc}"}
-        reported_ok = False
-        m5 = False
+    except Exception as exc:  # noqa: BLE001 -- a missing/placeholder reference, a
+        # corrupt or missing ranked table, or anything else in the try above must
+        # not crash the whole verdict; record it as a top-level `error` instead.
+        # M4 still reflects whatever the config/shape checks above already found.
+        error = f"{type(exc).__name__}: {exc}"
+        content_details = {**content_details, "error": error}
+
+    m5 = bool(content_checks) and all(content_checks.values()) and error is None
     m4 = bool(config_ok and shape_ok)
     passed = bool(m4 and m5)
 
@@ -503,7 +630,9 @@ def main() -> int:
         "slurm": slurm_details,
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
-    verdict_dir = Path(args.verdict_dir) if args.verdict_dir else ranked_path.parent
+    if error is not None:
+        verdict["error"] = error
+    verdict_dir = Path(args.verdict_dir) if args.verdict_dir else out_dir
     verdict_dir.mkdir(parents=True, exist_ok=True)
     (verdict_dir / "verdict.json").write_text(
         json.dumps(verdict, indent=2, default=str)
@@ -516,9 +645,11 @@ def main() -> int:
             if ranked_path.is_file()
             else None
         ),
-        "reference_sha256": hashlib.sha256(
-            Path(args.reference).read_bytes()
-        ).hexdigest(),
+        "reference_sha256": (
+            hashlib.sha256(Path(args.reference).read_bytes()).hexdigest()
+            if Path(args.reference).is_file()
+            else None
+        ),
         "checked_at": verdict["checked_at"],
     }
     (verdict_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
@@ -527,6 +658,7 @@ def main() -> int:
             {
                 **{k: verdict[k] for k in ("M1", "M2", "M3", "M4", "M5", "pass")},
                 "content_checks": content_checks,
+                "error": error,
             }
         )
     )

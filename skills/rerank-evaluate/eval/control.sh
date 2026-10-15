@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Positive and negative control for the rerank-evaluate eval. Login-node orchestrator:
-# it only submits jobs through hpc-hail-job's own submit-hail-job.sh and runs check.py
-# as a direct container exec (no Hail, no Slurm job needed for the check itself).
+# it only submits jobs through hpc-hail-job's own submit-hail-job.sh -- including for
+# check.py itself (no Hail needed, but the image's Python/pandas/scikit-learn only
+# exist inside the container, so it runs the same way
+# skills/dataset-build-at-scale/eval/control.sh runs its own check.py: as a small job,
+# not a direct container exec).
 #
 #   HVANTK_SITE_PROFILE=... [WRITE_REFERENCE=1] bash skills/rerank-evaluate/eval/control.sh
 #
@@ -13,8 +16,12 @@
 # Negative: identical in every step EXCEPT the feature axis is built from the WHOLE
 #   gene index, not restricted to the cohort's tested genes (labels stay restricted
 #   the same way as the positive); check.py --expect-fail must pass, with M4 true and
-#   M5 false because universe_ok alone is false -- the check must fail on "wrong
-#   universe", not on a broken run.
+#   M5 false. Only `universe_ok` is asserted false below -- the one thing this arm
+#   deliberately broke; the other M5 sub-checks (labels_ok, audit_ok, prior_ok,
+#   labels_file_ok, metrics_ok, reported_ok) are not asserted either way, since a
+#   bigger universe plausibly moves several of them at once (more unmapped
+#   prior_stat, a different audited population) and asserting a direction for each
+#   would test this one run's incidental numbers rather than the one thing broken.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SKILL="$(cd "$HERE/.." && pwd -P)"
@@ -38,6 +45,13 @@ EVAL_ROOT="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}"
 STAGE="$EVAL_ROOT/rerank-evaluate"
 [[ -s "$STAGE/staged.sha256" ]] || { echo "ERROR: not staged; run eval/stage.sh first" >&2; exit 1; }
 ( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) || { echo "ERROR: staged inputs do not match staged.sha256; delete them and run eval/stage.sh again" >&2; exit 1; }
+# sha256sum -c only checks that the files IT lists still match; it says nothing about
+# an extra or missing file dropped since staging (dataset-build-at-scale/eval/
+# control.sh's own check, copied here).
+EXPECTED_PATHS="$(cut -d' ' -f3- "$STAGE/staged.sha256" | sort)"
+ACTUAL_PATHS="$(cd "$STAGE" && { printf '%s\n' raw/*/*; printf '%s\n' cohort/*; printf '%s\n' upstream/*; } | sort)"
+[[ "$EXPECTED_PATHS" == "$ACTUAL_PATHS" ]] || { echo "ERROR: $STAGE no longer holds exactly the files staged.sha256 lists; delete the stale files and run eval/stage.sh again" >&2; echo "  expected: $EXPECTED_PATHS" >&2; echo "  actual:   $ACTUAL_PATHS" >&2; exit 1; }
+[[ -e "$STAGE/gene-index.ht/_SUCCESS" ]] || { echo "ERROR: $STAGE/gene-index.ht has no _SUCCESS marker; run eval/stage.sh again" >&2; exit 1; }
 INPUT_SHA="$(sha256sum "$STAGE/staged.sha256" | cut -d' ' -f1)"
 
 OUT="$STAGE/control/$(date -u +%Y%m%dT%H%M%SZ)"
@@ -48,13 +62,9 @@ RUN_NEG="$BASE-n"
 SINCE="$(date +%Y-%m-%dT%H:%M:%S)"   # local time: sacct -S reads the node's clock, not UTC
 COMMIT="$(git -C "$R" rev-parse HEAD)"
 SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"   # always the resolved file
-CONTAINER_BIN="${HVANTK_CONTAINER_BIN:-singularity}"
-BINDS=(-B "$HVANTK_WORK:$HVANTK_WORK")
-for p in "$HVANTK_REPO" "$STAGE"; do case "$p" in "$HVANTK_WORK"|"$HVANTK_WORK"/*) ;; *) BINDS+=(-B "$p:$p") ;; esac; done
 SACCT_FIELDS="JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 
 capture_sacct() { sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$1"; }
-check() { "$CONTAINER_BIN" exec "${BINDS[@]}" --env PYTHONPATH="$HVANTK_REPO" "$HVANTK_SIF" python3 "$CHECK" "$@"; }
 # `produced_by` is null in the placeholder reference.json ({"produced_by": null}) the
 # implementer commits before any control has run; `or {}` reads that the same as a
 # reference with no matching field, rather than crashing on None has no .get.
@@ -62,21 +72,30 @@ ref_field() { python3 -c "import json,sys
 d=json.load(open(sys.argv[1]))
 p=d.get('produced_by') or {}
 print(p.get(sys.argv[2], ''))" "$REFERENCE" "$1"; }
+has_real_reference() { python3 -c "import json,sys
+d=json.load(open(sys.argv[1]))
+sys.exit(0 if isinstance(d, dict) and 'universe_sha256' in d else 1)" "$REFERENCE"; }
 verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v.get(sys.argv[2]))" "$1" "$2"; }
 content_check() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v.get('content_checks',{}).get(sys.argv[2]))" "$1" "$2"; }
 print_verdict() { python3 -c "import json,sys
 v=json.load(open(sys.argv[1]))
 print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass')})
-print('content_checks:', v.get('content_checks'))" "$1"; }
+print('content_checks:', v.get('content_checks'), 'error:', v.get('error'))" "$1"; }
 
-# Login-node orchestrator wrapper for check.py: `|| true` so a check that legitimately
-# exits non-zero (the negative control under --expect-fail is SUPPOSED to; a genuine
-# check bug would too) never aborts this script under set -e before the assertions
-# below have had a chance to say exactly what failed.
-run_check() { check "$@" >/dev/null || true; }
+# check.py itself runs as a job (see the header): `|| true` so a check that
+# legitimately exits non-zero (the negative control under --expect-fail is SUPPOSED
+# to; a genuine check bug would too) never aborts this script under set -e before
+# the assertions below have had a chance to say exactly what failed.
+run_check() {
+  local name="$1" verdict_dir="$2"; shift 2
+  bash "$SUBMIT" --name "$name" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+    python "$CHECK" "$@" >/dev/null || true
+  print_verdict "$verdict_dir/verdict.json"
+}
 
 echo "control run $BASE -> $OUT (commit $COMMIT)"
-if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" ]]; then
+if [[ "${WRITE_REFERENCE:-0}" != "1" ]]; then
+  has_real_reference || { echo "ERROR: $REFERENCE has no universe_sha256 key -- it looks like the committed placeholder ({\"produced_by\": null}); rerun with WRITE_REFERENCE=1 first." >&2; exit 1; }
   REF_INPUT="$(ref_field input_sha256)"
   if [[ -n "$REF_INPUT" && "$REF_INPUT" != "$INPUT_SHA" ]]; then
     echo "ERROR: the staged inputs ($INPUT_SHA) differ from the ones the reference was produced from ($REF_INPUT)." >&2
@@ -167,14 +186,15 @@ echo "=== positive arm ($RUN_POS) ==="
 run_arm pos "$RUN_POS" 1
 
 if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
-  check --config "$OUT/pos/config.yaml" --ranked "$OUT/pos/ranked.tsv" --reference "$REFERENCE" \
-    --write-reference --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA"
+  bash "$SUBMIT" --name "$RUN_POS-ref" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+    python "$CHECK" --out-dir "$OUT/pos" --reference "$REFERENCE" --write-reference \
+      --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA"
   echo "reference written: $REFERENCE"
 fi
-[[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
+has_real_reference || { echo "ERROR: $REFERENCE missing or still the placeholder; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
 
 capture_sacct "$OUT/pos/sacct.psv"
-run_check --config "$OUT/pos/config.yaml" --ranked "$OUT/pos/ranked.tsv" --run-notes "$OUT/pos/run-notes.md" \
+run_check "$RUN_POS-check" "$OUT/pos" --out-dir "$OUT/pos" --run-notes "$OUT/pos/run-notes.md" \
   --reference "$REFERENCE" --run-id "$RUN_POS" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \
   --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/pos/sacct.psv"
 for s in M1 M2 M3 M4 M5; do
@@ -190,7 +210,7 @@ echo "=== negative arm ($RUN_NEG): features not restricted to the cohort's genes
 run_arm neg "$RUN_NEG" 0
 
 capture_sacct "$OUT/neg/sacct.psv"
-run_check --config "$OUT/neg/config.yaml" --ranked "$OUT/neg/ranked.tsv" --run-notes "$OUT/neg/run-notes.md" \
+run_check "$RUN_NEG-check" "$OUT/neg" --out-dir "$OUT/neg" --run-notes "$OUT/neg/run-notes.md" \
   --reference "$REFERENCE" --run-id "$RUN_NEG" --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" \
   --site-profile "$HVANTK_SITE_PROFILE" --sacct-file "$OUT/neg/sacct.psv" --expect-fail
 [[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "True" && "$(verdict_stage "$OUT/neg/verdict.json" M5)" == "False" ]] \

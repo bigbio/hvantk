@@ -50,11 +50,21 @@ feature/label PAIR, never of a feature alone.
 **Presence-leakage** (`hvantk.algorithms.rerank.leakage.LeakagePolicy`) bars a column
 whose MISSINGNESS -- not its values -- predicts the label (the motivating case: EVE
 scores exist only for a well-studied subset of proteins, and "well studied" already
-correlates with "known disease gene"). Set via `Config.leakage`:
+correlates with "known disease gene"). Set via `Config.leakage`. `Config.audit`
+defaults to `NoAudit()` when left unset (`Config.__post_init__`) -- the CLI's
+auto-wiring of `CaseControlArchitectureAudit` from the cohort manifest (section 1
+above) is CLI-only; a direct `Config(...)` construction gets no audit at all unless
+`audit=CaseControlArchitectureAudit()` is passed explicitly:
 
 ```python
+from hvantk.algorithms.cohort.spec import load_cohort
+from hvantk.algorithms.rerank.catalog.builders import genelist_labels, table_axis
 from hvantk.algorithms.rerank.config import Config
 from hvantk.algorithms.rerank.leakage import LeakagePolicy
+
+cohort = load_cohort("cohort_symbols.yaml")
+feats = [table_axis("structure", "structure.tsv")]
+labels = genelist_labels("labels.txt")
 
 cfg = Config(
     name="my-run",
@@ -65,15 +75,16 @@ cfg = Config(
 )
 ```
 
-**Provenance arms** (`hvantk.algorithms.rerank.provenance`) bar a column TRAINED on
-the same curated resource the labels were derived from (REVEL, trained on
-HGMD/ClinVar, is badly circular against a ClinGen- or GenCC-derived label). Declare
-both sides and let `rerank_arms` compute the conflict -- never hand-classify a column
-as "clean" by inspection, since the equivalence classes are the part that is easy to
-get wrong:
+**Provenance arms** (`hvantk.algorithms.rerank.provenance`, via
+`hvantk.algorithms.rerank.engine.rerank_arms`) bar a column TRAINED on the same
+curated resource the labels were derived from (REVEL, trained on HGMD/ClinVar, is
+badly circular against a ClinGen- or GenCC-derived label). Declare both sides and
+let `rerank_arms` compute the conflict -- never hand-classify a column as "clean" by
+inspection, since the equivalence classes are the part that is easy to get wrong:
 
 ```python
 from dataclasses import replace
+from hvantk.algorithms.rerank.engine import rerank_arms
 from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 cfg = replace(
@@ -104,17 +115,12 @@ correcting for having tried N of them". Needs at least one feature axis besides 
 baseline (checked at config time: `--n-perm` with one axis is rejected outright) and
 is anti-conservative without `--blocks` wherever labels cluster by gene family -- the
 CLI prints a warning rather than refusing, since an unblocked run is still a valid
-(if weaker) null. This skill's own eval does not measure `--n-perm`; it runs with one
-feature axis, for which a null has nothing to search over.
+(if weaker) null.
 
-## Why this skill's own eval axis is not circular
-
-The eval's one feature axis (`structure`: `cds_length`, `n_coding_exons`,
-`n_transcripts`, all from `hvantk annotate spine`'s join of Ensembl structure data and
-HGNC) shares no provenance with its labels (ClinGen gene-disease validity). Neither
-Ensembl's GTF nor HGNC's gene-group table is curated FROM clinical gene-disease
-assertions the way ClinVar/ClinGen/GenCC/HGMD/OMIM are -- so the presence-leakage and
-provenance controls above are not exercised by this eval; they are documented here
-because a real axis built from a disease database, a pathogenicity predictor, or
-anything trained on curated clinical assertions needs them, and the architecture
-audit and `--blocks` alone say nothing about this kind of circularity.
+Neither the architecture audit (section 1) nor `--blocks` (section 2) says anything
+about circularity: both are structural/QC controls, not provenance ones. A feature
+axis built, even partially, from the same curated resource a label set comes from
+needs the presence-leakage or provenance controls above, or the informal check
+(`references/feature-axes.md`'s Circularity section) -- read what an axis is
+actually built from before adding it, since nothing here stops a plain CLI config
+from pairing a circular axis with its label source silently.

@@ -32,52 +32,45 @@ or building the gene index (`gene-index`).
 ## 2. Preflight
 
 1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
-2. Checkout and image as in `hpc-hail-job` (commit, digest, run notes).
-3. One identifier space for the cohort table, every feature axis and the labels:
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: the cohort table, the gene index and the raw ClinGen/HGNC files are readable, and the output location is writable, from compute nodes -- under `$HVANTK_WORK` or similar, never home.
+5. One identifier space for the cohort table, every feature axis and the labels:
    `hvantk rerank` does no identifier mapping at all -- a cohort keyed by Ensembl
    `gene_id`, a feature axis keyed by HGNC symbol and a label file of symbols never
    join. Decide the space now (symbols, if `--blocks` is used -- it matches HGNC
    approved symbols only) and map everything into it before writing the config.
    `references/inputs-and-identifiers.md`.
-4. The label set's definition: source (ClinGen, GenCC, or a file you already have),
+6. The label set's definition: source (ClinGen, GenCC, or a file you already have),
    minimum classification, and which groups -- decided and written down now, not
    improvised mid-run. A label set built from a curated disease database scored
    against that same database's own labels is circular; `references/feature-axes.md`
    and `references/audit-and-leakage.md` say where that line is.
-5. The universe: which genes will actually be ranked. It is whatever the feature
+7. The universe: which genes will actually be ranked. It is whatever the feature
    tables cover (their outer join), so decide it by choosing what goes into the
    feature tables -- restricting the cohort table or the label file does not shrink
    the universe by itself.
-6. The feature axes: at least one, each a gene-keyed table with no identifier
+8. The feature axes: at least one, each a gene-keyed table with no identifier
    collisions across axes (`references/feature-axes.md`); chosen for no circularity
    against the label source (`references/audit-and-leakage.md`).
 
 ## 3. Procedure
 
-1. **Labels**, as a job each: build the gene-disease table, extract a gene-set
-   collection from it, then flatten to a flat symbol list.
+1. **Download the raw files, on the login node, through the image** (compute nodes
+   have no egress):
    ```bash
-   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
-     --name <run>-clingen --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
-     hvantk reprocess clingen:gene-disease --raw-dir "$HVANTK_WORK/raw/clingen" \
-       --output "$HVANTK_WORK/<run>/clingen.ht" --skip-download --no-check-drift
-   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
-     --name <run>-geneset --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
-     hvantk genesets clingen --ht "$HVANTK_WORK/<run>/clingen.ht" \
-       --min-classification Moderate -o "$HVANTK_WORK/<run>/labels.json"
-   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
-     --name <run>-labels --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
-     python "$HVANTK_REPO/skills/rerank-evaluate/templates/prepare-rerank-inputs.py" labels \
-       --geneset "$HVANTK_WORK/<run>/labels.json" \
-       --restrict-to <the universe's own symbol table> --restrict-column symbol \
-       --out "$HVANTK_WORK/<run>/labels.txt"
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
+     hvantk download hgnc --output "$HVANTK_WORK/raw/hgnc/hgnc_complete_set.txt"
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
+     hvantk download clingen --output-dir "$HVANTK_WORK/raw/clingen"
    ```
-   `--min-classification` is "this level or stronger" (`Moderate` means Moderate,
-   Strong or Definitive); omit `--group` to union every ClinGen GCEP group, i.e. any
-   disease, or pass one or more `--group` names to narrow it. `genesets gencc` is the
-   GenCC equivalent (`--group-by submitter`). Restrict labels to the universe now, not
-   by lowering `min_label_coverage` later (Traps).
-2. **The cohort table, mapped into symbol space**, as a job:
+   `download hgnc` exits 1 if `--output` already exists (`Use --overwrite to replace
+   existing file`) -- skip it if the file is already there, rather than retrying;
+   `download clingen` writes a dated file per run and does not refuse an existing
+   directory.
+2. **The cohort table, mapped into symbol space**, as a job -- this decides the
+   universe, so it comes before labels and before the feature axes that will be
+   measured against it:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-cohort --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
@@ -87,11 +80,12 @@ or building the gene index (`gene-index`).
        --manifest-in <cohort.yaml> --manifest-out "$HVANTK_WORK/<run>/cohort_symbols.yaml"
    ```
    This adds a `symbol` column (via the gene index's own `hgnc_id`, mapped to an
-   approved symbol through the HGNC TSV), drops rows with no approved symbol or whose
-   symbol is shared by more than one gene id, and reports both counts. With
+   approved symbol through the HGNC TSV), sorts by it, and drops rows with no
+   approved symbol or whose symbol is shared by more than one gene id (reported, and
+   refused outright below `--min-mapping-rate`, default 0.9). With
    `--manifest-in`/`--manifest-out` it also writes a rerank-ready manifest pointing at
-   the new table, carrying over the original's `prior` and `cohort_axes` verbatim and
-   setting `key`/`key_column` to `symbol`.
+   the new table with an ABSOLUTE `table:` path, carrying over the original's `prior`
+   and `cohort_axes` verbatim and setting `key`/`key_column` to `symbol`.
 3. **Feature axes**, one TSV per axis, each as a job:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
@@ -106,23 +100,50 @@ or building the gene index (`gene-index`).
    and expression axes); `--restrict-to` is what makes the universe equal the cohort's
    tested genes here -- drop it to rank the whole gene index instead. Every axis's
    feature columns must have globally unique names (`references/feature-axes.md`).
-4. **The config.** Exactly `name`, `cohort`, `features` (a list of `{name, path}`),
-   `labels` (`{path}`), and optionally `min_label_coverage` -- no `prior:` key, no
-   other key. `cohort` points at the symbol-keyed manifest from step 2; `features`
-   lists each axis TSV from step 3 under the name used in `--out`'s basename.
-5. **Run**, as a job:
+4. **Labels**, as a job each: build the gene-disease table, extract a gene-set
+   collection from it, then flatten to a flat symbol list restricted to the universe
+   step 2 fixed.
+   ```bash
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
+     --name <run>-clingen --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
+     hvantk reprocess clingen:gene-disease --raw-dir "$HVANTK_WORK/raw/clingen" \
+       --output "$HVANTK_WORK/<run>/clingen.ht" --skip-download --no-check-drift
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
+     --name <run>-geneset --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+     hvantk genesets clingen --ht "$HVANTK_WORK/<run>/clingen.ht" \
+       --min-classification Moderate -o "$HVANTK_WORK/<run>/labels.json"
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
+     --name <run>-labels --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+     python "$HVANTK_REPO/skills/rerank-evaluate/templates/prepare-rerank-inputs.py" labels \
+       --geneset "$HVANTK_WORK/<run>/labels.json" \
+       --restrict-to "$HVANTK_WORK/<run>/cohort_symbols.tsv" --restrict-column symbol \
+       --out "$HVANTK_WORK/<run>/labels.txt"
+   ```
+   `--min-classification` is "this level or stronger" (`Moderate` means Moderate,
+   Strong or Definitive); omit `--group` to union every ClinGen GCEP group, i.e. any
+   disease, or pass one or more `--group` names to narrow it. `genesets gencc` is the
+   GenCC equivalent (`--group-by submitter`). Restrict labels to the universe now, not
+   by lowering `min_label_coverage` later (Traps).
+5. **The config.** Exactly `name`, `cohort`, `features` (a list of `{name, path}`),
+   `labels` (`{path}`), and optionally `min_label_coverage` (never below 0.5 -- Traps)
+   -- no `prior:` key, no other key. `cohort` points at the symbol-keyed manifest from
+   step 2; `features` lists each axis TSV from step 3 under the name used in
+   `--out`'s basename.
+6. **Run**, as a job:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-rerank --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
      hvantk rerank -c "$HVANTK_WORK/<run>/config.yaml" -o "$HVANTK_WORK/<run>/ranked.tsv" \
        --blocks <hgnc_complete_set.txt> --seed 42
    ```
-   `--blocks` switches cross-validation to paralogue-blocked folds; it is required by
-   this skill's own measurement, not optional. A cohort whose declared axes include
-   `n_case_var`, `conc` and `driver_af` (the architecture axis step 2 carries over)
-   auto-wires the advisory `CaseControlArchitectureAudit` -- there is no `audit:`
-   config key.
-6. **Evaluate**, as a job:
+   `--blocks` switches cross-validation to paralogue-blocked folds: an HGNC-symbol
+   universe can always be blocked, and an unblocked AUC on a gene universe that
+   includes paralogue families overstates how well the model would generalise to a
+   gene it has never seen a relative of (`references/inputs-and-identifiers.md`). A
+   cohort whose declared axes include `n_case_var`, `conc` and `driver_af` (the
+   architecture axis step 2 carries over) auto-wires the advisory
+   `CaseControlArchitectureAudit` -- there is no `audit:` config key.
+7. **Evaluate**, as a job:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-eval --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
@@ -146,29 +167,64 @@ wall time.
 
 - `label/feature join coverage too low: only a/b (p%) ...`. Cause: the labels are in
   another identifier space than the features, or name genes outside the ranked
-  universe. Fix: restrict the label file to the universe (step 1's `--restrict-to`);
-  never lower `min_label_coverage` to get past it -- that hides the mismatch rather
-  than fixing it.
+  universe -- note that `b` here is the FULL label count, so a label outside the
+  universe still counts against coverage, it is not simply ignored
+  (`references/inputs-and-identifiers.md`). Fix: restrict the label file to the
+  universe (step 4's `--restrict-to`); never lower `min_label_coverage` to get past
+  it -- that hides the mismatch rather than fixing it.
 - A cohort keyed by Ensembl `gene_id` scored against symbol-keyed features (or the
   reverse). Cause: `hvantk rerank` does no identifier mapping at all. Fix: map the
   cohort table to the feature axes' space first (step 2), before writing the config.
-- `Blocks: ... 0/... genes matched` or a `DominantBlockError`/`ValueError` from
-  `--blocks`. Cause: the ranked units are not HGNC approved symbols (`blocks.py`
-  matches the approved `symbol` column only -- not aliases, not Ensembl ids). Fix:
-  map to symbols before running; `references/inputs-and-identifiers.md`.
-- `too few examples for 5-fold OOF: ...`. Cause: fewer than `folds` (5) positive or
-  negative units in the universe. Fix: a broader label set, a bigger universe, or
-  fewer folds -- not a smaller `min_label_coverage`.
-- The audit silently not running (no `Audit:` line in the log). Cause: the cohort
-  manifest's declared axis columns do not cover all of `n_case_var`, `conc` and
-  `driver_af` -- a near-miss axis (e.g. one named `architecture` with only two of the
-  three) falls back to `NoAudit` with a logged warning, not an error. Fix: carry the
-  original cohort's architecture axis through step 2 unchanged
-  (`references/audit-and-leakage.md`).
+- `ValueError: none of the N gene(s) in this universe appear in the gene-group
+  table`, raised by `--blocks` before any `Blocks:` line ever prints. Cause: the
+  ranked units are not HGNC approved symbols (`load_gene_groups` matches the
+  approved `symbol` column only -- not aliases, not Ensembl ids). Fix: map to
+  symbols before running; `references/inputs-and-identifiers.md`.
+- A logged warning `gene-group table matched only k/N genes (X%) in this universe`
+  (below 50%), with the run otherwise completing. Cause: the same id-space mismatch
+  as above, just not total -- the unmatched genes became unconstrained singletons,
+  which quietly degrades "blocked" toward unblocked. Fix: the same mapping as above;
+  a near-100% match rate is the expectation for an HGNC-symbol universe.
+- `DominantBlockError: the largest paralogue block ... holds .../... (...%), over
+  the ... ceiling`. Cause: one gene family exceeds `--max-block-frac` (default 0.1)
+  of the universe -- plausible on a SMALL universe, where one family can easily be
+  a tenth of everything ranked, not just on a genome-wide one. Fix: raise
+  `--max-block-frac` deliberately (and say so in the run notes), or accept a smaller
+  universe is simply family-dominated.
+- A blocked-fold abort from `_grouped_splits`: `only N paralogue block(s) for 5
+  folds`, `blocked fold i has no test example`, `blocked fold i has no training
+  example at all`, or `blocked fold i has no {positive,negative} training example`.
+  Cause: the paralogue blocks split too unevenly across 5 folds for this universe's
+  size or label balance. Fix: a bigger universe or a broader label set; lowering the
+  fold count below 5 is Python-API-only (`Config.folds` -- there is no `folds:` key
+  in a CLI config.yaml at all).
+- `too few examples for 5-fold OOF: ...`. Cause: fewer than 5 positive or negative
+  units in the universe. Fix: a broader label set or a bigger universe (through the
+  CLI); a smaller fold count is Python-API-only, same as above -- never a smaller
+  `min_label_coverage`.
+- `Audit: 0 gene(s) FLAGGED for review ... Reasons: {}` when you expected the
+  architecture audit to flag something. Cause: the `Audit:` line always prints,
+  whether or not the real audit ran -- it reads 0/{} just the same whether
+  `NoAudit` is active (the cohort manifest's declared axis columns do not cover all
+  of `n_case_var`, `conc` and `driver_af`) or the real audit ran and genuinely found
+  nothing to flag. A near-miss axis (e.g. one named `architecture` with only two of
+  the three columns) logs a warning at build time, which is easy to miss outside
+  `-v`. Fix: carry the original cohort's architecture axis through step 2 unchanged
+  (`references/audit-and-leakage.md`), and check the manifest's `cohort_axes`
+  directly if in doubt, rather than reading silence off the console.
 - Duplicate symbols after mapping. Cause: two gene ids map to the same approved
   symbol. Fix: `prepare-rerank-inputs.py` drops both sides of a shared symbol and
-  reports the count; the cohort loader refuses a table with more than one row per
-  gene key outright (`duplicate row(s) for gene key(s) ...`) if any slipped through.
+  refuses outright (exit 1) if that -- or any other unmapped-symbol reason --
+  pushes the mapped fraction below `--min-mapping-rate` (default 0.9); the cohort
+  loader also refuses a table with more than one row per gene key outright
+  (`duplicate row(s) for gene key(s) ...`) if any slipped through regardless.
+- Every `prior_stat` empty, with `hvantk rerank` otherwise completing normally (no
+  error). Cause: the cohort table's key space differs from the feature axes' (e.g.
+  mapped into symbols inconsistently, or not mapped at all on one side) -- the left
+  join onto the universe then matches nothing. Fix: map both through the SAME
+  `prepare-rerank-inputs.py` call chain so they agree by construction; its
+  `--min-mapping-rate` floor (step 2) is what catches a wholesale mismatch before
+  it ever reaches `rerank`.
 - `--n-perm` with one feature axis: rejected before any work starts (the CLI checks
   `len(features) >= 2`) -- the first axis is always the ablation baseline, so a
   one-axis config has nothing left to search a null over.
@@ -177,11 +233,20 @@ wall time.
 - A leftover `prior:` key in the config. Cause: a config written before the
   cohort-manifest migration. Fix: delete it -- the prior now lives entirely in the
   cohort manifest's own `prior:` block, referenced via `cohort:`.
-- The console's overall credibility numbers not matching a column of the per-axis
-  ablation table. Cause: the ablation's per-axis AUCs are UNCALIBRATED subset fits
-  (baseline alone vs. baseline+axis), a different quantity from the full model's
-  calibrated, out-of-fold `score` column. Fix: compute the overall AUC from the ranked
-  table (`roc_auc_score(y, score)`), never from the ablation table.
+- A cohort manifest's `table:` not found, or resolving to someone else's file.
+  Cause: `table:` is resolved against the READING process's current working
+  directory, never the manifest file's own location -- and a Slurm job's working
+  directory is its log directory, never wherever the manifest and its table happen
+  to sit. Fix: always write an ABSOLUTE `table:` path (`prepare-rerank-inputs.py
+  cohort --manifest-out` already refuses a relative `--out`, for the same reason).
+- A computed AUC (`roc_auc_score(y, score)` over the ranked table) differing from
+  the numbers in the console's per-axis ablation table. Cause: the ablation's
+  per-axis AUCs are UNCALIBRATED subset fits (baseline alone vs. baseline+axis), a
+  different quantity from the full model's calibrated, out-of-fold `score` column
+  -- and the `Credibility: ROBUST=a / INTERMEDIATE=b` line is a count of genes in
+  two tiers, not an AUC at all, so it is not comparable to either. Fix: compute the
+  overall AUC from the ranked table only; there is no printed overall-AUC line to
+  compare against (`evaluate-ranking.py` computes it).
 - A circular axis quietly inflating AUC (built from the same curated database the
   labels come from). `references/audit-and-leakage.md`.
 
@@ -192,8 +257,9 @@ wall time.
    exists.
 2. `ranked.tsv` carries exactly `gene, prior_stat, score, score_percentile, tier,
    verdict, flag, flag_reason, y`; every label-positive gene restricted into the
-   universe is a `y = 1` row; `roc_auc_score(y, score)` reproduces the run's own
-   console AUC (there is no printed overall-AUC line -- compute it from the table).
+   universe is a `y = 1` row. There is no printed overall-AUC line on the console
+   at all (Traps) -- `evaluate-ranking.py`'s own `auc` (`roc_auc_score(y, score)`
+   over the ranked table) is the number to read and to copy into the run notes.
 3. The console's `Audit: N gene(s) FLAGGED ... Reasons: {...}` matches the table's own
    `flag`/`flag_reason` counts; `Blocks: ... digest <12 hex>` names how many genes
    matched the gene-group table (most of the universe, for an HGNC-approved-symbol
@@ -202,4 +268,4 @@ wall time.
    the positive count in the top decile, tier and verdict counts, flag counts by
    reason, and `ranked_sha256`.
 5. Run notes carry `commit:`, `container:`, one `job:` line per job submitted, and
-   `auc: <value>` from step 6's receipt.
+   `auc: <value>` from step 7's receipt.

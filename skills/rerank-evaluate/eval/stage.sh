@@ -68,18 +68,32 @@ sys.exit(1)
 echo "using cohort-attach-burden control: $PICK"
 
 cp "$PICK/pos/gene_burden.tsv" "$STAGE/cohort/gene_burden.tsv"
-# The upstream manifest's `table` field names wherever ITS control wrote the burden
-# TSV; rewrite it to the relative name this stage keeps both files under, so a config
-# built from $STAGE/cohort/cohort.yaml with $STAGE/cohort/ as the working directory
-# resolves it correctly. Only the `table:` line changes -- name, key, key_column,
-# prior and cohort_axes (the architecture audit's columns) are carried verbatim.
-sed -E 's/^table:.*/table: gene_burden.tsv/' "$PICK/pos/cohort.yaml" > "$STAGE/cohort/cohort.yaml"
+# The upstream manifest's `table:` field names wherever ITS control wrote the burden
+# TSV (an absolute path there too). Rewrite it to THIS stage's own absolute copy --
+# hvantk resolves a manifest's `table:` against the reading process's working
+# directory, never the manifest file's own location (hvantk/algorithms/cohort/
+# frame.py), and a Slurm job's working directory is its log directory, so a bare
+# filename or a path relative to $STAGE/cohort/ would not resolve inside a job
+# at all. `|` as the sed delimiter, not `/`, since the replacement is a path. Only
+# the `table:` line changes -- name, key, key_column, prior and cohort_axes (the
+# architecture audit's columns) are carried verbatim.
+sed -E "s|^table:.*|table: $STAGE/cohort/gene_burden.tsv|" "$PICK/pos/cohort.yaml" > "$STAGE/cohort/cohort.yaml"
 cp "$PICK/pos/receipt.json" "$STAGE/upstream/receipt.json"
+[[ -s "$CAB/upstream/gene-index.receipt.json" ]] || {
+  echo "ERROR: $CAB/upstream/gene-index.receipt.json not found; run skills/cohort-attach-burden/eval/stage.sh first" >&2
+  exit 1
+}
+cp "$CAB/upstream/gene-index.receipt.json" "$STAGE/upstream/gene-index.receipt.json"
 
 [[ -e "$CAB/gene-index.ht/_SUCCESS" ]] || {
   echo "ERROR: $CAB/gene-index.ht not found (no _SUCCESS marker); run skills/cohort-attach-burden/eval/stage.sh first" >&2
   exit 1
 }
+# --delete, unconditionally run every time (not skip-if-exists), so a later
+# cohort-attach-burden re-stage (a new upstream receipt) is picked up here too --
+# this is what "refresh the copies when an upstream receipt changes" means in
+# practice: there is nothing to compare against beforehand, so this just always
+# re-syncs, which is idempotent and cheap when nothing changed.
 rsync -a --delete "$CAB/gene-index.ht/" "$STAGE/gene-index.ht/"
 
 # --- raw downloads, through the image, each plugin's own downloader ---
@@ -101,6 +115,7 @@ fi
 validate_raw_dir "$STAGE/raw/hgnc" "hgnc_complete_set.txt" hgnc
 
 ( cd "$STAGE" && sha256sum raw/clingen/*.csv raw/hgnc/hgnc_complete_set.txt \
-    cohort/gene_burden.tsv cohort/cohort.yaml upstream/receipt.json > staged.sha256 )
+    cohort/gene_burden.tsv cohort/cohort.yaml upstream/receipt.json \
+    upstream/gene-index.receipt.json > staged.sha256 )
 cat "$STAGE/staged.sha256"
 echo "staged under $STAGE (gene index copied from $CAB/gene-index.ht)"
