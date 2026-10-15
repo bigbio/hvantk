@@ -3,8 +3,9 @@
 # own table, the 1000 Genomes high-coverage chr22 VCF (reusing ancestry-inference's
 # staged copy when it is already complete, rather than downloading a multi-GB file
 # twice on one cluster), and the synthetic case/control cohort MatrixTable built from
-# both. Login-node work except for the one Hail prep job. Idempotent: skips what
-# already exists.
+# both. Login-node work except for the one Hail prep job. The gene index is always
+# re-synced from the newest passing upstream control (cheap); the cohort MatrixTable
+# is only rebuilt when that upstream changed, was incomplete, or is itself missing.
 #
 #   HVANTK_SITE_PROFILE=... bash skills/cohort-attach-burden/eval/stage.sh
 set -euo pipefail
@@ -12,7 +13,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 bash "$HERE/../../_site/check-site-profile.sh" >/dev/null
 # shellcheck disable=SC1090
 source "$HVANTK_SITE_PROFILE"
-R="$(cd "$HVANTK_REPO" && pwd -P)"; REL="${HERE#"$R"/}"
+R="$(cd "$HVANTK_REPO" && pwd -P)"
+[[ "$HERE" == "$R"/* ]] || { echo "ERROR: this eval folder ($HERE) is not inside HVANTK_REPO ($R)" >&2; exit 1; }
+REL="${HERE#"$R"/}"
 SUBMIT="$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh"
 PREP="$HVANTK_REPO/$REL/prepare_cohort.py"
 
@@ -49,10 +52,25 @@ sys.stdout.write(best)
   exit 1
 }
 echo "using gene-index control: $GI_POS"
-if [[ ! -e "$STAGE/gene-index.ht/_SUCCESS" ]]; then
-  rsync -a "$GI_POS/gene-index.ht/" "$STAGE/gene-index.ht/"
-fi
+# Detect a changed (re-baselined) or previously incomplete upstream BEFORE
+# overwriting the stage's own copy of the receipt, so the comparison is against what
+# was actually staged last time, not against what we are about to replace it with.
+GI_WAS_INCOMPLETE=1
+[[ -e "$STAGE/gene-index.ht/_SUCCESS" ]] && GI_WAS_INCOMPLETE=0
+OLD_RECEIPT_SHA=""
+[[ -f "$STAGE/upstream/gene-index.receipt.json" ]] \
+  && OLD_RECEIPT_SHA="$(sha256sum "$STAGE/upstream/gene-index.receipt.json" | cut -d' ' -f1)"
+NEW_RECEIPT_SHA="$(sha256sum "$GI_POS/receipt.json" | cut -d' ' -f1)"
+
+# Always sync, never skip: --delete removes any part file or stale leftover from an
+# earlier, different upstream control so the staged copy is always exactly $GI_POS's.
+rsync -a --delete "$GI_POS/gene-index.ht/" "$STAGE/gene-index.ht/"
 cp "$GI_POS/receipt.json" "$STAGE/upstream/gene-index.receipt.json"
+
+if (( GI_WAS_INCOMPLETE )) || [[ "$OLD_RECEIPT_SHA" != "$NEW_RECEIPT_SHA" ]]; then
+  echo "upstream gene index changed (or the staged copy was incomplete); removing the stale cohort MatrixTable so it rebuilds"
+  rm -rf "$STAGE/cohort.mt" "$STAGE/cohort.summary.json"
+fi
 
 # --- 2. the 1000 Genomes high-coverage chr22 VCF and its index (the same file
 #     ancestry-inference's eval stages; reuse its copy first) ---

@@ -22,9 +22,9 @@ import sys
 from pathlib import Path
 
 
-# --- canonical digest (COMMON.md's shared convention; duplicated here, not imported,
-# --- because this staging helper and the skill's eval/check.py are graded/read
-# --- independently and must each stay self-contained) -------------------------------
+# --- canonical digest (the same convention eval/check.py uses; duplicated here, not
+# --- imported, because this staging helper and check.py are graded/read independently
+# --- and must each stay self-contained) ----------------------------------------------
 
 
 def norm(value):
@@ -116,21 +116,26 @@ def main() -> int:
     # values carry no "chr" prefix (Ensembl GTF convention --
     # hvantk/skills/ensembl_gene/structure/parse.py: chromosome is the GTF's own column
     # 1, verbatim); the 1000 Genomes high-coverage VCF's contigs do ("chr22"). Handled
-    # both ways so a differently-built gene index still matches. Pre-filtered to this
-    # VCF's own chromosome(s) and broadcast as a literal: chr22 alone has a few hundred
-    # protein-coding genes, cheap to scan per variant on the driver; collecting the
-    # whole ~20,000-gene index would not be.
+    # both ways so a differently-built gene index still matches. This VCF covers
+    # exactly one chromosome, so take it from one row rather than scanning every row
+    # for the full contig set, and filter the gene index down to that one chromosome
+    # ON THE HAIL SIDE before collecting -- collecting the whole ~20,000-gene index to
+    # the driver would not be cheap; one chromosome's worth of protein-coding genes
+    # (a few hundred) is.
     def with_chr(chrom: str) -> str:
         return chrom if chrom.startswith("chr") else "chr" + chrom
 
-    vcf_contigs = {
-        with_chr(c) for c in mt.aggregate_rows(hl.agg.collect_as_set(mt.locus.contig))
-    }
+    contig = mt.aggregate_rows(hl.agg.take(mt.locus.contig, 1))[0]
+    contig_with_chr = with_chr(contig)
+
     gi = hl.read_table(args.gene_index).select("chromosome", "gene_start", "gene_end")
-    genes = [g for g in gi.collect() if with_chr(g.chromosome) in vcf_contigs]
+    gi_chromosome_with_chr = hl.if_else(
+        gi.chromosome.startswith("chr"), gi.chromosome, "chr" + gi.chromosome
+    )
+    genes = gi.filter(gi_chromosome_with_chr == contig_with_chr).collect()
     if not genes:
         raise SystemExit(
-            f"no gene-index genes overlap this VCF's chromosome(s) {sorted(vcf_contigs)}"
+            f"no gene-index genes overlap this VCF's chromosome ({contig_with_chr})"
         )
     gene_struct_type = hl.tstruct(
         gene_id=hl.tstr, chromosome=hl.tstr, gene_start=hl.tint32, gene_end=hl.tint32
@@ -138,7 +143,8 @@ def main() -> int:
     gene_structs = [
         hl.Struct(
             gene_id=g.gene_id,
-            chromosome=with_chr(g.chromosome),
+            # Every collected gene already matched contig_with_chr above.
+            chromosome=contig_with_chr,
             gene_start=g.gene_start,
             gene_end=g.gene_end,
         )

@@ -65,6 +65,16 @@ def main() -> int:
         missing.append(
             f"arm column {args.arm_col!r} not found in column fields {col_fields}"
         )
+    elif mt[args.arm_col].dtype != hl.tbool:
+        # Caught here, before any aggregation touches it: hl.agg.count_where (used
+        # below to compute the per-arm counts) raises a raw Hail TypeError on a
+        # non-boolean condition ("count_where: parameter 'condition': expected
+        # expression of type bool, found ..."), which is a confusing way to learn the
+        # arm column is the wrong type.
+        missing.append(
+            f"arm column {args.arm_col!r} has type {mt[args.arm_col].dtype}, "
+            "expected bool"
+        )
     if args.score_field and args.score_field not in row_fields:
         missing.append(
             f"score field {args.score_field!r} not found in row fields {row_fields}"
@@ -89,20 +99,30 @@ def main() -> int:
     n_undef_gene = mt.filter_rows(hl.is_missing(mt[args.gene_col])).count_rows()
     print(f"rows with an undefined gene ({args.gene_col}): {n_undef_gene}")
 
-    sampled = mt.aggregate_rows(
-        hl.agg.filter(
-            hl.is_defined(mt[args.gene_col]),
-            hl.agg.take(mt[args.gene_col], _SAMPLE_GENE_IDS),
+    gene_dtype = mt[args.gene_col].dtype
+    if gene_dtype == hl.tstr:
+        sampled = mt.aggregate_rows(
+            hl.agg.filter(
+                hl.is_defined(mt[args.gene_col]),
+                hl.agg.take(mt[args.gene_col], _SAMPLE_GENE_IDS),
+            )
         )
-    )
-    n_unversioned = sum(1 for g in sampled if _ENSG_UNVERSIONED.match(g))
-    n_versioned = sum(1 for g in sampled if _ENSG_VERSIONED.match(g))
-    n_symbol_like = len(sampled) - n_unversioned - n_versioned
-    print(
-        f"gene id shape (of {len(sampled)} sampled values): "
-        f"unversioned ENSG={n_unversioned} versioned ENSG={n_versioned} "
-        f"symbol-like={n_symbol_like}"
-    )
+        n_unversioned = sum(1 for g in sampled if _ENSG_UNVERSIONED.match(g))
+        n_versioned = sum(1 for g in sampled if _ENSG_VERSIONED.match(g))
+        n_symbol_like = len(sampled) - n_unversioned - n_versioned
+        print(
+            f"gene id shape (of {len(sampled)} sampled values): "
+            f"unversioned ENSG={n_unversioned} versioned ENSG={n_versioned} "
+            f"symbol-like={n_symbol_like}"
+        )
+    else:
+        # A non-string gene field (reported here, never crashed on) is still a valid
+        # MatrixTable field to carry the key in; the regex shape check above only
+        # makes sense for str, so it is skipped rather than raising on .match().
+        print(
+            f"gene id shape: {args.gene_col!r} has non-string type {gene_dtype}; "
+            "shape check skipped"
+        )
 
     arm = mt.aggregate_cols(
         hl.struct(

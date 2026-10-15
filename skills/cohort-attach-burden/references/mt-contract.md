@@ -44,10 +44,12 @@ gene[,route] group qualifies, by one of four rules:
 | `homs_chet` | either `chet` or at least one homozygous-alt genotype (the union) |
 
 The per-*variant* reductions below (`n_case_var`, `conc`, `driver_af`) use a related
-but not identical per-variant carrier rule: `het`/`chet` both count only a
-heterozygous genotype as a variant-level carrier; `hom`/`homs_chet` also count a
-homozygous-alt genotype. (`het` vs `chet` differ only in the *gene-level* qualifying
-rule above, not in which genotypes count as carriers at the variant level.)
+but not identical per-variant carrier rule (`hvantk/algorithms/burden/aggregate.py`'s
+`_carrier_variant_expr`): `het` and `chet` both count only a heterozygous genotype as
+a variant-level carrier; `hom` counts **only** a homozygous-alt genotype (not het);
+`homs_chet` is the one mode that counts either (het **or** hom-alt). (`het` vs `chet`
+differ only in the *gene-level* qualifying rule above, not in which genotypes count
+as carriers at the variant level.)
 
 ## What burden computes
 

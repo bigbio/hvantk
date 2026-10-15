@@ -14,16 +14,19 @@ spine's ``SPINE_FIELDS``, the burden manifest's ``ARCHITECTURE_AXIS_COLUMNS``, p
 checked as a floor (extra fields allowed, same spirit as the rest of this batch).
 
 M4 (the output exists and passes its contract):
-  * ``gene_burden.tsv`` has every expected column (``BURDEN_COLUMNS`` below) and at
-    least one row.
-  * ``cohort.yaml`` loads with THIS checkout's own ``load_cohort``; its declared
-    ``table`` resolves (absolute as written, else relative to the manifest's own
-    directory -- see ``resolve_table_path``; this is the CHECK's own resolution rule
-    for finding the file, not hvantk's own: ``hvantk cohort validate``/``attach`` take
-    ``table`` verbatim, relative to the process's working directory, never relative to
-    the manifest file -- see ``references/cohort-manifest.md``) to that same TSV;
-    ``key`` is ``gene_id``; the prior is ``minp``/``lower_is_better``; some axis holds
-    all three architecture columns.
+  * ``gene_burden.tsv`` has every expected column (``BURDEN_COLUMNS`` below, or
+    ``reference.json``'s own stored ``burden.columns`` once one exists -- see
+    ``grade_burden``) and at least one row.
+  * ``cohort.yaml`` loads with THIS checkout's own ``load_cohort``; ``name`` is
+    ``eval-cohort``; ``key`` is ``gene_id``; the prior is ``minp``/``lower_is_better``;
+    an axis literally named ``architecture`` holds all three architecture columns
+    (``manifest.axis("architecture")``, not just any axis -- see
+    ``references/cohort-manifest.md`` on how the real audit-wiring check differs);
+    ``table`` is an absolute path (a relative one is resolved against whatever
+    directory the reading process happens to run from, never the manifest's own --
+    see ``references/cohort-manifest.md``) and resolves to that same TSV (checked here
+    via ``resolve_table_path``, this check's own forgiving resolution rule, only to
+    confirm the two outputs name the same file; it is not hvantk's own rule).
   * ``attached.ht`` has ``_SUCCESS``, key ``["gene_id"]``, every contract field present
     with the reference's own stored type (a floor); its report JSON exists with
     ``n_genes`` and ``n_tested``.
@@ -102,7 +105,8 @@ _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 
 
-# --- canonical digest (COMMON.md's shared convention) -------------------------------
+# --- canonical digest (the shared convention used by every eval/check.py and staging
+# --- helper in this batch) -----------------------------------------------------------
 
 
 def norm(value):
@@ -272,9 +276,9 @@ def read_burden(path: Path) -> list:
         return list(csv.DictReader(fh, delimiter="\t"))
 
 
-def normalized_burden_row(row: dict) -> dict:
+def normalized_burden_row(row: dict, columns=BURDEN_COLUMNS) -> dict:
     out = {}
-    for col in BURDEN_COLUMNS:
+    for col in columns:
         v = row.get(col, "")
         if col in BURDEN_NUMERIC_COLUMNS:
             out[col] = norm(float(v)) if v not in ("", None) else None
@@ -291,14 +295,22 @@ def grade_burden(out_dir: Path, reference) -> tuple:
     rows = read_burden(path)
     details["columns"] = list(rows[0].keys()) if rows else []
     details["n_rows"] = len(rows)
+    # The code-fixed contract, never the reference: a column hvantk's burden op stops
+    # writing must fail M4 for every run, not drift unnoticed because the reference
+    # happened to be refreshed from a build that still had it.
     details["columns_ok"] = all(c in details["columns"] for c in BURDEN_COLUMNS)
     m4 = bool(details["columns_ok"] and details["n_rows"] > 0)
     if not m4 or reference is None:
         return m4, details
-    normalized = [normalized_burden_row(r) for r in rows]
+    ref_burden = reference.get("burden", {})
+    # M5's exact digest is computed over exactly the columns reference.json itself
+    # recorded at --write-reference time (``burden.columns``), so a reference
+    # round-trip never depends on BURDEN_COLUMNS (the code-fixed M4 contract above)
+    # staying byte-identical to what the reference happens to have stored.
+    ref_columns = ref_burden.get("columns") or list(BURDEN_COLUMNS)
+    normalized = [normalized_burden_row(r, ref_columns) for r in rows]
     digest = rows_digest(normalized)
     details["rows_sha256"] = digest
-    ref_burden = reference.get("burden", {})
     details["row_count_matches"] = details["n_rows"] == ref_burden.get("row_count")
     details["rows_digest_matches"] = digest == ref_burden.get("rows_sha256")
     details["burden_ok"] = bool(
@@ -340,26 +352,51 @@ def grade_cohort(out_dir: Path) -> tuple:
         details["error"] = f"{type(exc).__name__}: {exc}"
         return False, details
 
+    details["name"] = manifest.name
+    details["name_ok"] = manifest.name == "eval-cohort"
+
+    details["table"] = manifest.table
+    # An absolute path is unambiguous regardless of which directory validate/attach/
+    # this check happen to run from; see resolve_table_path and
+    # references/cohort-manifest.md for why a relative one is a trap.
+    details["table_absolute"] = Path(manifest.table).is_absolute()
     resolved_table = resolve_table_path(manifest.table, path)
-    details["key"] = manifest.key
-    details["key_ok"] = manifest.key == "gene_id"
     details["table_ok"] = (
-        resolved_table.is_file()
+        details["table_absolute"]
+        and resolved_table.is_file()
         and resolved_table.resolve() == (out_dir / BURDEN_OUTPUT).resolve()
     )
+
+    details["key"] = manifest.key
+    details["key_ok"] = manifest.key == "gene_id"
+
     details["prior_column"] = manifest.prior.column
     details["prior_direction"] = manifest.prior.direction
     details["prior_ok"] = (
         manifest.prior.column == "minp"
         and manifest.prior.direction == "lower_is_better"
     )
-    axis_cols = {c for entry in manifest.cohort_axes for c in entry.columns}
-    details["axis_ok"] = set(ARCHITECTURE_AXIS_COLUMNS) <= axis_cols
+
+    # An axis literally named "architecture", not just any axis whose columns happen
+    # to be a superset of the three -- real wiring (hvantk/tools/rerank/rerank_cli.py)
+    # checks the union of EVERY axis's columns regardless of name, which is a looser
+    # condition than this task asks for; see references/cohort-manifest.md.
+    try:
+        architecture_axis = manifest.axis("architecture")
+        details["architecture_axis_columns"] = list(architecture_axis.columns)
+        details["architecture_axis_ok"] = set(ARCHITECTURE_AXIS_COLUMNS) <= set(
+            architecture_axis.columns
+        )
+    except KeyError:
+        details["architecture_axis_columns"] = None
+        details["architecture_axis_ok"] = False
+
     m4 = bool(
-        details["key_ok"]
+        details["name_ok"]
+        and details["key_ok"]
         and details["table_ok"]
         and details["prior_ok"]
-        and details["axis_ok"]
+        and details["architecture_axis_ok"]
     )
     return m4, details
 
@@ -471,7 +508,11 @@ def write_reference(args) -> None:
         raise SystemExit(1)
     rows = read_burden(out_dir / BURDEN_OUTPUT)
     normalized = [normalized_burden_row(r) for r in rows]
-    burden_ref = {"row_count": len(rows), "rows_sha256": rows_digest(normalized)}
+    burden_ref = {
+        "row_count": len(rows),
+        "columns": list(BURDEN_COLUMNS),
+        "rows_sha256": rows_digest(normalized),
+    }
 
     cohort_m4, cohort_details = grade_cohort(out_dir)
     if not cohort_m4:

@@ -33,14 +33,14 @@ REFERENCE="$HVANTK_REPO/$REL/reference.json"
 
 EVAL_ROOT="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}"
 STAGE="$EVAL_ROOT/cohort-attach-burden"
-FILE="CCDG_14151_B01_GRM_WGS_2020-08-05_chr22.filtered.shapeit2-duohmm-phased.vcf.gz"
 [[ -s "$STAGE/staged.sha256" ]] || { echo "ERROR: not staged; run eval/stage.sh first" >&2; exit 1; }
 ( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) \
   || { echo "ERROR: staged inputs do not match staged.sha256; delete the stage directory and run eval/stage.sh again" >&2; exit 1; }
 # sha256sum -c only checks that the files IT lists still match; it says nothing about
-# an extra file dropped into the stage directory since staging.
+# an extra file dropped into the stage directory since staging. Glob the actual files
+# (as the batch B controls do) rather than hard-coding the VCF's own name here too.
 EXPECTED_PATHS="$(cut -d' ' -f3- "$STAGE/staged.sha256" | sort)"
-ACTUAL_PATHS="$(cd "$STAGE" && printf '%s\n' "raw/$FILE" "raw/$FILE.tbi" cohort.summary.json upstream/gene-index.receipt.json | sort)"
+ACTUAL_PATHS="$(cd "$STAGE" && printf '%s\n' raw/* cohort.summary.json upstream/* | sort)"
 [[ "$EXPECTED_PATHS" == "$ACTUAL_PATHS" ]] \
   || { echo "ERROR: the stage directory no longer holds exactly the files staged.sha256 lists; delete the stale files and run eval/stage.sh again" >&2; echo "  expected: $EXPECTED_PATHS" >&2; echo "  actual:   $ACTUAL_PATHS" >&2; exit 1; }
 [[ -e "$STAGE/gene-index.ht/_SUCCESS" && -e "$STAGE/cohort.mt/_SUCCESS" ]] \
@@ -93,13 +93,29 @@ PY
 # The attach job's own click.echo'd "attach NAME: n/m genes tested -> ..." line lands
 # in the Slurm job's log file, not in submit-hail-job.sh's own stdout; the log path is
 # submit-hail-job.sh's own "log: <path>" line on STDERR (see --wait's polling block).
-attached_fraction() {  # attached_fraction <stderr-file>: prints "n/m" or exits 1
-  local log
-  log="$(grep -oE '^log: .*' "$1" | sed 's/^log: //')"
-  [[ -n "$log" && -f "$log" ]] || { echo "ERROR: could not find the job's log via submit-hail-job.sh's stderr ($1)" >&2; return 1; }
-  local line
-  line="$(grep -E '^attach .*: [0-9]+/[0-9]+ genes tested ->' "$log" | tail -1)"
-  [[ -n "$line" ]] || { echo "ERROR: 'attach NAME: n/m genes tested' line not found in $log" >&2; cat "$log" >&2; return 1; }
+# The log also carries Hail/Spark progress bars that end in \r rather than \n, so the
+# "attach ..." text is not guaranteed to start its own \n-terminated line; translate
+# every \r to \n first and match unanchored, not with a leading ^.
+attached_fraction() {  # attached_fraction <stderr-file>: prints "n/m" or exits 1,
+                        # printing the submission's own captured stderr first so a
+                        # failure here is debuggable without re-running anything.
+  local stderr_file="$1" log line
+  log="$(grep -oE '^log: .*' "$stderr_file" | sed 's/^log: //')"
+  if [[ -z "$log" || ! -f "$log" ]]; then
+    echo "ERROR: could not find the job's log via submit-hail-job.sh's stderr ($stderr_file)" >&2
+    echo "--- $stderr_file ---" >&2
+    cat "$stderr_file" >&2
+    return 1
+  fi
+  line="$(tr '\r' '\n' < "$log" | grep -E 'attach .*: [0-9]+/[0-9]+ genes tested ->' | tail -1)"
+  if [[ -z "$line" ]]; then
+    echo "ERROR: 'attach NAME: n/m genes tested' line not found in $log" >&2
+    echo "--- $stderr_file ---" >&2
+    cat "$stderr_file" >&2
+    echo "--- $log ---" >&2
+    cat "$log" >&2
+    return 1
+  fi
   echo "$line" | grep -oE '[0-9]+/[0-9]+' | head -1
 }
 

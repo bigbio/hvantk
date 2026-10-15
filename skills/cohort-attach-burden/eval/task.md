@@ -18,11 +18,19 @@ the inputs are already staged.
     cleaning needed.
   - `gene-index.ht`: the gene index to attach onto, keyed by `gene_id`.
 - Produce, under `$HVANTK_EVAL_OUT/`:
-  1. `gene_burden.tsv`: the gene-level burden test, on **heterozygous carriers**
-     (`--carrier-mode het`), with **Benjamini-Hochberg correction** (`--mtc bh`).
-  2. `cohort.yaml`: a cohort manifest for that table. `name: eval-cohort`; the gene
-     key is `gene_id`; an `architecture` axis holding `n_case_var`, `conc`,
-     `driver_af`.
+  1. `gene_burden.tsv`: the gene-level burden test, counting a sample as a carrier
+     when it has a **heterozygous** qualifying genotype, with a
+     **Benjamini-Hochberg** multiple-testing correction applied to the result.
+  2. `cohort.yaml`: a cohort manifest for that table, with:
+     - `name: eval-cohort`;
+     - the gene key in the **Ensembl gene id** space (`gene_id`);
+     - the prior statistic the ranking is built on is the burden test's own min-p
+       column, with the direction stated as "lower is better";
+     - an axis named `architecture` holding `n_case_var`, `conc`, `driver_af`;
+     - an **absolute** path for `table:` (a relative one is resolved against the
+       working directory of whatever process reads it next, not against the
+       manifest file, so it would break the moment validation or attach runs from
+       a different directory than the one it was written in).
   3. Validated (`hvantk cohort validate`).
   4. `attached.ht`: that cohort attached onto `gene-index.ht`, with its report at the
      default path (`attached.ht.report.json`).
