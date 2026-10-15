@@ -20,7 +20,7 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:joint-genotyping` | single-sample gVCFs must become a joint callset (VDS, MatrixTable, QC, cohort VCF) with the HGC pipeline, for a few samples in one job or thousands per contig |
 | `hvantk:callset-subset-export` | a sample subset of a joint callset must be delivered as a verified VCF with checksums and a manifest, by subsetting the lossless VDS, per contig for large callsets |
 | `hvantk:ancestry-inference` | samples must be assigned a continental ancestry against a labelled reference built from 1000 Genomes, with the PCA and random-forest pipeline as a job |
-| `hvantk:dataset-build-at-scale` | one or many `hvantk reprocess` datasets must be built from staged raw files as Slurm jobs — fanned out as one array job, each output verified against its plugin's committed schema and sample-row snapshots |
+| `hvantk:dataset-build-at-scale` | one or many `hvantk reprocess` datasets must be built from staged raw files as Slurm jobs — fanned out as one array job, each output verified against its plugin's committed schema contract |
 
 More skills follow the same contract and land in batches: building datasets at scale,
 drift triage, the gene index, cohort attachment and burden, re-ranking and evaluation,

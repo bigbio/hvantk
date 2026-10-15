@@ -1,7 +1,7 @@
 # Verifying a build
 
 `templates/verify-builds.py` is the one command that answers "did this build actually
-produce what the plugin promises", for one dataset or for a whole task list. Run it
+satisfy what the plugin promises", for one dataset or for a whole task list. Run it
 inside the image (it needs Hail), as a job:
 
 ```bash
@@ -11,67 +11,83 @@ source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/template
     --list "$HVANTK_WORK/out/tasks.tsv" --receipt "$HVANTK_WORK/out/verify.json"
 ```
 
+## What "satisfy" means: a contract, not equality
+
+A plugin's committed `tests/snapshots/schema.json` is a floor, not a target to match
+exactly: it is generated from a tiny committed test fixture
+(`hvantk/skills/<provider>/tests/testdata/`), and a full build from the real upstream
+file routinely carries more columns than the fixture did. GenCC's upstream file has 31
+columns; its committed snapshot declares 13 row fields; a full build legitimately has
+18 more fields than the snapshot lists. `verify-builds.py` therefore checks that every
+field the snapshot declares is present in the built schema with the same type
+(`schema_contract_ok`) and separately lists whatever extra fields the build has
+(`extra_fields`) -- an extra field is not a failure, a missing or retyped one is.
+
+The committed `tests/snapshots/sample_rows.json`'s *keys* are informational only
+(`snapshot_keys_present`), never a pass/fail condition: some plugins' fixtures are
+hand-authored rather than sub-sampled from a real file, so their keys can be
+identifiers that do not exist anywhere upstream. ClinGen's fixture invents its own
+MONDO ids for exactly this reason -- the first time this skill's own eval ran on a
+cluster, grading against those invented keys crashed outright with a `KeyError`,
+which is why this is informational rather than a failure: a missing key here tells you
+the fixture and the real file disagree on identifiers, not that the build is wrong.
+
 ## What the receipt holds
 
-One line on stdout per dataset (`OK`/`FAIL`, row count, `schema_id`, whether the schema
-matched, whether every committed sample key was present), and a receipt JSON with one
-entry per dataset under `"datasets"`:
+One line on stdout per dataset (`OK`/`FAIL`, row count, `schema_id`, whether it matches
+the registry's, whether the schema contract holds, the extra fields, whether the
+snapshot's sample keys were found), and a receipt JSON with one entry per dataset under
+`"datasets"`, keyed `"<dataset>=<output>"` (so verifying the same dataset's output
+twice, e.g. before and after a rebuild, does not collide):
 
 | field | meaning |
 | --- | --- |
 | `output` | the path verified |
-| `success_marker` | whether `_SUCCESS` (or, for a single-file artifact, the file itself) exists |
+| `success_marker` | whether `_SUCCESS` (or, for a single-file `.h5ad`/`.parquet` artifact, the file itself) exists |
 | `sidecar` | whether `<output>.provenance.json` exists |
 | `schema_id` | the sidecar's own `schema_id` |
+| `schema_id_matches` | whether it equals the registry's `schema_id` for this dataset |
 | `provenance_sha256` | SHA-256 of the sidecar's bytes |
-| `schema_matches` | the output's live schema equals the plugin's committed `schema_snapshot` |
-| `row_count` | rows (Hail) or `n_obs` (AnnData) |
-| `sample_keys_present` | every key in the plugin's committed `row_snapshot` resolved to a row |
-| `sample_rows` | the collected rows for those keys (values, not just presence) |
+| `schema_contract_ok` | every field the committed snapshot declares is present with the same type |
+| `missing_fields`, `type_mismatches`, `extra_fields` | the contract check's detail |
+| `row_count` | rows (Hail), `n_obs` (AnnData) or row count (a parquet table) |
+| `snapshot_keys_present` | `{"found": n, "total": m}` for the committed `row_snapshot`'s keys -- informational, see above |
 
-The command exits 1 if any dataset is missing, lacks `_SUCCESS`, fails its schema
-comparison, or is missing a committed key. A verdict about one run is bound to its
-`provenance_sha256`: if you rebuild the same dataset later and the sidecar's hash
-changes, this receipt is about the earlier build, not the one on disk now.
-
-## How the snapshots relate to a full build
-
-A plugin's `tests/snapshots/schema.json` and `tests/snapshots/sample_rows.json` are
-generated from its tiny committed test fixture (`hvantk/skills/<provider>/tests/testdata/`),
-not from a full upstream file. The **schema** is stable between the fixture and a full
-build — the builder's column renaming and typing do not depend on row count — so
-`schema_matches` is a real, exact check. The **sample-row values** the snapshot carries
-can differ for a full build of the same keys: dates roll forward, an array field that
-was short in the fixture may be wider in the real file. That is why `verify-builds.py`
-only checks that the committed sample *keys* are present (`sample_keys_present`), and
-reports the collected row *values* in the receipt for you to look at, rather than
-asserting they equal the fixture snapshot's values. A key that is missing after a
-rebuild is still a real problem: it means the upstream file no longer carries a row the
-plugin's own tests depend on, or the builder's renaming silently dropped it (HGNC logs a
-missing rename at WARNING and keeps going unless `strict_fields=true` — exit 0 is not
-proof the schema didn't change).
+One dataset's exception never costs the others' results: each is wrapped in its own
+try/except, so a dataset that errors still leaves a receipt entry (with an `error`
+field) and the others are still verified. The command exits 1 if any dataset's output
+is missing, lacks `_SUCCESS`/its sidecar, fails the schema contract, or has a
+`schema_id` that does not match the registry's -- never on the informational key
+check alone. A verdict about one run is bound to its `provenance_sha256`: if you
+rebuild the same dataset later and the sidecar's hash changes, this receipt is about
+the earlier build, not the one on disk now.
 
 ## Comparing two builds of the same dataset
 
 To check that a rebuild reproduces an earlier one (after an upstream refresh you expect
 to be a no-op, or after a plugin change you expect not to affect this dataset), compare
-three things, in order of how much they tell you:
+three things, in order of how much they tell you, against your OWN earlier receipt or
+build -- never against the fixture's committed `sample_rows.json`, whose values (and,
+for a hand-authored fixture, whose very identifiers) are not guaranteed to resemble a
+full build's:
 
 1. **Row count.** The cheapest check; a changed count means upstream added or removed
    rows, or a filter in the builder changed.
-2. **Sample-row values**, for the same keys, byte for byte. `verify-builds.py`'s
-   `sample_rows` in the receipt is already in a JSON-stable form
-   (`hvantk.tests._snapshot_utils.collect_sample_rows`'s output); diff two receipts'
-   `sample_rows` for the same dataset directly.
-3. **Schema.** The least likely to change day to day; a difference here is the one worth
-   treating as news rather than noise (a renamed or retyped column upstream).
+2. **The schema contract's own fields**: `extra_fields` changing between two of your
+   own builds (not relative to the snapshot, which is expected to differ) is worth
+   investigating; `missing_fields`/`type_mismatches` appearing at all is a regression.
+3. **Sample-row values**, for keys you choose yourself from the live table (the
+   snapshot's own sample keys may not even resolve, per ClinGen above).
 
 ## The provenance sidecar is what a verdict binds to
 
 `<output>.provenance.json` carries `plugin`, `dataset`, `plugin_version`,
-`source_fingerprint`, `schema_id`, `build_timestamp` and `builder_commit`. It is the
-only place that records which raw file and which commit produced a given output
-directory — not the output directory's own contents, and not its mtime. Keep the
-sidecar next to its output when you move, copy or archive a build; a verification
-receipt or a drift-triage rebuild record that cites a `provenance_sha256` is citing this
-file, not the table.
+`source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit` (always `null`
+through `reprocess` -- it is populated only when a builder is invoked directly from
+Python with a real commit to record), `parents` and `build_parameters`. It does **not**
+record the raw file's path: `source_fingerprint` is the drift probe's fingerprint (or,
+built through a job with no egress, the `probe-unavailable:source-unreachable` token --
+see the skill's Traps), not a path, and nothing else on the sidecar names one either.
+Keep the sidecar next to its output when you move, copy or archive a build; a
+verification receipt or a drift-triage rebuild record that cites a `provenance_sha256`
+is citing this file, not the table.

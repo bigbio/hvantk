@@ -1,8 +1,8 @@
 ---
 name: dataset-build-at-scale
-description: 'Use when building one or many hvantk datasets with hvantk reprocess on a Slurm cluster from staged raw files: raw-directory conventions, staging downloads on the login node, fanning independent builds out as one array job, verifying every output against its plugin''s committed schema and sample-row snapshots, and checking upstream drift before a build. Also when a build fails with "expected exactly one file matching", "has no lifecycle.download declared", an HTTP error on a compute node, or an output-extension error.'
+description: 'Use when building one or many hvantk datasets with hvantk reprocess on a Slurm cluster from staged raw files: raw-directory conventions, staging downloads on the login node, fanning independent builds out as one array job, verifying every output against its plugin''s committed schema contract, and checking upstream drift before a build. Also when a build fails with "expected exactly one file matching", "requires data you supply yourself", an HTTP error on a compute node, or an output-extension error.'
 user-invocable: true
-argument-hint: "<provider:dataset ...> [--raw-root DIR --out-root DIR --cpus N --mem-gb G --time D-HH:MM:SS]"
+argument-hint: "<provider:dataset ...> [--list tasks.tsv --cpus N --mem-gb G --time D-HH:MM:SS --max-concurrent K]"
 metadata:
   stage: annotation
   status: provisional
@@ -16,56 +16,60 @@ its section contract and its measurement contract.
 
 ## 1. Scope and outcome
 
-Building one or many `hvantk reprocess` datasets from raw files already staged on disk,
-as Slurm jobs, with every output verified against its plugin's own committed contract.
-Several independent datasets build as one array job rather than as separate
-submissions. The outcome, per dataset: the output directory (`.ht`, `.mt` or `.h5ad`)
-with `_SUCCESS` and its `.provenance.json` sidecar, a verification receipt, and run
-notes carrying the array (or single) job id.
+Building and verifying `hvantk reprocess` datasets from raw files already staged on
+disk, as Slurm jobs. The task-list and array-job machinery is overkill for exactly one
+dataset (`hpc-hail-job` alone covers that), but the raw-dir conventions and the
+verification contract below are the same whether it is one or several; the array is
+how several independent builds share one Slurm request instead of one submission each.
+The outcome, per dataset: the output (a `.ht`/`.mt` directory with `_SUCCESS`, or a
+single `.h5ad`/`.parquet` file) with its `.provenance.json` sidecar, a verification
+receipt, and run notes carrying the array (or single) job id.
 
-Use it to build any plugin dataset — one, or a batch of several — once its raw input is
-on disk or downloadable. Not this skill: a single build with nothing to batch (plain
-`hpc-hail-job` is enough on its own); writing or repairing a plugin (the resource specs
-under `hvantk/skills/<provider>/SKILL.md`); triaging a drift signal or a broken probe
+Not this skill: writing or repairing a plugin (the resource specs under
+`hvantk/skills/<provider>/SKILL.md`); triaging a drift signal or a broken probe
 (`drift-triage`).
 
 ## 2. Preflight
 
-1. Site profile, checkout, image, inputs and outputs: the contract's four steps
-   (`skills/_conventions/SKILL.md` section 2 / the template in section 7).
-2. List what you are building: `hvantk plugins list` and `hvantk plugins describe
-   <provider>` through the image say each dataset's `artifact_type` (which decides the
-   output extension: `.ht` for a Hail `AnnotationTable`, `.mt` for a `VariantMatrix`,
-   `.h5ad` for an `ExpressionMatrix`, `.geneset.json` for a `GeneSet`), whether it
-   declares `lifecycle.parse` (so it needs `--intermediate`), and whether
-   `acquisition.mode: byo` means you must supply the raw files yourself.
-3. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the
-   login node (`references/raw-dir-conventions.md`); the build jobs themselves always
-   run with `--skip-download`, so egress changes who runs the download command and
-   when, not the procedure below.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value (`skills/_conventions/SKILL.md` section 3 / the template in section 7).
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
+5. What each dataset needs: there is no single command for this. `hvantk plugins describe <provider>` prints only the name, version, each dataset's domain/backend and its committed fingerprint path -- nothing about artifact type, lifecycle or acquisition. Read the manifest itself, `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply the raw files yourself (the reason and any instructions are printed by `reprocess`'s own error at build time; see Traps).
+6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login node (`references/raw-dir-conventions.md`); the build jobs themselves always run with `--skip-download`, so egress changes who runs the download command and when, not the procedure below.
 
 ## 3. Procedure
 
 1. **Lay out one raw directory per dataset**: `$HVANTK_WORK/raw/<provider>[/<dataset>]/`,
    holding only that dataset's files. Full rules, including dated files and
    `latest_dated`, in `references/raw-dir-conventions.md`.
-2. **Stage the raw files on the login node, through the image**, uniformly for any
-   dataset with a downloader:
+2. **Stage on the login node, through the image**, uniformly for any dataset with a
+   downloader -- `--skip-build` skips only the build; it does not skip the parse stage
+   if the dataset declares one, so this also produces the parsed intermediate:
    ```bash
-   source "$HVANTK_SITE_PROFILE" && "${HVANTK_CONTAINER_BIN:-singularity}" exec \
-     -B "$HVANTK_WORK:$HVANTK_WORK" -B "$HVANTK_REPO:$HVANTK_REPO" --env PYTHONPATH="$HVANTK_REPO" \
-     "$HVANTK_SIF" hvantk reprocess provider:dataset --raw-dir "$HVANTK_WORK/raw/provider" \
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
+     hvantk reprocess provider:dataset --raw-dir "$HVANTK_WORK/raw/provider" \
        --output "$HVANTK_WORK/raw/provider/unused.ht" --skip-build --no-check-drift
    ```
-   add `--plugin-arg overwrite=true` to refresh a stale file. Then check upstream has
-   not drifted against the committed fingerprint before spending a job on the build —
-   `hvantk drift provider:dataset` through the same `exec` line. A `drifted` result
-   whose diff touches `headers` or `checksums` is a schema signal: stop and use
-   `drift-triage` first. A clean or `routine` result means it is safe to proceed.
+   A download-only `--plugin-arg` (e.g. `genome_build=GRCh38` for `clinvar:variants`'s
+   downloader) goes on this call; it is not guaranteed to also be accepted by the
+   builder -- a builder's parameters are not a superset of its downloader's (clinvar's
+   builder takes `reference_genome`, a different name for the same thing, and has no
+   catch-all for an argument it does not declare). For a parse-stage dataset
+   (`uniprot-ptm:sites`), give `--intermediate` an explicit path outside the raw
+   directory here, so the task line below can reuse it with `--skip-parse
+   --intermediate <that same path>` instead of re-parsing inside the job. Then, before
+   spending a job on the build, check upstream has not drifted against the committed
+   fingerprint: `hvantk drift provider:dataset` through the same `run-in-image.sh`
+   line. A `drifted` result whose diff touches `headers` or `checksums` is a schema
+   signal: stop and use `drift-triage` first. A clean or `routine` result, or
+   `probe_failed`, means it is safe to proceed (Traps).
 3. **Write the task list**: a TSV, one build per line, absolute paths —
    `<provider:dataset>\t<raw dir>\t<output path>[\t<extra reprocess options>]`. Extra
-   options (e.g. `--intermediate /abs/path`, `--plugin-arg reference_genome=GRCh38`) are
-   word-split exactly as written.
+   options are build-stage ones, split on plain whitespace exactly as written, with no
+   quote handling at all (e.g. `--plugin-arg reference_genome=GRCh38`, or
+   `--skip-parse --intermediate /abs/path` for a dataset staged with a parse step); a
+   value containing a space cannot be expressed in this column.
 4. **Submit the array**:
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/dataset-build-at-scale/templates/submit-build-array.sh" \
@@ -100,53 +104,65 @@ task in the array, so size it for the list's largest dataset — a dataset an
 order of magnitude bigger than the rest (dbNSFP next to HGNC, say) belongs in its own
 `hpc-hail-job` submission, not in the array. `--max-concurrent` caps how much of the
 node share the array can claim at once, independent of how many lines are in the list.
-Each task gets its own node-local scratch from `hail-job.sbatch`, so concurrent tasks
-never collide even on the same node. Outputs on the parallel filesystem are directories
-of many part files; keep each dataset's dated raw file and its `.provenance.json`
-sidecar discoverable next to its output. Re-running only the failed indices (`--tasks`)
-is the normal way to recover from a partial array failure, under a fresh job id rather
-than a retry of the old one.
+Each task gets its own node-local scratch and its own Hail log directory from
+`hail-job.sbatch`, so concurrent tasks never collide even on the same node. Outputs on
+the parallel filesystem are directories of many part files; keep each dataset's dated
+raw file and its `.provenance.json` sidecar discoverable next to its output.
+Re-running only the failed indices (`--tasks`) is the normal way to recover from a
+partial array failure, under a fresh job id rather than a retry of the old one.
 
 ## 5. Traps
 
 - `expected exactly one file matching ...`. Cause: two files in one raw dir (a stray
-  second download, or a parse-stage intermediate written inside it). Fix: one dataset
-  per raw directory; give `--intermediate` a path outside the raw dir.
+  second download). Fix: one dataset per raw directory; give `--intermediate` a path
+  outside the raw dir for a parse-stage dataset.
 - An HTTP or connection error inside a build job. Cause: compute nodes have no egress.
   Fix: stage the raw file on the login node first; build jobs run with
   `--skip-download`.
-- `... has no lifecycle.download declared`. Cause: a BYO dataset (`acquisition.mode:
-  byo`). Fix: place the raw file yourself; `hvantk plugins describe <provider>` prints
-  the instructions.
+- `... requires data you supply yourself (acquisition.mode=byo, reason=...)`. Cause: a
+  BYO dataset with an empty or missing `--raw-dir`. Fix: place the raw file yourself;
+  this error also names the reason and any instructions the manifest carries.
+- `... has no lifecycle.download declared`. Cause: a *different* dataset state from
+  BYO -- no `acquisition` block at all, and no downloader written yet (automatable in
+  principle, just not done). Fix: `--skip-download` and place the file yourself, or
+  write the downloader.
 - The output-extension error (`<dataset> writes .ht ...; got --output ...`). Cause: the
   artifact type decides the extension (`.ht` table, `.mt` variant matrix, `.h5ad`
-  expression), and a mismatch is rejected before the build runs. Fix: match `--output`'s
-  extension to what `hvantk plugins describe` names as the artifact type.
+  expression, `.parquet` a pandas-backed table), and a mismatch is rejected before the
+  build runs. Fix: match `--output`'s extension to the manifest's `artifact_type`.
 - A `--plugin-arg` value arriving as the wrong type. Cause: the coercion rules
   (`true`/`false` to bool, digits to int, a comma to a list) — a single value that
-  itself contains a comma cannot be expressed this way. Fix: check `hvantk plugins
-  describe` for the parameter's expected type.
-- `drift: drifted` printed by the login-node staging step. Cause: that is the probe
-  reporting on upstream, not the build failing — `reprocess` never fails on drift. Fix:
-  read the diff; a `schema` signal is worth stopping for (`drift-triage`), a `routine`
-  one is informational. Build jobs run with `--no-check-drift`: they have no egress to
-  probe with anyway.
+  itself contains a comma cannot be expressed this way. Fix: read the builder's or
+  downloader's own parameter docstring for the expected type.
+- A build job's log carries a WARNING about the drift probe, and the output's sidecar
+  has `source_fingerprint: "probe-unavailable:source-unreachable"`. Cause: the
+  platform runs the drift probe on every build regardless of `--no-check-drift` (that
+  flag only gates `reprocess`'s own post-build `drift: <status>` print), and a compute
+  node has no egress to reach upstream with. Fix: nothing -- the build is fine. The
+  real signal is step 2's login-node `hvantk drift provider:dataset`, run *before* the
+  build, which compares what upstream serves right now against the committed
+  fingerprint (never your staged file); its own `probe_failed` there also just means
+  "unavailable", never "stop".
 - `sacct` showing one row `<A>_[2-3]` for a while after submission. Cause: tasks still
   pending can be reported collapsed into one range row. Fix: wait for every task to
   reach a terminal state, not for that row to disappear.
 - One failed task does not fail the array. Cause: Slurm array tasks are independent
   jobs sharing a job id. Fix: check per-task states (`sacct -j <A> -X -n -o
   JobID,State`), never the submission's own exit code alone.
-- Sample-row values differing from the committed `sample_rows.json` on a full build.
-  Cause: the committed snapshot is fixture-derived (dates, array widths can legitimately
-  differ at full scale). Fix: `verify-builds.py` checks the schema exactly and the
-  sample *keys*' presence; compare row *values* across your own builds, not against the
-  fixture snapshot.
+- A built table's values differing from the committed `sample_rows.json`, or an extra
+  column the committed `schema.json` does not list. Cause: the committed snapshot is
+  fixture-derived, a floor, not an equality target (GenCC's full build carries 18 more
+  columns than its 13-column fixture). Fix: `verify-builds.py` checks the snapshot as a
+  contract (every declared field present, extra allowed) and the sample keys only
+  informationally; compare row values across your own builds, never against the
+  fixture's.
 - A relative path in the task list. Cause: an array task's working directory is the log
   directory, not the checkout. Fix: absolute paths only, both columns.
 - `hvantk: command not found` outside the image. Fix: `python -m hvantk`.
 - An output moved without its sidecar. Cause: `.provenance.json` sits next to the
-  output, not inside it. Fix: move both together, or neither.
+  output, not inside it, and does not record the raw file's path (see
+  `references/verification.md` for its actual fields). Fix: move both together, or
+  neither.
 - A task list with a stale raw directory. Cause: yesterday's dated file next to today's
   is tolerated for `latest_dated` plugins (ClinGen, GenCC) but not for one without it
   (HGNC). Fix: keep exactly one matching file per raw directory
@@ -157,10 +173,11 @@ than a retry of the old one.
 1. `sacct -j <A> -X -n -o JobID,State` — every task row `COMPLETED`; `<A>` and `<A>_<i>`
    both count as the array's own ids.
 2. `verify-builds.py`'s receipt (`references/verification.md`): per dataset,
-   `schema_matches` true, `sample_keys_present` true, the row count and sample rows
+   `schema_contract_ok` true, `schema_id_matches` true, the row count and sample rows
    recorded for your own comparison against the next build, and `provenance_sha256`
    tying the verdict to exactly this output.
-3. Each output carries `_SUCCESS` and a `.provenance.json` sidecar naming the
-   `schema_id` you expected.
+3. Each output carries `_SUCCESS` (or, for a single-file `.h5ad`/`.parquet` artifact,
+   exists as a file) and a `.provenance.json` sidecar naming the `schema_id` you
+   expected.
 4. Run notes carry `commit:`, `container:`, and one `job:` line per job submitted (the
    array counts as one `job:` line; the verification job is another).
