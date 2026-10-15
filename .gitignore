@@ -232,6 +232,9 @@ checkpoints/
 AGENTS.md
 CLAUDE.md
 
+# Workflow skills: the filled site profile carries cluster facts and stays local
+skills/_site/site-profile.local.sh
+
 # Vscode AI rules
 .github/instructions/codacy.instructions.md
 

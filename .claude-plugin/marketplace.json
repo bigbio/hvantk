@@ -1,0 +1,18 @@
+{
+  "name": "hvantk",
+  "owner": {
+    "name": "bigbio"
+  },
+  "metadata": {
+    "description": "hvantk workflow skills for coding agents"
+  },
+  "plugins": [
+    {
+      "name": "hvantk",
+      "source": "./",
+      "description": "Workflow skills for driving hvantk analyses with a coding agent: run Hail-backed hvantk commands on a Slurm cluster from the container image.",
+      "category": "domain-specific",
+      "keywords": ["hvantk", "hail", "slurm", "hpc", "genomics", "multi-omics", "skills"]
+    }
+  ]
+}

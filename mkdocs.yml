@@ -69,6 +69,7 @@ nav:
     - Building Tables: guide/usage.md
     - Data Sources: guide/data-sources.md
     - HPC Migration: guide/hpc-migration.md
+    - Workflow Skills: guide/workflow-skills.md
   - Tools:
     - HGC - Joint Genotyping: tools/hgc.md
     - EnrichEx - Enrichment Analysis: tools/enrichex.md
