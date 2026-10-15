@@ -21,6 +21,7 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:callset-subset-export` | a sample subset of a joint callset must be delivered as a verified VCF with checksums and a manifest, by subsetting the lossless VDS, per contig for large callsets |
 | `hvantk:ancestry-inference` | samples must be assigned a continental ancestry against a labelled reference built from 1000 Genomes, with the PCA and random-forest pipeline as a job |
 | `hvantk:dataset-build-at-scale` | one or many `hvantk reprocess` datasets must be built from staged raw files as Slurm jobs — fanned out as one array job, each output verified against its plugin's committed schema contract |
+| `hvantk:drift-triage` | `hvantk drift` or a drift-bot pull request reports a dataset drifted or its probe failed: classify the signal, repair the plugin or accept the fingerprint, rebuild and verify against the committed snapshots, and record the fingerprint, the rebuild-ledger row and the rebuild |
 
 More skills follow the same contract and land in batches: the gene index, cohort
 attachment and burden, re-ranking and evaluation, and the QTL cascade.

@@ -129,6 +129,8 @@ if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
   check_job "$RUN_ID-ref-check" --output "$OUT/pos/clingen-gene-disease.ref.ht" --repo "$HVANTK_REPO" \
     --reference "$REFERENCE" --write-reference --staged-file "$MUTATED" \
     --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA" >/dev/null
+  [[ "$(ref_field "$REFERENCE" input_sha256)" == "$INPUT_SHA" ]] \
+    || { echo "ERROR: the reference was not (re)written: the ref-check job failed; read its log" >&2; exit 1; }
   echo "reference written: $REFERENCE"
 fi
 [[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
