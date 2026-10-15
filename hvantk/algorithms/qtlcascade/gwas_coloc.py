@@ -119,9 +119,14 @@ def fetch_eqtl_region(
     Effects are ALT-referenced. Cols: gene_id chrom pos ref alt variant
     ma_samples maf pvalue beta se. ``dataset`` may be a QTD id, a full URL, or a
     local tabix path.
+
+    The all-variant files repeat a (gene, variant) row once per extra rsid, with
+    identical statistics; only the first is kept, so no variant counts twice in
+    the ABF sums.
     """
     _ensure_ca_bundle()
     out: dict[str, list[tuple[tuple[int, str, str], float, float, float]]] = {}
+    seen: set[tuple[str, tuple[int, str, str]]] = set()
     with pysam.TabixFile(eqtl_catalogue_url(dataset, study)) as tb:
         for rec in tb.fetch(_contig(tb, chrom), start, end):
             f = rec.split("\t")
@@ -129,10 +134,12 @@ def fetch_eqtl_region(
                 se = float(f[10])
                 if se <= 0:  # guard against div-by-zero in the ABF kernel
                     continue
+                gene = f[0].split(".")[0]
                 key = (int(f[2]), f[3], f[4])
-                out.setdefault(f[0].split(".")[0], []).append(
-                    (key, float(f[9]), se, float(f[8]))
-                )
+                if (gene, key) in seen:
+                    continue
+                seen.add((gene, key))
+                out.setdefault(gene, []).append((key, float(f[9]), se, float(f[8])))
             except (ValueError, IndexError):
                 continue
     return out
