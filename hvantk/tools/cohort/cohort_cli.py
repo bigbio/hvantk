@@ -171,8 +171,15 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
     from hvantk.algorithms.cohort.checks import detect_delimiter
 
     delimiter = detect_delimiter(manifest.table)
+    # An empty cell is missing, as "NA" is: `cohort burden` writes a gene's NaN
+    # statistic as an empty cell, and with "NA" alone one such cell makes Hail's
+    # imputation type the whole column as str.
     cohort_ht = hl.import_table(
-        manifest.table, delimiter=delimiter, impute=True, key=manifest.key_column
+        manifest.table,
+        delimiter=delimiter,
+        impute=True,
+        missing=["NA", ""],
+        key=manifest.key_column,
     )
 
     attached, result = attach(hl.read_table(layer1), cohort_ht, manifest, hgnc=hgnc)

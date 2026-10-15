@@ -168,3 +168,38 @@ def test_attach_writes_a_gene_id_keyed_table_and_report(hail_session, tmp_path):
     report = json.loads((tmp_path / "report.json").read_text())
     assert report["n_genes"] == 3
     assert report["n_tested"] == 2
+
+
+@pytest.mark.hail
+def test_attach_keeps_a_column_with_an_empty_cell_numeric(hail_session, tmp_path):
+    """`cohort burden` writes a NaN statistic as an empty cell; attach imported the
+    table with only "NA" as missing, so one empty cell typed the column as str."""
+    import hail as hl
+
+    layer1_path = str(tmp_path / "layer1.ht")
+    hl.Table.parallelize(
+        [{"gene_id": "ENSG1"}, {"gene_id": "ENSG2"}],
+        hl.tstruct(gene_id=hl.tstr),
+        key=["gene_id"],
+    ).write(layer1_path, overwrite=True)
+    table = tmp_path / "cohort.tsv"
+    table.write_text("gene_id\tminp\tn_case_var\nENSG1\t0.01\t5\nENSG2\t0.2\t\n")
+    out = str(tmp_path / "attached.ht")
+
+    result = CliRunner().invoke(
+        cohort_group,
+        [
+            "attach",
+            "--cohort",
+            _write_manifest(tmp_path, str(table)),
+            "--layer1",
+            layer1_path,
+            "--output",
+            out,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    ht = hl.read_table(out)
+    assert ht.n_case_var.dtype == hl.tint32
+    assert ht.aggregate(hl.agg.count_where(hl.is_missing(ht.n_case_var))) == 1
