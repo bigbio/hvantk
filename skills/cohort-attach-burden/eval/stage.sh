@@ -25,6 +25,8 @@ PREP="$HVANTK_REPO/$REL/prepare_cohort.py"
 EVAL_ROOT="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}"
 STAGE="$EVAL_ROOT/cohort-attach-burden"
 mkdir -p "$STAGE/raw" "$STAGE/upstream"
+# upstream/ holds exactly what this stage binds; drop anything an older layout left there
+find "$STAGE/upstream" -mindepth 1 ! -name gene-index.content_sha256 -exec rm -rf {} +
 
 # --- 1. the newest gene-index control directory that fully passed (has
 # --- control.passed, written only after both of ITS arms' assertions pass -- see

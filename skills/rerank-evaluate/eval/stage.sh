@@ -86,6 +86,8 @@ cp "$PICK/pos/gene_burden.tsv" "$STAGE/cohort/gene_burden.tsv"
 # architecture audit's columns) are carried verbatim.
 sed -E "s|^table:.*|table: $STAGE/cohort/gene_burden.tsv|" "$PICK/pos/cohort.yaml" > "$STAGE/cohort/cohort.yaml"
 cp "$CAB/upstream/gene-index.content_sha256" "$STAGE/upstream/gene-index.content_sha256"
+# upstream/ holds exactly what this stage binds; drop anything an older layout left there
+find "$STAGE/upstream" -mindepth 1 ! -name gene-index.content_sha256 -exec rm -rf {} +
 
 [[ -e "$CAB/gene-index.ht/_SUCCESS" ]] || {
   echo "ERROR: $CAB/gene-index.ht not found (no _SUCCESS marker); run skills/cohort-attach-burden/eval/stage.sh first" >&2
