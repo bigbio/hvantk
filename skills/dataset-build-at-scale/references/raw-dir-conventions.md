@@ -124,6 +124,8 @@ compares what upstream serves *right now* against the dataset's committed finger
 tell you upstream has moved even before you have re-staged anything. A `schema` signal
 (a column added, removed or renamed in the file's header) means the plugin itself may
 need a repair before the build is worth trusting — see `drift-triage`. A `routine`
-signal, or a clean result, means it is safe to proceed. `probe_failed` (no egress from
-the login node either, or a transient error) means the signal is unavailable, not that
+signal, or a clean result, means it is safe to proceed. A `probe_failed` caused by no
+egress or a transient network error means the signal is unavailable, not that
 anything is wrong: proceed, and run the check again later when connectivity allows it.
+A `probe_failed` raised while parsing content the probe DID fetch (a missing header
+marker, say) is itself a signal, same standing as `drifted` -- see `drift-triage`.
