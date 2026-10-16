@@ -24,8 +24,7 @@ method, and producing, per tissue: the cascade table, a gene-level summary (tabl
 and TSV), a coloc results TSV, plots, a self-contained HTML report, and a JSON
 summary receipt (`summarize-cascade.py`, step 6). Optionally, `hvantk qtlcascade
 gwas-coloc` colocalises one GWAS locus against an eQTL dataset by remote tabix — a
-separate, egress-needing step this skill covers as a procedure step and a
-reference, not as a measured outcome.
+separate, egress-needing step this skill covers as a procedure step and a reference.
 
 Use this skill once the eQTL and pQTL raw files exist on disk (BYO or downloaded
 separately) and you want the cascade, the coloc table, and the report. Not this skill:
