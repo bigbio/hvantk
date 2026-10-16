@@ -11,8 +11,9 @@ metadata:
 
 # Subset a joint callset and deliver a verified VCF
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract. Jobs run through `hpc-hail-job`.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract. Jobs run through `hpc-hail-job`.
 
 ## 1. Scope and outcome
 

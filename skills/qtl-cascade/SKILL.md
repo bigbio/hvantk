@@ -11,8 +11,9 @@ metadata:
 
 # Run the QTL cascade (eQTL -> pQTL)
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 

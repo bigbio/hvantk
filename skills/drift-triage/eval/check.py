@@ -1,6 +1,6 @@
 """Deterministic check for the drift-triage eval task.
 
-Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
+Grades one run in five stages (M1 to M5, see skills/workflow-conventions/SKILL.md section 5),
 writes ``verdict.json`` and ``receipt.json``, and exits 0 on pass. Runs inside the
 container on a compute node (it needs Hail to read the built table and, separately,
 to run a small subprocess build -- see `grade_repair_effective`). Slurm accounting is

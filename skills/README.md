@@ -8,7 +8,7 @@ language model sits in the data path.
 There are two kinds of skill in this repository. **Resource specs** under
 `hvantk/skills/<provider>/SKILL.md` tell an agent how to author a data-source plugin.
 **Workflow skills**, here, tell it how to run the toolkit. Read
-`_conventions/SKILL.md` for the contract they follow.
+`workflow-conventions/SKILL.md` for the contract they follow.
 
 ## Catalog
 
@@ -64,6 +64,6 @@ path or an image.
 Each skill ships an `eval/` folder: a task an agent can be handed cold, a script that
 stages public inputs, a positive control that runs the procedure with no agent, a
 deterministic check, and the reference values that control produced. The contract is in
-`_conventions/SKILL.md` section 5. The evaluation harness that runs agents against these
+`workflow-conventions/SKILL.md` section 5. The evaluation harness that runs agents against these
 tasks is separate from this repository; the tasks and checks are public so anyone with a
 cluster can repeat them.

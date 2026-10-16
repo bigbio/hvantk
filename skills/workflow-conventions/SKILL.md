@@ -1,6 +1,7 @@
 ---
-name: hvantk-workflow-conventions
-description: The contract every hvantk workflow skill follows. Read first.
+name: workflow-conventions
+description: Use when authoring or reviewing an hvantk workflow skill, or when another hvantk skill says to read its conventions first.
+user-invocable: false
 ---
 
 # hvantk workflow-skill conventions
@@ -161,8 +162,9 @@ metadata:
 
 # <Title>
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 

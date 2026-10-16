@@ -8,7 +8,7 @@ and no language model sits in the data path.
 They live in the repository's top-level `skills/` folder, one folder per skill, in the
 Agent Skills layout. The catalog and the install steps are in
 [`skills/README.md`](https://github.com/bigbio/hvantk/tree/main/skills); the contract
-they follow is `skills/_conventions/SKILL.md`.
+they follow is `skills/workflow-conventions/SKILL.md`.
 
 ## What a skill gives you
 

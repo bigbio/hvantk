@@ -11,8 +11,9 @@ metadata:
 
 # Build hvantk datasets at scale
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -31,7 +32,7 @@ Not this skill: writing or repairing a plugin (the resource specs under
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value (`skills/_conventions/SKILL.md` section 3 / the template in section 7).
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value (`skills/workflow-conventions/SKILL.md` section 4).
 2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
 3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
 4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
