@@ -4,8 +4,8 @@
       "cds_length": "int32",
       "chromosome": "str",
       "cohort_tested": "bool",
-      "conc": "str",
-      "driver_af": "str",
+      "conc": "float64",
+      "driver_af": "float64",
       "gene_biotype": "str",
       "gene_end": "int32",
       "gene_group": "array<str>",
@@ -20,9 +20,21 @@
     },
     "n_genes": 20116,
     "n_tested": 434,
-    "rows_sha256": "f434d5faeaa4ebc8ecf5c976f2a65cdc13b03a8a895cf15db6f30aaa70c94958"
+    "rows_sha256": "85511ed95fd044b79fee8b695f4e22488704e91832bf154c3b4c003141e01b6c"
   },
   "burden": {
+    "columns": [
+      "gene",
+      "route",
+      "minp",
+      "odds_ratio",
+      "n_case_var",
+      "conc",
+      "driver_af",
+      "mean_score_case",
+      "frac_case_private",
+      "p_adj"
+    ],
     "row_count": 434,
     "rows_sha256": "cbc7bc99c22e125a7bc20b9c92cc88f9517fb3126979351b41566c9fc416eec5"
   },
@@ -30,9 +42,9 @@
   "max_mem_gb": 32,
   "max_minutes": 30,
   "produced_by": {
-    "at": "2026-10-15T23:22:52.287686+00:00",
-    "commit": "e783d4b76703f24e127833069d667db65819b412",
-    "input_sha256": "345be44a6cb3f4562adf6b1d17f630a7b249422c1200e4ca80cf5a6c08bd637c",
+    "at": "2026-10-16T01:19:13.389454+00:00",
+    "commit": "3e0a2ac00c4837913ac4f41ac578792d9969dc5e",
+    "input_sha256": "a4c070eae22919b107aa67bbaa9d8d64f6dd74df8b6a624fa61369e0ac67cf9f",
     "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74"
   }
 }
