@@ -10,7 +10,7 @@
 # state and exits 0 only if it is COMPLETED.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-bash "$HERE/../../_site/check-site-profile.sh" >/dev/null
+bash "$HERE/../../_site/check-site-profile.sh" --allow-missing-image >/dev/null
 # shellcheck disable=SC1090
 source "$HVANTK_SITE_PROFILE"
 command -v git >/dev/null || { echo "ERROR: git is needed on the submit host to record provenance" >&2; exit 2; }

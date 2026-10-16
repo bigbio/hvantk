@@ -34,9 +34,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
-   stop and ask for any missing value. Every later command that reads a profile value
-   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh" --allow-missing-image`;
+   stop and ask for any missing value. `--allow-missing-image` is needed because this
+   skill runs before `HVANTK_SIF` exists on a new site. Every later command that reads a
+   profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
 2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`.
    Build from a clean tree at the commit the user expects; a dirty or stale tree builds
    an image whose provenance names a commit that is not what went in. If the clone is

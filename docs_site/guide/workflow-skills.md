@@ -24,6 +24,8 @@ they follow is `skills/workflow-conventions/SKILL.md`.
 
 ## Getting started
 
+Fill in the site profile on the cluster, in the `$HVANTK_REPO` checkout:
+
 ```bash
 cp skills/_site/site-profile.example.sh skills/_site/site-profile.local.sh   # gitignored
 # fill it in: see skills/_site/SITE-PROFILE.md
@@ -31,8 +33,13 @@ export HVANTK_SITE_PROFILE=/path/to/hvantk/skills/_site/site-profile.local.sh
 bash skills/_site/check-site-profile.sh
 ```
 
-Then install the skills into your agent (Claude Code: `/plugin marketplace add bigbio/hvantk`
-and `/plugin install hvantk@hvantk`; other harnesses: point them at `skills/`) and ask
+No image yet on this site? `check-site-profile.sh` otherwise refuses because
+`HVANTK_SIF` points nowhere; run the `hvantk:hpc-container` skill first, or pass it
+`--allow-missing-image` while bootstrapping.
+
+Then install the skills into your agent (Claude Code: `/plugin install hvantk --marketplace
+bigbio/hvantk`, or on older releases `/plugin marketplace add bigbio/hvantk` then
+`/plugin install hvantk@hvantk`; other harnesses: point them at `skills/`) and ask
 it, for example, to build a dataset on the cluster. The shipped skills cover running any
 Hail-backed hvantk command as a single-node Slurm job from the container image, keeping a
 cluster clone in step with GitHub, building and promoting the image, joint genotyping,

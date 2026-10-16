@@ -47,7 +47,8 @@ or from a checkout, for development: `claude --plugin-dir /path/to/hvantk`.
 
 ## Before the first run: the site profile
 
-Every cluster-specific value lives in one file you fill in once:
+Every cluster-specific value lives in one file you fill in once, on the cluster, in
+the `$HVANTK_REPO` checkout:
 
 ```bash
 cp skills/_site/site-profile.example.sh skills/_site/site-profile.local.sh   # gitignored
@@ -58,6 +59,10 @@ bash skills/_site/check-site-profile.sh
 
 A skill that finds a value missing stops and asks. It never guesses a partition, a
 path or an image.
+
+No image yet on this site? `check-site-profile.sh` otherwise refuses because
+`HVANTK_SIF` points nowhere; run the `hvantk:hpc-container` skill first, or pass it
+`--allow-missing-image` while bootstrapping.
 
 ## How a skill is measured
 
