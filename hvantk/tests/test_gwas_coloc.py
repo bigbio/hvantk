@@ -224,3 +224,77 @@ def test_pipeline_user_gene_absent_not_misattributed(tmp_path, monkeypatch):
     assert rep["results"]["goi_PP4_abf"] is None  # not the top gene's PP4
     assert rep["results"]["top_effector"] == "ENSG_OTHER"  # top still reported
     assert rep["verdict"].startswith("NO COLOC")
+
+
+def test_fetch_eqtl_region_keeps_one_row_per_gene_and_variant(tmp_path):
+    """eQTL Catalogue all-variant files repeat a (gene, variant) row once per extra
+    rsid; fetch_eqtl_region kept every copy, so a repeated variant counted twice in
+    the ABF sums."""
+    import pysam
+
+    from hvantk.algorithms.qtlcascade.gwas_coloc import fetch_eqtl_region
+
+    rows = [
+        (
+            "ENSG1.4",
+            "1",
+            "100",
+            "A",
+            "G",
+            "chr1_100_A_G",
+            "50",
+            "0.2",
+            "1e-9",
+            "0.5",
+            "0.1",
+        ),
+        (
+            "ENSG1.4",
+            "1",
+            "100",
+            "A",
+            "G",
+            "chr1_100_A_G",
+            "50",
+            "0.2",
+            "1e-9",
+            "0.5",
+            "0.1",
+        ),
+        (
+            "ENSG2.1",
+            "1",
+            "100",
+            "A",
+            "G",
+            "chr1_100_A_G",
+            "50",
+            "0.2",
+            "0.5",
+            "0.05",
+            "0.1",
+        ),
+        (
+            "ENSG1.4",
+            "1",
+            "200",
+            "C",
+            "T",
+            "chr1_200_C_T",
+            "40",
+            "0.1",
+            "0.3",
+            "0.1",
+            "0.2",
+        ),
+    ]
+    plain = tmp_path / "sumstats.tsv"
+    plain.write_text("".join("\t".join(r) + "\n" for r in rows))
+    gz = pysam.tabix_index(
+        str(plain), seq_col=1, start_col=2, end_col=2, zerobased=False, force=True
+    )
+
+    got = fetch_eqtl_region(gz, "1", 1, 1000)
+
+    assert [k for k, *_ in got["ENSG1"]] == [(100, "A", "G"), (200, "C", "T")]
+    assert [k for k, *_ in got["ENSG2"]] == [(100, "A", "G")]

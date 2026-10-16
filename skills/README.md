@@ -22,9 +22,10 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:ancestry-inference` | samples must be assigned a continental ancestry against a labelled reference built from 1000 Genomes, with the PCA and random-forest pipeline as a job |
 | `hvantk:dataset-build-at-scale` | one or many `hvantk reprocess` datasets must be built from staged raw files as Slurm jobs — fanned out as one array job, each output verified against its plugin's committed schema contract |
 | `hvantk:drift-triage` | `hvantk drift` or a drift-bot pull request reports a dataset drifted or its probe failed: classify the signal, repair the plugin or accept the fingerprint, rebuild and verify against the committed snapshots, and record the fingerprint, the rebuild-ledger row and the rebuild |
-
-More skills follow the same contract and land in batches: the gene index, cohort
-attachment and burden, re-ranking and evaluation, and the QTL cascade.
+| `hvantk:gene-index` | the gene index that gene-level annotations, cohort tables and rankings join onto must be built from the Ensembl gene-structure and HGNC datasets (`hvantk annotate spine`), its gene count and HGNC mapping rate checked, and annotation axes added onto it |
+| `hvantk:cohort-attach-burden` | a case/control cohort must become a gene-level table: the gene burden test on a cleaned MatrixTable, the cohort manifest, validation, and attachment to the gene index or the annotation matrix |
+| `hvantk:rerank-evaluate` | a cohort's genes must be ranked by multi-omic evidence with `hvantk rerank` and evaluated against a label set you choose (ClinGen or GenCC), with the identifiers aligned, paralogue blocks and the case/control audit |
+| `hvantk:qtl-cascade` | eQTL and pQTL tables must be built and run through the molecular QTL cascade with colocalisation and its report for one or more tissues, or a GWAS locus colocalised with eQTLs |
 
 ## Install
 

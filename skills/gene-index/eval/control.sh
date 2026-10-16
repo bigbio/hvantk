@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+# Positive and negative control for the gene-index eval. Login-node orchestrator: it
+# only submits jobs through the skill's own templates and waits on them.
+#
+#   HVANTK_SITE_PROFILE=... [WRITE_REFERENCE=1] bash skills/gene-index/eval/control.sh
+#
+# Positive: the skill's own procedure, no agent -- ensembl-gene:structure and
+#   hgnc:lookup each built as their own job, then the protein-coding gene index (the
+#   command's default --biotype) as a third job; the control reads the gene-index job's
+#   own two printed lines (`spine: N genes`, `HGNC mapping rate: X%`) out of its Slurm
+#   log, whose path submit-hail-job.sh --wait prints on its own stderr as `log: ...`.
+#   check.py must pass, proving M1..M5 true (with WRITE_REFERENCE=1, first write
+#   reference.json from this build).
+# Negative: the gene index rebuilt with --biotype all, from the SAME two already-built
+#   inputs (no rebuild of ensembl-gene:structure or hgnc:lookup) -- a real, internally
+#   self-consistent build, just the wrong biotype filter. Graded with --run-id
+#   "$RUN_ID-n" so M2/M3 see only this one job. check.py --expect-fail must pass, with
+#   M4 true (the schema contract still holds) and M5 false because content_ok is false
+#   (it does not reproduce the reference row count or digest) while reported_ok is true
+#   (its own run-notes genes:/mapping_rate: lines agree with what it actually built) --
+#   the check must fail on "wrong content", not on "notes don't match the table".
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SKILL="$(cd "$HERE/.." && pwd -P)"
+SUBMIT="$SKILL/../hpc-hail-job/templates/submit-hail-job.sh"
+[[ -f "$SUBMIT" ]] || { echo "ERROR: hpc-hail-job's submit-hail-job.sh not found: $SUBMIT" >&2; exit 2; }
+bash "$SKILL/../_site/check-site-profile.sh" >/dev/null
+# shellcheck disable=SC1090
+source "$HVANTK_SITE_PROFILE"
+R="$(cd "$HVANTK_REPO" && pwd -P)"
+[[ "$HERE" == "$R"/* ]] || { echo "ERROR: this eval folder ($HERE) is not inside HVANTK_REPO ($R)" >&2; exit 1; }
+# Paths handed to a job (anything run with `hvantk`/`python ...` inside the container)
+# use the profile's spelling of the checkout, which is what the job binds; the resolved
+# $R above is only for the containment test.
+REL="${HERE#"$R"/}"
+CHECK="$HVANTK_REPO/$REL/check.py"
+REFERENCE="$HVANTK_REPO/$REL/reference.json"
+
+STAGE="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}/gene-index"
+RAW="$STAGE/raw"
+[[ -s "$STAGE/staged.sha256" ]] || { echo "ERROR: not staged; run eval/stage.sh first" >&2; exit 1; }
+( cd "$STAGE" && sha256sum -c --quiet staged.sha256 ) || { echo "ERROR: staged inputs do not match staged.sha256; delete them and run eval/stage.sh again" >&2; exit 1; }
+# sha256sum -c only checks that the files IT lists still match; it says nothing about an
+# extra file dropped into raw/ since staging. Compare the set of paths too.
+EXPECTED_PATHS="$(cut -d' ' -f3- "$STAGE/staged.sha256" | sort)"
+ACTUAL_PATHS="$(cd "$STAGE" && printf '%s\n' raw/*/* | sort)"
+[[ "$EXPECTED_PATHS" == "$ACTUAL_PATHS" ]] || { echo "ERROR: raw/ no longer holds exactly the files staged.sha256 lists; delete the stale raw dirs and run eval/stage.sh again" >&2; echo "  expected: $EXPECTED_PATHS" >&2; echo "  actual:   $ACTUAL_PATHS" >&2; exit 1; }
+INPUT_SHA="$(sha256sum "$STAGE/staged.sha256" | cut -d' ' -f1)"
+
+OUT="$STAGE/control/$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$OUT/pos" "$OUT/neg"
+RUN_ID="ctl-gi-$(date -u +%H%M%S)"
+RUN_POS="$RUN_ID-p"
+RUN_NEG="$RUN_ID-n"
+SINCE="$(date +%Y-%m-%dT%H:%M:%S)"   # local time: sacct -S reads the node's clock, not UTC
+COMMIT="$(git -C "$R" rev-parse HEAD)"
+SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"   # always the resolved file
+SACCT_FIELDS="JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
+
+capture_sacct() { sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$1"; }
+# `produced_by` is null in the placeholder reference.json ({"produced_by": null}) the
+# implementer commits before any control has run; `or {}` reads that the same as a
+# reference with no matching field, rather than crashing on None has no .get.
+ref_field() { python3 -c "import json,sys
+d=json.load(open(sys.argv[1]))
+p=d.get('produced_by') or {}
+print(p.get(sys.argv[2], ''))" "$REFERENCE" "$1"; }
+verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v.get(sys.argv[2]))" "$1" "$2"; }
+print_verdict() { python3 -c "import json,sys
+v=json.load(open(sys.argv[1]))
+print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass','content_ok','reported_ok')})" "$1"; }
+# Writes $1 as JSON built from "KEY=VALUE" pairs ($2+): the control's final
+# content-digest marker, written only here as the VERY LAST action, after every
+# assertion above has already passed -- so its mere existence (not just a positive
+# verdict with pass=true) means the whole run, both arms, passed. A downstream
+# skill's stage.sh selects on this file rather than re-deriving "did this control
+# fully pass" from a receipt's checked_at/output paths, which change on every
+# upstream re-run even when the content does not. Python 3.6-safe.
+write_control_passed() {
+  local out="$1"; shift
+  python3 - "$out" "$@" <<'PY'
+import json
+import sys
+
+out = sys.argv[1]
+payload = {}
+for kv in sys.argv[2:]:
+    k, v = kv.split("=", 1)
+    payload[k] = v
+with open(out, "w") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+}
+
+# Parses the gene-index job's own two printed lines (`spine: N genes`, `HGNC mapping
+# rate: X%`) out of its Slurm log. The log's PATH is on submit-hail-job.sh's own
+# stderr (captured to $1 by the caller), never its stdout (which carries only the job
+# id); the two printed lines themselves are inside that log file, because Slurm's
+# --output captures the submitted command's own stdout. Echoes "N_GENES MAPPING_PCT".
+# Every internal pipeline ends `|| true`: under errexit+pipefail, a `grep` that finds
+# no match exits non-zero, and without `|| true` that would abort the function on the
+# failing assignment itself -- before reaching the explicit `[[ -n ... ]] || { echo
+# ERROR; ... }` checks below, which is what is actually supposed to report the problem.
+parse_gi_log() {
+  local stderr_file="$1" log_path genes_line rate_line n_genes mapping_pct
+  log_path="$(grep -m1 '^log: ' "$stderr_file" | cut -d' ' -f2- || true)"
+  [[ -n "$log_path" && -f "$log_path" ]] || { echo "ERROR: could not find the gene-index job's log path in $stderr_file" >&2; return 1; }
+  genes_line="$(grep -Eo 'spine: [0-9]+ genes' "$log_path" | tail -1 || true)"
+  rate_line="$(grep -Eo 'HGNC mapping rate: [0-9.]+%' "$log_path" | tail -1 || true)"
+  n_genes="$(echo "$genes_line" | grep -Eo '[0-9]+' | head -1 || true)"
+  mapping_pct="$(echo "$rate_line" | grep -Eo '[0-9.]+' | head -1 || true)"
+  [[ -n "$n_genes" && -n "$mapping_pct" ]] || { echo "ERROR: could not parse 'spine: N genes' / 'HGNC mapping rate: X%' out of $log_path (stderr: $stderr_file)" >&2; return 1; }
+  echo "$n_genes $mapping_pct"
+}
+
+# Submits one of the three build jobs (each sized 4 cores / 16 GB / 30 minutes),
+# capturing its stderr to *stderr_file* (parse_gi_log reads the gene-index build's
+# stderr for the job's log path; the input builds' stderr is captured purely for
+# diagnostics). Under `set -e`, a failing submission (the job did not reach
+# COMPLETED) would otherwise abort this script on the failing command substitution
+# with nothing but a bare non-zero exit -- print the captured stderr (the submit
+# script's own request:/command: lines, its accounting dump, and its log: line)
+# before exiting, so a real build failure is diagnosable from this script's own
+# output.
+submit_build() {
+  local name="$1" stderr_file="$2" job_id rc
+  shift 2
+  set +e
+  job_id="$(bash "$SUBMIT" --name "$name" --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- "$@" 2> "$stderr_file" | tail -1)"
+  rc=$?
+  set -e
+  if (( rc != 0 )); then
+    echo "ERROR: job $name did not complete; captured stderr ($stderr_file):" >&2
+    cat "$stderr_file" >&2
+    exit 1
+  fi
+  echo "$job_id"
+}
+
+echo "control run $RUN_ID -> $OUT (commit $COMMIT)"
+if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" ]]; then
+  REF_INPUT="$(ref_field input_sha256)"
+  if [[ -n "$REF_INPUT" && "$REF_INPUT" != "$INPUT_SHA" ]]; then
+    echo "ERROR: the staged inputs ($INPUT_SHA) differ from the ones the reference was produced from ($REF_INPUT)." >&2
+    echo "       Ensembl or HGNC changed upstream, or a re-stage moved to a different Ensembl release-numbered GTF filename." >&2
+    echo "       Re-stage (eval/stage.sh) and rerun with WRITE_REFERENCE=1 to re-baseline." >&2
+    exit 1
+  fi
+fi
+
+# --- positive: the two inputs, each its own job, then the gene index as a third job,
+#     at the command's own default --biotype (protein_coding) ---
+JOB_POS_ENSEMBL="$(submit_build "$RUN_POS-ensembl" "$OUT/pos/ensembl-submit.stderr" \
+  hvantk reprocess ensembl-gene:structure --raw-dir "$RAW/ensembl-gene" \
+    --output "$OUT/pos/ensembl-gene-structure.ht" --skip-download --no-check-drift)"
+JOB_POS_HGNC="$(submit_build "$RUN_POS-hgnc" "$OUT/pos/hgnc-submit.stderr" \
+  hvantk reprocess hgnc:lookup --raw-dir "$RAW/hgnc" \
+    --output "$OUT/pos/hgnc-lookup.ht" --skip-download --no-check-drift)"
+
+POS_STDERR="$OUT/pos/gi-submit.stderr"
+JOB_POS_GI="$(submit_build "$RUN_POS-gi" "$POS_STDERR" \
+  hvantk annotate spine --gene-table "$OUT/pos/ensembl-gene-structure.ht" \
+    --hgnc "$OUT/pos/hgnc-lookup.ht" --output "$OUT/pos/gene-index.ht")"
+# A `read ... < <(cmd)` process substitution does not propagate cmd's own exit
+# status to `read` -- under `set -e` a failing parse_gi_log would NOT reliably abort
+# here. Capture via `$(...)` instead: a failing command substitution assigned to a
+# variable DOES abort under `set -e`, the same guarantee every job_id="$(...)"
+# assignment above already relies on.
+PARSED_POS="$(parse_gi_log "$POS_STDERR")"
+read -r POS_GENES POS_RATE <<< "$PARSED_POS"
+
+printf 'commit: %s\ncontainer: %s\njob: %s\njob: %s\njob: %s\ngenes: %s\nmapping_rate: %s%%\n' \
+  "$COMMIT" "$SIF_SHA" "$JOB_POS_ENSEMBL" "$JOB_POS_HGNC" "$JOB_POS_GI" "$POS_GENES" "$POS_RATE" \
+  > "$OUT/pos/run-notes.md"
+
+if [[ "${WRITE_REFERENCE:-0}" == "1" ]]; then
+  bash "$SUBMIT" --name "$RUN_POS-ref" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+    python "$CHECK" --out-dir "$OUT/pos" --reference "$REFERENCE" --write-reference \
+      --expect-commit "$COMMIT" --expect-sif-sha256 "$SIF_SHA" --input-sha256 "$INPUT_SHA"
+  echo "reference written: $REFERENCE"
+fi
+[[ -s "$REFERENCE" ]] || { echo "ERROR: $REFERENCE missing; rerun with WRITE_REFERENCE=1" >&2; exit 1; }
+
+capture_sacct "$OUT/pos/sacct.psv"
+bash "$SUBMIT" --name "$RUN_POS-check" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+  python "$CHECK" --out-dir "$OUT/pos" --run-notes "$OUT/pos/run-notes.md" \
+    --reference "$REFERENCE" --run-id "$RUN_POS" --expect-commit "$COMMIT" \
+    --expect-sif-sha256 "$SIF_SHA" --site-profile "$HVANTK_SITE_PROFILE" \
+    --sacct-file "$OUT/pos/sacct.psv" >/dev/null || true
+print_verdict "$OUT/pos/verdict.json"
+for s in M1 M2 M3 M4 M5; do [[ "$(verdict_stage "$OUT/pos/verdict.json" $s)" == "True" ]] || { echo "ERROR: positive control $s is not true" >&2; exit 1; }; done
+[[ "$(verdict_stage "$OUT/pos/verdict.json" content_ok)" == "True" && "$(verdict_stage "$OUT/pos/verdict.json" reported_ok)" == "True" ]] \
+  || { echo "ERROR: positive control did not record content_ok and reported_ok both true" >&2; exit 1; }
+echo "positive control: PASS (M1..M5 true, content_ok true, reported_ok true)"
+
+# --- negative: --biotype all, reusing the SAME two built inputs (no rebuild) ---
+# check.py's M4 now requires --out-dir to itself contain both input builds (so an
+# agent cannot pass by copying a finished gene index with no build of its own); copy
+# the positive's two input builds AND their sidecars into neg/ so the negative keeps
+# M4 true and fails on content_ok alone, exactly as the brief requires.
+cp -a "$OUT/pos/ensembl-gene-structure.ht" "$OUT/pos/ensembl-gene-structure.ht.provenance.json" "$OUT/neg/"
+cp -a "$OUT/pos/hgnc-lookup.ht" "$OUT/pos/hgnc-lookup.ht.provenance.json" "$OUT/neg/"
+
+NEG_STDERR="$OUT/neg/gi-submit.stderr"
+JOB_NEG_GI="$(submit_build "$RUN_NEG-gi" "$NEG_STDERR" \
+  hvantk annotate spine --gene-table "$OUT/neg/ensembl-gene-structure.ht" \
+    --hgnc "$OUT/neg/hgnc-lookup.ht" --output "$OUT/neg/gene-index.ht" --biotype all)"
+# See the positive arm's comment above: capture via `$(...)`, not `read < <(...)`,
+# so a failing parse_gi_log reliably aborts under `set -e`.
+PARSED_NEG="$(parse_gi_log "$NEG_STDERR")"
+read -r NEG_GENES NEG_RATE <<< "$PARSED_NEG"
+
+printf 'commit: %s\ncontainer: %s\njob: %s\ngenes: %s\nmapping_rate: %s%%\n' \
+  "$COMMIT" "$SIF_SHA" "$JOB_NEG_GI" "$NEG_GENES" "$NEG_RATE" > "$OUT/neg/run-notes.md"
+
+capture_sacct "$OUT/neg/sacct.psv"
+bash "$SUBMIT" --name "$RUN_NEG-check" --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
+  python "$CHECK" --out-dir "$OUT/neg" --run-notes "$OUT/neg/run-notes.md" \
+    --reference "$REFERENCE" --run-id "$RUN_NEG" --expect-commit "$COMMIT" \
+    --expect-sif-sha256 "$SIF_SHA" --site-profile "$HVANTK_SITE_PROFILE" \
+    --sacct-file "$OUT/neg/sacct.psv" --expect-fail >/dev/null || true
+print_verdict "$OUT/neg/verdict.json"
+[[ "$(verdict_stage "$OUT/neg/verdict.json" M4)" == "True" && "$(verdict_stage "$OUT/neg/verdict.json" M5)" == "False" ]] \
+  || { echo "ERROR: negative control did not fail the expected way (M4=$(verdict_stage "$OUT/neg/verdict.json" M4) M5=$(verdict_stage "$OUT/neg/verdict.json" M5))" >&2; exit 1; }
+[[ "$(verdict_stage "$OUT/neg/verdict.json" reported_ok)" == "True" && "$(verdict_stage "$OUT/neg/verdict.json" content_ok)" == "False" ]] \
+  || { echo "ERROR: negative control did not fail specifically on content_ok (content_ok=$(verdict_stage "$OUT/neg/verdict.json" content_ok) reported_ok=$(verdict_stage "$OUT/neg/verdict.json" reported_ok))" >&2; exit 1; }
+echo "negative control: PASS (M4 true, M5 false: reported_ok true but content_ok false -- a real build, wrong biotype filter)"
+echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json"
+
+# --- very last action: the content-digest marker a downstream stage.sh selects on ---
+GI_CONTENT_SHA="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['content_sha256'])" "$OUT/pos/receipt.json")"
+write_control_passed "$OUT/control.passed" "gene_index_content_sha256=$GI_CONTENT_SHA"
+echo "control.passed: $OUT/control.passed"
