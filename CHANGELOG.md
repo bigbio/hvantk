@@ -1,11 +1,60 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-17
 
-- `hvantk hgc pipeline` runs its densify stage again on a fresh run: the combine
-  stage's VDS is now recorded under the key the next stage reads (`outputs["vds"]`),
-  where before it was stored under the stage name only and the converter received no
-  path. A sibling fix records the dense MatrixTable under `outputs["mt"]` the same way.
+Twelve workflow skills let a coding agent drive hvantk: run any Hail-backed command on a
+Slurm cluster from the container image, keep the cluster clone and the image in step with
+the lock file, joint-genotype gVCFs, deliver callset subsets, infer ancestry, build
+datasets at scale and triage drift, and run the gene index, cohort burden, re-ranking and
+QTL-cascade analyses. Every command the agent runs is a deterministic hvantk command. Each
+skill ships a task an agent can be handed cold, a positive control, a deterministic check
+and the reference values that control produced. Running those controls found four toolkit
+bugs, fixed here.
+
+**Upgrade notes.**
+- The skills install as the Claude Code plugin `hvantk` (`/plugin install hvantk
+  --marketplace bigbio/hvantk`); other harnesses that read the Agent Skills layout can
+  point at `skills/`. Before a cluster run, copy `skills/_site/site-profile.example.sh` to
+  `skills/_site/site-profile.local.sh` (gitignored), fill it in, export
+  `HVANTK_SITE_PROFILE` and run `skills/_site/check-site-profile.sh`. A skill that finds a
+  value missing stops and asks (#465).
+- `hvantk cohort attach` reads an empty cell of the cohort table as missing, as it reads
+  `NA`, and refuses a table whose key column has a blank or `NA` cell (#473).
+
+### Added
+
+- **Workflow skills** under `skills/`, each a `SKILL.md` with its references, templates
+  and an `eval/` folder:
+  - running on a cluster: `hpc-hail-job` (#465), `hpc-sync` and `hpc-container` (#466);
+  - callsets: `joint-genotyping`, `callset-subset-export` and `ancestry-inference` (#466);
+  - datasets: `dataset-build-at-scale` and `drift-triage` (#471);
+  - analyses: `gene-index`, `cohort-attach-burden`, `rerank-evaluate` and `qtl-cascade`
+    (#473).
+
+  `skills/_conventions/SKILL.md` is the contract they follow, `skills/_site/` holds the
+  site-profile template and its checker, `.claude-plugin/` the plugin and marketplace
+  manifests, and `docs_site/guide/workflow-skills.md` the guide (#465).
+- **Two tests guard the skills:** `test_workflow_skill_conformance.py` checks each
+  skill's layout and frontmatter, and `test_no_site_data_in_skills.py` that no site data
+  (a username, a home path, a hostname, a partition, an e-mail address) reaches a
+  tracked skill or plugin file (#465).
+
+### Fixed
+
+- **`hvantk hgc pipeline` skipped its densify stage on a fresh run:** the combine
+  stage's VDS was stored under the stage name only, so the converter received no path.
+  It is now recorded under the key the next stage reads (`outputs["vds"]`), and the dense
+  MatrixTable under `outputs["mt"]` (#470).
+- **`hvantk qtlcascade run` failed at colocalisation** with `'Table.aggregate': source
+  mismatch` whenever a tissue had genes with both an eQTL and a pQTL signal. The coloc
+  genes are now read from the filtered table, in a stable order (#473).
+- **GWAS colocalisation counted a variant more than once** when an eQTL Catalogue
+  all-variants file repeated a (gene, variant) row once per extra rsid, so the ABF sums
+  included it several times. Only the first row is kept (#473).
+- **`hvantk cohort attach` typed a numeric column as `str`** when `cohort burden` had
+  written one gene's NaN statistic as an empty cell. A blank or `NA` key cell, which used
+  to fail later with a bare `TypeError`, now stops the attach with a message naming the
+  count (#473).
 
 ## 0.5.0 — 2026-10-14
 
