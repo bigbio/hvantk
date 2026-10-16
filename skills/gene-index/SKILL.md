@@ -41,9 +41,14 @@ authoring a new annotation-source plugin (a resource spec under
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
 4. Inputs and outputs: confirm where the two raw directories and the three output paths
    (the two built datasets and the gene index) live, and that they are writable from
    compute nodes. The procedure below writes them under `$HVANTK_WORK/out`; if the user
@@ -53,11 +58,11 @@ authoring a new annotation-source plugin (a resource spec under
    (`ENSEMBL_RELEASE`, GRCh38 only -- `annotate spine` takes no genome argument). Confirm
    it is the release you intend, and that `ensembl-gene:structure` and `hgnc:lookup` were
    both built by THIS checkout -- a stale build from an older pin or an older HGNC dump
-   joins silently against the wrong gene set. `builder_commit` on their
-   `.provenance.json` sidecars does not help here: it is `null` whenever a dataset is
-   built through `hvantk reprocess` (the normal path), so same-checkout is established
-   by the run notes' own `commit:` line and the job ids that produced each input, not by
-   the sidecar (`references/inputs-and-release.md`).
+   joins silently against the wrong gene set. `builder_commit` on their `.provenance.json`
+   sidecars does not help here: it is `null` whenever a dataset is built through
+   `hvantk reprocess` (the normal path), so same-checkout is established by the run notes'
+   own `commit:` line and the job ids that produced each input, not by the sidecar
+   (`references/inputs-and-release.md`).
 6. Biotype: default `protein_coding`; `all` keeps every biotype; anything else filters to
    that literal `gene_biotype` string with no validation against the input, so a typo
    (e.g. `protien_coding`) builds a table of zero rows rather than failing. If unsure

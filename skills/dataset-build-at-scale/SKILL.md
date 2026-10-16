@@ -32,12 +32,31 @@ Not this skill: writing or repairing a plugin (the resource specs under
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value (`skills/workflow-conventions/SKILL.md` section 4).
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
-5. What each dataset needs: there is no single command for this. `hvantk plugins describe <provider>` prints the name, version, and each dataset's domain/backend, skill path and committed fingerprint path -- nothing about artifact type, lifecycle or acquisition. Read the manifest itself, `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply the raw files yourself (the reason and any instructions are printed by `reprocess`'s own error at build time; see Traps).
-6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login node (`references/raw-dir-conventions.md`); the build jobs themselves always run with `--skip-download`, so egress changes who runs the download command and when, not the procedure below.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value (`skills/workflow-conventions/SKILL.md` section 4).
+   Every later command that reads a profile value starts with the same
+   `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never
+   home.
+5. What each dataset needs: there is no single command for this.
+   `hvantk plugins describe <provider>` prints the name, version, and each dataset's
+   domain/backend, skill path and committed fingerprint path -- nothing about artifact
+   type, lifecycle or acquisition. Read the manifest itself,
+   `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension
+   (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a
+   directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a
+   parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply
+   the raw files yourself (the reason and any instructions are printed by `reprocess`'s
+   own error at build time; see Traps).
+6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login
+   node (`references/raw-dir-conventions.md`); the build jobs themselves always run with
+   `--skip-download`, so egress changes who runs the download command and when, not the
+   procedure below.
 
 ## 3. Procedure
 

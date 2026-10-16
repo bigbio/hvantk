@@ -32,28 +32,34 @@ or building the gene index (`gene-index`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: the cohort table, the gene index and the raw ClinGen/HGNC files are readable, and the output location is writable, from compute nodes -- under `$HVANTK_WORK` or similar, never home.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: the cohort table, the gene index and the raw ClinGen/HGNC files are
+   readable, and the output location is writable, from compute nodes -- under
+   `$HVANTK_WORK` or similar, never home.
 5. One identifier space for the cohort table, every feature axis and the labels:
    `hvantk rerank` does no identifier mapping at all -- a cohort keyed by Ensembl
-   `gene_id`, a feature axis keyed by HGNC symbol and a label file of symbols never
-   join. Decide the space now (symbols, if `--blocks` is used -- it matches HGNC
-   approved symbols only) and map everything into it before writing the config.
+   `gene_id`, a feature axis keyed by HGNC symbol and a label file of symbols never join.
+   Decide the space now (symbols, if `--blocks` is used -- it matches HGNC approved
+   symbols only) and map everything into it before writing the config.
    `references/inputs-and-identifiers.md`.
 6. The label set's definition: source (ClinGen, GenCC, or a file you already have),
    minimum classification, and which groups -- decided and written down now, not
-   improvised mid-run. A label set built from a curated disease database scored
-   against that same database's own labels is circular; `references/feature-axes.md`
-   and `references/audit-and-leakage.md` say where that line is.
-7. The universe: which genes will actually be ranked. It is whatever the feature
-   tables cover (their outer join), so decide it by choosing what goes into the
-   feature tables -- restricting the cohort table or the label file does not shrink
-   the universe by itself.
-8. The feature axes: at least one, each a gene-keyed table with no identifier
-   collisions across axes (`references/feature-axes.md`); chosen for no circularity
-   against the label source (`references/audit-and-leakage.md`).
+   improvised mid-run. A label set built from a curated disease database scored against
+   that same database's own labels is circular; `references/feature-axes.md` and
+   `references/audit-and-leakage.md` say where that line is.
+7. The universe: which genes will actually be ranked. It is whatever the feature tables
+   cover (their outer join), so decide it by choosing what goes into the feature tables --
+   restricting the cohort table or the label file does not shrink the universe by itself.
+8. The feature axes: at least one, each a gene-keyed table with no identifier collisions
+   across axes (`references/feature-axes.md`); chosen for no circularity against the label
+   source (`references/audit-and-leakage.md`).
 
 ## 3. Procedure
 

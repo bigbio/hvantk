@@ -35,14 +35,38 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source … &&`.
-2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD`; compare with the commit the user expects.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
 3. Image: `sha256sum "$(readlink -f "$HVANTK_SIF")"`; record the digest.
-4. Inputs and outputs: confirm the raw eQTL/pQTL files and the output directory are writable from compute nodes.
-5. Genome build: every eQTL source but `eqtlgen` is GRCh38; `eqtlgen` is GRCh37, and its builder leaves `beta`/`se` null outright, so no row built from it is ever classed as eQTL and it cannot feed the cascade or coloc at all (`references/inputs.md`). Never mix it with a GRCh38 table in one cascade run regardless.
-6. Tissue names: the cascade's tissue filter (`--tissue`/`--tissues`) is an exact string match against both tables' `tissue` field. GTEx sub-tissue names (`Liver`, `Colon_Transverse`, `Heart_Left_Ventricle`, ...) and Fang pQTL tissue names (`Colon`, `Heart`, `Liver`, `Lung`, `Thyroid`) are NOT the same vocabulary — some Fang names split across several GTEx sub-tissues. Confirm which GTEx sub-tissue(s) correspond to the pQTL tissue you are using before you build either table (`references/inputs.md`).
-7. All-pairs vs significant pairs: coloc needs every variant-gene pair in the regional window, not only genome-wide-significant ones. Confirm the eQTL and pQTL raw files you are building from are all-pairs files, and where to get them when they are not (`references/inputs.md`); a significant-pairs-only table does not error — coloc still runs, just on far fewer shared variants than the window actually has, which inflates `H4`.
-8. An HGNC table: the pQTL builder maps Fang gene symbols to Ensembl gene IDs through an HGNC lookup table (built separately with `hvantk reprocess hgnc:lookup`), because the cascade join needs Ensembl IDs on both sides. Confirm one exists, or build it first: if the raw complete-set TSV is not staged yet, `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- hvantk download hgnc --output <hgnc raw dir>/hgnc_complete_set.txt` on the login node (it exits 1, with a clear message, if that output path already exists — check first rather than retrying with `--overwrite` blindly).
+4. Inputs and outputs: confirm the raw eQTL/pQTL files are readable and the output
+   directory is writable, from compute nodes.
+5. Genome build: every eQTL source but `eqtlgen` is GRCh38; `eqtlgen` is GRCh37, and its
+   builder leaves `beta`/`se` null outright, so no row built from it is ever classed as
+   eQTL and it cannot feed the cascade or coloc at all (`references/inputs.md`). Never mix
+   it with a GRCh38 table in one cascade run regardless.
+6. Tissue names: the cascade's tissue filter (`--tissue`/`--tissues`) is an exact string
+   match against both tables' `tissue` field. GTEx sub-tissue names (`Liver`,
+   `Colon_Transverse`, `Heart_Left_Ventricle`, ...) and Fang pQTL tissue names (`Colon`,
+   `Heart`, `Liver`, `Lung`, `Thyroid`) are NOT the same vocabulary — some Fang names
+   split across several GTEx sub-tissues. Confirm which GTEx sub-tissue(s) correspond to
+   the pQTL tissue you are using before you build either table (`references/inputs.md`).
+7. All-pairs vs significant pairs: coloc needs every variant-gene pair in the regional
+   window, not only genome-wide-significant ones. Confirm the eQTL and pQTL raw files you
+   are building from are all-pairs files, and where to get them when they are not
+   (`references/inputs.md`); a significant-pairs-only table does not error — coloc still
+   runs, just on far fewer shared variants than the window actually has, which inflates
+   `H4`.
+8. An HGNC table: the pQTL builder maps Fang gene symbols to Ensembl gene IDs through an
+   HGNC lookup table (built separately with `hvantk reprocess hgnc:lookup`), because the
+   cascade join needs Ensembl IDs on both sides. Confirm one exists, or build it first: if
+   the raw complete-set TSV is not staged yet,
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- hvantk download hgnc --output <hgnc raw dir>/hgnc_complete_set.txt`
+   on the login node (it exits 1, with a clear message, if that output path already exists
+   — check first rather than retrying with `--overwrite` blindly).
 
 ## 3. Procedure
 

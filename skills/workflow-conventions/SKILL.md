@@ -172,10 +172,10 @@ measurement contract.
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source … &&`.
-2. Checkout: confirm the commit the user expects is checked out on the machine that runs the job.
-3. Image: confirm the image path and record its digest.
-4. Inputs and outputs: confirm where they live and that the output location is writable from compute nodes.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout: confirm the commit the user expects is checked out, and the tree is clean (`git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`), on the machine that runs the job.
+3. Image: confirm the image path and record its digest (`sha256sum "$(readlink -f "$HVANTK_SIF")"`).
+4. Inputs and outputs: confirm where they live, that inputs are readable and the output location is writable, from compute nodes.
 
 ## 3. Procedure
 

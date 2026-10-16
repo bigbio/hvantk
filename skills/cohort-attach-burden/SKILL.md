@@ -35,26 +35,32 @@ once a cohort is attached (`rerank-evaluate`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: confirm where they live and that the output location is writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: confirm where they live and that the output location is writable
+   from compute nodes, under `$HVANTK_WORK` or similar, never home.
 5. The MatrixTable contract, if you are starting from one (`references/mt-contract.md`):
    split bi-allelic rows, a gene field in one identifier space
    (`gene_id`/`hgnc_id`/`symbol`) and unversioned, a route field (a string or array of
-   strings -- the variant classes burden tests separately and then picks the best of),
-   and a boolean case/control column defined for every sample. Check it with
-   `inspect-cohort-mt.py` as a job *before* spending a burden job on an MT that will
-   just reject it.
+   strings -- the variant classes burden tests separately and then picks the best of), and
+   a boolean case/control column defined for every sample. Check it with
+   `inspect-cohort-mt.py` as a job *before* spending a burden job on an MT that will just
+   reject it.
 6. The Layer-1 table you will attach onto (the composed annotation matrix, or the gene
-   index itself -- `attach --layer1` accepts any table keyed by `gene_id` that spans
-   the genes you care about) and its path.
+   index itself -- `attach --layer1` accepts any table keyed by `gene_id` that spans the
+   genes you care about) and its path.
 7. Whether an HGNC table is needed: `--hgnc <hgnc:lookup .ht>` is required when the
-   cohort's `key` is `hgnc_id` or `symbol`, or when the manifest declares `labels`
-   (label gene sets are always symbol-keyed, regardless of the cohort's own key).
-8. If you are starting from an existing table instead of running burden: confirm you
-   have the right to use it, and which column is the prior statistic and in which
-   direction (`lower_is_better`/`higher_is_better`) -- never guess the direction.
+   cohort's `key` is `hgnc_id` or `symbol`, or when the manifest declares `labels` (label
+   gene sets are always symbol-keyed, regardless of the cohort's own key).
+8. If you are starting from an existing table instead of running burden: confirm you have
+   the right to use it, and which column is the prior statistic and in which direction
+   (`lower_is_better`/`higher_is_better`) -- never guess the direction.
 
 ## 3. Procedure
 

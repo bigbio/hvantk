@@ -35,11 +35,22 @@ redesigning a probe beyond making it answer again.
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Needed by every image-touching step (1, 3, 5, 6); classifying (2) and repairing (4) are checkout-only.
-2. Checkout: the commit under review (the drift bot's branch, or `dev`) is checked out at `$HVANTK_REPO`, clean tree -- `git -C "$HVANTK_REPO" status --porcelain` -- so the repair you make is the only diff.
-3. Image: confirm the path and record its digest (`sha256sum "$(readlink -f "$HVANTK_SIF")"`); rebuild and verify jobs run inside it.
-4. Egress: a login node with egress answers `hvantk drift` directly. Without it -- a compute node, a sandbox, or to pin the signal to a file in hand -- `templates/probe-offline.py` answers the same probe locally (`references/bookkeeping.md` says which).
-5. Inputs and outputs: a raw directory for the current upstream file, a writable output path for the rebuild.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`. Needed by every image-touching
+   step (1, 3, 5, 6); classifying (2) and repairing (4) are checkout-only.
+2. Checkout: the commit under review (the drift bot's branch, or `dev`) is checked out at
+   `$HVANTK_REPO`, clean tree -- `git -C "$HVANTK_REPO" status --porcelain` -- so the
+   repair you make is the only diff.
+3. Image: confirm the path and record its digest
+   (`sha256sum "$(readlink -f "$HVANTK_SIF")"`); rebuild and verify jobs run inside it.
+4. Egress: a login node with egress answers `hvantk drift` directly. Without it -- a
+   compute node, a sandbox, or to pin the signal to a file in hand --
+   `templates/probe-offline.py` answers the same probe locally
+   (`references/bookkeeping.md` says which).
+5. Inputs and outputs: a raw directory for the current upstream file, a writable output
+   path for the rebuild.
 
 ## 3. Procedure
 
