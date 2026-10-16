@@ -19,8 +19,8 @@
   "max_mem_gb": 16,
   "max_minutes": 30,
   "produced_by": {
-    "at": "2026-10-15T23:42:50.248153+00:00",
-    "commit": "e44fb4eb7645458856ec60ed7de3a9a52adcbd60",
+    "at": "2026-10-16T01:08:30.613923+00:00",
+    "commit": "577359988b24e61d542e8dcd4d07bb124b34323a",
     "input_sha256": "fbb68abda47fb56aafb253b4e4fab02abd7fcbb0b5bdd53542910c2a48dc6d23",
     "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74"
   },
