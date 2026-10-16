@@ -81,6 +81,29 @@ print_verdict() { python3 -c "import json,sys
 v=json.load(open(sys.argv[1]))
 print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass')})
 print('content_checks:', v.get('content_checks'), 'error:', v.get('error'))" "$1"; }
+content_field() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); print(v.get('content',{}).get(sys.argv[2]))" "$1" "$2"; }
+# Writes $1 as JSON built from "KEY=VALUE" pairs ($2+): the control's final
+# content-digest marker, written only here as the VERY LAST action, after every
+# assertion above has already passed -- so its mere existence (not just a positive
+# verdict with pass=true) means the whole run, both arms, passed. Nothing in this
+# batch currently stages FROM rerank-evaluate's output; this is written for
+# uniformity with the other three skills' controls. Python 3.6-safe.
+write_control_passed() {
+  local out="$1"; shift
+  python3 - "$out" "$@" <<'PY'
+import json
+import sys
+
+out = sys.argv[1]
+payload = {}
+for kv in sys.argv[2:]:
+    k, v = kv.split("=", 1)
+    payload[k] = v
+with open(out, "w") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+}
 
 # check.py itself runs as a job (see the header): `|| true` so a check that
 # legitimately exits non-zero (the negative control under --expect-fail is SUPPOSED
@@ -220,3 +243,10 @@ run_check "$RUN_NEG-check" "$OUT/neg" --out-dir "$OUT/neg" --run-notes "$OUT/neg
 echo "negative control: PASS (M4 true, M5 false: universe_ok false -- the whole gene index was ranked, not the cohort's tested genes)"
 print_verdict "$OUT/neg/verdict.json"
 echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json"
+
+# --- very last action: the content-digest marker, for uniformity with the other
+# --- three skills' controls (see write_control_passed above) ---
+UNIVERSE_SHA="$(content_field "$OUT/pos/verdict.json" universe_sha256)"
+LABELS_SHA="$(content_field "$OUT/pos/verdict.json" labels_sha256)"
+write_control_passed "$OUT/control.passed" "universe_sha256=$UNIVERSE_SHA" "labels_sha256=$LABELS_SHA"
+echo "control.passed: $OUT/control.passed"

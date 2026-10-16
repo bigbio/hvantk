@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Stage the cohort-attach-burden eval: the newest PASSING gene-index positive control's
-# own table, the 1000 Genomes high-coverage chr22 VCF (reusing ancestry-inference's
-# staged copy when it is already complete, rather than downloading a multi-GB file
-# twice on one cluster), and the synthetic case/control cohort MatrixTable built from
-# both. Login-node work except for the one Hail prep job. The gene index is always
-# re-synced from the newest passing upstream control (cheap); the cohort MatrixTable
-# is only rebuilt when that upstream changed, was incomplete, or is itself missing.
+# Stage the cohort-attach-burden eval: the newest gene-index control directory that
+# fully passed (has control.passed) and its own table, the 1000 Genomes high-coverage
+# chr22 VCF (reusing ancestry-inference's staged copy when it is already complete,
+# rather than downloading a multi-GB file twice on one cluster), and the synthetic
+# case/control cohort MatrixTable built from both. Login-node work except for the one
+# Hail prep job. The gene index is bound by CONTENT (control.passed's own
+# gene_index_content_sha256), not by a receipt's checked_at/output paths, which
+# change on every upstream re-run even when the content does not: the copy and the
+# cohort MatrixTable are only refreshed when that digest changed or the staged copy
+# is incomplete.
 #
 #   HVANTK_SITE_PROFILE=... bash skills/cohort-attach-burden/eval/stage.sh
 set -euo pipefail
@@ -23,53 +26,52 @@ EVAL_ROOT="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}"
 STAGE="$EVAL_ROOT/cohort-attach-burden"
 mkdir -p "$STAGE/raw" "$STAGE/upstream"
 
-# --- 1. the newest gene-index positive control that actually passed ---
+# --- 1. the newest gene-index control directory that fully passed (has
+# --- control.passed, written only after both of ITS arms' assertions pass -- see
+# --- skills/gene-index/eval/control.sh) ---
 GI_STAGE="$EVAL_ROOT/gene-index"
-GI_POS="$(python3 -c "
-import json, os, sys
+GI_CONTROL="$(python3 -c "
+import os, sys
 
 root = sys.argv[1]
 ctl = os.path.join(root, 'control')
 best = None
 if os.path.isdir(ctl):
     for name in sorted(os.listdir(ctl)):
-        pos = os.path.join(ctl, name, 'pos')
-        verdict_path = os.path.join(pos, 'verdict.json')
-        if not os.path.isfile(verdict_path):
-            continue
-        try:
-            with open(verdict_path) as fh:
-                verdict = json.load(fh)
-        except ValueError:
-            continue
-        if verdict.get('pass') is True:
-            best = pos
+        if os.path.isfile(os.path.join(ctl, name, 'control.passed')):
+            best = os.path.join(ctl, name)
 if best is None:
     sys.exit(1)
 sys.stdout.write(best)
 " "$GI_STAGE")" || {
-  echo "ERROR: no passing gene-index positive control found under $GI_STAGE/control; run the gene-index control first" >&2
+  echo "ERROR: no gene-index control directory under $GI_STAGE/control has control.passed; run skills/gene-index/eval/control.sh first" >&2
   exit 1
 }
-echo "using gene-index control: $GI_POS"
+GI_POS="$GI_CONTROL/pos"
+GI_CONTENT_SHA="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['gene_index_content_sha256'])" "$GI_CONTROL/control.passed")"
+echo "using gene-index control: $GI_CONTROL (content sha256 $GI_CONTENT_SHA)"
 # Detect a changed (re-baselined) or previously incomplete upstream BEFORE
-# overwriting the stage's own copy of the receipt, so the comparison is against what
+# overwriting the stage's own copy of the digest, so the comparison is against what
 # was actually staged last time, not against what we are about to replace it with.
-GI_WAS_INCOMPLETE=1
-[[ -e "$STAGE/gene-index.ht/_SUCCESS" ]] && GI_WAS_INCOMPLETE=0
-OLD_RECEIPT_SHA=""
-[[ -f "$STAGE/upstream/gene-index.receipt.json" ]] \
-  && OLD_RECEIPT_SHA="$(sha256sum "$STAGE/upstream/gene-index.receipt.json" | cut -d' ' -f1)"
-NEW_RECEIPT_SHA="$(sha256sum "$GI_POS/receipt.json" | cut -d' ' -f1)"
+# Bound by CONTENT (the gene index's own row/schema digest), not by a receipt's
+# checked_at/output paths -- those change on every upstream re-run even when the
+# gene index itself did not, which previously made every re-run of the gene-index
+# control look like a change here.
+OLD_CONTENT_SHA=""
+[[ -f "$STAGE/upstream/gene-index.content_sha256" ]] \
+  && OLD_CONTENT_SHA="$(cat "$STAGE/upstream/gene-index.content_sha256")"
+NEED_REFRESH=0
+[[ -e "$STAGE/gene-index.ht/_SUCCESS" ]] || NEED_REFRESH=1
+[[ "$OLD_CONTENT_SHA" == "$GI_CONTENT_SHA" ]] || NEED_REFRESH=1
 
-# Always sync, never skip: --delete removes any part file or stale leftover from an
-# earlier, different upstream control so the staged copy is always exactly $GI_POS's.
-rsync -a --delete "$GI_POS/gene-index.ht/" "$STAGE/gene-index.ht/"
-cp "$GI_POS/receipt.json" "$STAGE/upstream/gene-index.receipt.json"
-
-if (( GI_WAS_INCOMPLETE )) || [[ "$OLD_RECEIPT_SHA" != "$NEW_RECEIPT_SHA" ]]; then
-  echo "upstream gene index changed (or the staged copy was incomplete); removing the stale cohort MatrixTable so it rebuilds"
+if (( NEED_REFRESH )); then
+  echo "gene index content changed (or the staged copy was incomplete); refreshing"
+  rsync -a --delete "$GI_POS/gene-index.ht/" "$STAGE/gene-index.ht/"
+  printf '%s\n' "$GI_CONTENT_SHA" > "$STAGE/upstream/gene-index.content_sha256"
+  echo "removing the stale cohort MatrixTable so it rebuilds"
   rm -rf "$STAGE/cohort.mt" "$STAGE/cohort.summary.json"
+else
+  echo "gene index content unchanged ($GI_CONTENT_SHA); keeping the staged copy"
 fi
 
 # --- 2. the 1000 Genomes high-coverage chr22 VCF and its index (the same file
@@ -113,6 +115,6 @@ if [[ ! -e "$STAGE/cohort.mt/_SUCCESS" || ! -s "$STAGE/cohort.summary.json" ]]; 
 fi
 
 ( cd "$STAGE" && sha256sum "raw/$FILE" "raw/$FILE.tbi" cohort.summary.json \
-    upstream/gene-index.receipt.json > staged.sha256 )
+    upstream/gene-index.content_sha256 > staged.sha256 )
 cat "$STAGE/staged.sha256"
 echo "staged under $STAGE"

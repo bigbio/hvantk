@@ -17,7 +17,7 @@ verified against that code, not against `--help` alone.
 `name` (a label) and `layer1` (a list of source entries; at least one). Each entry:
 
 ```yaml
-name: chd-features
+name: my-features
 layer1:
   - {axis: constraint, source: gnomad-metrics:metrics, key: gene_id, columns: [mis_z]}
   - {axis: gevir,      source: gevir:metrics,          key: gene_id, columns: [gevir_pct]}

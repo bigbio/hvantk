@@ -68,6 +68,30 @@ verdict_stage() { python3 -c "import json,sys; v=json.load(open(sys.argv[1])); p
 print_verdict() { python3 -c "import json,sys
 v=json.load(open(sys.argv[1]))
 print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass','burden_ok','attach_ok','reported_ok')})" "$1"; }
+# Writes $1 as JSON built from "KEY=VALUE" pairs ($2+): the control's final
+# content-digest marker, written only here as the VERY LAST action, after every
+# assertion above has already passed -- so its mere existence (not just a positive
+# verdict with pass=true) means the whole run, both arms, passed. rerank-evaluate's
+# stage.sh selects the newest control directory that has this file, rather than
+# re-deriving "did this control fully pass" from a receipt's checked_at/output
+# paths, which change on every upstream re-run even when the content does not.
+# Python 3.6-safe.
+write_control_passed() {
+  local out="$1"; shift
+  python3 - "$out" "$@" <<'PY'
+import json
+import sys
+
+out = sys.argv[1]
+payload = {}
+for kv in sys.argv[2:]:
+    k, v = kv.split("=", 1)
+    payload[k] = v
+with open(out, "w") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+}
 # Renames the manifest's `name:` line in place (3.6-safe); --emit-manifest's default is
 # the --output path's stem ("gene_burden"), the task wants "eval-cohort". Everything
 # else is kept exactly as rendered by render_cohort_manifest (verified against
@@ -190,3 +214,14 @@ print_verdict "$OUT/neg/verdict.json"
 echo "negative control: PASS (M4 true, M5 false: reported_ok true, burden_ok false -- same gene/route universe, different carrier-mode statistics)"
 echo "verdicts: $OUT/pos/verdict.json $OUT/neg/verdict.json"
 echo "pos/ holds gene_burden.tsv and cohort.yaml for rerank-evaluate's stage to copy"
+
+# --- very last action: the content-digest marker rerank-evaluate's stage.sh selects
+# --- on. gene_index_content_sha256 is read back from THIS stage's own binding (what
+# --- eval/stage.sh wrote to upstream/gene-index.content_sha256), not recomputed, so
+# --- it names exactly the gene index this control actually ran against. ---
+BURDEN_ROWS_SHA="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['burden']['rows_sha256'])" "$OUT/pos/verdict.json")"
+ATTACHED_ROWS_SHA="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['attached']['rows_sha256'])" "$OUT/pos/verdict.json")"
+GI_CONTENT_SHA="$(cat "$STAGE/upstream/gene-index.content_sha256")"
+write_control_passed "$OUT/control.passed" "burden_rows_sha256=$BURDEN_ROWS_SHA" \
+  "attached_rows_sha256=$ATTACHED_ROWS_SHA" "gene_index_content_sha256=$GI_CONTENT_SHA"
+echo "control.passed: $OUT/control.passed"

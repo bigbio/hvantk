@@ -81,7 +81,8 @@ all-pairs table per source:
   per-tissue summary statistics over a genomic window, served by remote tabix, and is
   what `hvantk.algorithms.qtlcascade.gwas_coloc.fetch_eqtl_region(dataset, chrom,
   start, end, study=...)` reads — `dataset` is an eQTL Catalogue dataset id (e.g.
-  `QTD000266` for GTEx liver gene expression) rather than a GTEx tissue name. It
+  a GTEx tissue's QTD id from the eQTL Catalogue's dataset table) rather than a
+  GTEx tissue name. It
   returns `{gene_id: [((pos, ref, alt), beta, se, pval), ...]}` for the window
   (`gene_id` already version-stripped; rows with `se <= 0` already dropped; no `maf`
   in this payload). This is a region-at-a-time, network-needing path (`gwas-coloc`'s

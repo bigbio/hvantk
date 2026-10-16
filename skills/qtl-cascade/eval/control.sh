@@ -51,7 +51,6 @@ SINCE="$(date +%Y-%m-%dT%H:%M:%S)"   # local time: sacct -S reads the node's clo
 COMMIT="$(git -C "$R" rev-parse HEAD)"
 SIF_SHA="$(sha256sum "$(readlink -f "$HVANTK_SIF")" | cut -d' ' -f1)"   # always the resolved file
 SACCT_FIELDS="JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
-LOG_DIR="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}"
 
 capture_sacct() { sacct -X -n -P -S "$SINCE" -o "$SACCT_FIELDS" > "$1"; }
 # `produced_by` is null in the placeholder reference.json ({"produced_by": null})
@@ -67,6 +66,28 @@ print_verdict() { python3 -c "import json,sys
 v=json.load(open(sys.argv[1]))
 print('verdict:', {k: v.get(k) for k in ('M1','M2','M3','M4','M5','pass')},
       {k: v.get('output', {}).get(k) for k in ('cascade_ok','coloc_ok','reported_ok')})" "$1"; }
+# Writes $1 as JSON built from "KEY=VALUE" pairs ($2+): the control's final
+# content-digest marker, written only here as the VERY LAST action, after every
+# assertion above has already passed -- so its mere existence (not just a positive
+# verdict with pass=true) means the whole run, both arms, passed. Nothing in this
+# batch currently stages FROM qtl-cascade's output; this is written for uniformity
+# with the other three skills' controls. Python 3.6-safe.
+write_control_passed() {
+  local out="$1"; shift
+  python3 - "$out" "$@" <<'PY'
+import json
+import sys
+
+out = sys.argv[1]
+payload = {}
+for kv in sys.argv[2:]:
+    k, v = kv.split("=", 1)
+    payload[k] = v
+with open(out, "w") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+}
 # Every cascade class must be non-empty and the gene summary must carry a coloc
 # candidate (SKILL.md Traps / the brief's own data check); printed as a
 # comma-separated list of the classes that are missing or zero (empty = all four
@@ -85,15 +106,29 @@ for p in sys.argv[2].split('.'):
 print(d)" "$1" "$2"; }
 # The cascade job's own log carries `qtlcascade run`'s printed "  Liver: N genes, M
 # colocalised" line (its click.echo output lands in the job's redirected log file,
-# never in this script's own captured stdout). Parsed on the login node, Python
-# 3.6-safe.
-report_counts() { python3 -c "import re,sys
-text = open(sys.argv[1]).read()
-m = re.search(r'^  ' + re.escape(sys.argv[2]) + r': (\d+) genes, (\d+) colocalised\$', text, re.M)
+# never in this script's own captured stdout). The log's PATH is on
+# submit-hail-job.sh's own "log: <path>" line on STDERR (captured to $1 by the
+# caller, the same pattern cohort-attach-burden's attached_fraction uses), not
+# guessed from the job name/id. The log also carries Hail/Spark progress bars that
+# end in \r rather than \n, so the tissue line is not guaranteed to start its own
+# \n-terminated line; translate every \r to \n first and match unanchored, not with
+# a leading ^, as the cohort control does.
+report_counts() {  # report_counts <stderr-file> <tissue>: prints "N\nM" or exits 1.
+  local stderr_file="$1" tissue="$2" log
+  log="$(grep -oE '^log: .*' "$stderr_file" | sed 's/^log: //')"
+  if [[ -z "$log" || ! -f "$log" ]]; then
+    echo "ERROR: could not find the cascade job's log via submit-hail-job.sh's stderr ($stderr_file)" >&2
+    cat "$stderr_file" >&2
+    exit 1
+  fi
+  python3 -c "import re,sys
+text = open(sys.argv[1]).read().replace('\r', '\n')
+m = re.search(r'  ' + re.escape(sys.argv[2]) + r': (\d+) genes, (\d+) colocalised', text)
 if not m:
     sys.exit('no \"  ' + sys.argv[2] + ': N genes, M colocalised\" line in ' + sys.argv[1])
 print(m.group(1))
-print(m.group(2))" "$1" "$2"; }
+print(m.group(2))" "$log" "$tissue"
+}
 
 # Login-node orchestrator wrapper for check.py: `|| true` so a job that legitimately
 # exits non-zero (the negative control under --expect-fail is SUPPOSED to; a genuine
@@ -114,16 +149,22 @@ run_summary() {
     | tail -1
 }
 # summary.json's two counts, cross-checked against the SAME run's own cascade-job
-# log line (report_counts): the notes should never disagree with either source.
+# log line (report_counts, via the cascade job's own submission stderr): the notes
+# should never disagree with either source.
 counts_from_summary() {
-  local summary_json="$1" cascade_log="$2" tissue="$3"
+  local summary_json="$1" cascade_stderr="$2" tissue="$3"
   local genes colocalised
   genes="$(summary_field "$summary_json" n_cascade_genes)"
   colocalised="$(summary_field "$summary_json" coloc.colocalised)"
-  mapfile -t _log_counts < <(report_counts "$cascade_log" "$tissue")
+  # `mapfile ... < <(cmd)` does not propagate cmd's own exit status to mapfile --
+  # under `set -e` a failing report_counts would NOT reliably abort here. Capture
+  # via `$(...)` instead, which DOES abort under `set -e` on failure.
+  local _log_counts_text
+  _log_counts_text="$(report_counts "$cascade_stderr" "$tissue")"
+  mapfile -t _log_counts <<< "$_log_counts_text"
   if [[ "$genes" != "${_log_counts[0]}" || "$colocalised" != "${_log_counts[1]}" ]]; then
     echo "ERROR: summary.json ($genes genes, $colocalised colocalised) disagrees with" >&2
-    echo "       the cascade job's own log ($cascade_log: ${_log_counts[0]} genes, ${_log_counts[1]} colocalised)" >&2
+    echo "       the cascade job's own log (via $cascade_stderr: ${_log_counts[0]} genes, ${_log_counts[1]} colocalised)" >&2
     exit 1
   fi
   printf '%s\n%s\n' "$genes" "$colocalised"
@@ -165,12 +206,16 @@ JOB_PQTL="$(bash "$SUBMIT" --name "$RUN_POS-pqtl" --cpus 4 --mem-gb 16 --time 0-
   hvantk reprocess pqtl:metrics --raw-dir "$PQTL_RAW" --output "$PQTL_HT" \
     --skip-download --no-check-drift \
     --plugin-arg tissue=Liver --plugin-arg hgnc_ht="$HGNC_HT" | tail -1)"
+CASCADE_POS_STDERR="$OUT/pos/cascade-submit.stderr"
 JOB_CASCADE="$(bash "$SUBMIT" --name "$RUN_POS-cascade" --cpus 4 --mem-gb 16 --time 0-00:45:00 --wait -- \
   hvantk qtlcascade run --eqtl-ht "$EQTL_HT" --pqtl-ht "$PQTL_HT" \
     --eqtl-allpairs "$EQTL_HT" --pqtl-allpairs "$PQTL_HT" \
-    --tissues Liver -o "$CASCADE_OUT" | tail -1)"
+    --tissues Liver -o "$CASCADE_OUT" 2>"$CASCADE_POS_STDERR" | tail -1)"
 JOB_SUMMARY_POS="$(run_summary "$RUN_POS-summary" "$CASCADE_OUT" "$SUMMARY_POS")"
-mapfile -t POS_COUNTS < <(counts_from_summary "$SUMMARY_POS" "$LOG_DIR/$RUN_POS-cascade_$JOB_CASCADE.out" Liver)
+# Capture via `$(...)`, not `mapfile < <(...)`, so a failing counts_from_summary
+# (it explicitly `exit 1`s on disagreement) reliably aborts under `set -e`.
+POS_COUNTS_TEXT="$(counts_from_summary "$SUMMARY_POS" "$CASCADE_POS_STDERR" Liver)"
+mapfile -t POS_COUNTS <<< "$POS_COUNTS_TEXT"
 printf 'commit: %s\ncontainer: %s\njob: %s\njob: %s\njob: %s\njob: %s\njob: %s\ncascade_genes: %s\ncolocalised: %s\n' \
   "$COMMIT" "$SIF_SHA" "$JOB_HGNC" "$JOB_EQTL" "$JOB_PQTL" "$JOB_CASCADE" "$JOB_SUMMARY_POS" \
   "${POS_COUNTS[0]}" "${POS_COUNTS[1]}" > "$OUT/pos/run-notes.md"
@@ -208,12 +253,16 @@ JOB_PQTL_SIGNIF="$(bash "$SUBMIT" --name "$RUN_NEG-pqtl" --cpus 4 --mem-gb 16 --
   hvantk reprocess pqtl:metrics --raw-dir "$PQTL_RAW" --output "$PQTL_SIGNIF_HT" \
     --skip-download --no-check-drift \
     --plugin-arg tissue=Liver --plugin-arg hgnc_ht="$HGNC_HT" --plugin-arg p_threshold=5e-8 | tail -1)"
+CASCADE_NEG_STDERR="$OUT/neg/cascade-submit.stderr"
 JOB_CASCADE_NEG="$(bash "$SUBMIT" --name "$RUN_NEG-cascade" --cpus 4 --mem-gb 16 --time 0-00:45:00 --wait -- \
   hvantk qtlcascade run --eqtl-ht "$EQTL_HT" --pqtl-ht "$PQTL_SIGNIF_HT" \
     --eqtl-allpairs "$EQTL_HT" --pqtl-allpairs "$PQTL_SIGNIF_HT" \
-    --tissues Liver -o "$CASCADE_OUT_NEG" | tail -1)"
+    --tissues Liver -o "$CASCADE_OUT_NEG" 2>"$CASCADE_NEG_STDERR" | tail -1)"
 JOB_SUMMARY_NEG="$(run_summary "$RUN_NEG-summary" "$CASCADE_OUT_NEG" "$SUMMARY_NEG")"
-mapfile -t NEG_COUNTS < <(counts_from_summary "$SUMMARY_NEG" "$LOG_DIR/$RUN_NEG-cascade_$JOB_CASCADE_NEG.out" Liver)
+# See the positive arm's comment above: capture via `$(...)`, not
+# `mapfile < <(...)`, so a failing counts_from_summary reliably aborts under `set -e`.
+NEG_COUNTS_TEXT="$(counts_from_summary "$SUMMARY_NEG" "$CASCADE_NEG_STDERR" Liver)"
+mapfile -t NEG_COUNTS <<< "$NEG_COUNTS_TEXT"
 printf 'commit: %s\ncontainer: %s\njob: %s\njob: %s\njob: %s\ncascade_genes: %s\ncolocalised: %s\n' \
   "$COMMIT" "$SIF_SHA" "$JOB_PQTL_SIGNIF" "$JOB_CASCADE_NEG" "$JOB_SUMMARY_NEG" \
   "${NEG_COUNTS[0]}" "${NEG_COUNTS[1]}" > "$OUT/neg/run-notes.md"
@@ -231,3 +280,11 @@ run_check "$RUN_NEG-check" "$CASCADE_OUT_NEG" --out-dir "$CASCADE_OUT_NEG" --tis
   || { echo "ERROR: negative control's own notes disagree with its own output (reported_ok=$(output_stage "$CASCADE_OUT_NEG/verdict.json" reported_ok)) -- should be true even though M5 is false" >&2; exit 1; }
 echo "negative control: PASS (M4 true, M5 false: cascade_ok true but coloc_ok false -- significant-pairs-only coloc input; reported_ok true)"
 echo "verdicts: $CASCADE_OUT/verdict.json $CASCADE_OUT_NEG/verdict.json"
+
+# --- very last action: the content-digest marker, for uniformity with the other
+# --- three skills' controls (see write_control_passed above) ---
+GENE_SUMMARY_SHA="$(output_stage "$CASCADE_OUT/verdict.json" gene_summary_sha256)"
+COLOC_GENE_IDS_SHA="$(output_stage "$CASCADE_OUT/verdict.json" coloc_gene_ids_sha256)"
+write_control_passed "$OUT/control.passed" "gene_summary_sha256=$GENE_SUMMARY_SHA" \
+  "coloc_gene_ids_sha256=$COLOC_GENE_IDS_SHA"
+echo "control.passed: $OUT/control.passed"

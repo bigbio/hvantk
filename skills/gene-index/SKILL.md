@@ -156,15 +156,16 @@ remove.
   guard -- it always writes with `overwrite=True`. Fix: write every build to a new output
   path, never reuse one you want to keep.
 - `HGNC join changed the row count (a -> b); the lookup is not unique per gene_id`.
-  Cause: the HGNC table being joined is not a genuine `hgnc:lookup` build (a hand-edited
-  or corrupted copy) and maps more than one record onto the same Ensembl gene in a way
-  the dedup step cannot resolve. This is NOT what happens on an ordinary HGNC table:
   HGNC genuinely does map more than one `hgnc_id` to the same Ensembl gene sometimes,
-  and `build_spine` collapses those to one record (lowest `hgnc_id` wins) BEFORE the
-  join, silently and successfully, every normal run -- this error only fires when
-  something else broke that dedup (a hand-made input, or a `spine.py` regression). Fix:
-  rebuild `hgnc:lookup` from a fresh download rather than editing a table by hand; if it
-  persists on a genuine build, that is worth reporting.
+  and `build_spine` collapses those to one record per gene (lowest `hgnc_id` wins) via
+  a `group_by(gene_id=...).aggregate(...)` BEFORE the join -- which makes the right
+  side's key unique by construction, for ANY input to that step, however messy. On an
+  `hgnc:lookup`-built table (i.e. `hvantk reprocess hgnc:lookup`'s own output, which is
+  the only input this skill's procedure ever feeds in) this guard therefore cannot
+  fire. Cause, if it does anyway: the checkout's `hvantk/algorithms/annotation/
+  spine.py` changed -- the dedup step was altered, weakened or removed. Fix: report
+  it; do not chase a "hand-edited input" explanation, since the dedup rules that out
+  structurally.
 - A mapping rate far below the usual protein-coding norm (upper-90s%). Cause: either a
   stale or wrong-vintage HGNC table, or you built with `--biotype all`, where most
   non-coding biotypes have no HGNC record at all. Fix: compare like with like -- rebuild
@@ -193,7 +194,7 @@ remove.
   is only on `PATH` inside the image, and `python -m hvantk` run from the login node puts
   the current directory first on `sys.path`. Fix: route every `hvantk`/`python`
   invocation through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
-- A small, consistent number of protein-coding genes (observed: 25) never joining onto a
+- A small, consistent number of protein-coding genes (a few dozen) never joining onto a
   cohort's VCF, even though their biotype and chromosome both look right. Cause: those
   genes sit on unplaced or unlocalised scaffolds (`KI270...`, `GL000...`), not on
   `1`-`22`/`X`/`Y`/`MT`, and a VCF naming its contigs `chrUn_KI270728v1`-style never
@@ -209,7 +210,7 @@ present, `content_sha256` (a digest over every row and field, since the gene ind
 sidecar of its own), and the two input datasets' `.provenance.json` sha256 digests.
 Expect: exactly one biotype present when you filtered to one (`protein_coding` or your
 literal choice), several when you built with `all`; chromosomes `1`-`22`, `X`, `Y`, `MT`,
-plus a small number of protein-coding genes (observed: 25) on unplaced or unlocalised
+plus a small number of protein-coding genes (a few dozen) on unplaced or unlocalised
 scaffolds (`KI270...`, `GL000...` -- Traps); nearly every protein-coding gene mapped to
 an HGNC record (a rate well below that means a stale or mismatched HGNC build --
 `references/inputs-and-release.md`). Cross-check that the run notes' `genes:` and

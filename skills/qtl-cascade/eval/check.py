@@ -1,8 +1,10 @@
 """Deterministic check for the qtl-cascade eval task.
 
 M1 from run-notes.md; M2 and M3 from an accounting file captured on the login node
-(no array: five plain jobs — the three table builds, the cascade run, and
-summarize-cascade.py). M4 = the per-tissue `cascade.ht` exists with `_SUCCESS`, is
+(no array: task.md asks for at least four plain jobs — the three table builds and
+the cascade run; eval/control.sh's own exemplar run also submits
+summarize-cascade.py as a fifth, but that is not required of the agent under
+evaluation). M4 = the per-tissue `cascade.ht` exists with `_SUCCESS`, is
 keyed `(locus, alleles, gene_id)` and satisfies its field contract (read fresh from
 THIS checkout's own schema below, never from `reference.json`); `gene_summary.tsv`
 and `coloc_results.tsv` carry their expected columns; the report file exists and

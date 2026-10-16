@@ -182,6 +182,23 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
         key=manifest.key_column,
     )
 
+    # A blank or "NA" key cell survives `import_table` as a missing key -- it does not
+    # fail here, it fails later with a bare TypeError the first time something sorts or
+    # joins on it (`sorted()`/dict-keying over a `None` mixed with strings, in
+    # `hvantk.algorithms.annotation.mapping` and `hvantk.algorithms.cohort.attach`).
+    # Catch it here instead, with the same shape of message
+    # `hvantk.algorithms.cohort.frame._check_no_null_genes` gives the pandas path.
+    n_missing_key = cohort_ht.aggregate(
+        hl.agg.count_where(hl.is_missing(cohort_ht[manifest.key_column]))
+    )
+    if n_missing_key:
+        raise click.UsageError(
+            f"cohort {manifest.name!r} table has {n_missing_key} row(s) whose "
+            f"{manifest.key_column!r} (key_column) value is blank or NA; the cohort "
+            "table must carry a valid gene key on every row -- remove or fill these "
+            "rows before attaching"
+        )
+
     attached, result = attach(hl.read_table(layer1), cohort_ht, manifest, hgnc=hgnc)
     attached.write(output, overwrite=True)
 

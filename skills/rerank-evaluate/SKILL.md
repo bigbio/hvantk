@@ -76,8 +76,8 @@ or building the gene index (`gene-index`).
      --name <run>-cohort --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
      python "$HVANTK_REPO/skills/rerank-evaluate/templates/prepare-rerank-inputs.py" cohort \
        --table <gene_burden.tsv> --key-column gene --gene-index <gene-index.ht> \
-       --hgnc-tsv <hgnc_complete_set.txt> --out "$HVANTK_WORK/<run>/cohort_symbols.tsv" \
-       --manifest-in <cohort.yaml> --manifest-out "$HVANTK_WORK/<run>/cohort_symbols.yaml"
+       --hgnc-tsv <hgnc_complete_set.txt> --out "$HVANTK_WORK/out/rerank/cohort_symbols.tsv" \
+       --manifest-in <cohort.yaml> --manifest-out "$HVANTK_WORK/out/rerank/cohort_symbols.yaml"
    ```
    This adds a `symbol` column (via the gene index's own `hgnc_id`, mapped to an
    approved symbol through the HGNC TSV), sorts by it, and drops rows with no
@@ -93,8 +93,8 @@ or building the gene index (`gene-index`).
      python "$HVANTK_REPO/skills/rerank-evaluate/templates/prepare-rerank-inputs.py" features \
        --ht <gene-index.ht> --fields cds_length,n_coding_exons,n_transcripts \
        --hgnc-tsv <hgnc_complete_set.txt> \
-       --restrict-to "$HVANTK_WORK/<run>/cohort_symbols.tsv" --restrict-column symbol \
-       --out "$HVANTK_WORK/<run>/structure.tsv"
+       --restrict-to "$HVANTK_WORK/out/rerank/cohort_symbols.tsv" --restrict-column symbol \
+       --out "$HVANTK_WORK/out/rerank/structure.tsv"
    ```
    `--ht` is any gene-keyed hvantk table (`references/feature-axes.md` for constraint
    and expression axes); `--restrict-to` is what makes the universe equal the cohort's
@@ -107,17 +107,17 @@ or building the gene index (`gene-index`).
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-clingen --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
      hvantk reprocess clingen:gene-disease --raw-dir "$HVANTK_WORK/raw/clingen" \
-       --output "$HVANTK_WORK/<run>/clingen.ht" --skip-download --no-check-drift
+       --output "$HVANTK_WORK/out/rerank/clingen.ht" --skip-download --no-check-drift
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-geneset --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
-     hvantk genesets clingen --ht "$HVANTK_WORK/<run>/clingen.ht" \
-       --min-classification Moderate -o "$HVANTK_WORK/<run>/labels.json"
+     hvantk genesets clingen --ht "$HVANTK_WORK/out/rerank/clingen.ht" \
+       --min-classification Moderate -o "$HVANTK_WORK/out/rerank/labels.json"
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-labels --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/rerank-evaluate/templates/prepare-rerank-inputs.py" labels \
-       --geneset "$HVANTK_WORK/<run>/labels.json" \
-       --restrict-to "$HVANTK_WORK/<run>/cohort_symbols.tsv" --restrict-column symbol \
-       --out "$HVANTK_WORK/<run>/labels.txt"
+       --geneset "$HVANTK_WORK/out/rerank/labels.json" \
+       --restrict-to "$HVANTK_WORK/out/rerank/cohort_symbols.tsv" --restrict-column symbol \
+       --out "$HVANTK_WORK/out/rerank/labels.txt"
    ```
    `--min-classification` is "this level or stronger" (`Moderate` means Moderate,
    Strong or Definitive); omit `--group` to union every ClinGen GCEP group, i.e. any
@@ -133,7 +133,7 @@ or building the gene index (`gene-index`).
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-rerank --cpus 4 --mem-gb 16 --time 0-00:30:00 --wait -- \
-     hvantk rerank -c "$HVANTK_WORK/<run>/config.yaml" -o "$HVANTK_WORK/<run>/ranked.tsv" \
+     hvantk rerank -c "$HVANTK_WORK/out/rerank/config.yaml" -o "$HVANTK_WORK/out/rerank/ranked.tsv" \
        --blocks <hgnc_complete_set.txt> --seed 42
    ```
    `--blocks` switches cross-validation to paralogue-blocked folds: an HGNC-symbol
@@ -148,7 +148,7 @@ or building the gene index (`gene-index`).
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-eval --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/rerank-evaluate/templates/evaluate-ranking.py" \
-       --ranked "$HVANTK_WORK/<run>/ranked.tsv" --receipt "$HVANTK_WORK/<run>/eval.json"
+       --ranked "$HVANTK_WORK/out/rerank/ranked.tsv" --receipt "$HVANTK_WORK/out/rerank/eval.json"
    ```
    Record its `auc:` line in the run notes.
 

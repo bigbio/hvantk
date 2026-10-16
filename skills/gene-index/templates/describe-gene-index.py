@@ -31,10 +31,11 @@ N_HGNC_EXAMPLES = 10
 
 
 def norm(value):
-    """Stable-string floats, pass everything else through -- see
-    ``skills/_conventions``' shared digest convention. The gene index's own fields are
-    all strings, ints or arrays of strings (no floats), so this only matters if a future
-    field adds one.
+    """Stable-string floats, pass everything else through, the same normalisation
+    `eval/check.py` uses for its own content digest (not a documented, shared
+    convention -- each script in this project keeps its own copy). The gene index's
+    own fields are all strings, ints or arrays of strings (no floats), so this only
+    matters if a future field adds one.
     """
     if isinstance(value, float):
         return format(value, ".10g")

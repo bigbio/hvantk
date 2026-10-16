@@ -107,14 +107,14 @@ REQUIRED_CONFIG_KEYS = {"cohort", "features", "labels"}
 _COMMIT = re.compile(r"^commit:\s*([0-9a-f]{7,40})\s*$", re.M)
 _CONTAINER = re.compile(r"^container:\s*([0-9a-f]{64})\s*$", re.M)
 _JOB = re.compile(r"^job:\s*(\d+(?:_\d+)?)", re.M)
-_AUC_LINE = re.compile(r"^auc:\s*([0-9.]+)\s*$", re.M)
+_AUC_LINE = re.compile(r"^auc:\s*(\d+(?:\.\d+)?)\s*$", re.M)
 _MEM = re.compile(r"^([0-9.]+)([KMGT])([nc]?)$")
 _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 SACCT_FIELDS = "JobID,JobName,State,ReqMem,AllocCPUS,Timelimit,Partition"
 
 
-# --- run notes and Slurm accounting (M1-M3); copied, not imported, per
-# --- skills/_conventions/SKILL.md section 6: every eval/check.py is self-contained ---
+# --- run notes and Slurm accounting (M1-M3); copied, not imported -- this project's
+# --- eval/check.py scripts are each self-contained, never importing another skill's ---
 
 
 def parse_notes(path: Path) -> dict:
@@ -130,12 +130,21 @@ def parse_notes(path: Path) -> dict:
     c = _COMMIT.search(text)
     k = _CONTAINER.search(text)
     a = _AUC_LINE.search(text)
+    auc = None
+    if a is not None:
+        try:
+            auc = float(a.group(1))
+        except ValueError:
+            # The stricter regex above means this should never actually trigger,
+            # but a malformed `auc:` value must fail reported_ok, not crash parsing
+            # (and the run-notes `auc:` line before verdict.json/receipt.json exist).
+            auc = None
     return {
         "present": True,
         "commit": c.group(1) if c else None,
         "container": k.group(1) if k else None,
         "jobs": _JOB.findall(text),
-        "auc": float(a.group(1)) if a else None,
+        "auc": auc,
     }
 
 
@@ -242,9 +251,10 @@ def grade_slurm(
     return m2, m3, {"jobs": jobs, "within_budget": within}
 
 
-# --- order-insensitive digests, following skills/_conventions/SKILL.md section 5's
-# --- rows_digest convention: sha256 of the sorted, newline-joined json.dumps of each
-# --- normalised row; floats as format(x, ".10g") so nan/inf hash as stable strings ---
+# --- order-insensitive digests: sha256 of the sorted, newline-joined json.dumps of
+# --- each normalised row; floats as format(x, ".10g") so nan/inf hash as stable
+# --- strings. Not a documented, shared convention -- each eval/check.py in this
+# --- project keeps its own copy, self-contained. ---------------------------------
 
 
 def _norm(x):

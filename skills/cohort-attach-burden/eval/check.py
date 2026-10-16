@@ -10,8 +10,15 @@ There is no plugin-committed schema snapshot for a synthetic burden table or a
 dynamically-composed attach output (unlike dataset-build-at-scale/gene-index), so the
 CONTRACT FIELD NAMES for ``attached.ht`` come from this checkout's own code (the gene
 spine's ``SPINE_FIELDS``, the burden manifest's ``ARCHITECTURE_AXIS_COLUMNS``, plus
-``minp`` and ``cohort_tested``) while their observed TYPES come from ``reference.json``,
-checked as a floor (extra fields allowed, same spirit as the rest of this batch).
+``minp`` and ``cohort_tested``). All of them must be PRESENT (``missing_fields``).
+Only the gene index's own fields plus ``cohort_tested`` are also checked for TYPE
+against ``reference.json``'s stored types, as a floor (extra fields allowed, same
+spirit as the rest of this batch) -- ``minp`` and the architecture axis columns are
+the cohort's own declared, Hail-*imputed* columns, and an all-blank one (e.g. no
+private variant anywhere makes every gene's ``driver_af`` empty) imputes as ``str``
+instead of ``float64`` in EITHER arm, which is legitimate data-dependent behaviour,
+not a build defect; their VALUES are still graded, via the row digest in M5
+(``attach_ok``), not skipped outright. See ``type_contract_field_names``.
 
 M4 (the output exists and passes its contract):
   * ``gene_burden.tsv`` has every expected column (``BURDEN_COLUMNS`` below, or
@@ -27,9 +34,10 @@ M4 (the output exists and passes its contract):
     see ``references/cohort-manifest.md``) and resolves to that same TSV (checked here
     via ``resolve_table_path``, this check's own forgiving resolution rule, only to
     confirm the two outputs name the same file; it is not hvantk's own rule).
-  * ``attached.ht`` has ``_SUCCESS``, key ``["gene_id"]``, every contract field present
-    with the reference's own stored type (a floor); its report JSON exists with
-    ``n_genes`` and ``n_tested``.
+  * ``attached.ht`` has ``_SUCCESS``, key ``["gene_id"]``, every contract field
+    present, with the gene index's own fields and ``cohort_tested`` also checked
+    against the reference's own stored type (a floor); its report JSON exists
+    with ``n_genes`` and ``n_tested``.
 
 M5: ``burden_ok`` (the TSV's row count and a digest over every row's contract columns
 equal the reference's own), ``attach_ok`` (``n_genes``/``n_tested`` equal the
@@ -425,6 +433,26 @@ def contract_field_names() -> list:
     )
 
 
+def type_contract_field_names() -> list:
+    """The M4 TYPE-contract subset of :func:`contract_field_names`: the gene index's
+    own fields plus ``cohort_tested``, which ``attach()`` always derives identically
+    regardless of what the cohort table's declared columns happen to contain.
+
+    The rest of ``contract_field_names()`` -- ``minp`` and the architecture axis
+    columns (``n_case_var``, ``conc``, ``driver_af``) -- are the cohort's own
+    declared, Hail-*imputed* columns: an all-blank column (e.g. no private variant
+    anywhere makes every gene's ``driver_af`` empty) imputes as ``str`` instead of
+    ``float64`` in EITHER arm, which is legitimate data-dependent behaviour, not a
+    build defect, so it must not fail M4 on type alone. Those columns are still
+    checked for PRESENCE by ``contract_field_names()`` (``missing_fields``), and
+    their actual values are still graded by the row digest in M5 (``attach_ok``) --
+    only the TYPE gate is narrowed here.
+    """
+    from hvantk.algorithms.annotation.spine import SPINE_FIELDS
+
+    return sorted(set(SPINE_FIELDS) | {"cohort_tested"})
+
+
 def declared_columns() -> list:
     from hvantk.algorithms.burden.manifest import ARCHITECTURE_AXIS_COLUMNS
 
@@ -462,10 +490,13 @@ def grade_attached(out_dir: Path, reference) -> tuple:
 
     if reference is not None:
         ref_types = reference.get("attach", {}).get("contract_fields", {})
+        type_checked = set(type_contract_field_names())
         type_mismatches = {
             n: {"expected": ref_types[n], "got": row_schema.get(n)}
             for n in ref_types
-            if n in row_schema and row_schema.get(n) != ref_types[n]
+            if n in type_checked
+            and n in row_schema
+            and row_schema.get(n) != ref_types[n]
         }
         details["type_mismatches"] = type_mismatches
         m4 = bool(m4 and not type_mismatches)

@@ -86,8 +86,16 @@ is then named `architecture` to warn about.
 A pointer to a `GeneSetCollection` JSON, never a bare column -- label sets are always
 symbol-keyed (`hvantk genesets prepare` rejects Ensembl or Entrez ids outright), so
 `attach` needs the HGNC catalog (`--hgnc`) to resolve them onto the spine regardless of
-the cohort's own `key`. Declare `labels` only once you are about to rerank; a
-credibility or veto report has no use for them.
+the cohort's own `key`.
+
+This block does NOT feed `rerank-evaluate`: rerank reads labels only from its own
+rerank config's `labels.path` (a plain gene-list file, `hvantk/algorithms/rerank/
+config.py`'s `config.labels.load()`), never from a cohort manifest. Declaring
+`labels` here only makes `attach` resolve the same gene set onto the spine and add
+its own `label` bool column to `attached.ht` (useful for inspection, e.g. comparing
+the cohort's own tested genes against a label set) and makes `--hgnc` required. A
+credibility or veto report, which never calls `attach` with `--hgnc`, has no use for
+it.
 
 ## Two examples
 

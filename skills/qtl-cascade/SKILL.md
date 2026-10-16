@@ -84,7 +84,7 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
      hvantk qtlcascade run --eqtl-ht <eqtl>.ht --pqtl-ht <pqtl>.ht \
        --eqtl-allpairs <eqtl>.ht --pqtl-allpairs <pqtl>.ht \
-       --tissues <Tissue> -o <out dir> --dry-run
+       --tissues <Tissue> -o "$HVANTK_WORK/out/qtl" --dry-run
    ```
 5. **Run the cascade** (job; omit `--eqtl-allpairs`/`--pqtl-allpairs` together to skip
    coloc — both or neither, never one):
@@ -93,7 +93,7 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
      --name <run>-cascade --cpus 8 --mem-gb 64 --time 0-02:00:00 --wait -- \
      hvantk qtlcascade run --eqtl-ht <eqtl>.ht --pqtl-ht <pqtl>.ht \
        --eqtl-allpairs <eqtl>.ht --pqtl-allpairs <pqtl>.ht \
-       --tissues <Tissue> -o <out dir> \
+       --tissues <Tissue> -o "$HVANTK_WORK/out/qtl" \
        [--eqtl-p 5e-8] [--pqtl-p 5e-8] [--window-kb 500] [--no-plots] [--no-report] [--overwrite]
    ```
    Component commands (`cascade`, `coloc`, `report`), the output layout and the gene
@@ -108,7 +108,7 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-summary --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/qtl-cascade/templates/summarize-cascade.py" \
-       --out-dir <out dir> --tissue <Tissue> --receipt <out dir>/summary.json
+       --out-dir "$HVANTK_WORK/out/qtl" --tissue <Tissue> --receipt "$HVANTK_WORK/out/qtl/summary.json"
    ```
    Copy its printed counts into the run notes.
 7. **Optional: colocalise a GWAS locus** (`hvantk qtlcascade gwas-coloc`) on a node

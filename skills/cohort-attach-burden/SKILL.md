@@ -70,7 +70,7 @@ once a cohort is attached (`rerank-evaluate`).
      --name <run>-burden --cpus 8 --mem-gb 32 --time 0-00:30:00 --wait -- \
      hvantk cohort burden --mt "$HVANTK_WORK/cohort.mt" --gene-col gene_id --route-col route \
        --arm-col is_case --key gene_id --carrier-mode het --mtc bh \
-       --output "$HVANTK_WORK/out/gene_burden.tsv" --emit-manifest "$HVANTK_WORK/out/cohort.yaml"
+       --output "$HVANTK_WORK/out/cohort/gene_burden.tsv" --emit-manifest "$HVANTK_WORK/out/cohort/cohort.yaml"
    ```
    Carrier modes are explained in `references/mt-contract.md`. `--mtc` adds `p_adj`
    (Benjamini-Hochberg or Bonferroni); the prior column (`minp`) always stays the raw,
@@ -80,13 +80,17 @@ once a cohort is attached (`rerank-evaluate`).
 3. **Edit the manifest** (`references/cohort-manifest.md`): the emitted stub names the
    output's filename stem; give it a real `name`. Check `key`/`key_column`,
    `min_mapping_rate`, the `architecture` axis (`n_case_var`/`conc`/`driver_af` --
-   this is what `rerank-evaluate`'s case/control audit reads), and add `labels` if you
-   plan to rerank. Starting from an existing table instead: write this file by hand,
-   pointing `table` at it and naming the right prior column and direction.
+   this is what `rerank-evaluate`'s case/control audit reads). A `labels` block is
+   optional and does NOT feed `rerank-evaluate` -- that reads labels only from its
+   own rerank config's `labels.path` (`references/cohort-manifest.md`). Declaring
+   `labels` here only makes `attach` add its own `label` bool column to
+   `attached.ht` (for inspection) and makes `--hgnc` required. Starting from an
+   existing table instead: write this file by hand, pointing `table` at it and
+   naming the right prior column and direction.
 4. **Validate, on the login node** (no job needed -- pure Python, header-only):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
-     hvantk cohort validate --cohort "$HVANTK_WORK/out/cohort.yaml"
+     hvantk cohort validate --cohort "$HVANTK_WORK/out/cohort/cohort.yaml"
    ```
    This only reads the table's header -- it proves the declared columns exist, not
    that the rows are clean (see Traps).
@@ -94,8 +98,8 @@ once a cohort is attached (`rerank-evaluate`).
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-attach --cpus 8 --mem-gb 32 --time 0-00:30:00 --wait -- \
-     hvantk cohort attach --cohort "$HVANTK_WORK/out/cohort.yaml" --layer1 "$HVANTK_WORK/gene-index.ht" \
-       --output "$HVANTK_WORK/out/attached.ht" [--hgnc "$HVANTK_WORK/hgnc-lookup.ht"]
+     hvantk cohort attach --cohort "$HVANTK_WORK/out/cohort/cohort.yaml" --layer1 "$HVANTK_WORK/out/gene-index.ht" \
+       --output "$HVANTK_WORK/out/cohort/attached.ht" [--hgnc "$HVANTK_WORK/out/hgnc-lookup.ht"]
    ```
    Copy the job's printed `attach NAME: n/m genes tested -> ...` line into your run
    notes -- it is the one place the tested-gene count is reported in plain text.
@@ -104,9 +108,9 @@ once a cohort is attached (`rerank-evaluate`).
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
      --name <run>-verify --cpus 2 --mem-gb 8 --time 0-00:15:00 --wait -- \
      python "$HVANTK_REPO/skills/cohort-attach-burden/templates/verify-attached.py" \
-       --attached "$HVANTK_WORK/out/attached.ht" --report "$HVANTK_WORK/out/attached.ht.report.json" \
-       --burden "$HVANTK_WORK/out/gene_burden.tsv" --cohort "$HVANTK_WORK/out/cohort.yaml" \
-       --layer1 "$HVANTK_WORK/gene-index.ht" --receipt "$HVANTK_WORK/out/attached.receipt.json"
+       --attached "$HVANTK_WORK/out/cohort/attached.ht" --report "$HVANTK_WORK/out/cohort/attached.ht.report.json" \
+       --burden "$HVANTK_WORK/out/cohort/gene_burden.tsv" --cohort "$HVANTK_WORK/out/cohort/cohort.yaml" \
+       --layer1 "$HVANTK_WORK/out/gene-index.ht" --receipt "$HVANTK_WORK/out/cohort/attached.receipt.json"
    ```
 
 ## 4. Scale-up
@@ -168,8 +172,9 @@ regardless of cohort size -- they never need to be chunked.
   is defined, so every variant with a blank gene is counted under a gene keyed `""`.
   Fix: set blank values to missing upstream (`hl.or_missing(hl.len(g) > 0, g)`);
   `inspect-cohort-mt.py`'s undefined-gene count counts only missing values. A cohort
-  TABLE is different: `cohort attach` reads an empty key cell as missing (after
-  0.5.0), and rerank's pandas loader refuses blank keys.
+  TABLE is different: `cohort attach` refuses a blank or `NA` key cell outright
+  (after 0.5.0, a clean `UsageError` naming the row count and `key_column`), as
+  rerank's pandas loader already does.
 - `cohort table ... has no column 'symbol' (key_column)`. Cause: `key` names the
   identifier *space* (`gene_id`/`hgnc_id`/`symbol`); `key_column` names the *column* in
   the table that actually holds those values, and real tables often differ (a

@@ -89,8 +89,10 @@ _PROFILE_PARTITIONS = ("HVANTK_CPU_PARTITION", "HVANTK_FAT_PARTITION")
 
 def norm(value):
     """Floats to a stable string (so ``nan``/``inf`` digest the same way every run);
-    everything else recurses or passes through. See skills/_conventions' shared digest
-    convention -- each eval/check.py keeps its own copy, self-contained."""
+    everything else recurses or passes through. This normalisation is not a
+    documented, shared convention -- each eval/check.py in this project keeps its
+    own copy (never imports another skill's check), so a digest here can never
+    silently depend on code outside this file."""
     if isinstance(value, float):
         return format(value, ".10g")
     if value is None:
@@ -536,7 +538,6 @@ def main() -> int:
 
     out_dir = Path(args.out_dir)
     output = out_dir / GENE_INDEX_NAME
-    reference = json.loads(Path(args.reference).read_text())
     notes = parse_notes(
         Path(args.run_notes) if args.run_notes else Path("/nonexistent")
     )
@@ -560,11 +561,15 @@ def main() -> int:
             profile = Path(args.site_profile) if args.site_profile else None
             m2, m3, slurm_details = grade_slurm(args.run_id, notes, rows, profile)
 
-    # Reading the table, checking the two inputs, and grading the run notes against it
-    # all happen in one try/except: a crash anywhere in here must still leave
-    # verdict.json and receipt.json written (with the error recorded), not abort the
+    # Loading reference.json, reading the table, checking the two inputs, and grading
+    # the run notes against it all happen in one try/except: a missing or corrupt
+    # reference.json, or a crash anywhere else in here, must still leave verdict.json
+    # and receipt.json written (with the error recorded at the verdict's top level,
+    # as rerank-evaluate's and cohort-attach-burden's check.py do), not abort the
     # script before either file exists.
+    error: str | None = None
     try:
+        reference = json.loads(Path(args.reference).read_text())
         m4, content_ok, gi_details = grade_gene_index(output, reference)
         reported_tol = reference.get("tolerances", {}).get(
             "reported_mapping_rate", REPORTED_RATE_TOLERANCE
@@ -575,11 +580,12 @@ def main() -> int:
             gi_details.get("mapping_rate"),
             reported_tol,
         )
-    except Exception as exc:  # noqa: BLE001 -- a corrupt/wrong-type output or a
-        # reference-schema problem must not crash the whole verdict; record it and
-        # fail M4/M5 alone.
+    except Exception as exc:  # noqa: BLE001 -- a missing/corrupt reference.json, a
+        # corrupt/wrong-type output, or a reference-schema problem must not crash
+        # the whole verdict; record it and fail M4/M5 alone.
+        error = f"{type(exc).__name__}: {exc}"
         m4, content_ok, reported_ok = False, False, False
-        gi_details = {"output": str(output), "error": f"{type(exc).__name__}: {exc}"}
+        gi_details = {"output": str(output), "error": error}
 
     m5 = bool(content_ok and reported_ok)
     passed = bool(m4 and m5)
@@ -594,6 +600,7 @@ def main() -> int:
         "pass": passed,
         "content_ok": content_ok,
         "reported_ok": reported_ok,
+        "error": error,
         "notes": notes,
         "slurm": slurm_details,
         "gene_index": gi_details,
@@ -611,9 +618,11 @@ def main() -> int:
         "mapping_rate": gi_details.get("mapping_rate"),
         "inputs_built": gi_details.get("inputs_built"),
         "pass": passed,
-        "reference_sha256": hashlib.sha256(
-            Path(args.reference).read_bytes()
-        ).hexdigest(),
+        "reference_sha256": (
+            hashlib.sha256(Path(args.reference).read_bytes()).hexdigest()
+            if Path(args.reference).is_file()
+            else None
+        ),
         "checked_at": verdict["checked_at"],
     }
     (verdict_dir / "receipt.json").write_text(json.dumps(receipt, indent=2))
