@@ -189,11 +189,9 @@ redesigning a probe beyond making it answer again.
 - Plugin tests fail with a fixture-not-found error. Cause: fixture paths are relative
   to the checkout root. Fix: `templates/run-plugin-tests.py` chdirs there first --
   run it, not pytest.
-- A bare `hvantk`/`python -m hvantk`, or a bookkeeping syntax error. Cause: outside
-  the image `hvantk` is not on PATH and the login node's Python predates these
-  templates; `-m hvantk`/`-c` also put the CWD first on `sys.path`, silently reading
-  the image's stale copy without the checkout on PYTHONPATH. Fix: route every
-  command through `run-in-image.sh`, as every step above does.
+- A bare `hvantk`/`python -m hvantk`, or a bookkeeping syntax error. Cause and fix:
+  see `workflow-conventions`'s Runtime rules (section 4) -- route every command
+  through `run-in-image.sh`, as every step above does.
 
 ## 6. Verification
 

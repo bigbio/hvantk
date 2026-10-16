@@ -196,10 +196,10 @@ remove.
   no matching `--prepared axis=path` (missing), or a `--prepared` names an axis the spec
   does not declare (unknown) -- `compose` is strict on both. Fix: pass exactly one
   `--prepared` per spec `layer1` axis, spelled the same as the spec's `axis:` label.
-- `hvantk: command not found`, or a write landing in the wrong checkout. Cause: `hvantk`
-  is only on `PATH` inside the image, and `python -m hvantk` run from the login node puts
-  the current directory first on `sys.path`. Fix: route every `hvantk`/`python`
-  invocation through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
+- `hvantk: command not found`, or a write landing in the wrong checkout. Cause and
+  fix: see `workflow-conventions`'s Runtime rules (section 4) -- route every
+  `hvantk`/`python` invocation through `run-in-image.sh` or `submit-hail-job.sh`,
+  never bare.
 - A small, consistent number of protein-coding genes (a few dozen) never joining onto a
   cohort's VCF, even though their biotype and chromosome both look right. Cause: those
   genes sit on unplaced or unlocalised scaffolds (`KI270...`, `GL000...`), not on

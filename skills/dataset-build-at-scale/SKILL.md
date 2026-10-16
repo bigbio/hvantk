@@ -186,11 +186,10 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   fixture's.
 - A relative path in the task list. Cause: an array task's working directory is the log
   directory, not the checkout. Fix: absolute paths only, both columns.
-- `hvantk: command not found` outside the image. Cause: the console script lives
-  inside the image; it is not installed on the login node. Fix: route the command
-  through `run-in-image.sh` (`bash skills/hpc-hail-job/templates/run-in-image.sh --
-  hvantk ...`); never `python -m hvantk` from another directory -- it puts the current
-  directory first on `sys.path` and can import, and write, into the wrong checkout.
+- `hvantk: command not found` outside the image, or a command that silently wrote
+  into the wrong checkout. Cause and fix: see `workflow-conventions`'s Runtime rules
+  (section 4) -- route it through `run-in-image.sh`, never a bare `hvantk` or
+  `python -m hvantk`.
 - An output moved without its sidecar. Cause: `.provenance.json` sits next to the
   output, not inside it, and does not record the raw file's path (see
   `references/verification.md` for its actual fields). Fix: move both together, or

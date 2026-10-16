@@ -186,6 +186,9 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
 - The cluster clone is behind the commit you reviewed. Cause: pushing to one remote
   does not update the other. Fix: preflight step 2, every time; `hvantk:hpc-sync`
   brings the clone forward.
+- `hvantk: command not found`, or a command that silently wrote into the wrong
+  checkout. Cause and fix: see `workflow-conventions`'s Runtime rules (section 4) --
+  route every command through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
 
 ## 6. Verification
 

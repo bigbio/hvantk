@@ -234,10 +234,9 @@ regardless of cohort size -- they never need to be chunked.
   depends on the total number of tests; computing it per chunk under-corrects. Fix:
   concatenate first, correct once, as in Scale-up.
 - `hvantk: command not found`, or a `python ...` or `hvantk ...` invocation that looks
-  like it ran but touched the wrong checkout. Cause: the console script and the right
-  Python (3.10, with Hail) live inside the image, not on the login node. Fix: route
-  every command through `run-in-image.sh` or `submit-hail-job.sh`; never
-  `python -m hvantk` from another directory.
+  like it ran but touched the wrong checkout. Cause and fix: see
+  `workflow-conventions`'s Runtime rules (section 4) -- route every command through
+  `run-in-image.sh` or `submit-hail-job.sh`; never bare.
 
 ## 6. Verification
 
