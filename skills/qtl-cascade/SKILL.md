@@ -134,7 +134,8 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
      python "$HVANTK_REPO/skills/qtl-cascade/templates/summarize-cascade.py" \
        --out-dir "$HVANTK_WORK/out/qtl" --tissue <Tissue> --receipt "$HVANTK_WORK/out/qtl/summary.json"
    ```
-   Copy its printed counts into the run notes.
+   Write its gene count and colocalised count into the run notes as their own
+   lines, `cascade_genes: <n>` and `colocalised: <m>`, not the printed line verbatim.
 7. **Optional: colocalise a GWAS locus** (`hvantk qtlcascade gwas-coloc`) on a node
    with egress — it streams FinnGen and the eQTL Catalogue by remote tabix, so it
    cannot run on a compute node with no egress (the tool manifest's `network: false`
@@ -258,6 +259,7 @@ not a derived sum), the number of cascade genes (`gene_summary.tsv`'s row count)
 how many of them have a complete cascade, how many genes were coloc-tested and how
 many colocalised (`H4 > 0.8`, at most the tested count), the top five genes by
 `H4`, and the sha256 of `gene_summary.tsv` and `coloc_results.tsv` (and, when asked,
-the eQTL/pQTL/HGNC tables' own provenance sha256). Copy these into the run notes
-next to `commit:`, `container:` and the `job:` lines — they are the receipt a later
-run can be compared against.
+the eQTL/pQTL/HGNC tables' own provenance sha256). Write the gene and colocalised
+counts into the run notes as `cascade_genes: <n>` and `colocalised: <m>`, next to
+`commit:`, `container:` and the `job:` lines — they are the receipt a later run can
+be compared against.

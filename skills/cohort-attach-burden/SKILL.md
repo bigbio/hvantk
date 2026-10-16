@@ -108,8 +108,9 @@ once a cohort is attached (`rerank-evaluate`).
      hvantk cohort attach --cohort "$HVANTK_WORK/out/cohort/cohort.yaml" --layer1 "$HVANTK_WORK/out/gene-index.ht" \
        --output "$HVANTK_WORK/out/cohort/attached.ht" [--hgnc "$HVANTK_WORK/out/hgnc-lookup.ht"]
    ```
-   Copy the job's printed `attach NAME: n/m genes tested -> ...` line into your run
-   notes -- it is the one place the tested-gene count is reported in plain text.
+   The job prints `attach NAME: n/m genes tested -> ...`; write `n` and `m` into
+   your run notes as their own line, `attached: n/m`, not the printed line
+   verbatim -- it is the one place the tested-gene count is reported in plain text.
 6. **Verify** (job):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \

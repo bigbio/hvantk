@@ -129,6 +129,10 @@ container: <sha256 of the image file>
 job: <slurm job id>        (one line per job submitted; at least one)
 ```
 
+A fourth kind is allowed: a result line `key: value` that the skill's `task.md`
+names explicitly, matching the key `check.py` reads from `reference.json`. `task.md`
+says which keys and in what format; nothing else is a free-form addition.
+
 `verdict.json` carries five graded stages and the pass flag:
 
 | stage | passes when |
