@@ -51,6 +51,7 @@ and sharing controlled-access data, which is a human decision this skill never m
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/callset-subset-export/templates/subset-job.sh" \
      --vds "$HVANTK_WORK/callsets/<name>/<name>.vds" --samples "$HVANTK_WORK/deliveries/<id>/samples.txt" \
+     --requested-samples "<original list>" \
      --out "$HVANTK_WORK/deliveries/<id>" --prefix <id> --cpus 8 --mem-gb 32 --time 0-00:30:00 --name <run>-subset
    ```
    The chain is: `subset-vds.py` (keeps the listed samples, drops alleles no listed
