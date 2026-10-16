@@ -210,14 +210,14 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
 - `All tissues failed: <tissues>`, with `'Table.aggregate': source mismatch` in the
   job's log. Cause: a defect in `CascadePipeline._stage_coloc` in hvantk 0.5.0 and
   earlier (it aggregated a gene-id expression from an unfiltered table over a
-  *different*, filtered Hail source). Fix: update the checkout past the fix; it has
-  nothing to do with the input data.
+  *different*, filtered Hail source). Fix: fixed in 0.6.0; update to 0.6.0 or later --
+  it has nothing to do with the input data.
 - An eQTL Catalogue window's colocalisation (`gwas-coloc`, or anything else calling
   `fetch_eqtl_region`) looks subtly off, with more variants per gene than the
   catalogue should have. Cause: in hvantk 0.5.0 and earlier, `fetch_eqtl_region`
   kept every repeated row the eQTL Catalogue's all-variant files carry per extra
   rsid (same `(gene, variant)`, identical statistics), counting some variants twice
-  in the ABF sums. Fix: update the checkout past the fix.
+  in the ABF sums. Fix: fixed in 0.6.0; update to 0.6.0 or later.
 - An existing output directory. Cause: `qtlcascade run` and `cascade` refuse to
   overwrite their Hail table checkpoint by default (`coloc` has no such flag at
   all — see the stale-TSV trap above). Fix: `--overwrite` for `run`/`cascade`;

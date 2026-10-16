@@ -174,7 +174,7 @@ regardless of cohort size -- they never need to be chunked.
   Fix: set blank values to missing upstream (`hl.or_missing(hl.len(g) > 0, g)`);
   `inspect-cohort-mt.py`'s undefined-gene count counts only missing values. A cohort
   TABLE is different: `cohort attach` refuses a blank or `NA` key cell outright
-  (after 0.5.0, a clean `UsageError` naming the row count and `key_column`), as
+  (since 0.6.0, a clean `UsageError` naming the row count and `key_column`), as
   rerank's pandas loader already does.
 - `cohort table ... has no column 'symbol' (key_column)`. Cause: `key` names the
   identifier *space* (`gene_id`/`hgnc_id`/`symbol`); `key_column` names the *column* in
@@ -210,9 +210,9 @@ regardless of cohort size -- they never need to be chunked.
   `driver_af`, or every row's `mean_score_case` when `--score-field` is unset), and
   `cohort attach`'s `hl.import_table` call only recognised the literal string `"NA"`
   as missing -- a blank cell made the whole column fail numeric type inference and
-  fall back to `str`. Fixed after 0.5.0 (`attach` now also treats a blank cell as
-  missing). Fix: update the checkout past that fix, or, on an older one, rewrite blank
-  cells in the table to the literal string `NA` before attaching.
+  fall back to `str`. Fixed in 0.6.0 (`attach` now also treats a blank cell as
+  missing). Fix: update to 0.6.0 or later, or, on an older one, rewrite blank cells in
+  the table to the literal string `NA` before attaching.
 - Untested genes read back as zero downstream. Cause: `attach` leaves every cohort
   column *missing* for a gene absent from the cohort table -- `cohort_tested` is the
   only signal of "never tested"; nothing is ever imputed to zero. Fix: filter or
