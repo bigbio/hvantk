@@ -11,8 +11,9 @@ metadata:
 
 # Attach a cohort's gene-level burden to the gene index
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -34,26 +35,32 @@ once a cohort is attached (`rerank-evaluate`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: confirm where they live and that the output location is writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: confirm where they live and that the output location is writable
+   from compute nodes, under `$HVANTK_WORK` or similar, never home.
 5. The MatrixTable contract, if you are starting from one (`references/mt-contract.md`):
    split bi-allelic rows, a gene field in one identifier space
    (`gene_id`/`hgnc_id`/`symbol`) and unversioned, a route field (a string or array of
-   strings -- the variant classes burden tests separately and then picks the best of),
-   and a boolean case/control column defined for every sample. Check it with
-   `inspect-cohort-mt.py` as a job *before* spending a burden job on an MT that will
-   just reject it.
+   strings -- the variant classes burden tests separately and then picks the best of), and
+   a boolean case/control column defined for every sample. Check it with
+   `inspect-cohort-mt.py` as a job *before* spending a burden job on an MT that will just
+   reject it.
 6. The Layer-1 table you will attach onto (the composed annotation matrix, or the gene
-   index itself -- `attach --layer1` accepts any table keyed by `gene_id` that spans
-   the genes you care about) and its path.
+   index itself -- `attach --layer1` accepts any table keyed by `gene_id` that spans the
+   genes you care about) and its path.
 7. Whether an HGNC table is needed: `--hgnc <hgnc:lookup .ht>` is required when the
-   cohort's `key` is `hgnc_id` or `symbol`, or when the manifest declares `labels`
-   (label gene sets are always symbol-keyed, regardless of the cohort's own key).
-8. If you are starting from an existing table instead of running burden: confirm you
-   have the right to use it, and which column is the prior statistic and in which
-   direction (`lower_is_better`/`higher_is_better`) -- never guess the direction.
+   cohort's `key` is `hgnc_id` or `symbol`, or when the manifest declares `labels` (label
+   gene sets are always symbol-keyed, regardless of the cohort's own key).
+8. If you are starting from an existing table instead of running burden: confirm you have
+   the right to use it, and which column is the prior statistic and in which direction
+   (`lower_is_better`/`higher_is_better`) -- never guess the direction.
 
 ## 3. Procedure
 
@@ -101,8 +108,9 @@ once a cohort is attached (`rerank-evaluate`).
      hvantk cohort attach --cohort "$HVANTK_WORK/out/cohort/cohort.yaml" --layer1 "$HVANTK_WORK/out/gene-index.ht" \
        --output "$HVANTK_WORK/out/cohort/attached.ht" [--hgnc "$HVANTK_WORK/out/hgnc-lookup.ht"]
    ```
-   Copy the job's printed `attach NAME: n/m genes tested -> ...` line into your run
-   notes -- it is the one place the tested-gene count is reported in plain text.
+   The job prints `attach NAME: n/m genes tested -> ...`; write `n` and `m` into
+   your run notes as their own line, `attached: n/m`, not the printed line
+   verbatim -- it is the one place the tested-gene count is reported in plain text.
 6. **Verify** (job):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
@@ -173,7 +181,7 @@ regardless of cohort size -- they never need to be chunked.
   Fix: set blank values to missing upstream (`hl.or_missing(hl.len(g) > 0, g)`);
   `inspect-cohort-mt.py`'s undefined-gene count counts only missing values. A cohort
   TABLE is different: `cohort attach` refuses a blank or `NA` key cell outright
-  (after 0.5.0, a clean `UsageError` naming the row count and `key_column`), as
+  (since 0.6.0, a clean `UsageError` naming the row count and `key_column`), as
   rerank's pandas loader already does.
 - `cohort table ... has no column 'symbol' (key_column)`. Cause: `key` names the
   identifier *space* (`gene_id`/`hgnc_id`/`symbol`); `key_column` names the *column* in
@@ -209,9 +217,9 @@ regardless of cohort size -- they never need to be chunked.
   `driver_af`, or every row's `mean_score_case` when `--score-field` is unset), and
   `cohort attach`'s `hl.import_table` call only recognised the literal string `"NA"`
   as missing -- a blank cell made the whole column fail numeric type inference and
-  fall back to `str`. Fixed after 0.5.0 (`attach` now also treats a blank cell as
-  missing). Fix: update the checkout past that fix, or, on an older one, rewrite blank
-  cells in the table to the literal string `NA` before attaching.
+  fall back to `str`. Fixed in 0.6.0 (`attach` now also treats a blank cell as
+  missing). Fix: update to 0.6.0 or later, or, on an older one, rewrite blank cells in
+  the table to the literal string `NA` before attaching.
 - Untested genes read back as zero downstream. Cause: `attach` leaves every cohort
   column *missing* for a gene absent from the cohort table -- `cohort_tested` is the
   only signal of "never tested"; nothing is ever imputed to zero. Fix: filter or
@@ -227,10 +235,9 @@ regardless of cohort size -- they never need to be chunked.
   depends on the total number of tests; computing it per chunk under-corrects. Fix:
   concatenate first, correct once, as in Scale-up.
 - `hvantk: command not found`, or a `python ...` or `hvantk ...` invocation that looks
-  like it ran but touched the wrong checkout. Cause: the console script and the right
-  Python (3.10, with Hail) live inside the image, not on the login node. Fix: route
-  every command through `run-in-image.sh` or `submit-hail-job.sh`; never
-  `python -m hvantk` from another directory.
+  like it ran but touched the wrong checkout. Cause and fix: see
+  `workflow-conventions`'s Runtime rules (section 4) -- route every command through
+  `run-in-image.sh` or `submit-hail-job.sh`; never bare `hvantk` or `python -m hvantk`.
 
 ## 6. Verification
 

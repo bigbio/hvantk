@@ -11,8 +11,9 @@ metadata:
 
 # Run a Hail-backed hvantk command as a Slurm job
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -28,7 +29,7 @@ login node except `git`, file inspection, downloads and job submission, and the 
 commands `templates/run-in-image.sh` runs inside the image there (downloads, drift
 probes, bookkeeping, a verification of a few seconds).
 
-Not this skill: building the image (not covered here), multi-node Spark (section 4
+Not this skill: building the image (`hvantk:hpc-container`), multi-node Spark (section 4
 says when, and that it is rarely worth it), commands with no Hail in them (they still
 run fine through the same template, with a small request).
 
@@ -102,11 +103,13 @@ run fine through the same template, with a small request).
    Do not rerun on the login node "to see the error faster".
 6. Verify the output (section 6) and finish the run notes.
 
-The template `templates/hail-job.sbatch` is the batch form of
-`containers/hvantk_run.sh`: it sets up node-local scratch, binds it, the work root and
-the checkout into the container, caps Spark at the allocation, exports `PYTHONPATH` so
-the checkout's code runs, and runs the command inside the image from the log
-directory. Use the wrapper for an interactive `srun` shell, the template for jobs.
+The template `templates/hail-job.sbatch` sets up node-local scratch, binds it, the
+work root and the checkout into the container, caps Spark at the allocation, exports
+`PYTHONPATH` so the checkout's code runs, and runs the command inside the image from
+the log directory. `containers/hvantk_run.sh` is not its interactive equivalent: it
+sets no `PYTHONPATH`, does not bind the work root, and hardcodes `singularity`, so it
+runs the image's own installed copy, not the checkout. For an interactive shell, use
+`templates/run-in-image.sh` inside `srun --pty` instead.
 
 ## 4. Scale-up
 
@@ -125,7 +128,8 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
 - Outputs on a parallel filesystem are directories of many part files. Expect it, do
   not copy them file by file across the network, and archive with `tar` when moving.
 - Many independent builds: submit one array job over a task list rather than many
-  jobs; `sbatch --array=1-N%K` with one line of the list per task.
+  jobs; `sbatch --array=1-N%K` with one line of the list per task
+  (`hvantk:dataset-build-at-scale`).
 - Another image than the profile's default, for example one just built: `--sif <image>`
   on the submit script; the job template honours it, where a shell export of
   `HVANTK_SIF` would be overwritten when the job sources the profile.
@@ -182,7 +186,12 @@ directory. Use the wrapper for an interactive `srun` shell, the template for job
   `$SLURM_EMAIL_NOTIFICATION` on the command line when it is set; never write an
   address into a script.
 - The cluster clone is behind the commit you reviewed. Cause: pushing to one remote
-  does not update the other. Fix: preflight step 2, every time.
+  does not update the other. Fix: preflight step 2, every time; `hvantk:hpc-sync`
+  brings the clone forward.
+- `hvantk: command not found`, or a command that silently wrote into the wrong
+  checkout. Cause and fix: see `workflow-conventions`'s Runtime rules (section 4) --
+  route every command through `run-in-image.sh` or `submit-hail-job.sh`, never bare
+  `hvantk` or `python -m hvantk`.
 
 ## 6. Verification
 

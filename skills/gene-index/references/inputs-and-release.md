@@ -54,9 +54,10 @@ exactly one artifact.
 
 ## The Ensembl release pin
 
-One constant, `hvantk/resources/ensembl_release.py::ENSEMBL_RELEASE` (currently `"113"`),
-fixes the GTF filename (`Homo_sapiens.GRCh38.{RELEASE}.gtf.gz`) and download URL for the
-whole toolkit -- not just `ensembl-gene:structure`, but also the PTM coordinate mapper.
+One constant, `hvantk/resources/ensembl_release.py::ENSEMBL_RELEASE`, fixes the GTF
+filename (`Homo_sapiens.GRCh38.{RELEASE}.gtf.gz`) and download URL for the whole
+toolkit -- not just `ensembl-gene:structure`, but also the PTM coordinate mapper. Read
+the constant for the pinned value; do not hardcode a release number from memory.
 It lives in `resources/` rather than in the `ensembl_gene` skill because both a skill and
 an algorithm depend on it, and the one-way dependency rule (`skills`/`algorithms` ->
 `core`/`resources`) forbids either from depending on the other.
@@ -99,3 +100,15 @@ The gene index's `mane_select` column comes from `ensembl-gene:structure`'s own
 `gene_group` out of the HGNC table on purpose -- pulling HGNC's own `mane_select` too
 would collide with structure's field of the same name but a different, incompatible
 type.
+
+## Why the "lookup is not unique per gene_id" guard cannot fire on this skill's input
+
+HGNC genuinely does map more than one `hgnc_id` to the same Ensembl gene sometimes, and
+`build_spine` collapses those to one record per gene (lowest `hgnc_id` wins) via a
+`group_by(gene_id=...).aggregate(...)` BEFORE the join -- which makes the right side's
+key unique by construction, for ANY input to that step, however messy. On an
+`hgnc:lookup`-built table (`hvantk reprocess hgnc:lookup`'s own output, the only input
+this skill's procedure ever feeds in) the guard therefore cannot fire. If it does
+anyway, the checkout's `spine.py` changed: the dedup step was altered, weakened or
+removed. That rules out a hand-edited input as the explanation, since the dedup is
+structural, not data-dependent.

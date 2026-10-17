@@ -8,7 +8,7 @@ language model sits in the data path.
 There are two kinds of skill in this repository. **Resource specs** under
 `hvantk/skills/<provider>/SKILL.md` tell an agent how to author a data-source plugin.
 **Workflow skills**, here, tell it how to run the toolkit. Read
-`_conventions/SKILL.md` for the contract they follow.
+`workflow-conventions/SKILL.md` for the contract they follow.
 
 ## Catalog
 
@@ -47,7 +47,8 @@ or from a checkout, for development: `claude --plugin-dir /path/to/hvantk`.
 
 ## Before the first run: the site profile
 
-Every cluster-specific value lives in one file you fill in once:
+Every cluster-specific value lives in one file you fill in once, on the cluster, in
+the `$HVANTK_REPO` checkout:
 
 ```bash
 cp skills/_site/site-profile.example.sh skills/_site/site-profile.local.sh   # gitignored
@@ -59,11 +60,15 @@ bash skills/_site/check-site-profile.sh
 A skill that finds a value missing stops and asks. It never guesses a partition, a
 path or an image.
 
+No image yet on this site? `check-site-profile.sh` otherwise refuses because
+`HVANTK_SIF` points nowhere; run the `hvantk:hpc-container` skill first, or pass it
+`--allow-missing-image` while bootstrapping.
+
 ## How a skill is measured
 
 Each skill ships an `eval/` folder: a task an agent can be handed cold, a script that
 stages public inputs, a positive control that runs the procedure with no agent, a
 deterministic check, and the reference values that control produced. The contract is in
-`_conventions/SKILL.md` section 5. The evaluation harness that runs agents against these
+`workflow-conventions/SKILL.md` section 5. The evaluation harness that runs agents against these
 tasks is separate from this repository; the tasks and checks are public so anyone with a
 cluster can repeat them.

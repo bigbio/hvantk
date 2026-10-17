@@ -7,7 +7,7 @@
 #
 #   source "$HVANTK_SITE_PROFILE" && sbatch --partition="$HVANTK_CPU_PARTITION" \
 #     --array=1-24%6 --cpus-per-task=32 --mem=160G --time=0-02:00:00 \
-#     --output="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}/%x_%A_%a.out" --export=ALL \
+#     --output="${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}/%x_%A_%a.out" \
 #     --export=ALL,CONTIG_LIST=<file with one contig per line>,GVCF_ROOT=<dir>,OUT_ROOT=<dir>,N_PARTITIONS=50 \
 #     "$HVANTK_REPO/skills/joint-genotyping/templates/per-contig-array.sbatch"
 #

@@ -10,7 +10,7 @@
     {
       "name": "hvantk",
       "source": "./",
-      "description": "Workflow skills for driving hvantk analyses with a coding agent: run Hail-backed hvantk commands on a Slurm cluster from the container image.",
+      "description": "Workflow skills for driving hvantk analyses with a coding agent: run Hail-backed hvantk commands on a Slurm cluster from the container image, joint genotyping and callset delivery, dataset builds and drift triage, and the gene index, cohort burden, re-ranking and QTL-cascade analyses.",
       "category": "domain-specific",
       "keywords": ["hvantk", "hail", "slurm", "hpc", "genomics", "multi-omics", "skills"]
     }

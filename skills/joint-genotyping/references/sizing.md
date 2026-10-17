@@ -22,6 +22,6 @@ Rules:
 - Dense MatrixTable partitions: aim for a few hundred MB per part file; set
   `--n-partitions` to about two to four times the cores for a single job, more per
   contig for a large cohort.
-- Per contig, the dense-MT partition count can be derived from the VDS partition count
-  divided by ten, with a floor of fifty, which is what large runs used.
+- Per contig, derive the dense-MT partition count from the VDS partition count
+  divided by ten, with a floor of fifty.
 

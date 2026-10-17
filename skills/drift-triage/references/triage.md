@@ -62,12 +62,12 @@ triage it, don't wave it off as "just an infra hiccup".
 
 `.github/workflows/drift.yml` runs `hvantk drift --all --json` on a schedule and opens
 one pull request per signal: every routine signal in a run goes onto one shared
-`drift/routine-batch` branch and PR; a schema signal keeps its own branch and PR. Across
-every drift PR the bot has opened, it has only ever bumped a fingerprint and recorded a
-ledger row -- it has never touched a builder, a manifest, a probe, or a snapshot.
-Merging a schema-signal PR green therefore accepts the new fingerprint; it does **not**
-mean the plugin still builds. Run this skill's repair and rebuild steps regardless of
-which PR merged the fingerprint, whenever the signal is a schema one.
+`drift/routine-batch` branch and PR; a schema signal keeps its own branch and PR. The
+bot only ever bumps a fingerprint and records a ledger row -- it never touches a
+builder, a manifest, a probe, or a snapshot. Merging a schema-signal PR green
+therefore accepts the new fingerprint; it does **not** mean the plugin still builds.
+Run this skill's repair and rebuild steps regardless of which PR merged the
+fingerprint, whenever the signal is a schema one.
 
 `probe_failed` and `stub` entries are logged by the bot but never turned into a pull
 request -- the former is an infrastructure failure, the latter has no programmatic

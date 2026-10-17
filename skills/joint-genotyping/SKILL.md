@@ -11,8 +11,9 @@ metadata:
 
 # Joint genotyping with the HGC pipeline
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract. Jobs run through `hpc-hail-job`.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract. Jobs run through `hpc-hail-job`.
 
 ## 1. Scope and outcome
 
@@ -58,8 +59,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    `--n-partitions` sets the dense MatrixTable's partition count; `--min-ac` the VCF's.
 2. The orchestrated form, `hvantk hgc pipeline`, does the same stages in one process and
    is the only command that takes `--reference-genome GRCh37` (a stage-handoff defect
-   that broke a fresh run of it was fixed on `dev` after 0.5.0 (PR #470); a 0.5.0
-   checkout still fails at the densify stage). The template keeps the chain
+   that broke a fresh run of it was fixed in 0.6.0 (PR #470); 0.5.0 and earlier fail at
+   the densify stage). The template keeps the chain
    above because each stage is then its own job with its own request and the run resumes
    by stage; GRCh37 gVCFs go through `hvantk hgc pipeline --reference-genome GRCh37` as
    one job through `hpc-hail-job`.
@@ -125,7 +126,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
 1. `<out>/<prefix>.vds/reference_data/_SUCCESS`, `<out>/<prefix>.vds/variant_data/_SUCCESS`
    and `<out>/<prefix>.mt/_SUCCESS` exist; `<out>/qc/<prefix>_sample_qc.csv` has one row
    per sample and `<out>/qc/<prefix>_variant_qc.tsv` exists; `<out>/<prefix>.vcf.bgz` exists.
-2. Counts, through the image as a small job (`templates/pipeline-job.sh --describe <out> --prefix <name>`):
+2. Counts, through the image as a small job
+   (`templates/pipeline-job.sh --describe <out> --prefix <name> --name <run>-describe`):
    the sample set of the MatrixTable, its row count, and the VCF record count. Put all
    three in the run notes; a recipient compares against them.
 3. The VCF header's sample columns equal the gVCF sample names (suffixes included).

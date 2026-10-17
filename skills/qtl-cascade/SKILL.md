@@ -11,8 +11,9 @@ metadata:
 
 # Run the QTL cascade (eQTL -> pQTL)
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -23,8 +24,7 @@ method, and producing, per tissue: the cascade table, a gene-level summary (tabl
 and TSV), a coloc results TSV, plots, a self-contained HTML report, and a JSON
 summary receipt (`summarize-cascade.py`, step 6). Optionally, `hvantk qtlcascade
 gwas-coloc` colocalises one GWAS locus against an eQTL dataset by remote tabix — a
-separate, egress-needing step this skill covers as a procedure step and a
-reference, not as a measured outcome.
+separate, egress-needing step this skill covers as a procedure step and a reference.
 
 Use this skill once the eQTL and pQTL raw files exist on disk (BYO or downloaded
 separately) and you want the cascade, the coloc table, and the report. Not this skill:
@@ -35,14 +35,38 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source … &&`.
-2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD`; compare with the commit the user expects.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
 3. Image: `sha256sum "$(readlink -f "$HVANTK_SIF")"`; record the digest.
-4. Inputs and outputs: confirm the raw eQTL/pQTL files and the output directory are writable from compute nodes.
-5. Genome build: every eQTL source but `eqtlgen` is GRCh38; `eqtlgen` is GRCh37, and its builder leaves `beta`/`se` null outright, so no row built from it is ever classed as eQTL and it cannot feed the cascade or coloc at all (`references/inputs.md`). Never mix it with a GRCh38 table in one cascade run regardless.
-6. Tissue names: the cascade's tissue filter (`--tissue`/`--tissues`) is an exact string match against both tables' `tissue` field. GTEx sub-tissue names (`Liver`, `Colon_Transverse`, `Heart_Left_Ventricle`, ...) and Fang pQTL tissue names (`Colon`, `Heart`, `Liver`, `Lung`, `Thyroid`) are NOT the same vocabulary — some Fang names split across several GTEx sub-tissues. Confirm which GTEx sub-tissue(s) correspond to the pQTL tissue you are using before you build either table (`references/inputs.md`).
-7. All-pairs vs significant pairs: coloc needs every variant-gene pair in the regional window, not only genome-wide-significant ones. Confirm the eQTL and pQTL raw files you are building from are all-pairs files, and where to get them when they are not (`references/inputs.md`); a significant-pairs-only table does not error — coloc still runs, just on far fewer shared variants than the window actually has, which inflates `H4`.
-8. An HGNC table: the pQTL builder maps Fang gene symbols to Ensembl gene IDs through an HGNC lookup table (built separately with `hvantk reprocess hgnc:lookup`), because the cascade join needs Ensembl IDs on both sides. Confirm one exists, or build it first: if the raw complete-set TSV is not staged yet, `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- hvantk download hgnc --output <hgnc raw dir>/hgnc_complete_set.txt` on the login node (it exits 1, with a clear message, if that output path already exists — check first rather than retrying with `--overwrite` blindly).
+4. Inputs and outputs: confirm the raw eQTL/pQTL files are readable and the output
+   directory is writable, from compute nodes.
+5. Genome build: every eQTL source but `eqtlgen` is GRCh38; `eqtlgen` is GRCh37, and its
+   builder leaves `beta`/`se` null outright, so no row built from it is ever classed as
+   eQTL and it cannot feed the cascade or coloc at all (`references/inputs.md`). Never mix
+   it with a GRCh38 table in one cascade run regardless.
+6. Tissue names: the cascade's tissue filter (`--tissue`/`--tissues`) is an exact string
+   match against both tables' `tissue` field. GTEx sub-tissue names (`Liver`,
+   `Colon_Transverse`, `Heart_Left_Ventricle`, ...) and Fang pQTL tissue names (`Colon`,
+   `Heart`, `Liver`, `Lung`, `Thyroid`) are NOT the same vocabulary — some Fang names
+   split across several GTEx sub-tissues. Confirm which GTEx sub-tissue(s) correspond to
+   the pQTL tissue you are using before you build either table (`references/inputs.md`).
+7. All-pairs vs significant pairs: coloc needs every variant-gene pair in the regional
+   window, not only genome-wide-significant ones. Confirm the eQTL and pQTL raw files you
+   are building from are all-pairs files, and where to get them when they are not
+   (`references/inputs.md`); a significant-pairs-only table does not error — coloc still
+   runs, just on far fewer shared variants than the window actually has, which inflates
+   `H4`.
+8. An HGNC table: the pQTL builder maps Fang gene symbols to Ensembl gene IDs through an
+   HGNC lookup table (built separately with `hvantk reprocess hgnc:lookup`), because the
+   cascade join needs Ensembl IDs on both sides. Confirm one exists, or build it first: if
+   the raw complete-set TSV is not staged yet,
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- hvantk download hgnc --output <hgnc raw dir>/hgnc_complete_set.txt`
+   on the login node (it exits 1, with a clear message, if that output path already exists
+   — check first rather than retrying with `--overwrite` blindly).
 
 ## 3. Procedure
 
@@ -110,12 +134,14 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
      python "$HVANTK_REPO/skills/qtl-cascade/templates/summarize-cascade.py" \
        --out-dir "$HVANTK_WORK/out/qtl" --tissue <Tissue> --receipt "$HVANTK_WORK/out/qtl/summary.json"
    ```
-   Copy its printed counts into the run notes.
+   Write its gene count and colocalised count into the run notes as their own
+   lines, `cascade_genes: <n>` and `colocalised: <m>`, not the printed line verbatim.
 7. **Optional: colocalise a GWAS locus** (`hvantk qtlcascade gwas-coloc`) on a node
    with egress — it streams FinnGen and the eQTL Catalogue by remote tabix, so it
-   cannot run on a compute node with no egress (the tool manifest's `network: false`
-   covers the whole `qtlcascade` command group and is wrong for this one
-   subcommand; see `references/gwas-coloc.md`). `references/gwas-coloc.md` also
+   cannot run on a compute node with no egress. Only `gwas-coloc` needs it; the tool
+   manifest's `requires.network` is group-level, so it reads `true` for every
+   `qtlcascade` subcommand even though `cascade`/`coloc`/`run`/`report` need no
+   egress at all (see `references/gwas-coloc.md`). `references/gwas-coloc.md` also
    covers its other options, the fine-mapping inputs, the LD reference, and using
    the GWAS Catalog table to choose a lead locus.
 
@@ -197,26 +223,22 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
   `--fine-map` is the default and needs both sample sizes to run SuSiE. Fix: pass
   `--gwas-n`/`--eqtl-n`, or `--no-fine-map` to keep only the single-variant ABF
   ranking.
-- A rerun's `coloc_results.tsv` is stale (from a previous run) even though
-  `--overwrite` was passed and the run otherwise succeeded. Cause: `coloc` has no
-  `--overwrite` at all and silently overwrites its own TSV when it writes one — but
-  if a rerun's coloc step finds no gene with both eQTL and pQTL evidence this time,
-  it returns early and never writes `coloc_results.tsv`, leaving the previous run's
-  file untouched and now misleading. `run --overwrite` only re-checkpoints the Hail
-  table outputs (`cascade.ht`/`gene_summary.ht`); it says nothing about the TSVs.
-  Fix: delete the output directory before a rerun rather than relying on
-  `--overwrite` alone.
+- A rerun's `coloc_results.tsv` is stale even though `--overwrite` was passed and
+  the run otherwise succeeded. Cause: `coloc` has no `--overwrite` of its own, and a
+  rerun that finds no gene to test returns before writing it
+  (`references/components-and-outputs.md`). Fix: delete the output directory before
+  a rerun rather than relying on `--overwrite` alone.
 - `All tissues failed: <tissues>`, with `'Table.aggregate': source mismatch` in the
   job's log. Cause: a defect in `CascadePipeline._stage_coloc` in hvantk 0.5.0 and
   earlier (it aggregated a gene-id expression from an unfiltered table over a
-  *different*, filtered Hail source). Fix: update the checkout past the fix; it has
-  nothing to do with the input data.
+  *different*, filtered Hail source). Fix: fixed in 0.6.0; update to 0.6.0 or later --
+  it has nothing to do with the input data.
 - An eQTL Catalogue window's colocalisation (`gwas-coloc`, or anything else calling
   `fetch_eqtl_region`) looks subtly off, with more variants per gene than the
   catalogue should have. Cause: in hvantk 0.5.0 and earlier, `fetch_eqtl_region`
   kept every repeated row the eQTL Catalogue's all-variant files carry per extra
   rsid (same `(gene, variant)`, identical statistics), counting some variants twice
-  in the ABF sums. Fix: update the checkout past the fix.
+  in the ABF sums. Fix: fixed in 0.6.0; update to 0.6.0 or later.
 - An existing output directory. Cause: `qtlcascade run` and `cascade` refuse to
   overwrite their Hail table checkpoint by default (`coloc` has no such flag at
   all — see the stale-TSV trap above). Fix: `--overwrite` for `run`/`cascade`;
@@ -234,6 +256,7 @@ not a derived sum), the number of cascade genes (`gene_summary.tsv`'s row count)
 how many of them have a complete cascade, how many genes were coloc-tested and how
 many colocalised (`H4 > 0.8`, at most the tested count), the top five genes by
 `H4`, and the sha256 of `gene_summary.tsv` and `coloc_results.tsv` (and, when asked,
-the eQTL/pQTL/HGNC tables' own provenance sha256). Copy these into the run notes
-next to `commit:`, `container:` and the `job:` lines — they are the receipt a later
-run can be compared against.
+the eQTL/pQTL/HGNC tables' own provenance sha256). Write the gene and colocalised
+counts into the run notes as `cascade_genes: <n>` and `colocalised: <m>`, next to
+`commit:`, `container:` and the `job:` lines — they are the receipt a later run can
+be compared against.

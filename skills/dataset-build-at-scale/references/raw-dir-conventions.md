@@ -124,6 +124,18 @@ compares what upstream serves *right now* against the dataset's committed finger
 tell you upstream has moved even before you have re-staged anything. A `schema` signal
 (a column added, removed or renamed in the file's header) means the plugin itself may
 need a repair before the build is worth trusting — see `drift-triage`. A `routine`
-signal, or a clean result, means it is safe to proceed. `probe_failed` (no egress from
-the login node either, or a transient error) means the signal is unavailable, not that
+signal, or a clean result, means it is safe to proceed. A `probe_failed` caused by no
+egress or a transient network error means the signal is unavailable, not that
 anything is wrong: proceed, and run the check again later when connectivity allows it.
+A `probe_failed` raised while parsing content the probe DID fetch (a missing header
+marker, say) is itself a signal, same standing as `drifted` -- see `drift-triage`.
+
+## The build job's own drift probe, and `probe-unavailable:source-unreachable`
+
+The platform also runs the drift probe on every build itself, regardless of
+`--no-check-drift` (that flag only gates `reprocess`'s own post-build `drift:
+<status>` print). A compute node has no egress to reach upstream with, so that
+in-job probe always fails there, and the output's `.provenance.json` sidecar carries
+`source_fingerprint: "probe-unavailable:source-unreachable"`. That is expected and
+not a build defect: the real signal is the login-node check above, run *before* the
+build.

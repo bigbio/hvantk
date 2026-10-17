@@ -3,11 +3,8 @@
 `annotate prepare` and `annotate compose` (`hvantk/tools/annotation/annotate_cli.py`)
 turn the gene index plus a feature-spec YAML into one gene x feature matrix -- the
 Layer-1 matrix `cohort attach --layer1` can take, in place of the gene index alone.
-`hvantk annotate prepare --help` and `hvantk annotate compose --help` list every flag,
-but do not fully document the rule for when `--hgnc` is required (its own help text
-names only the `hgnc_id`/`symbol` cases, not `uniprot_id` or the `variant`-aggregate
-case the code also enforces -- see "`annotate prepare`" below for the real rule). This
-page covers the spec format (`hvantk/algorithms/annotation/spec.py::load_spec`,
+`hvantk annotate prepare --help` and `hvantk annotate compose --help` list every flag.
+This page covers the spec format (`hvantk/algorithms/annotation/spec.py::load_spec`,
 `hvantk/resources/schemas/feature_spec.schema.json`) and the two commands' own rules,
 verified against that code, not against `--help` alone.
 
@@ -36,9 +33,9 @@ rather than silently picking one); `aggregate` (required when, and only when, `k
 variant` -- aggregates per-variant scores up to a gene; see below); `matrix` (for a
 `genes x groups` expression or specificity source -- requires `key: symbol`, since the
 reduced table it produces is symbol-keyed); `origin` and `ablate_separately` (parsed
-onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but as
-of this checkout neither is read by `prepare` or `compose` themselves; accepted spec
-metadata, not yet a lever either command acts on).
+onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but
+neither is read by `prepare` or `compose` themselves; accepted spec metadata, not a
+lever either command acts on).
 
 `aggregate`'s own keys: `by` (the source column carrying the gene identifier(s) to
 aggregate onto -- dbNSFP's is a `;`-delimited string, exploded to one row per gene),

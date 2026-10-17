@@ -1,6 +1,6 @@
 """Deterministic check for the cohort-attach-burden eval task.
 
-Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
+Grades one run in five stages (M1 to M5, see skills/workflow-conventions/SKILL.md section 5),
 writes ``verdict.json`` and ``receipt.json`` under ``--out-dir`` (or ``--verdict-dir``),
 and exits 0 on pass. Runs inside the container on a compute node (it needs Hail for
 ``attached.ht``). Slurm accounting is read from a file captured on the login node

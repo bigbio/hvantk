@@ -11,8 +11,9 @@ metadata:
 
 # Build, validate and promote the container image
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -33,9 +34,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
-   stop and ask for any missing value. Every later command that reads a profile value
-   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh" --allow-missing-image`;
+   stop and ask for any missing value. `--allow-missing-image` is needed because this
+   skill runs before `HVANTK_SIF` exists on a new site. Every later command that reads a
+   profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
 2. Checkout: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`.
    Build from a clean tree at the commit the user expects; a dirty or stale tree builds
    an image whose provenance names a commit that is not what went in. If the clone is
@@ -67,9 +69,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    The job builds from the repository root (the def file's `%files` are relative),
    refuses a name that resolves to the profile's default image, gates the Java version
    and records the Hail version inside the image, runs `hvantk utils check-install`
-   through the scratch pattern, and writes the provenance record. Allow five to twenty
-   minutes on a shared partition; the request is 8 cores, 32 GB and 1h45 so a slow pull
-   does not kill it. A foreground `--wait` outlives most tool timeouts, so run it as
+   through the scratch pattern, and writes the provenance record. Allow ten to twenty
+   minutes on a shared partition, longer the first time; the request is 8 cores, 32 GB
+   and 1h45 so a slow pull does not kill it. A foreground `--wait` outlives most tool
+   timeouts, so run it as
    `nohup bash -c 'source "$HVANTK_SITE_PROFILE" && bash ... --wait' > <run>-build.log 2>&1 &`
    and poll the job id.
 3. Read the job log and the record: `cat "<image>.provenance.json"`. The fields are in
@@ -77,10 +80,11 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    the locked one.
 4. Promote only when asked, and only after step 3:
    ```bash
-   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif"
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif" --name <run>-promote
    ```
-   The default is the profile's `HVANTK_SIF`. The script refuses while a job of yours
-   is running or while the queue cannot be read; when the default is a real file it is
+   The default is the profile's `HVANTK_SIF`. The script refuses while you have any
+   job queued or running (`squeue -u "$USER"`), or while the queue cannot be read at
+   all; when the default is a real file it is
    kept as `hvantk-<date>.sif` with its record, when it is a symlink the old target is
    kept as it is; then the default (and its record) point at the new file and a
    verification job runs the install check through the promoted name. Run it in the
@@ -134,8 +138,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 - The image passes every check and the dependency set is still old. Cause: the clone
   was stale when the lock file was copied in. Fix: `hpc-sync` first; compare
   `poetry_lock_md5` in the record with `md5sum poetry.lock` in the synced clone.
-- Promotion moved the symlink while a job was running. Cause: no check for running
-  jobs. Fix: the promote script refuses while `squeue -u "$USER"` lists anything; wait.
+- Promotion refuses with "you have jobs in the queue" though nothing is actually
+  running yet. Cause: the check is whether `squeue -u "$USER"` lists anything at
+  all, pending included, not specifically a running job. Fix: wait for the queue
+  to clear.
 - `singularity` is not on `PATH` but `apptainer` is (or the reverse). Cause: site
   naming. Fix: `HVANTK_CONTAINER_BIN` in the profile.
 - The record's `host` or `slurm_job` field is empty. Cause: the build ran outside a job.

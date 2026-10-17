@@ -3,12 +3,12 @@
 #
 #   promote-image.sh <image.sif> [--default <path, default: the profile's HVANTK_SIF>] [--no-verify] [--name <job name>]
 #
-# Refuses while any of your jobs is running, and unless <image.sif>.provenance.json says
+# Refuses while any of your jobs is queued or running, and unless <image.sif>.provenance.json says
 # check_install_rc is 0. Afterwards submits a verification job through the default name
 # unless --no-verify is given. Login-node work.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-bash "$HERE/../../_site/check-site-profile.sh" >/dev/null
+bash "$HERE/../../_site/check-site-profile.sh" --allow-missing-image >/dev/null
 # shellcheck disable=SC1090
 source "$HVANTK_SITE_PROFILE"
 

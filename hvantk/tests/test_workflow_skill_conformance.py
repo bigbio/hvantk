@@ -1,4 +1,4 @@
-"""Enforce the workflow-skill contract (``skills/_conventions/SKILL.md``) on every
+"""Enforce the workflow-skill contract (``skills/workflow-conventions/SKILL.md``) on every
 ``skills/<name>/SKILL.md``.
 
 Sibling of ``test_plugin_skill_conformance.py``, which does the same for the resource
@@ -25,6 +25,10 @@ from hvantk.core.plugin.skill_spec import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_DIR = REPO_ROOT / "skills"
+
+#: The conventions skill itself: not a workflow skill, so it is not a workflow-skill
+#: catalog entry and is not checked against the six-section contract it defines.
+CONVENTIONS_SKILL_NAME = "workflow-conventions"
 
 WORKFLOW_SECTIONS: tuple[str, ...] = (
     "## 1. Scope and outcome",
@@ -61,7 +65,10 @@ _PLACEHOLDER_LINE = re.compile(r"^\s*(?:[-*]\s+|\d+\.\s+)?<[^<>\n]+>\.?\s*$", re
 
 def iter_workflow_skills(root: Path = SKILLS_DIR):
     for path in sorted(root.glob("*/SKILL.md")):
-        if path.parent.name.startswith("_"):
+        if (
+            path.parent.name.startswith("_")
+            or path.parent.name == CONVENTIONS_SKILL_NAME
+        ):
             continue
         yield path
 
@@ -69,7 +76,7 @@ def iter_workflow_skills(root: Path = SKILLS_DIR):
 def check_workflow_skill(path: Path, *, require_files: bool = True) -> list[str]:
     """Contract violations for one workflow ``SKILL.md``; empty means conforming.
 
-    ``require_files=False`` is for the copy-me template in ``_conventions``: it still
+    ``require_files=False`` is for the copy-me template in ``workflow-conventions``: it still
     carries its ``<...>`` placeholders and has no folder of its own.
     """
     problems: list[str] = []
@@ -166,21 +173,21 @@ def test_workflow_skill_conforms(skill: Path):
         f"skills/{skill.parent.name}/SKILL.md does not meet the workflow-skill "
         "contract:\n  "
         + "\n  ".join(problems)
-        + "\n\nSee skills/_conventions/SKILL.md."
+        + "\n\nSee skills/workflow-conventions/SKILL.md."
     )
 
 
 def test_contract_matches_the_conventions_document():
-    conventions = (SKILLS_DIR / "_conventions" / "SKILL.md").read_text()
+    conventions = (SKILLS_DIR / CONVENTIONS_SKILL_NAME / "SKILL.md").read_text()
     listed = re.findall(r"^\s*\d+\.\s+`(##\s[^`]+)`\s*$", conventions, re.MULTILINE)
     assert listed == list(WORKFLOW_SECTIONS), (
-        "skills/_conventions/SKILL.md and WORKFLOW_SECTIONS have diverged:\n"
+        "skills/workflow-conventions/SKILL.md and WORKFLOW_SECTIONS have diverged:\n"
         f"  prose lists: {listed}\n  code enforces: {list(WORKFLOW_SECTIONS)}"
     )
 
 
 def test_the_shipped_template_satisfies_its_own_checker(tmp_path):
-    conventions = (SKILLS_DIR / "_conventions" / "SKILL.md").read_text()
+    conventions = (SKILLS_DIR / CONVENTIONS_SKILL_NAME / "SKILL.md").read_text()
     blocks = re.findall(r"```markdown\n(.*?)```", conventions, re.S)
     assert len(blocks) == 1, (
         f"expected one ```markdown template block, found {len(blocks)}"
@@ -196,7 +203,7 @@ def test_the_shipped_template_satisfies_its_own_checker(tmp_path):
 
 def test_an_unfilled_copy_of_the_template_is_rejected(tmp_path):
     """Copying the template and changing only the name must not pass."""
-    conventions = (SKILLS_DIR / "_conventions" / "SKILL.md").read_text()
+    conventions = (SKILLS_DIR / CONVENTIONS_SKILL_NAME / "SKILL.md").read_text()
     block = re.findall(r"```markdown\n(.*?)```", conventions, re.S)[0]
     folder = tmp_path / "copied-skill"
     (folder / "eval").mkdir(parents=True)

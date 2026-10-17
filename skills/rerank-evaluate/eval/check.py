@@ -1,6 +1,6 @@
 """Deterministic check for the rerank-evaluate eval task.
 
-Grades one run in five stages (M1 to M5, see skills/_conventions/SKILL.md section 5),
+Grades one run in five stages (M1 to M5, see skills/workflow-conventions/SKILL.md section 5),
 writes ``verdict.json`` and ``receipt.json``, and exits 0 on pass. No Hail: it reads
 ``config.yaml`` (PyYAML) and ``ranked.tsv`` (pandas + scikit-learn) only, but still
 runs as a Slurm job through ``skills/hpc-hail-job/templates/submit-hail-job.sh`` (2

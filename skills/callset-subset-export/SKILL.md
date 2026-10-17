@@ -11,8 +11,9 @@ metadata:
 
 # Subset a joint callset and deliver a verified VCF
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract. Jobs run through `hpc-hail-job`.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract. Jobs run through `hpc-hail-job`.
 
 ## 1. Scope and outcome
 
@@ -35,9 +36,10 @@ and sharing controlled-access data, which is a human decision this skill never m
    starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
 2. Checkout and image as in `hpc-hail-job` (commit, digest, run notes).
 3. The callset's own sample spelling: list it as a small job,
-   `templates/subset-job.sh --list-samples <callset.vds>`; callsets often carry
-   suffixes or doubled identifiers that a human list lacks. Map the requested list onto
-   the callset's spelling and keep both lists in the delivery; never guess a mapping.
+   `templates/subset-job.sh --list-samples <callset.vds> --name <run>-list`;
+   callsets often carry suffixes or doubled identifiers that a human list lacks. Map
+   the requested list onto the callset's spelling and keep both lists in the
+   delivery; never guess a mapping.
 4. Output under `$HVANTK_WORK`; the delivery target, if it is a read-only mount on
    compute nodes (`$HVANTK_READONLY_MOUNTS`), receives a copy from the login node at the
    end, never a job's direct write.
@@ -50,6 +52,7 @@ and sharing controlled-access data, which is a human decision this skill never m
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/callset-subset-export/templates/subset-job.sh" \
      --vds "$HVANTK_WORK/callsets/<name>/<name>.vds" --samples "$HVANTK_WORK/deliveries/<id>/samples.txt" \
+     --requested-samples "<original list>" \
      --out "$HVANTK_WORK/deliveries/<id>" --prefix <id> --cpus 8 --mem-gb 32 --time 0-00:30:00 --name <run>-subset
    ```
    The chain is: `subset-vds.py` (keeps the listed samples, drops alleles no listed

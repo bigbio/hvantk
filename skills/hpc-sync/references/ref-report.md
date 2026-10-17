@@ -3,16 +3,19 @@
 One screen that proves a sync, pasted into the run notes. Produce it after the push and
 after the clone's fast-forward, never before.
 
+In the clone you pushed from, with the cluster remote's name in place of
+`<cluster-remote>` and the synced branches in place of `<branches>`:
+
 ```bash
-source "$HVANTK_SITE_PROFILE" && git fetch -q origin && git fetch -q "$HVANTK_CLUSTER_REMOTE" && {
+git fetch -q origin && git fetch -q <cluster-remote> && {
   echo "== branches (after push)"
-  for b in main dev; do
-    o="$(git rev-parse "origin/$b")"; c="$(git rev-parse "$HVANTK_CLUSTER_REMOTE/$b" 2>/dev/null || echo none)"
+  for b in <branches>; do
+    o="$(git rev-parse "origin/$b")"; c="$(git rev-parse "<cluster-remote>/$b" 2>/dev/null || echo none)"
     [[ "$o" == "$c" ]] && v=equal || v=DIFFERENT
     printf '%-6s %s %s %s\n' "$b" "${o:0:12}" "${c:0:12}" "$v"
   done
   echo "== cluster-only refs still present"
-  git ls-remote --heads --tags "$HVANTK_CLUSTER_REMOTE" | awk '{print substr($1,1,12), $2}'
+  git ls-remote --heads --tags <cluster-remote> | awk '{print substr($1,1,12), $2}'
 }
 ```
 

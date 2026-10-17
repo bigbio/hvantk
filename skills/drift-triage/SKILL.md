@@ -11,8 +11,9 @@ metadata:
 
 # Triage a drift signal and repair the plugin
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -34,11 +35,22 @@ redesigning a probe beyond making it answer again.
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Needed by every image-touching step (1, 3, 5, 6); classifying (2) and repairing (4) are checkout-only.
-2. Checkout: the commit under review (the drift bot's branch, or `dev`) is checked out at `$HVANTK_REPO`, clean tree -- `git -C "$HVANTK_REPO" status --porcelain` -- so the repair you make is the only diff.
-3. Image: confirm the path and record its digest (`sha256sum "$(readlink -f "$HVANTK_SIF")"`); rebuild and verify jobs run inside it.
-4. Egress: a login node with egress answers `hvantk drift` directly. Without it -- a compute node, a sandbox, or to pin the signal to a file in hand -- `templates/probe-offline.py` answers the same probe locally (`references/bookkeeping.md` says which).
-5. Inputs and outputs: a raw directory for the current upstream file, a writable output path for the rebuild.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`. Needed by every image-touching
+   step (1, 3, 5, 6); classifying (2) and repairing (4) are checkout-only.
+2. Checkout: the commit under review (the drift bot's branch, or `dev`) is checked out at
+   `$HVANTK_REPO`, clean tree -- `git -C "$HVANTK_REPO" status --porcelain` -- so the
+   repair you make is the only diff.
+3. Image: confirm the path and record its digest
+   (`sha256sum "$(readlink -f "$HVANTK_SIF")"`); rebuild and verify jobs run inside it.
+4. Egress: a login node with egress answers `hvantk drift` directly. Without it -- a
+   compute node, a sandbox, or to pin the signal to a file in hand --
+   `templates/probe-offline.py` answers the same probe locally
+   (`references/bookkeeping.md` says which).
+5. Inputs and outputs: a raw directory for the current upstream file, a writable output
+   path for the rebuild.
 
 ## 3. Procedure
 
@@ -160,12 +172,10 @@ redesigning a probe beyond making it answer again.
 - No ledger row appears after `--regenerate`. Cause: a first capture, or a
   `probe_version`-only change -- neither is an upstream change by itself. Fix: add
   the row by hand if upstream genuinely moved too.
-- `--mark-rebuilt` run BEFORE `--regenerate`. Cause: `--regenerate` REPLACES the row
-  outright (`rebuilt_at: null`), so running it first is just overwritten -- order
-  alone is not dangerous. The real false-clean case: `--regenerate` records NO row (a
-  first capture or `probe_version`-only change) while an older row already exists, so
-  `--mark-rebuilt` marks THAT one instead and `--ledger` reports clean. Fix:
-  regenerate first, always; confirm `last_upstream_change` is from THIS run.
+- `--ledger` reports clean after `--mark-rebuilt`, but nothing was recorded. Cause:
+  `--regenerate` recorded no row this time, so `--mark-rebuilt` marked an older row
+  instead (`references/bookkeeping.md`). Fix: regenerate first, always; confirm
+  `last_upstream_change` is from THIS run.
 - An added upstream column missing where expected, or an incomplete-looking schema
   snapshot. Cause: a rename map only renames columns it recognizes; anything else
   passes through under its upstream name, so a snapshot (a small fixture) is a FLOOR,
@@ -177,11 +187,9 @@ redesigning a probe beyond making it answer again.
 - Plugin tests fail with a fixture-not-found error. Cause: fixture paths are relative
   to the checkout root. Fix: `templates/run-plugin-tests.py` chdirs there first --
   run it, not pytest.
-- A bare `hvantk`/`python -m hvantk`, or a bookkeeping syntax error. Cause: outside
-  the image `hvantk` is not on PATH and the login node's Python predates these
-  templates; `-m hvantk`/`-c` also put the CWD first on `sys.path`, silently reading
-  the image's stale copy without the checkout on PYTHONPATH. Fix: route every
-  command through `run-in-image.sh`, as every step above does.
+- A bare `hvantk`/`python -m hvantk`, or a bookkeeping syntax error. Cause and fix:
+  see `workflow-conventions`'s Runtime rules (section 4) -- route every command
+  through `run-in-image.sh`, as every step above does.
 
 ## 6. Verification
 

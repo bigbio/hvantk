@@ -11,8 +11,9 @@ metadata:
 
 # Build the gene index
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -40,9 +41,14 @@ authoring a new annotation-source plugin (a resource spec under
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
 4. Inputs and outputs: confirm where the two raw directories and the three output paths
    (the two built datasets and the gene index) live, and that they are writable from
    compute nodes. The procedure below writes them under `$HVANTK_WORK/out`; if the user
@@ -52,11 +58,11 @@ authoring a new annotation-source plugin (a resource spec under
    (`ENSEMBL_RELEASE`, GRCh38 only -- `annotate spine` takes no genome argument). Confirm
    it is the release you intend, and that `ensembl-gene:structure` and `hgnc:lookup` were
    both built by THIS checkout -- a stale build from an older pin or an older HGNC dump
-   joins silently against the wrong gene set. `builder_commit` on their
-   `.provenance.json` sidecars does not help here: it is `null` whenever a dataset is
-   built through `hvantk reprocess` (the normal path), so same-checkout is established
-   by the run notes' own `commit:` line and the job ids that produced each input, not by
-   the sidecar (`references/inputs-and-release.md`).
+   joins silently against the wrong gene set. `builder_commit` on their `.provenance.json`
+   sidecars does not help here: it is `null` whenever a dataset is built through
+   `hvantk reprocess` (the normal path), so same-checkout is established by the run notes'
+   own `commit:` line and the job ids that produced each input, not by the sidecar
+   (`references/inputs-and-release.md`).
 6. Biotype: default `protein_coding`; `all` keeps every biotype; anything else filters to
    that literal `gene_biotype` string with no validation against the input, so a typo
    (e.g. `protien_coding`) builds a table of zero rows rather than failing. If unsure
@@ -156,16 +162,9 @@ remove.
   guard -- it always writes with `overwrite=True`. Fix: write every build to a new output
   path, never reuse one you want to keep.
 - `HGNC join changed the row count (a -> b); the lookup is not unique per gene_id`.
-  HGNC genuinely does map more than one `hgnc_id` to the same Ensembl gene sometimes,
-  and `build_spine` collapses those to one record per gene (lowest `hgnc_id` wins) via
-  a `group_by(gene_id=...).aggregate(...)` BEFORE the join -- which makes the right
-  side's key unique by construction, for ANY input to that step, however messy. On an
-  `hgnc:lookup`-built table (i.e. `hvantk reprocess hgnc:lookup`'s own output, which is
-  the only input this skill's procedure ever feeds in) this guard therefore cannot
-  fire. Cause, if it does anyway: the checkout's `hvantk/algorithms/annotation/
-  spine.py` changed -- the dedup step was altered, weakened or removed. Fix: report
-  it; do not chase a "hand-edited input" explanation, since the dedup rules that out
-  structurally.
+  Cause: on this skill's only input, this guard cannot fire by construction -- if it
+  does, `spine.py`'s own dedup step changed (`references/inputs-and-release.md`).
+  Fix: report it; a hand-edited input is not the explanation.
 - A mapping rate far below the usual protein-coding norm (upper-90s%). Cause: either a
   stale or wrong-vintage HGNC table, or you built with `--biotype all`, where most
   non-coding biotypes have no HGNC record at all. Fix: compare like with like -- rebuild
@@ -190,10 +189,10 @@ remove.
   no matching `--prepared axis=path` (missing), or a `--prepared` names an axis the spec
   does not declare (unknown) -- `compose` is strict on both. Fix: pass exactly one
   `--prepared` per spec `layer1` axis, spelled the same as the spec's `axis:` label.
-- `hvantk: command not found`, or a write landing in the wrong checkout. Cause: `hvantk`
-  is only on `PATH` inside the image, and `python -m hvantk` run from the login node puts
-  the current directory first on `sys.path`. Fix: route every `hvantk`/`python`
-  invocation through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
+- `hvantk: command not found`, or a write landing in the wrong checkout. Cause and
+  fix: see `workflow-conventions`'s Runtime rules (section 4) -- route every
+  `hvantk`/`python` invocation through `run-in-image.sh` or `submit-hail-job.sh`,
+  never bare `hvantk` or `python -m hvantk`.
 - A small, consistent number of protein-coding genes (a few dozen) never joining onto a
   cohort's VCF, even though their biotype and chromosome both look right. Cause: those
   genes sit on unplaced or unlocalised scaffolds (`KI270...`, `GL000...`), not on

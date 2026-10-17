@@ -27,10 +27,9 @@ dataset reports `drifted` on every run forever. Either way the fix is the same:
 The ledger is written the same way in the NORMAL case, but it has one documented,
 narrow exception: a hand-added row, for the specific case where `--regenerate` records
 none because the two baselines differ only in `probe_version` (step 1 below) while
-upstream genuinely also moved in that same window -- the dbnsfp and uniprot-ptm
-fingerprint bumps both did this by hand. Outside that one case, write it through
-`--regenerate`/the bot, not by hand: a hand-maintained provenance record is exactly as
-easy to get silently wrong as any other one.
+upstream genuinely also moved in that same window. Outside that one case, write it
+through `--regenerate`/the bot, not by hand: a hand-maintained provenance record is
+exactly as easy to get silently wrong as any other one.
 
 ## Sequence
 
@@ -97,3 +96,14 @@ regenerated on purpose -- stated as such in the commit message, per
 `references/repair-patterns.md`. Subject line `fix(<provider>): accept <what changed
 upstream>`; the body says what moved upstream and, if anything was repaired, what the
 repair was.
+
+## Why `--mark-rebuilt` before `--regenerate` is not the dangerous order
+
+Running `--mark-rebuilt` before `--regenerate` is not itself dangerous: `--regenerate`
+REPLACES the row outright (`rebuilt_at: null`), so running `--mark-rebuilt` first is
+just overwritten. The real false-clean case is the other way around: `--regenerate`
+records NO row at all (a first capture, or a `probe_version`-only change), while an
+older row already exists -- `--mark-rebuilt` then marks THAT older row instead, and
+`--ledger` reports clean even though nothing about this rebuild was recorded. Always
+regenerate first, and confirm the row's `last_upstream_change` is from THIS run before
+marking it rebuilt.

@@ -11,8 +11,9 @@ metadata:
 
 # Ancestry inference against a labelled reference
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract. Jobs run through `hpc-hail-job`.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract. Jobs run through `hpc-hail-job`.
 
 ## 1. Scope and outcome
 
@@ -86,20 +87,20 @@ label), relatedness, and sex inference.
 
 ## 5. Traps
 
-- "fewer than 10000 shared variants". Cause: a slice, an exome, or a reference on the
-  other build. Fix: same build; a richer reference; or `--min-shared-variants` lowered
-  deliberately, and the run notes say so.
+- "Only N shared variants found; need at least 10,000 for reliable ancestry
+  inference." Cause: a slice, an exome, or a reference on the other build. Fix: same
+  build; a richer reference; or `--min-shared-variants` lowered deliberately, and the
+  run notes say so.
 - "reference genome mismatch". Cause: GRCh37 query against a GRCh38 reference (or the
   reverse). Fix: a reference on the query's build; no liftover inside this skill.
-- "column super_pop not found". Cause: the label sits inside a struct or under another
-  name. Fix: a flat column (`--ancestry-col` names it).
+- "Ancestry column 'super_pop' not found in reference MatrixTable". Cause: the label
+  sits inside a struct or under another name. Fix: a flat column (`--ancestry-col`
+  names it).
 - Many samples unassigned. Cause: `--min-prob` 0.75 with a reference that does not
   cover the cohort's ancestry, or admixed samples. Fix: read the probabilities; lower
   the threshold only with a reason written down; never force a label.
 - `cv_accuracy` of 1.0 on real data. Cause: too few reference samples per population,
   or a synthetic reference. Fix: at least ten samples per label, a real panel.
-- The documentation names a `--log-level` flag. Cause: a stale page. Fix: verbosity is
-  `hvantk -v ancestry-inference ...`.
 - `RuntimeError` about scikit-learn. Cause: running outside the image without the `ml`
   extra. Fix: the image has it; jobs run inside it.
 - Related samples in the reference. Cause: the full 3202-sample 1000 Genomes release

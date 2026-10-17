@@ -34,6 +34,6 @@ Standalone commands write differently: `compute-qc -o <dir>` writes
 `<prefix>_with_qc.mt`; `qc-summary` reads a QC directory and writes markdown, CSV or JSON.
 
 Counting: the MatrixTable row count is not the variant count while placeholder alleles
-are present; the QC tables and the VCF drop them. The eval's reference records the
-MatrixTable row count as produced by the pipeline, the VCF record count, and the sample
-set, so that a run is compared with a run, not with a notion of "variants".
+are present; the QC tables and the VCF drop them. Record the MatrixTable row count as
+produced by the pipeline, the VCF record count, and the sample set, so a run is
+compared with a run, not with a notion of "variants".

@@ -11,8 +11,9 @@ metadata:
 
 # Build hvantk datasets at scale
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -31,12 +32,31 @@ Not this skill: writing or repairing a plugin (the resource specs under
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value (`skills/_conventions/SKILL.md` section 3 / the template in section 7).
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never home.
-5. What each dataset needs: there is no single command for this. `hvantk plugins describe <provider>` prints the name, version, and each dataset's domain/backend, skill path and committed fingerprint path -- nothing about artifact type, lifecycle or acquisition. Read the manifest itself, `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply the raw files yourself (the reason and any instructions are printed by `reprocess`'s own error at build time; see Traps).
-6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login node (`references/raw-dir-conventions.md`); the build jobs themselves always run with `--skip-download`, so egress changes who runs the download command and when, not the procedure below.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value (`skills/workflow-conventions/SKILL.md` section 4).
+   Every later command that reads a profile value starts with the same
+   `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: writable from compute nodes, under `$HVANTK_WORK` or similar, never
+   home.
+5. What each dataset needs: there is no single command for this.
+   `hvantk plugins describe <provider>` prints the name, version, and each dataset's
+   domain/backend, skill path and committed fingerprint path -- nothing about artifact
+   type, lifecycle or acquisition. Read the manifest itself,
+   `hvantk/skills/<provider>/plugin.yaml`: `artifact_type` decides the output extension
+   (`.ht` table, `.mt` variant matrix, `.h5ad` expression -- always a single file, never a
+   directory -- `.parquet` a pandas-backed table), `lifecycle.parse` (if present) means a
+   parse stage and an `--intermediate` path, and `acquisition.mode: byo` means you supply
+   the raw files yourself (the reason and any instructions are printed by `reprocess`'s
+   own error at build time; see Traps).
+6. Egress: whatever the site profile's `HVANTK_EGRESS` says, downloads happen on the login
+   node (`references/raw-dir-conventions.md`); the build jobs themselves always run with
+   `--skip-download`, so egress changes who runs the download command and when, not the
+   procedure below.
 
 ## 3. Procedure
 
@@ -141,16 +161,9 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   itself contains a comma cannot be expressed this way. Fix: read the builder's or
   downloader's own parameter docstring for the expected type.
 - A build job's log carries a WARNING about the drift probe, and the output's sidecar
-  has `source_fingerprint: "probe-unavailable:source-unreachable"`. Cause: the
-  platform runs the drift probe on every build regardless of `--no-check-drift` (that
-  flag only gates `reprocess`'s own post-build `drift: <status>` print), and a compute
-  node has no egress to reach upstream with. Fix: nothing -- the build is fine. The
-  real signal is step 2's login-node `hvantk drift provider:dataset`, run *before* the
-  build, which compares what upstream serves right now against the committed
-  fingerprint (never your staged file); a `probe_failed` there from a network error
-  just means "unavailable, proceed" -- but any OTHER `probe_failed` (the probe raised
-  on content it did fetch) is itself a signal, same as a `drifted` schema result: use
-  `drift-triage`.
+  has `source_fingerprint: "probe-unavailable:source-unreachable"`. Cause: a compute
+  node has no egress for the in-job probe (`references/raw-dir-conventions.md`). Fix:
+  nothing -- the real signal is step 2's login-node check, before the build.
 - `sacct` showing one row `<A>_[2-3]` for a while after submission. Cause: tasks still
   pending can be reported collapsed into one range row. Fix: wait for every task to
   reach a terminal state, not for that row to disappear.
@@ -166,11 +179,10 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   fixture's.
 - A relative path in the task list. Cause: an array task's working directory is the log
   directory, not the checkout. Fix: absolute paths only, both columns.
-- `hvantk: command not found` outside the image. Cause: the console script lives
-  inside the image; it is not installed on the login node. Fix: route the command
-  through `run-in-image.sh` (`bash skills/hpc-hail-job/templates/run-in-image.sh --
-  hvantk ...`); never `python -m hvantk` from another directory -- it puts the current
-  directory first on `sys.path` and can import, and write, into the wrong checkout.
+- `hvantk: command not found` outside the image, or a command that silently wrote
+  into the wrong checkout. Cause and fix: see `workflow-conventions`'s Runtime rules
+  (section 4) -- route it through `run-in-image.sh`, never a bare `hvantk` or
+  `python -m hvantk`.
 - An output moved without its sidecar. Cause: `.provenance.json` sits next to the
   output, not inside it, and does not record the raw file's path (see
   `references/verification.md` for its actual fields). Fix: move both together, or

@@ -1,13 +1,17 @@
 # The site profile
 
-One file holds every cluster-specific value the workflow skills need. Copy
-`site-profile.example.sh` to `site-profile.local.sh`, fill it in, and export
-`HVANTK_SITE_PROFILE` pointing at it. The filled copy is gitignored and must stay out
-of every repository: it names your cluster.
+One file holds every cluster-specific value the workflow skills need. Fill it in on
+the cluster, in the `$HVANTK_REPO` checkout: copy `site-profile.example.sh` to
+`site-profile.local.sh`, fill it in, and export `HVANTK_SITE_PROFILE` pointing at it.
+The filled copy is gitignored and must stay out of every repository: it names your
+cluster.
 
 Templates read values from it with `source "$HVANTK_SITE_PROFILE"`, and
 `check-site-profile.sh` refuses to continue while a required value is empty. A skill
-that meets an empty value stops and asks the user. It never guesses.
+that meets an empty value stops and asks the user. It never guesses. Before the first
+image exists, `HVANTK_SIF` is set but points nowhere; pass `check-site-profile.sh
+--allow-missing-image` (the `hpc-container` templates already do), or run
+`hvantk:hpc-container` to build the image first.
 
 ## Required
 

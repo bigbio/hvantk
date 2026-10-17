@@ -11,8 +11,9 @@ metadata:
 
 # Rank and evaluate a cohort's genes with hvantk rerank
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract. Jobs run through `hpc-hail-job`.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract. Jobs run through `hpc-hail-job`.
 
 ## 1. Scope and outcome
 
@@ -31,28 +32,34 @@ or building the gene index (`gene-index`).
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
-2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
-3. Image and its digest: `readlink -f "$HVANTK_SIF"` and `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
-4. Inputs and outputs: the cohort table, the gene index and the raw ClinGen/HGNC files are readable, and the output location is writable, from compute nodes -- under `$HVANTK_WORK` or similar, never home.
+1. Site profile:
+   `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`;
+   stop and ask for any missing value. Every later command that reads a profile value
+   starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout and its commit: `git -C "$HVANTK_REPO" rev-parse HEAD` and
+   `git -C "$HVANTK_REPO" status --porcelain`; compare with the commit the user expects.
+3. Image and its digest: `readlink -f "$HVANTK_SIF"` and
+   `sha256sum "$(readlink -f "$HVANTK_SIF")"`.
+4. Inputs and outputs: the cohort table, the gene index and the raw ClinGen/HGNC files are
+   readable, and the output location is writable, from compute nodes -- under
+   `$HVANTK_WORK` or similar, never home.
 5. One identifier space for the cohort table, every feature axis and the labels:
    `hvantk rerank` does no identifier mapping at all -- a cohort keyed by Ensembl
-   `gene_id`, a feature axis keyed by HGNC symbol and a label file of symbols never
-   join. Decide the space now (symbols, if `--blocks` is used -- it matches HGNC
-   approved symbols only) and map everything into it before writing the config.
+   `gene_id`, a feature axis keyed by HGNC symbol and a label file of symbols never join.
+   Decide the space now (symbols, if `--blocks` is used -- it matches HGNC approved
+   symbols only) and map everything into it before writing the config.
    `references/inputs-and-identifiers.md`.
 6. The label set's definition: source (ClinGen, GenCC, or a file you already have),
    minimum classification, and which groups -- decided and written down now, not
-   improvised mid-run. A label set built from a curated disease database scored
-   against that same database's own labels is circular; `references/feature-axes.md`
-   and `references/audit-and-leakage.md` say where that line is.
-7. The universe: which genes will actually be ranked. It is whatever the feature
-   tables cover (their outer join), so decide it by choosing what goes into the
-   feature tables -- restricting the cohort table or the label file does not shrink
-   the universe by itself.
-8. The feature axes: at least one, each a gene-keyed table with no identifier
-   collisions across axes (`references/feature-axes.md`); chosen for no circularity
-   against the label source (`references/audit-and-leakage.md`).
+   improvised mid-run. A label set built from a curated disease database scored against
+   that same database's own labels is circular; `references/feature-axes.md` and
+   `references/audit-and-leakage.md` say where that line is.
+7. The universe: which genes will actually be ranked. It is whatever the feature tables
+   cover (their outer join), so decide it by choosing what goes into the feature tables --
+   restricting the cohort table or the label file does not shrink the universe by itself.
+8. The feature axes: at least one, each a gene-keyed table with no identifier collisions
+   across axes (`references/feature-axes.md`); chosen for no circularity against the label
+   source (`references/audit-and-leakage.md`).
 
 ## 3. Procedure
 
@@ -120,10 +127,12 @@ or building the gene index (`gene-index`).
        --out "$HVANTK_WORK/out/rerank/labels.txt"
    ```
    `--min-classification` is "this level or stronger" (`Moderate` means Moderate,
-   Strong or Definitive); omit `--group` to union every ClinGen GCEP group, i.e. any
-   disease, or pass one or more `--group` names to narrow it. `genesets gencc` is the
-   GenCC equivalent (`--group-by submitter`). Restrict labels to the universe now, not
-   by lowering `min_label_coverage` later (Traps).
+   Strong or Definitive). `genesets gencc` is the GenCC equivalent (`--group-by
+   submitter`). `prepare-rerank-inputs.py labels`'s own `--group`, not a
+   `genesets` option: omit it to union every group in the geneset JSON (every
+   ClinGen GCEP group, i.e. any disease), or pass one or more `--group` names to
+   narrow it. Restrict labels to the universe now, not by lowering
+   `min_label_coverage` later (Traps).
 5. **The config.** Exactly `name`, `cohort`, `features` (a list of `{name, path}`),
    `labels` (`{path}`), and optionally `min_label_coverage` (never below 0.5 -- Traps)
    -- no `prior:` key, no other key. `cohort` points at the symbol-keyed manifest from
@@ -203,15 +212,9 @@ wall time.
   CLI); a smaller fold count is Python-API-only, same as above -- never a smaller
   `min_label_coverage`.
 - `Audit: 0 gene(s) FLAGGED for review ... Reasons: {}` when you expected the
-  architecture audit to flag something. Cause: the `Audit:` line always prints,
-  whether or not the real audit ran -- it reads 0/{} just the same whether
-  `NoAudit` is active (the cohort manifest's declared axis columns do not cover all
-  of `n_case_var`, `conc` and `driver_af`) or the real audit ran and genuinely found
-  nothing to flag. A near-miss axis (e.g. one named `architecture` with only two of
-  the three columns) logs a warning at build time, which is easy to miss outside
-  `-v`. Fix: carry the original cohort's architecture axis through step 2 unchanged
-  (`references/audit-and-leakage.md`), and check the manifest's `cohort_axes`
-  directly if in doubt, rather than reading silence off the console.
+  architecture audit to flag something. Cause: that line prints the same whether
+  `NoAudit` ran or the real audit found nothing (`references/audit-and-leakage.md`).
+  Fix: carry the original cohort's architecture axis through step 2 unchanged.
 - Duplicate symbols after mapping. Cause: two gene ids map to the same approved
   symbol. Fix: `prepare-rerank-inputs.py` drops both sides of a shared symbol and
   refuses outright (exit 1) if that -- or any other unmapped-symbol reason --
@@ -230,9 +233,9 @@ wall time.
   one-axis config has nothing left to search a null over.
 - `--max-block-frac` without `--blocks`: rejected outright (`--max-block-frac only
   applies to paralogue-blocked folds`).
-- A leftover `prior:` key in the config. Cause: a config written before the
-  cohort-manifest migration. Fix: delete it -- the prior now lives entirely in the
-  cohort manifest's own `prior:` block, referenced via `cohort:`.
+- A leftover `prior:` key in the rerank config. Cause: the prior lives entirely in
+  the cohort manifest's own `prior:` block, referenced via `cohort:`, never in the
+  rerank config directly. Fix: delete it.
 - A cohort manifest's `table:` not found, or resolving to someone else's file.
   Cause: `table:` is resolved against the READING process's current working
   directory, never the manifest file's own location -- and a Slurm job's working

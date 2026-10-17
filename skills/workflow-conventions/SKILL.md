@@ -1,6 +1,7 @@
 ---
-name: hvantk-workflow-conventions
-description: The contract every hvantk workflow skill follows. Read first.
+name: workflow-conventions
+description: Use when authoring or reviewing an hvantk workflow skill, or when another hvantk skill says to read its conventions first.
+user-invocable: false
 ---
 
 # hvantk workflow-skill conventions
@@ -94,6 +95,15 @@ starts with `source "$HVANTK_SITE_PROFILE" &&`. And values such as `HVANTK_BIND`
 set in the profile file, never exported in a shell: the job sources the profile and an
 export is overwritten.
 
+**Runtime rules.** Login-node work (staging, bookkeeping, a short check) goes through
+`templates/run-in-image.sh` (`hpc-hail-job`), never bare `hvantk` or `python -m
+hvantk`: `python -m hvantk` imports hvantk from, and writes into, whatever checkout is
+the current directory, and bare `hvantk` runs whichever installed copy comes first on
+`PATH`; neither is guaranteed to be the reviewed checkout. Job names are `<run>-<what>`, where `<run>`
+is the run id the user or the eval harness gave. A job submitted with `--wait` is
+launched in the background and polled, never waited on in the foreground of the
+agent's own turn. Every path a command names is absolute.
+
 ## 5. Measured: the `eval/` folder
 
 Five files, always, none empty (a stage may add a helper script next to them):
@@ -118,6 +128,10 @@ commit: <git sha, 7 to 40 hex>
 container: <sha256 of the image file>
 job: <slurm job id>        (one line per job submitted; at least one)
 ```
+
+A fourth kind is allowed: a result line `key: value` that the skill's `task.md`
+names explicitly, matching the key `check.py` reads from `reference.json`. `task.md`
+says which keys and in what format; nothing else is a free-form addition.
 
 `verdict.json` carries five graded stages and the pass flag:
 
@@ -161,8 +175,9 @@ metadata:
 
 # <Title>
 
-Read `skills/_conventions/SKILL.md` first; this skill assumes its site-profile rule,
-its section contract and its measurement contract.
+Read the `hvantk:workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`)
+first; this skill assumes its site-profile rule, its section contract and its
+measurement contract.
 
 ## 1. Scope and outcome
 
@@ -170,10 +185,10 @@ its section contract and its measurement contract.
 
 ## 2. Preflight
 
-1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source … &&`.
-2. Checkout: confirm the commit the user expects is checked out on the machine that runs the job.
-3. Image: confirm the image path and record its digest.
-4. Inputs and outputs: confirm where they live and that the output location is writable from compute nodes.
+1. Site profile: `source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/_site/check-site-profile.sh"`; stop and ask for any missing value. Every later command that reads a profile value starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
+2. Checkout: confirm the commit the user expects is checked out, and the tree is clean (`git -C "$HVANTK_REPO" rev-parse HEAD` and `git -C "$HVANTK_REPO" status --porcelain`), on the machine that runs the job.
+3. Image: confirm the image path and record its digest (`sha256sum "$(readlink -f "$HVANTK_SIF")"`).
+4. Inputs and outputs: confirm where they live, that inputs are readable and the output location is writable, from compute nodes.
 
 ## 3. Procedure
 

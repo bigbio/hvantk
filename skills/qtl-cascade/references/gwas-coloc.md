@@ -3,7 +3,7 @@
 A separate pipeline from the eQTL/pQTL cascade above: it colocalises one FinnGen GWAS
 locus against one eQTL Catalogue dataset, ranks the genes in the window by ABF `PP4`,
 and (by default) confirms the top effector with SuSiE/coloc.susie fine-mapping.
-Covered here as a procedure step and reference; not measured by this skill's eval.
+Covered here as a procedure step and reference.
 
 ## Egress — read this before putting it in a job
 
