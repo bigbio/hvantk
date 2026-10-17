@@ -11,7 +11,7 @@ change anything on the GitHub remote: no branch or tag may be added there.
   of its own), and `laptop/`, a working clone of `github.git` whose second remote is
   named `cluster` and points at `cluster.git`. Its local branches may not be current.
   Work from `laptop/`; in this scenario the cluster remote's name is `cluster`, which
-  replaces the site profile's `HVANTK_CLUSTER_REMOTE` literally.
+  replaces `<cluster-remote>` literally in the skill's commands.
 - There is no cluster working clone in the scenario, so the skill's step that
   fast-forwards one has nothing to act on. Leave the hvantk checkout (`$HVANTK_REPO`)
   untouched; it is not part of the task.

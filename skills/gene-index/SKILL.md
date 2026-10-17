@@ -192,7 +192,7 @@ remove.
 - `hvantk: command not found`, or a write landing in the wrong checkout. Cause and
   fix: see `workflow-conventions`'s Runtime rules (section 4) -- route every
   `hvantk`/`python` invocation through `run-in-image.sh` or `submit-hail-job.sh`,
-  never bare.
+  never bare `hvantk` or `python -m hvantk`.
 - A small, consistent number of protein-coding genes (a few dozen) never joining onto a
   cohort's VCF, even though their biotype and chromosome both look right. Cause: those
   genes sit on unplaced or unlocalised scaffolds (`KI270...`, `GL000...`), not on

@@ -237,7 +237,7 @@ regardless of cohort size -- they never need to be chunked.
 - `hvantk: command not found`, or a `python ...` or `hvantk ...` invocation that looks
   like it ran but touched the wrong checkout. Cause and fix: see
   `workflow-conventions`'s Runtime rules (section 4) -- route every command through
-  `run-in-image.sh` or `submit-hail-job.sh`; never bare.
+  `run-in-image.sh` or `submit-hail-job.sh`; never bare `hvantk` or `python -m hvantk`.
 
 ## 6. Verification
 

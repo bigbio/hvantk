@@ -97,9 +97,9 @@ export is overwritten.
 
 **Runtime rules.** Login-node work (staging, bookkeeping, a short check) goes through
 `templates/run-in-image.sh` (`hpc-hail-job`), never bare `hvantk` or `python -m
-hvantk`: either one imports hvantk from, and writes into, whatever checkout happens to
-be the current directory -- not the reviewed checkout, and not the image's installed
-copy either if the CWD is something else. Job names are `<run>-<what>`, where `<run>`
+hvantk`: `python -m hvantk` imports hvantk from, and writes into, whatever checkout is
+the current directory, and bare `hvantk` runs whichever installed copy comes first on
+`PATH`; neither is guaranteed to be the reviewed checkout. Job names are `<run>-<what>`, where `<run>`
 is the run id the user or the eval harness gave. A job submitted with `--wait` is
 launched in the background and polled, never waited on in the foreground of the
 agent's own turn. Every path a command names is absolute.

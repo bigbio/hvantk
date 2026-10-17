@@ -190,7 +190,8 @@ runs the image's own installed copy, not the checkout. For an interactive shell,
   brings the clone forward.
 - `hvantk: command not found`, or a command that silently wrote into the wrong
   checkout. Cause and fix: see `workflow-conventions`'s Runtime rules (section 4) --
-  route every command through `run-in-image.sh` or `submit-hail-job.sh`, never bare.
+  route every command through `run-in-image.sh` or `submit-hail-job.sh`, never bare
+  `hvantk` or `python -m hvantk`.
 
 ## 6. Verification
 

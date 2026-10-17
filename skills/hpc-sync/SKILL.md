@@ -46,8 +46,8 @@ source one: the user gives you the cluster remote's name and it replaces
    (`git -C "$HVANTK_REPO" rev-parse HEAD`, on the cluster) and the image digest
    (`sha256sum "$(readlink -f "$HVANTK_SIF")"`), as every workflow records them.
 3. Remotes: `git remote -v` in the clone you are pushing from. The cluster remote's
-   name is a site value (`HVANTK_CLUSTER_REMOTE` in the profile when set); if it is not
-   set and the listing does not make it obvious, ask. Never guess which remote is the
+   name is a site value (`HVANTK_CLUSTER_REMOTE` in the cluster's profile when set); if
+   the user has not given it and the listing does not make it obvious, ask. Never guess which remote is the
    cluster.
 4. Fetch both sides before reasoning about either:
    `git fetch origin && git fetch <cluster-remote>`.
