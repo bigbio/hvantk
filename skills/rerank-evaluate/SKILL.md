@@ -127,10 +127,12 @@ or building the gene index (`gene-index`).
        --out "$HVANTK_WORK/out/rerank/labels.txt"
    ```
    `--min-classification` is "this level or stronger" (`Moderate` means Moderate,
-   Strong or Definitive); omit `--group` to union every ClinGen GCEP group, i.e. any
-   disease, or pass one or more `--group` names to narrow it. `genesets gencc` is the
-   GenCC equivalent (`--group-by submitter`). Restrict labels to the universe now, not
-   by lowering `min_label_coverage` later (Traps).
+   Strong or Definitive). `genesets gencc` is the GenCC equivalent (`--group-by
+   submitter`). `prepare-rerank-inputs.py labels`'s own `--group`, not a
+   `genesets` option: omit it to union every group in the geneset JSON (every
+   ClinGen GCEP group, i.e. any disease), or pass one or more `--group` names to
+   narrow it. Restrict labels to the universe now, not by lowering
+   `min_label_coverage` later (Traps).
 5. **The config.** Exactly `name`, `cohort`, `features` (a list of `{name, path}`),
    `labels` (`{path}`), and optionally `min_label_coverage` (never below 0.5 -- Traps)
    -- no `prior:` key, no other key. `cohort` points at the symbol-keyed manifest from

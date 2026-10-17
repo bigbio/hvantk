@@ -33,8 +33,9 @@ pushing to GitHub itself (that is the ordinary PR workflow).
 Where each step runs: steps 1 to 4 and 6 of the procedure run in the clone you push
 from (a laptop, usually), and need only the cluster remote's name; preflight step 1,
 procedure step 5 and verification step 2 run on the cluster, with the cluster's site
-profile. A remote name the user gives you replaces `"$HVANTK_CLUSTER_REMOTE"` literally
-in every command below.
+profile. A laptop has no site profile of its own, so the steps that run there never
+source one: the user gives you the cluster remote's name and it replaces
+`<cluster-remote>` literally in every command below.
 
 ## 2. Preflight
 
@@ -49,33 +50,33 @@ in every command below.
    set and the listing does not make it obvious, ask. Never guess which remote is the
    cluster.
 4. Fetch both sides before reasoning about either:
-   `source "$HVANTK_SITE_PROFILE" && git fetch origin && git fetch "$HVANTK_CLUSTER_REMOTE"`.
+   `git fetch origin && git fetch <cluster-remote>`.
    Everything below compares remote-tracking refs, never local branches.
 5. Record in your run notes the commit each branch is at on GitHub
    (`git rev-parse origin/<branch>`) and every ref the cluster remote holds
-   (`source "$HVANTK_SITE_PROFILE" && git ls-remote "$HVANTK_CLUSTER_REMOTE"`): the first
-   is the target, the second is what must survive.
+   (`git ls-remote <cluster-remote>`): the first is the target, the second is what
+   must survive.
 
 ## 3. Procedure
 
 1. Compare, branch by branch, before pushing:
    ```bash
-   source "$HVANTK_SITE_PROFILE" && for b in <branches>; do
+   for b in <branches>; do
      printf '%-6s origin=%s cluster=%s\n' "$b" \
-       "$(git rev-parse --short "origin/$b")" "$(git rev-parse --short "$HVANTK_CLUSTER_REMOTE/$b" 2>/dev/null || echo none)"
+       "$(git rev-parse --short "origin/$b")" "$(git rev-parse --short "<cluster-remote>/$b" 2>/dev/null || echo none)"
    done
    ```
 2. Prove each push is a fast-forward, so no cluster-side commit is clobbered:
-   `source "$HVANTK_SITE_PROFILE" && git merge-base --is-ancestor "$HVANTK_CLUSTER_REMOTE/<branch>" "origin/<branch>" && echo fast-forward`.
+   `git merge-base --is-ancestor <cluster-remote>/<branch> origin/<branch> && echo fast-forward`.
    If it is not, the cluster has commits GitHub does not have. Stop: list them with
-   `source "$HVANTK_SITE_PROFILE" && git log --oneline "origin/<branch>..$HVANTK_CLUSTER_REMOTE/<branch>"`, show them to
+   `git log --oneline origin/<branch>..<cluster-remote>/<branch>`, show them to
    the user, and let them decide whether those commits go to GitHub first (a branch and
    a PR) or are discarded. Never force-push to resolve it.
 3. Push the GitHub refs by explicit refspec, never local branch names:
    ```bash
-   source "$HVANTK_SITE_PROFILE" && git push "$HVANTK_CLUSTER_REMOTE" origin/main:refs/heads/main origin/dev:refs/heads/dev
+   for b in <branches>; do git push <cluster-remote> "origin/$b:refs/heads/$b"; done
    ```
-   `git push <cluster> main dev` pushes your *local* `main` and `dev`, which can be
+   `git push <cluster-remote> <branches>` pushes your *local* branches, which can be
    weeks behind while git reports success, because sending an already-present commit
    is a legitimate no-op. The explicit form is right whether or not your local
    branches are current.
@@ -95,7 +96,7 @@ in every command below.
 - Several working clones on the cluster (one per project, or worktrees for evaluation
   runs) are each fast-forwarded separately; the bare remote is the single source.
 - Tags travel the same way, by explicit refspec:
-  `source "$HVANTK_SITE_PROFILE" && git push "$HVANTK_CLUSTER_REMOTE" refs/tags/<tag>`.
+  `git push <cluster-remote> refs/tags/<tag>`.
   A release that is tagged on GitHub but not on the cluster builds an image whose
   provenance names a tag the cluster cannot resolve.
 - The container image is built from `poetry.lock`. After a sync that changed the lock
@@ -138,7 +139,7 @@ in every command below.
 2. `git -C "$HVANTK_REPO" rev-parse HEAD` on the cluster equals that hash for the branch
    the clone tracks, and `git -C "$HVANTK_REPO" status --porcelain` is empty.
 3. Every ref that existed only on the cluster before the sync still resolves:
-   `source "$HVANTK_SITE_PROFILE" && git ls-remote "$HVANTK_CLUSTER_REMOTE"` lists it with
-   the hash recorded in preflight step 5; and GitHub holds no ref it did not hold before.
+   `git ls-remote <cluster-remote>` lists it with the hash recorded in preflight
+   step 5; and GitHub holds no ref it did not hold before.
 4. `references/ref-report.md` shows the one-screen report to paste into the run notes,
    with the commit each branch is at, the fast-forward verdict, and the clone's state.

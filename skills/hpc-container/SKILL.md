@@ -69,9 +69,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    The job builds from the repository root (the def file's `%files` are relative),
    refuses a name that resolves to the profile's default image, gates the Java version
    and records the Hail version inside the image, runs `hvantk utils check-install`
-   through the scratch pattern, and writes the provenance record. Allow five to twenty
-   minutes on a shared partition; the request is 8 cores, 32 GB and 1h45 so a slow pull
-   does not kill it. A foreground `--wait` outlives most tool timeouts, so run it as
+   through the scratch pattern, and writes the provenance record. Allow ten to twenty
+   minutes on a shared partition, longer the first time; the request is 8 cores, 32 GB
+   and 1h45 so a slow pull does not kill it. A foreground `--wait` outlives most tool
+   timeouts, so run it as
    `nohup bash -c 'source "$HVANTK_SITE_PROFILE" && bash ... --wait' > <run>-build.log 2>&1 &`
    and poll the job id.
 3. Read the job log and the record: `cat "<image>.provenance.json"`. The fields are in
@@ -81,8 +82,9 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif" --name <run>-promote
    ```
-   The default is the profile's `HVANTK_SIF`. The script refuses while a job of yours
-   is running or while the queue cannot be read; when the default is a real file it is
+   The default is the profile's `HVANTK_SIF`. The script refuses while you have any
+   job queued or running (`squeue -u "$USER"`), or while the queue cannot be read at
+   all; when the default is a real file it is
    kept as `hvantk-<date>.sif` with its record, when it is a symlink the old target is
    kept as it is; then the default (and its record) point at the new file and a
    verification job runs the install check through the promoted name. Run it in the
@@ -136,8 +138,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 - The image passes every check and the dependency set is still old. Cause: the clone
   was stale when the lock file was copied in. Fix: `hpc-sync` first; compare
   `poetry_lock_md5` in the record with `md5sum poetry.lock` in the synced clone.
-- Promotion moved the symlink while a job was running. Cause: no check for running
-  jobs. Fix: the promote script refuses while `squeue -u "$USER"` lists anything; wait.
+- Promotion refuses with "you have jobs in the queue" though nothing is actually
+  running yet. Cause: the check is whether `squeue -u "$USER"` lists anything at
+  all, pending included, not specifically a running job. Fix: wait for the queue
+  to clear.
 - `singularity` is not on `PATH` but `apptainer` is (or the reverse). Cause: site
   naming. Fix: `HVANTK_CONTAINER_BIN` in the profile.
 - The record's `host` or `slurm_job` field is empty. Cause: the build ran outside a job.
