@@ -72,11 +72,11 @@ withdrawn, a new column needs exercising). Sub-sample a representative set of ro
 the live file and regenerate both the fixture and its schema/row snapshots together --
 do NOT assume the keys the existing `SAMPLE_KEYS` names are still a reasonable target:
 those are specific curated entries, and a real build is not guaranteed to still carry
-them (a real ClinGen build has been seen to raise `KeyError` for a key the committed
-fixture's own `SAMPLE_KEYS` lists, because that exact gene-disease pairing was not in
-the live data at the time). Pick new keys from whatever the live file actually has. State the refresh explicitly in the commit message -- a silent fixture refresh and
-a silent column drop both leave only the JSON diff for a reviewer to notice, and look
-the same from there.
+them -- a `KeyError` for one of the existing `SAMPLE_KEYS` entries means that exact
+row is no longer in the live data, not that the fixture refresh is broken. Pick new
+keys from whatever the live file actually has. State the refresh explicitly in the
+commit message -- a silent fixture refresh and a silent column drop both leave only
+the JSON diff for a reviewer to notice, and look the same from there.
 
 ## When snapshots may be regenerated
 

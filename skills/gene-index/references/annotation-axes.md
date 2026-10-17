@@ -33,9 +33,9 @@ rather than silently picking one); `aggregate` (required when, and only when, `k
 variant` -- aggregates per-variant scores up to a gene; see below); `matrix` (for a
 `genes x groups` expression or specificity source -- requires `key: symbol`, since the
 reduced table it produces is symbol-keyed); `origin` and `ablate_separately` (parsed
-onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but as
-of this checkout neither is read by `prepare` or `compose` themselves; accepted spec
-metadata, not yet a lever either command acts on).
+onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but
+neither is read by `prepare` or `compose` themselves; accepted spec metadata, not a
+lever either command acts on).
 
 `aggregate`'s own keys: `by` (the source column carrying the gene identifier(s) to
 aggregate onto -- dbNSFP's is a `;`-delimited string, exploded to one row per gene),

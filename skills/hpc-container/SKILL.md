@@ -79,7 +79,7 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    the locked one.
 4. Promote only when asked, and only after step 3:
    ```bash
-   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif"
+   source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-container/templates/promote-image.sh" "$HVANTK_WORK/containers/hvantk-<id>.sif" --name <run>-promote
    ```
    The default is the profile's `HVANTK_SIF`. The script refuses while a job of yours
    is running or while the queue cannot be read; when the default is a real file it is

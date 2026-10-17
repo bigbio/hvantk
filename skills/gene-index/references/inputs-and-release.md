@@ -54,9 +54,10 @@ exactly one artifact.
 
 ## The Ensembl release pin
 
-One constant, `hvantk/resources/ensembl_release.py::ENSEMBL_RELEASE` (currently `"113"`),
-fixes the GTF filename (`Homo_sapiens.GRCh38.{RELEASE}.gtf.gz`) and download URL for the
-whole toolkit -- not just `ensembl-gene:structure`, but also the PTM coordinate mapper.
+One constant, `hvantk/resources/ensembl_release.py::ENSEMBL_RELEASE`, fixes the GTF
+filename (`Homo_sapiens.GRCh38.{RELEASE}.gtf.gz`) and download URL for the whole
+toolkit -- not just `ensembl-gene:structure`, but also the PTM coordinate mapper. Read
+the constant for the pinned value; do not hardcode a release number from memory.
 It lives in `resources/` rather than in the `ensembl_gene` skill because both a skill and
 an algorithm depend on it, and the one-way dependency rule (`skills`/`algorithms` ->
 `core`/`resources`) forbids either from depending on the other.

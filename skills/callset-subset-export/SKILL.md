@@ -36,9 +36,10 @@ and sharing controlled-access data, which is a human decision this skill never m
    starts with the same `source "$HVANTK_SITE_PROFILE" &&`.
 2. Checkout and image as in `hpc-hail-job` (commit, digest, run notes).
 3. The callset's own sample spelling: list it as a small job,
-   `templates/subset-job.sh --list-samples <callset.vds>`; callsets often carry
-   suffixes or doubled identifiers that a human list lacks. Map the requested list onto
-   the callset's spelling and keep both lists in the delivery; never guess a mapping.
+   `templates/subset-job.sh --list-samples <callset.vds> --name <run>-list`;
+   callsets often carry suffixes or doubled identifiers that a human list lacks. Map
+   the requested list onto the callset's spelling and keep both lists in the
+   delivery; never guess a mapping.
 4. Output under `$HVANTK_WORK`; the delivery target, if it is a read-only mount on
    compute nodes (`$HVANTK_READONLY_MOUNTS`), receives a copy from the login node at the
    end, never a job's direct write.

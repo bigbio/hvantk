@@ -27,10 +27,9 @@ dataset reports `drifted` on every run forever. Either way the fix is the same:
 The ledger is written the same way in the NORMAL case, but it has one documented,
 narrow exception: a hand-added row, for the specific case where `--regenerate` records
 none because the two baselines differ only in `probe_version` (step 1 below) while
-upstream genuinely also moved in that same window -- the dbnsfp and uniprot-ptm
-fingerprint bumps both did this by hand. Outside that one case, write it through
-`--regenerate`/the bot, not by hand: a hand-maintained provenance record is exactly as
-easy to get silently wrong as any other one.
+upstream genuinely also moved in that same window. Outside that one case, write it
+through `--regenerate`/the bot, not by hand: a hand-maintained provenance record is
+exactly as easy to get silently wrong as any other one.
 
 ## Sequence
 

@@ -231,9 +231,9 @@ wall time.
   one-axis config has nothing left to search a null over.
 - `--max-block-frac` without `--blocks`: rejected outright (`--max-block-frac only
   applies to paralogue-blocked folds`).
-- A leftover `prior:` key in the config. Cause: a config written before the
-  cohort-manifest migration. Fix: delete it -- the prior now lives entirely in the
-  cohort manifest's own `prior:` block, referenced via `cohort:`.
+- A leftover `prior:` key in the rerank config. Cause: the prior lives entirely in
+  the cohort manifest's own `prior:` block, referenced via `cohort:`, never in the
+  rerank config directly. Fix: delete it.
 - A cohort manifest's `table:` not found, or resolving to someone else's file.
   Cause: `table:` is resolved against the READING process's current working
   directory, never the manifest file's own location -- and a Slurm job's working

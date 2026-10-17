@@ -126,7 +126,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
 1. `<out>/<prefix>.vds/reference_data/_SUCCESS`, `<out>/<prefix>.vds/variant_data/_SUCCESS`
    and `<out>/<prefix>.mt/_SUCCESS` exist; `<out>/qc/<prefix>_sample_qc.csv` has one row
    per sample and `<out>/qc/<prefix>_variant_qc.tsv` exists; `<out>/<prefix>.vcf.bgz` exists.
-2. Counts, through the image as a small job (`templates/pipeline-job.sh --describe <out> --prefix <name>`):
+2. Counts, through the image as a small job
+   (`templates/pipeline-job.sh --describe <out> --prefix <name> --name <run>-describe`):
    the sample set of the MatrixTable, its row count, and the VCF record count. Put all
    three in the run notes; a recipient compares against them.
 3. The VCF header's sample columns equal the gVCF sample names (suffixes included).
