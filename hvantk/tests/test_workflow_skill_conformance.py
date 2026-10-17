@@ -65,7 +65,10 @@ _PLACEHOLDER_LINE = re.compile(r"^\s*(?:[-*]\s+|\d+\.\s+)?<[^<>\n]+>\.?\s*$", re
 
 def iter_workflow_skills(root: Path = SKILLS_DIR):
     for path in sorted(root.glob("*/SKILL.md")):
-        if path.parent.name.startswith("_") or path.parent.name == CONVENTIONS_SKILL_NAME:
+        if (
+            path.parent.name.startswith("_")
+            or path.parent.name == CONVENTIONS_SKILL_NAME
+        ):
             continue
         yield path
 
