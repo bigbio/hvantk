@@ -138,9 +138,10 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
    lines, `cascade_genes: <n>` and `colocalised: <m>`, not the printed line verbatim.
 7. **Optional: colocalise a GWAS locus** (`hvantk qtlcascade gwas-coloc`) on a node
    with egress — it streams FinnGen and the eQTL Catalogue by remote tabix, so it
-   cannot run on a compute node with no egress (the tool manifest's `network: false`
-   covers the whole `qtlcascade` command group and is wrong for this one
-   subcommand; see `references/gwas-coloc.md`). `references/gwas-coloc.md` also
+   cannot run on a compute node with no egress. Only `gwas-coloc` needs it; the tool
+   manifest's `requires.network` is group-level, so it reads `true` for every
+   `qtlcascade` subcommand even though `cascade`/`coloc`/`run`/`report` need no
+   egress at all (see `references/gwas-coloc.md`). `references/gwas-coloc.md` also
    covers its other options, the fine-mapping inputs, the LD reference, and using
    the GWAS Catalog table to choose a lead locus.
 

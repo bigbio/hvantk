@@ -99,8 +99,6 @@ label), relatedness, and sex inference.
   the threshold only with a reason written down; never force a label.
 - `cv_accuracy` of 1.0 on real data. Cause: too few reference samples per population,
   or a synthetic reference. Fix: at least ten samples per label, a real panel.
-- The documentation names a `--log-level` flag. Cause: a stale page. Fix: verbosity is
-  `hvantk -v ancestry-inference ...`.
 - `RuntimeError` about scikit-learn. Cause: running outside the image without the `ml`
   extra. Fix: the image has it; jobs run inside it.
 - Related samples in the reference. Cause: the full 3202-sample 1000 Genomes release

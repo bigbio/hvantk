@@ -3,11 +3,8 @@
 `annotate prepare` and `annotate compose` (`hvantk/tools/annotation/annotate_cli.py`)
 turn the gene index plus a feature-spec YAML into one gene x feature matrix -- the
 Layer-1 matrix `cohort attach --layer1` can take, in place of the gene index alone.
-`hvantk annotate prepare --help` and `hvantk annotate compose --help` list every flag,
-but do not fully document the rule for when `--hgnc` is required (its own help text
-names only the `hgnc_id`/`symbol` cases, not `uniprot_id` or the `variant`-aggregate
-case the code also enforces -- see "`annotate prepare`" below for the real rule). This
-page covers the spec format (`hvantk/algorithms/annotation/spec.py::load_spec`,
+`hvantk annotate prepare --help` and `hvantk annotate compose --help` list every flag.
+This page covers the spec format (`hvantk/algorithms/annotation/spec.py::load_spec`,
 `hvantk/resources/schemas/feature_spec.schema.json`) and the two commands' own rules,
 verified against that code, not against `--help` alone.
 
