@@ -30,6 +30,16 @@ Flags (advisory, last-write-wins in this order):
 built that way carries the audit automatically once its manifest is carried through
 `prepare-rerank-inputs.py cohort --manifest-in/--manifest-out` unchanged.
 
+### Why `Audit: 0 gene(s) FLAGGED ... Reasons: {}` does not mean the audit ran
+
+The `Audit:` line always prints, whether or not the real audit ran -- it reads
+`0`/`{}` just the same whether `NoAudit` is active (the declared axis columns do not
+cover all three of `n_case_var`, `conc` and `driver_af`) or the real audit ran and
+genuinely found nothing to flag. A near-miss axis (e.g. one named `architecture` with
+only two of the three columns) logs a warning at build time, which is easy to miss
+outside `-v`. Check the manifest's `cohort_axes` directly if in doubt, rather than
+reading silence off the console.
+
 ## 2. Paralogue blocks -- `--blocks`, CLI, cross-validation structure
 
 Covered fully in `references/inputs-and-identifiers.md`. In short: `--blocks

@@ -172,12 +172,10 @@ redesigning a probe beyond making it answer again.
 - No ledger row appears after `--regenerate`. Cause: a first capture, or a
   `probe_version`-only change -- neither is an upstream change by itself. Fix: add
   the row by hand if upstream genuinely moved too.
-- `--mark-rebuilt` run BEFORE `--regenerate`. Cause: `--regenerate` REPLACES the row
-  outright (`rebuilt_at: null`), so running it first is just overwritten -- order
-  alone is not dangerous. The real false-clean case: `--regenerate` records NO row (a
-  first capture or `probe_version`-only change) while an older row already exists, so
-  `--mark-rebuilt` marks THAT one instead and `--ledger` reports clean. Fix:
-  regenerate first, always; confirm `last_upstream_change` is from THIS run.
+- `--ledger` reports clean after `--mark-rebuilt`, but nothing was recorded. Cause:
+  `--regenerate` recorded no row this time, so `--mark-rebuilt` marked an older row
+  instead (`references/bookkeeping.md`). Fix: regenerate first, always; confirm
+  `last_upstream_change` is from THIS run.
 - An added upstream column missing where expected, or an incomplete-looking schema
   snapshot. Cause: a rename map only renames columns it recognizes; anything else
   passes through under its upstream name, so a snapshot (a small fixture) is a FLOOR,

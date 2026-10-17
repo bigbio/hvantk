@@ -223,15 +223,11 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
   `--fine-map` is the default and needs both sample sizes to run SuSiE. Fix: pass
   `--gwas-n`/`--eqtl-n`, or `--no-fine-map` to keep only the single-variant ABF
   ranking.
-- A rerun's `coloc_results.tsv` is stale (from a previous run) even though
-  `--overwrite` was passed and the run otherwise succeeded. Cause: `coloc` has no
-  `--overwrite` at all and silently overwrites its own TSV when it writes one — but
-  if a rerun's coloc step finds no gene with both eQTL and pQTL evidence this time,
-  it returns early and never writes `coloc_results.tsv`, leaving the previous run's
-  file untouched and now misleading. `run --overwrite` only re-checkpoints the Hail
-  table outputs (`cascade.ht`/`gene_summary.ht`); it says nothing about the TSVs.
-  Fix: delete the output directory before a rerun rather than relying on
-  `--overwrite` alone.
+- A rerun's `coloc_results.tsv` is stale even though `--overwrite` was passed and
+  the run otherwise succeeded. Cause: `coloc` has no `--overwrite` of its own, and a
+  rerun that finds no gene to test returns before writing it
+  (`references/components-and-outputs.md`). Fix: delete the output directory before
+  a rerun rather than relying on `--overwrite` alone.
 - `All tissues failed: <tissues>`, with `'Table.aggregate': source mismatch` in the
   job's log. Cause: a defect in `CascadePipeline._stage_coloc` in hvantk 0.5.0 and
   earlier (it aggregated a gene-id expression from an unfiltered table over a

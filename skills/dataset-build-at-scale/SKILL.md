@@ -161,16 +161,9 @@ partial array failure, under a fresh job id rather than a retry of the old one.
   itself contains a comma cannot be expressed this way. Fix: read the builder's or
   downloader's own parameter docstring for the expected type.
 - A build job's log carries a WARNING about the drift probe, and the output's sidecar
-  has `source_fingerprint: "probe-unavailable:source-unreachable"`. Cause: the
-  platform runs the drift probe on every build regardless of `--no-check-drift` (that
-  flag only gates `reprocess`'s own post-build `drift: <status>` print), and a compute
-  node has no egress to reach upstream with. Fix: nothing -- the build is fine. The
-  real signal is step 2's login-node `hvantk drift provider:dataset`, run *before* the
-  build, which compares what upstream serves right now against the committed
-  fingerprint (never your staged file); a `probe_failed` there from a network error
-  just means "unavailable, proceed" -- but any OTHER `probe_failed` (the probe raised
-  on content it did fetch) is itself a signal, same as a `drifted` schema result: use
-  `drift-triage`.
+  has `source_fingerprint: "probe-unavailable:source-unreachable"`. Cause: a compute
+  node has no egress for the in-job probe (`references/raw-dir-conventions.md`). Fix:
+  nothing -- the real signal is step 2's login-node check, before the build.
 - `sacct` showing one row `<A>_[2-3]` for a while after submission. Cause: tasks still
   pending can be reported collapsed into one range row. Fix: wait for every task to
   reach a terminal state, not for that row to disappear.

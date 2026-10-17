@@ -210,15 +210,9 @@ wall time.
   CLI); a smaller fold count is Python-API-only, same as above -- never a smaller
   `min_label_coverage`.
 - `Audit: 0 gene(s) FLAGGED for review ... Reasons: {}` when you expected the
-  architecture audit to flag something. Cause: the `Audit:` line always prints,
-  whether or not the real audit ran -- it reads 0/{} just the same whether
-  `NoAudit` is active (the cohort manifest's declared axis columns do not cover all
-  of `n_case_var`, `conc` and `driver_af`) or the real audit ran and genuinely found
-  nothing to flag. A near-miss axis (e.g. one named `architecture` with only two of
-  the three columns) logs a warning at build time, which is easy to miss outside
-  `-v`. Fix: carry the original cohort's architecture axis through step 2 unchanged
-  (`references/audit-and-leakage.md`), and check the manifest's `cohort_axes`
-  directly if in doubt, rather than reading silence off the console.
+  architecture audit to flag something. Cause: that line prints the same whether
+  `NoAudit` ran or the real audit found nothing (`references/audit-and-leakage.md`).
+  Fix: carry the original cohort's architecture axis through step 2 unchanged.
 - Duplicate symbols after mapping. Cause: two gene ids map to the same approved
   symbol. Fix: `prepare-rerank-inputs.py` drops both sides of a shared symbol and
   refuses outright (exit 1) if that -- or any other unmapped-symbol reason --

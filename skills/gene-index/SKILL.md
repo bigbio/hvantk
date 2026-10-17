@@ -162,16 +162,9 @@ remove.
   guard -- it always writes with `overwrite=True`. Fix: write every build to a new output
   path, never reuse one you want to keep.
 - `HGNC join changed the row count (a -> b); the lookup is not unique per gene_id`.
-  HGNC genuinely does map more than one `hgnc_id` to the same Ensembl gene sometimes,
-  and `build_spine` collapses those to one record per gene (lowest `hgnc_id` wins) via
-  a `group_by(gene_id=...).aggregate(...)` BEFORE the join -- which makes the right
-  side's key unique by construction, for ANY input to that step, however messy. On an
-  `hgnc:lookup`-built table (i.e. `hvantk reprocess hgnc:lookup`'s own output, which is
-  the only input this skill's procedure ever feeds in) this guard therefore cannot
-  fire. Cause, if it does anyway: the checkout's `hvantk/algorithms/annotation/
-  spine.py` changed -- the dedup step was altered, weakened or removed. Fix: report
-  it; do not chase a "hand-edited input" explanation, since the dedup rules that out
-  structurally.
+  Cause: on this skill's only input, this guard cannot fire by construction -- if it
+  does, `spine.py`'s own dedup step changed (`references/inputs-and-release.md`).
+  Fix: report it; a hand-edited input is not the explanation.
 - A mapping rate far below the usual protein-coding norm (upper-90s%). Cause: either a
   stale or wrong-vintage HGNC table, or you built with `--biotype all`, where most
   non-coding biotypes have no HGNC record at all. Fix: compare like with like -- rebuild
