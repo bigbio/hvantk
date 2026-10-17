@@ -3,7 +3,10 @@
 ## Where things are
 
 - Job log: `${HVANTK_LOG_DIR:-$HVANTK_WORK/hvantk-logs}/<name>_<id>.out` (stdout and stderr
-  together). Hail's own `hail-<timestamp>.log` is written to the same directory.
+  together). Hail's own `hail-<timestamp>.log` is written to the same directory --
+  except for an array task, which gets its own subdirectory,
+  `<name>_<array-job-id>_<task-id>/`, so the task's Hail log does not collide with
+  its siblings'.
 - Accounting: `sacct -j <id> -X -o JobID,JobName%30,State,ExitCode,Elapsed,Timelimit,ReqMem,AllocCPUS,NodeList`.
 - While it runs: `squeue -j <id> -o "%i %j %T %M %L %R"` (state, elapsed, time left, reason).
 - Details of the request: `scontrol show job <id>`.
