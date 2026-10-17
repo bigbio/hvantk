@@ -17,7 +17,8 @@ bugs, fixed here.
   point at `skills/`. Before a cluster run, copy `skills/_site/site-profile.example.sh` to
   `skills/_site/site-profile.local.sh` (gitignored), fill it in, export
   `HVANTK_SITE_PROFILE` and run `skills/_site/check-site-profile.sh`. A skill that finds a
-  value missing stops and asks (#465).
+  value missing stops and asks; with no image built yet, start with `hvantk:hpc-container`
+  (#465).
 - `hvantk cohort attach` reads an empty cell of the cohort table as missing, as it reads
   `NA`, and refuses a table whose key column has a blank or `NA` cell (#473).
 
@@ -31,9 +32,10 @@ bugs, fixed here.
   - analyses: `gene-index`, `cohort-attach-burden`, `rerank-evaluate` and `qtl-cascade`
     (#473).
 
-  `skills/_conventions/SKILL.md` is the contract they follow, `skills/_site/` holds the
-  site-profile template and its checker, `.claude-plugin/` the plugin and marketplace
-  manifests, and `docs_site/guide/workflow-skills.md` the guide (#465).
+  The `workflow-conventions` skill (`skills/workflow-conventions/SKILL.md`) is the
+  contract they follow, `skills/_site/` holds the site-profile template and its checker
+  (`--allow-missing-image` before the first image build), `.claude-plugin/` the plugin
+  and marketplace manifests, and `docs_site/guide/workflow-skills.md` the guide (#465).
 - **Two tests guard the skills:** `test_workflow_skill_conformance.py` checks each
   skill's layout and frontmatter, and `test_no_site_data_in_skills.py` that no site data
   (a username, a home path, a hostname, a partition, an e-mail address) reaches a
@@ -55,6 +57,14 @@ bugs, fixed here.
   written one gene's NaN statistic as an empty cell. A blank or `NA` key cell, which used
   to fail later with a bare `TypeError`, now stops the attach with a message naming the
   count (#473).
+- **The `qtlcascade` tool manifest left out `gwas-coloc`** and declared the group
+  network-free, though `gwas-coloc` streams FinnGen and the eQTL Catalogue by remote
+  tabix. `hvantk tools describe qtlcascade` now lists it and reports `network=True`.
+- **`hvantk annotate prepare --hgnc`'s help named only `hgnc_id` and `symbol` keys:** it
+  is also required for a `uniprot_id` key and for a variant entry that does not aggregate
+  to `gene_id`.
+- **Docs:** the ancestry page listed a `--log-level` option the command does not have
+  (verbosity is `hvantk -v`) and omitted `--min-shared-variants`.
 
 ## 0.5.0 — 2026-10-14
 
