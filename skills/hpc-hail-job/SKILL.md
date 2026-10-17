@@ -103,11 +103,13 @@ run fine through the same template, with a small request).
    Do not rerun on the login node "to see the error faster".
 6. Verify the output (section 6) and finish the run notes.
 
-The template `templates/hail-job.sbatch` is the batch form of
-`containers/hvantk_run.sh`: it sets up node-local scratch, binds it, the work root and
-the checkout into the container, caps Spark at the allocation, exports `PYTHONPATH` so
-the checkout's code runs, and runs the command inside the image from the log
-directory. Use the wrapper for an interactive `srun` shell, the template for jobs.
+The template `templates/hail-job.sbatch` sets up node-local scratch, binds it, the
+work root and the checkout into the container, caps Spark at the allocation, exports
+`PYTHONPATH` so the checkout's code runs, and runs the command inside the image from
+the log directory. `containers/hvantk_run.sh` is not its interactive equivalent: it
+sets no `PYTHONPATH`, does not bind the work root, and hardcodes `singularity`, so it
+runs the image's own installed copy, not the checkout. For an interactive shell, use
+`templates/run-in-image.sh` inside `srun --pty` instead.
 
 ## 4. Scale-up
 
