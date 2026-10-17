@@ -87,13 +87,15 @@ label), relatedness, and sex inference.
 
 ## 5. Traps
 
-- "fewer than 10000 shared variants". Cause: a slice, an exome, or a reference on the
-  other build. Fix: same build; a richer reference; or `--min-shared-variants` lowered
-  deliberately, and the run notes say so.
+- "Only N shared variants found; need at least 10,000 for reliable ancestry
+  inference." Cause: a slice, an exome, or a reference on the other build. Fix: same
+  build; a richer reference; or `--min-shared-variants` lowered deliberately, and the
+  run notes say so.
 - "reference genome mismatch". Cause: GRCh37 query against a GRCh38 reference (or the
   reverse). Fix: a reference on the query's build; no liftover inside this skill.
-- "column super_pop not found". Cause: the label sits inside a struct or under another
-  name. Fix: a flat column (`--ancestry-col` names it).
+- "Ancestry column 'super_pop' not found in reference MatrixTable". Cause: the label
+  sits inside a struct or under another name. Fix: a flat column (`--ancestry-col`
+  names it).
 - Many samples unassigned. Cause: `--min-prob` 0.75 with a reference that does not
   cover the cohort's ancestry, or admixed samples. Fix: read the probabilities; lower
   the threshold only with a reason written down; never force a label.
