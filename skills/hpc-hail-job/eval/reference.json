@@ -1,0 +1,30 @@
+{
+  "schema_id": "hgnc-lookup-v1",
+  "row_count": 45277,
+  "sample_keys": [
+    {
+      "hgnc_id": "HGNC:1100"
+    },
+    {
+      "hgnc_id": "HGNC:1101"
+    },
+    {
+      "hgnc_id": "HGNC:16376"
+    },
+    {
+      "hgnc_id": "HGNC:4641"
+    },
+    {
+      "hgnc_id": "HGNC:51839"
+    }
+  ],
+  "max_cpus": 8,
+  "max_mem_gb": 32,
+  "max_minutes": 30,
+  "produced_by": {
+    "commit": "7af790890697509493a74a28ab05cf699e3e6217",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74",
+    "input_sha256": "2828618d23d315be76ea415f7ef0e951858716ebab07e2d584190f52e5178c1e",
+    "at": "2026-10-14T21:49:33.696810+00:00"
+  }
+}

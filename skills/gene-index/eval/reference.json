@@ -1,0 +1,51 @@
+{
+  "content_sha256": "e91bc546376d6765063cc173c55bc9397e45aef99ec553117274c11a1a364e81",
+  "contract_fields": [
+    "cds_length",
+    "chromosome",
+    "gene_biotype",
+    "gene_end",
+    "gene_group",
+    "gene_id",
+    "gene_name",
+    "gene_start",
+    "hgnc_id",
+    "mane_select",
+    "n_coding_exons",
+    "n_transcripts"
+  ],
+  "mapping_rate": 0.966593756213959,
+  "max_cpus": 4,
+  "max_mem_gb": 16,
+  "max_minutes": 30,
+  "produced_by": {
+    "at": "2026-10-16T01:08:30.613923+00:00",
+    "commit": "577359988b24e61d542e8dcd4d07bb124b34323a",
+    "input_sha256": "fbb68abda47fb56aafb253b4e4fab02abd7fcbb0b5bdd53542910c2a48dc6d23",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74"
+  },
+  "row_count": 20116,
+  "schema": {
+    "key": [
+      "gene_id"
+    ],
+    "row": {
+      "cds_length": "int32",
+      "chromosome": "str",
+      "gene_biotype": "str",
+      "gene_end": "int32",
+      "gene_group": "array<str>",
+      "gene_id": "str",
+      "gene_name": "str",
+      "gene_start": "int32",
+      "hgnc_id": "str",
+      "mane_select": "str",
+      "n_coding_exons": "int32",
+      "n_transcripts": "int32"
+    }
+  },
+  "tolerances": {
+    "mapping_rate": 1e-09,
+    "reported_mapping_rate": 6e-05
+  }
+}

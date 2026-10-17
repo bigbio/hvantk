@@ -77,7 +77,9 @@ def spine_cmd(gene_table, hgnc, output, biotype):
     "--hgnc",
     "hgnc_path",
     default=None,
-    help="Path to the hgnc:lookup table (.ht); required when the entry's key is hgnc_id or symbol.",
+    help="Path to the hgnc:lookup table (.ht); required when the entry's key is "
+    "hgnc_id, symbol or uniprot_id, or a variant entry whose aggregate.to is not "
+    "gene_id.",
 )
 def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     """Map one source onto the spine's gene_id and select its declared columns."""

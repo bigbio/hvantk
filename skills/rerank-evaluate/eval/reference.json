@@ -1,0 +1,25 @@
+{
+  "auc": 0.5985215460692299,
+  "audit_sha256": "15057edc574e2417b3992d7e398003f80f4be4a415c484bbdd59e848977356ea",
+  "average_precision": 0.2794365151475138,
+  "flag_counts": {
+    "common_driver": 413,
+    "insufficient_data": 4
+  },
+  "labels_sha256": "668bdc7aa671e328278f54d7c9d6a6b59fe33c38c5b5407f52eddd9a4a3358d7",
+  "max_cpus": 4,
+  "max_mem_gb": 16,
+  "max_minutes": 45,
+  "n_flagged": 417,
+  "n_genes": 421,
+  "n_negative": 367,
+  "n_positive": 54,
+  "prior_sha256": "79887aeb56f5e5b609d22ef8d89a005d29620b5030ac75e09168a02955a49cb1",
+  "produced_by": {
+    "at": "2026-10-16T01:26:48.516115+00:00",
+    "commit": "3e0a2ac00c4837913ac4f41ac578792d9969dc5e",
+    "input_sha256": "bfb7c8ab4120ebacfa48eca81c7c6a65da13b30980ac5c10c1f976beb4c520dd",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74"
+  },
+  "universe_sha256": "363405e45d3507d900515a05abe2da2ee987c11a5bc443e08c5ec5a1a0083b2f"
+}

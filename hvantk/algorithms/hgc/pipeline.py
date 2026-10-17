@@ -65,6 +65,18 @@ class PipelineStage(Enum):
     EXPORT_PVCF = "export_pvcf"
 
 
+#: The key under which later stages read a stage's output back (``outputs["vds"]``,
+#: ``outputs["mt"]``), which is also what the skip paths in ``PipelineRunner.run``
+#: write. ``PipelineState.mark_stage_complete`` records an output under both its stage
+#: name and this key; before it did, a fresh run stored the combine output under
+#: ``"combine_gvcfs"`` only, the densify stage read ``outputs.get("vds")`` and handed
+#: ``convert_vds_to_mt`` a ``None`` path.
+STAGE_ARTIFACT_KEYS: Dict[PipelineStage, str] = {
+    PipelineStage.COMBINE_GVCFS: "vds",
+    PipelineStage.VDS_TO_MT: "mt",
+}
+
+
 @dataclass
 class PipelineConfig:
     """Configuration for HGC pipeline execution."""
@@ -278,6 +290,9 @@ class PipelineState:
 
         if output_path:
             self.outputs[stage_name] = output_path
+            artifact_key = STAGE_ARTIFACT_KEYS.get(stage)
+            if artifact_key:
+                self.outputs[artifact_key] = output_path
 
         logger.info(f"Stage {stage_name} marked as complete")
 

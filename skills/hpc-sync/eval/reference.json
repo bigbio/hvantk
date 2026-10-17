@@ -1,0 +1,14 @@
+{
+  "github": {
+    "main": "6bb98339cac41f379483dfbd4ccf3893ce89506f",
+    "dev": "dfcd624f5aec76d33f287cd5c0a083b226ec0540"
+  },
+  "cluster_only": {
+    "cluster-work": "a149c592d4119497a2143a6d6c8fb7c9482841d5"
+  },
+  "produced_by": {
+    "commit": "e28a039f115436ade0f036bb023d846c6d482f5d",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74",
+    "at": "2026-10-15T08:09:00.915734+00:00"
+  }
+}

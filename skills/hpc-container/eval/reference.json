@@ -1,0 +1,12 @@
+{
+  "hail_version": "0.2.137-733ac4ccd943",
+  "poetry_lock_md5": "5a6309aaf93a7d53f68a76ad6303bd24",
+  "max_cpus": 8,
+  "max_mem_gb": 32,
+  "max_minutes": 105,
+  "produced_by": {
+    "commit": "e28a039f115436ade0f036bb023d846c6d482f5d",
+    "sif_sha256": "4004034ef487556bbbeaf4bb7f72d4aeae8debd38d0924fde3aaecfcda36ca89",
+    "at": "2026-10-15T08:14:03.044392+00:00"
+  }
+}

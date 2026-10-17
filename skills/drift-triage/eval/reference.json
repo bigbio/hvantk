@@ -1,0 +1,122 @@
+{
+  "schema_id": "clingen-gene-disease-v1",
+  "schema": {
+    "key": [
+      "hgnc_id",
+      "mondo_id"
+    ],
+    "row": {
+      "gene_symbol": "str",
+      "hgnc_id": "str",
+      "disease_label": "str",
+      "mondo_id": "str",
+      "mode_of_inheritance": "str",
+      "sop_version": "str",
+      "classification": "str",
+      "report_url": "str",
+      "classification_date": "str",
+      "gene_curation_expert_panel": "str",
+      "classification_level": "int32"
+    }
+  },
+  "row_count": 3705,
+  "sample_keys": [
+    {
+      "hgnc_id": "10004",
+      "mondo_id": "0012033"
+    },
+    {
+      "hgnc_id": "11566",
+      "mondo_id": "0011476"
+    },
+    {
+      "hgnc_id": "13575",
+      "mondo_id": "0000508"
+    },
+    {
+      "hgnc_id": "16692",
+      "mondo_id": "0013341"
+    },
+    {
+      "hgnc_id": "19353",
+      "mondo_id": "0044699"
+    },
+    {
+      "hgnc_id": "22954",
+      "mondo_id": "0015152"
+    },
+    {
+      "hgnc_id": "26257",
+      "mondo_id": "0019588"
+    },
+    {
+      "hgnc_id": "29832",
+      "mondo_id": "0030077"
+    },
+    {
+      "hgnc_id": "3808",
+      "mondo_id": "0019625"
+    },
+    {
+      "hgnc_id": "559",
+      "mondo_id": "0012251"
+    },
+    {
+      "hgnc_id": "7230",
+      "mondo_id": "0016419"
+    },
+    {
+      "hgnc_id": "8617",
+      "mondo_id": "0018094"
+    }
+  ],
+  "contract_fields": [
+    "classification",
+    "classification_date",
+    "classification_level",
+    "disease_label",
+    "gene_curation_expert_panel",
+    "gene_symbol",
+    "hgnc_id",
+    "mode_of_inheritance",
+    "mondo_id",
+    "report_url",
+    "sop_version"
+  ],
+  "rows_sha256": "dcc0db9893ae9ccb7bb39b40741a80b370527e498e74747f8eff682b1a444e10",
+  "snapshots": {
+    "schema_sha256": "7a4cb05b169879aeb8bf4cab251585cf606af9301295bb2983616f084f59746e",
+    "sample_rows_sha256": "0275e01249432744f152b3fa57b373fa92ba06ac286ebbf30831474e912abd68"
+  },
+  "expected_fingerprint": {
+    "file": "Clingen-Gene-Disease-Summary.csv",
+    "headers": [
+      "GENE SYMBOL",
+      "HGNC ID",
+      "DISEASE LABEL",
+      "DISEASE ID (MONDO)",
+      "MOI",
+      "SOP",
+      "CLASSIFICATION",
+      "ONLINE REPORT",
+      "CLASSIFICATION DATE",
+      "GCEP"
+    ],
+    "checksum": "cc9bb9bf5cfa24d11946be555b8ad9d92624e08d3ebd69c4f42f9f2e8e81f4b8"
+  },
+  "committed_ledger_row": {
+    "accepted_in": "drift/routine-batch",
+    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
+    "rebuilt_at": null,
+    "signal": "routine"
+  },
+  "max_cpus": 4,
+  "max_mem_gb": 16,
+  "max_minutes": 30,
+  "produced_by": {
+    "commit": "e846f6f978cd9f8c6d4a5c824ec4147d0d82f45b",
+    "sif_sha256": "a1f3333260d2f46357029ff59a6cabf93f03b46e4f959f4f2c4b15a538888d74",
+    "input_sha256": "a746d51dab3e998b5c41fa1e3f0e76de254aa2d18fd9814fcf480ae3333309b6",
+    "at": "2026-10-15T21:48:37.618307+00:00"
+  }
+}

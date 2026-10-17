@@ -24,6 +24,8 @@ subcommands:
     description: Run the full QTL cascade pipeline (cascade + coloc + summary + report)
   - name: report
     description: Generate an HTML report from existing cascade results
+  - name: gwas-coloc
+    description: GWAS locus colocalisation against eQTL Catalogue eQTLs; streams FinnGen and the eQTL Catalogue by remote tabix
 requires:
   hail: true
-  network: false
+  network: true

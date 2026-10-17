@@ -185,6 +185,10 @@ Options:
     --apply-hwe-filter           Apply Hardy-Weinberg equilibrium filter
     --hwe-p FLOAT                HWE p-value threshold [default: 1e-6]
 
+  Merge:
+    --min-shared-variants INTEGER
+                                 Minimum shared variants required [default: 10000]
+
   LD Pruning:
     --ld-r2 FLOAT                LD pruning r2 threshold [default: 0.2]
     --ld-window INTEGER          LD pruning window in bp [default: 500000]
@@ -206,11 +210,10 @@ Options:
   Checkpointing:
     --checkpoint-path PATH       Path for intermediate checkpoints
     --overwrite                  Overwrite existing outputs
-
-  Logging:
-    --log-level [DEBUG|INFO|WARNING|ERROR]
-                                 Logging level [default: INFO]
 ```
+
+The command has no `--log-level` option of its own; verbosity is the top-level
+`hvantk -v ancestry-inference ...` (`-v`: INFO, `-vv`: DEBUG).
 
 ## Input Requirements
 
