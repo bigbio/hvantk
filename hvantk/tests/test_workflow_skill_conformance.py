@@ -215,10 +215,16 @@ def test_an_unfilled_copy_of_the_template_is_rejected(tmp_path):
 
 
 def test_readme_catalog_matches_the_folders():
-    """The README's catalog table and the folders must list the same skills."""
+    """The catalog table, the top-level skill-count badge and the folders agree."""
     readme = (SKILLS_DIR / "README.md").read_text()
     listed = set(re.findall(r"^\|\s*`hvantk:([a-z0-9-]+)`\s*\|", readme, re.MULTILINE))
     folders = {p.parent.name for p in SKILLS}
     assert listed == folders, (
         f"README lists {sorted(listed)}, folders are {sorted(folders)}"
+    )
+    badge = re.search(
+        r"badge/workflow_skills-(\d+)-", (REPO_ROOT / "README.md").read_text()
+    )
+    assert badge and int(badge.group(1)) == len(folders), (
+        f"README.md's workflow-skills badge must read {len(folders)}"
     )
