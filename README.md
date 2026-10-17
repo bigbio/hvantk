@@ -5,6 +5,8 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/bigbio/hvantk/actions/workflows/python-package.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://bigbio.github.io/hvantk)
+[![Claude Code skills](https://img.shields.io/badge/Claude_Code-skills-blue?logo=anthropic&logoColor=white)](skills/README.md)
+[![Workflow skills](https://img.shields.io/badge/workflow_skills-12-informational)](skills/README.md)
 
 # hvantk
 
@@ -58,6 +60,17 @@ hvantk reprocess hgnc:lookup --raw-dir data/hgnc --output hgnc.ht
 
 The output is a Hail table with a `.provenance.json` sidecar. The
 [Usage Guide](docs_site/guide/usage.md) covers the analysis tools.
+
+## Workflow skills
+
+Twelve skills let a coding agent run hvantk for you, on a laptop or on a Slurm cluster
+from the container image: joint genotyping and callset delivery, dataset builds and
+drift triage, the gene index, cohort burden, re-ranking and QTL cascades. Every command
+the agent runs is a deterministic hvantk command. Install them in Claude Code with
+`/plugin install hvantk --marketplace bigbio/hvantk`, or point any harness that reads
+the Agent Skills layout at `skills/`. The [catalog](skills/README.md) lists them and
+says how to set up the site profile. They are not the data-source plugins under
+`hvantk/skills/`.
 
 ## Toolkit
 
