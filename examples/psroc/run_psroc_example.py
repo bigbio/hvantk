@@ -158,10 +158,10 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
         max_missingness=0.3,
         threshold_method="youden",
         # min_stars keeps its default of 1: every synthetic variant has 1 or 2
-        # stars, and the 10 uncertain ones stay in the table as excluded.
+        # stars, so none is filtered out. The 10 uncertain ones stay in the
+        # table as excluded, outside the missingness check and the ROC.
         generate_plots=True,
         export_tsv=True,
-        overwrite=True,
         pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
         benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
     )
@@ -194,7 +194,8 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     print()
 
     # Iterate over result.metrics, not result.scores_included: a score can pass
-    # the first missingness check and still get no AUC.
+    # the missingness check and still get no AUC (when the ROC step is skipped
+    # for too few labelled variants).
     print("Scores with an AUC:")
     for name, roc in sorted(
         result.metrics.items(), key=lambda item: item[1].auc, reverse=True

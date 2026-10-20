@@ -194,7 +194,6 @@ Stages (each can be skipped independently):
 | `--min-sample-call-rate FLOAT` | Sample call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--min-variant-call-rate FLOAT` | Variant call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--generate-qc-report` | Generate an HTML QC report after computing QC | off |
-| `--keep-intermediates` | Accepted but has no effect: the VDS and MT are always kept | on |
 | `--dry-run` | Show the execution plan without running | off |
 
 `--apply-qc-filters` and `--generate-qc-report` both read the small
@@ -301,7 +300,6 @@ hvantk hgc qc-report -i qc_results/qc_metrics_with_qc.mt -o report.html
 | `-o, --output TEXT` | Output HTML path | required |
 | `--title TEXT` | Report title | `Quality Control Report` |
 | `--include-plots CHOICE` (repeatable) | `sample_overview`, `variant_overview`, `sample_call_rates`, `variant_call_rates`, `allele_frequencies`, `hwe`, `titv` | all seven |
-| `--style [default\|publication]` | Plot style | default |
 | `--dry-run` | Preview without executing | off |
 
 The report is self-contained (plots embedded as base64 PNGs). There is no standalone

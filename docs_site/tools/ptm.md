@@ -132,10 +132,9 @@ transcript.
 | `methylation` | `N6-methyllysine`, `N6,N6-dimethyllysine`, `N6,N6,N6-trimethyllysine`, `Asymmetric dimethylarginine`, `Symmetric dimethylarginine`, `Omega-N-methylarginine` |
 | `other` | Anything else |
 
-PeptideAtlas and CPTAC sites are all `phosphorylation`. The prefix list in the code also
-maps glycosylation, SUMOylation and ubiquitination, but UniProt records those as
-`Glycosylation` and `Cross-link` features, which the download does not fetch, so a table
-from `build` has none of them.
+PeptideAtlas and CPTAC sites are all `phosphorylation`. UniProt records glycosylation,
+SUMOylation and ubiquitination as `Glycosylation` and `Cross-link` features, which the
+download does not fetch, so a table from `build` never contains them.
 
 ### Combining sources
 

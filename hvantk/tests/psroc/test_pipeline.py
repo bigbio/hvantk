@@ -48,12 +48,10 @@ class TestPSROCConfig:
         """Test default configuration values."""
         config = PSROCConfig()
 
-        assert config.reference_genome == "GRCh38"
         assert config.min_stars == 1
         assert config.max_missingness == 0.3
         assert config.threshold_method == "youden"
         assert config.export_tsv is False
-        assert config.overwrite is False
         assert config.generate_plots is True
 
     def test_validation_missing_variant_source(self):
@@ -750,3 +748,67 @@ class TestFilterByReviewStars:
             filtered = pipeline._filter_by_review_stars(ht)
 
             assert sorted(filtered.idx.collect()) == [1, 2, 3, 4]
+
+
+@pytest.mark.hail
+class TestUncertainVariantsAndMissingnessGate:
+    """Uncertain/Conflicting variants stay in the annotated table whatever
+    ``min_stars`` is, and the missingness gate counts only the pathogenic and
+    benign variants the ROC uses. With ``min_stars=0`` they used to be dropped;
+    otherwise they counted in the gate, which could leave out a score missing
+    only among them.
+    """
+
+    def test_min_stars_0_keeps_uncertain_and_gates_on_labelled_variants(self, tmp_path):
+        import hail as hl
+
+        # 5 benign, 5 pathogenic and 5 uncertain variants. score_a is present
+        # for all of them, score_b for none of the uncertain ones: missing for
+        # 5/15 = 33% of all variants (above the 0.3 default) but 0% of the
+        # pathogenic and benign ones.
+        clnsig = ["Benign"] * 5 + ["Pathogenic"] * 5 + ["Uncertain_significance"] * 5
+        rows = [
+            {
+                "pos": 1000 + i,
+                "clnsig": sig,
+                "score_a": float(i),
+                "score_b": None if sig == "Uncertain_significance" else float(i),
+            }
+            for i, sig in enumerate(clnsig)
+        ]
+        ht = hl.Table.parallelize(
+            rows,
+            hl.tstruct(
+                pos=hl.tint32,
+                clnsig=hl.tstr,
+                score_a=hl.tfloat64,
+                score_b=hl.tfloat64,
+            ),
+        )
+        ht = ht.annotate(
+            locus=hl.locus("chr1", ht.pos, reference_genome="GRCh38"),
+            alleles=hl.array(["A", "G"]),
+        ).key_by("locus", "alleles")
+        ht.select(info=hl.struct(CLNSIG=ht.clnsig, GENEINFO="GENE1:1")).write(
+            str(tmp_path / "clinvar.ht")
+        )
+        ht.select("score_a", "score_b").write(str(tmp_path / "dbnsfp.ht"))
+
+        config = PSROCConfig(
+            genes=["GENE1"],
+            clinvar_ht=str(tmp_path / "clinvar.ht"),
+            dbnsfp_ht=str(tmp_path / "dbnsfp.ht"),
+            scores=["score_a", "score_b"],
+            output_dir=str(tmp_path / "out"),
+            min_stars=0,
+            n_bootstrap=0,
+            generate_plots=False,
+            pathogenic_labels=["Pathogenic"],
+            benign_labels=["Benign"],
+        )
+        result = PSROCPipeline(config).run()
+
+        assert (result.n_pathogenic, result.n_benign, result.n_excluded) == (5, 5, 5)
+        assert result.missingness["score_b"].n_total == 10
+        assert result.missingness["score_b"].included_in_analysis
+        assert "score_b" in result.metrics

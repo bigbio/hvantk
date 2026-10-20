@@ -29,6 +29,18 @@ From: ubuntu:22.04
 # covers every unique package across all extras. `expression` is required or
 # `hvantk expression ...` has no scanpy. `ml` and `interactive` are deliberately
 # omitted as redundant: scikit-learn arrives via ancestry/psroc, plotly via viz.
+#
+# BUILD ARG: HVANTK_COMMIT stamps the hvantk git commit the image was built from
+# into HVANTK_BUILDER_COMMIT (%environment below), for `hvantk reprocess`
+# provenance (`_builder_commit()` in hvantk/tools/plugins/reprocess_cli.py). The
+# image copies only hvantk/ (no .git, see %files below) and purges git in %post,
+# so without this a build inside the image can only ever record the installed
+# package version. The hpc-container skill's build-image.sbatch always passes
+# `--build-arg HVANTK_COMMIT=<sha>[-dirty]`; a manual `singularity build` with no --build-arg
+# leaves the default below, which _builder_commit() treats as not set.
+
+%arguments
+    HVANTK_COMMIT=unknown
 
 %files
     pyproject.toml /opt/hvantk/pyproject.toml
@@ -114,6 +126,8 @@ From: ubuntu:22.04
     export LC_ALL=C.UTF-8 LANG=C.UTF-8
     export NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1
     export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+    # Baked in at build time from %arguments above; see its comment for why.
+    export HVANTK_BUILDER_COMMIT="{{ HVANTK_COMMIT }}"
 
 %runscript
     exec hvantk "$@"

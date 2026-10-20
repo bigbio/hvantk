@@ -62,7 +62,13 @@ echo "========================"
 
 # %files paths in the def are relative to the build directory: the repository root.
 cd "$HVANTK_REPO"
-"$CONTAINER_BIN" build -F ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} "$BUILD_OUT" "$BUILD_DEF"
+
+# Stamp the commit being built into the image itself (def file's %arguments ->
+# %environment's HVANTK_BUILDER_COMMIT), since the image copies no .git for a
+# dataset built inside it to find with its own git check.
+HVANTK_COMMIT_ARG="$BUILD_GIT_SHA"
+[[ "$BUILD_GIT_DIRTY" == dirty ]] && HVANTK_COMMIT_ARG="${HVANTK_COMMIT_ARG}-dirty"
+"$CONTAINER_BIN" build -F --build-arg "HVANTK_COMMIT=$HVANTK_COMMIT_ARG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} "$BUILD_OUT" "$BUILD_DEF"
 [[ -f "$BUILD_OUT" ]] || { echo "ERROR: build reported success but $BUILD_OUT is missing" >&2; exit 1; }
 du -h "$BUILD_OUT"
 

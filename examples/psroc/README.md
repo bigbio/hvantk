@@ -10,8 +10,6 @@ real ClinVar or dbNSFP tables. Documentation: the
 - `run_psroc_example.py`: builds two Hail tables from the synthetic TSVs in
   `hvantk/tests/testdata/psroc/`, runs `PSROCPipeline` on BRCA1, BRCA2 and TP53 with four
   scores and the default settings, and prints the results.
-- `results/`: three sample dashboards from a `--gene-sets` run on real ClinVar and dbNSFP
-  tables, for illustration. The script neither writes nor reads them.
 
 ## Run
 
@@ -33,14 +31,16 @@ directory. `--output-dir` defaults to `/tmp/psroc_example`.
 
 ## Expected results
 
-The 10 uncertain variants stay in the annotated table as excluded and do not enter the ROC.
+The 10 uncertain variants stay in the annotated table as excluded and enter neither the
+missingness check nor the ROC, so the missing rates are over the 90 pathogenic and benign
+variants (with the number of them missing the score).
 
 | Score | Missing | AUC | Status |
 | --- | --- | --- | --- |
-| `REVEL_score` | 3% | 0.998 | included |
-| `CADD_phred` | 7% | 0.979 | included |
-| `MetaLR_score` | 10% | 0.896 | included |
-| `VEST4_score` | 42% | | excluded (above the 30% threshold) |
+| `REVEL_score` | 3.3% (3) | 0.998 | included |
+| `CADD_phred` | 7.8% (7) | 0.979 | included |
+| `MetaLR_score` | 10.0% (9) | 0.896 | included |
+| `VEST4_score` | 42.2% (38) | | excluded (above the 30% threshold) |
 
 ```text
 out/psroc_example/

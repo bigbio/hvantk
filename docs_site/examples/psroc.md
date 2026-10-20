@@ -34,14 +34,16 @@ struct, as in a table built from the ClinVar VCF, and keys both tables by
 
 With the default settings (`min_stars` 1, `max_missingness` 0.3, Youden threshold, 2000
 bootstrap resamples), all 100 variants pass the review-status filter. The 10 uncertain
-variants stay in the annotated table as excluded but do not enter the ROC:
+variants stay in the annotated table as excluded but enter neither the missingness check
+nor the ROC, so the missing rates below are over the 90 pathogenic and benign variants
+(with the number of them missing the score):
 
 | Score | Missing | AUC | Status |
 | --- | --- | --- | --- |
-| `REVEL_score` | 3% | 0.998 | included |
-| `CADD_phred` | 7% | 0.979 | included |
-| `MetaLR_score` | 10% | 0.896 | included |
-| `VEST4_score` | 42% | | excluded (above 30%) |
+| `REVEL_score` | 3.3% (3) | 0.998 | included |
+| `CADD_phred` | 7.8% (7) | 0.979 | included |
+| `MetaLR_score` | 10.0% (9) | 0.896 | included |
+| `VEST4_score` | 42.2% (38) | | excluded (above 30%) |
 
 The script also prints each AUC's 95% confidence interval, the optimal threshold and its
 sensitivity and specificity.

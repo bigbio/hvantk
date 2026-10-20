@@ -418,11 +418,12 @@ the base install.
 
 The printed verdict adds the reason in parentheses. The cut-off is 0.5, not the 0.8 used
 for the cascade, because coloc.susie is more conservative than single-variant ABF; change
-it with `GwasColocConfig(pp4_threshold=...)` from Python. An unknown `--superpop`, like a
-network failure, leaves no LD reference: an ABF hit is then reported as `SUGGESTIVE` and
-the command does not fail. LD comes from a reference panel, not from the GWAS or eQTL samples;
-for weak eQTLs the credible sets can then be unreliable, the documented limitation of
-SuSiE-RSS.
+it with `GwasColocConfig(pp4_threshold=...)` from Python. A network failure fetching the
+LD reference leaves no LD reference: an ABF hit is then reported as `SUGGESTIVE` and the
+command does not fail. `--superpop` is restricted to the five 1000 Genomes
+super-populations, so a typo there fails at once instead of silently falling back this
+way. LD comes from a reference panel, not from the GWAS or eQTL samples; for weak eQTLs
+the credible sets can then be unreliable, the documented limitation of SuSiE-RSS.
 
 ### Options and outputs
 
@@ -437,7 +438,7 @@ SuSiE-RSS.
 | `--gene` | top ABF gene | Ensembl gene ID to confirm |
 | `--fine-map` / `--no-fine-map` | `--fine-map` | Run the SuSiE confirmation |
 | `--gwas-n`, `--eqtl-n` | none | Sample sizes; required unless `--no-fine-map` |
-| `--superpop` | `EUR` | 1000 Genomes super-population for LD |
+| `--superpop` | `EUR` | 1000 Genomes super-population for LD: `EUR`, `AFR`, `EAS`, `SAS` or `AMR` |
 | `--ld-cache-dir` | `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg` | Cache for the panel's sample list and indexes |
 | `--ld-vcf` | none | Local VCF to use as the LD reference |
 | `-o`, `--output-dir` | required | Output directory |

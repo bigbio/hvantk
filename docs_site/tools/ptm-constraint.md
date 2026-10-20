@@ -176,8 +176,6 @@ ratio.
 | `--min-variants-per-group` | 20 | Minimum variants per group, quartile or factorial cell |
 | `--expressed-threshold` | 1.0 | Minimum highest group value for a gene to be kept |
 | `--af-observed-only` / `--include-zero-af` | `--af-observed-only` | Keep only variants with an AF above 0, or also those with an AF of 0 |
-| `--flanking-codons` | 7 | Shown in the report header only; the window was set when you ran `annotate` |
-| `--overwrite` | off | Has no effect; existing outputs are always replaced |
 
 The choices are case-insensitive.
 

@@ -581,7 +581,6 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     show_default=True,
     help="Skip groups with fewer than N variants across PTM + non-PTM.",
 )
-@click.option("--flanking-codons", type=int, default=7, show_default=True)
 @click.option(
     "--expressed-threshold",
     type=float,
@@ -596,7 +595,6 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     help="Restrict the depletion comparison to variants observed in gnomAD "
     "(AF > 0); --include-zero-af also keeps unobserved (AF = 0) variants.",
 )
-@click.option("--overwrite", is_flag=True)
 @click.pass_context
 def ptm_constraint(
     ctx,
@@ -616,10 +614,8 @@ def ptm_constraint(
     expression_metric,
     min_cells_per_group,
     min_variants_per_group,
-    flanking_codons,
     expressed_threshold,
     af_observed_only,
-    overwrite,
 ):
     """Stratified PTM constraint analysis across groups (tissue / cell type).
 
@@ -674,10 +670,8 @@ def ptm_constraint(
             expression_metric=expression_metric.lower(),
             min_cells_per_group=min_cells_per_group,
             min_variants_per_group=min_variants_per_group,
-            flanking_codons=flanking_codons,
             expressed_threshold=expressed_threshold,
             af_observed_only=af_observed_only,
-            overwrite=overwrite,
         )
 
         errors = config.validate()

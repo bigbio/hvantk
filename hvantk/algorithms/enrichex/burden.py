@@ -275,6 +275,32 @@ def _build_gene_length_ht(
     )
 
 
+def _variant_site_count_proxy(
+    mt: "hl.MatrixTable",
+    gene_field: str,
+    variant_filter: Optional["VariantFilter"] = None,
+) -> Dict[str, float]:
+    """Per-gene count of variant sites, after applying ``variant_filter``.
+
+    The permutation test's counterpart to ``_build_gene_length_ht``'s proxy
+    branch: both count qualifying sites per gene when no CDS ``gene_lengths``
+    are provided. Filters first so the counts match the sites the burden
+    test itself counted, not the full unfiltered cohort.
+    """
+    import pandas as pd
+
+    if variant_filter is not None:
+        filter_expr = variant_filter.to_hail_expr(mt)
+        mt = mt.filter_rows(filter_expr)
+    _rows = mt.rows()
+    df = (
+        _rows.group_by(gene=_rows[gene_field])
+        .aggregate(_n_sites=hl.agg.count())
+        .to_pandas()
+    )
+    return dict(zip(df["gene"], df["_n_sites"]))
+
+
 def _build_gene_to_sets_ht(gene_sets: Dict[str, List[str]]) -> "hl.Table":
     """Build a ``gene -> [gene_set_ids]`` table from the gene-set definitions."""
     gene_to_sets: Dict[str, List[str]] = {}
@@ -1607,13 +1633,7 @@ def permutation_burden_test(
             )
         else:
             logger.info("Normalizing qualifying matrix by variant site count proxy")
-            _cohort_rows = cohort_mt.rows()
-            gene_site_map = (
-                _cohort_rows.group_by(gene=_cohort_rows[gene_field])
-                .aggregate(_n_sites=hl.agg.count())
-                .to_pandas()
-            )
-            site_dict = dict(zip(gene_site_map["gene"], gene_site_map["_n_sites"]))
+            site_dict = _variant_site_count_proxy(cohort_mt, gene_field, variant_filter)
             norm_arr = np.array(
                 [float(site_dict.get(g, 1.0)) for g in sorted_genes],
                 dtype=np.float64,

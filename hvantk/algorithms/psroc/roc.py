@@ -63,13 +63,18 @@ class ROCResult:
         score_name: Name of the prediction score.
         fpr: Array of false positive rates at each threshold.
         tpr: Array of true positive rates at each threshold.
-        thresholds: Array of score thresholds corresponding to fpr/tpr.
+        thresholds: Array of score thresholds corresponding to fpr/tpr, on the
+            score's own scale.
         auc: Area under the ROC curve (0.0 to 1.0).
-        optimal_threshold: Optimal classification threshold (e.g., Youden's J).
+        optimal_threshold: Optimal classification threshold (e.g., Youden's J),
+            on the score's own scale.
         sensitivity_at_optimal: Sensitivity (TPR) at the optimal threshold.
         specificity_at_optimal: Specificity (1-FPR) at the optimal threshold.
         n_variants_used: Number of variants with non-missing scores used in analysis.
         missingness: Missingness statistics for this score.
+        higher_is_pathogenic: Score direction. True: a variant is called
+            pathogenic when score >= threshold; False (lower is more damaging):
+            when score <= threshold.
     """
 
     score_name: str
@@ -84,6 +89,7 @@ class ROCResult:
     missingness: ScoreMissingness
     auc_ci_lower: Optional[float] = None
     auc_ci_upper: Optional[float] = None
+    higher_is_pathogenic: bool = True
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization (excludes arrays)."""
@@ -91,6 +97,7 @@ class ROCResult:
             "score_name": self.score_name,
             "auc": float(self.auc),
             "optimal_threshold": float(self.optimal_threshold),
+            "higher_is_pathogenic": self.higher_is_pathogenic,
             "sensitivity_at_optimal": float(self.sensitivity_at_optimal),
             "specificity_at_optimal": float(self.specificity_at_optimal),
             "n_variants_used": self.n_variants_used,
@@ -327,12 +334,17 @@ def compute_roc_metrics(
     threshold_method: str = "youden",
     n_bootstrap: int = 0,
     confidence_level: float = 0.95,
+    score_directions: Optional[Dict[str, bool]] = None,
 ) -> Dict[str, ROCResult]:
     """Compute ROC metrics for multiple prediction scores.
 
     For each score, variants with missing values are excluded from that score's
     ROC analysis. Scores with missingness exceeding max_missingness are excluded
     entirely from the results.
+
+    A score where lower values are more damaging is evaluated on its negated
+    values, so its AUC and bootstrap CI are on the usual scale; its thresholds
+    are negated back and reported on the score's own scale.
 
     Args:
         labels: Binary labels (1=pathogenic, 0=benign).
@@ -343,6 +355,9 @@ def compute_roc_metrics(
         n_bootstrap: Number of bootstrap resamples for AUC confidence intervals.
             Set to 0 to disable (default: 0).
         confidence_level: Confidence level for bootstrap CI (default: 0.95).
+        score_directions: Optional mapping of score name to direction
+            (True = higher is more damaging). Scores not in it are treated as
+            higher is more damaging.
 
     Returns:
         Dict mapping score name to ROCResult. Only scores that pass the
@@ -401,21 +416,31 @@ def compute_roc_metrics(
                 f"score '{score_name}'"
             )
 
+        # The ROC counts a higher value as more pathogenic: negate a
+        # lower-is-damaging score so it is evaluated the right way round.
+        higher_is_pathogenic = bool((score_directions or {}).get(score_name, True))
+        oriented_scores = valid_scores if higher_is_pathogenic else -valid_scores
+
         # Compute ROC curve
         fpr, tpr, thresholds = roc_curve(
-            valid_labels, valid_scores, pos_label=pos_label
+            valid_labels, oriented_scores, pos_label=pos_label
         )
 
         # Compute AUC - convert labels to binary (0/1) based on pos_label
         # roc_auc_score doesn't support pos_label parameter, so we need to
         # ensure labels are in binary format where 1 represents the positive class
         binary_labels = (valid_labels == pos_label).astype(int)
-        auc = roc_auc_score(binary_labels, valid_scores)
+        auc = roc_auc_score(binary_labels, oriented_scores)
 
         # Find optimal threshold
         optimal_threshold, sensitivity, specificity = find_optimal_threshold(
             fpr, tpr, thresholds, method=threshold_method
         )
+
+        # Report thresholds on the score's own scale
+        if not higher_is_pathogenic:
+            thresholds = -thresholds
+            optimal_threshold = -optimal_threshold
 
         # Bootstrap CI for AUC
         auc_ci_lower = None
@@ -423,7 +448,7 @@ def compute_roc_metrics(
         if n_bootstrap > 0:
             auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(
                 binary_labels,
-                valid_scores,
+                oriented_scores,
                 n_resamples=n_bootstrap,
                 confidence_level=confidence_level,
             )
@@ -441,6 +466,7 @@ def compute_roc_metrics(
             missingness=missingness,
             auc_ci_lower=auc_ci_lower,
             auc_ci_upper=auc_ci_upper,
+            higher_is_pathogenic=higher_is_pathogenic,
         )
 
     if len(results) == 0 and len(scores) > 0:

@@ -125,9 +125,12 @@ Every build writes a sidecar `<output>.provenance.json` next to the output, reco
 `source_fingerprint` is the drift probe's fingerprint at build time. `parents` is
 filled only for a dataset derived from other hvantk datasets. `build_parameters` records
 the options a builder chose to stamp, and is `null` only in a sidecar written before the
-field existed. `builder_commit` records the hvantk git commit `reprocess` ran from, or
-`hvantk <version>` when there is no git checkout to ask (e.g. a wheel install). Loading
-the dataset later (`hvantk.core.io.load`) re-attaches this `Provenance`.
+field existed. `builder_commit` records the hvantk git commit `reprocess` ran from;
+inside an Apptainer/Singularity image built with `--build-arg HVANTK_COMMIT=<sha>` (the
+`hpc-container` skill's templates do this), it records that commit instead, since the
+image itself has no git checkout; otherwise (e.g. a wheel install, or an image built
+without that build arg) it falls back to `hvantk <version>`. Loading the dataset later
+(`hvantk.core.io.load`) re-attaches this `Provenance`.
 
 ### Drift check at the end of a build
 

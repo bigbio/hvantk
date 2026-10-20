@@ -26,7 +26,7 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Dict, Any, List, Set
 from enum import Enum
@@ -106,6 +106,8 @@ SCORE_DIRECTIONALITY: Dict[str, bool] = {
     "PROVEAN_score": False,
     "FATHMM_score": False,
     "LRT_score": False,
+    # ESM1b log-likelihood ratio: dbNSFP calls a variant deleterious below -7.5
+    "ESM1b_score": False,
 }
 
 # ClinVar CLNREVSTAT string → review-star mapping
@@ -149,14 +151,15 @@ class PSROCConfig:
         clinvar_ht: Path to pre-built ClinVar Hail Table.
         dbnsfp_ht: Path to pre-built dbNSFP Hail Table.
         scores: List of dbNSFP score field names to evaluate.
+        score_directions: Per-score direction overrides (True = higher is more
+            damaging), applied on top of SCORE_DIRECTIONALITY. The direction picks
+            the per-transcript value and orients the ROC.
         output_dir: Directory for output files.
-        reference_genome: Reference genome (default: GRCh38).
         min_stars: Minimum ClinVar review status stars (default: 1).
         max_missingness: Maximum allowed missingness rate per score (default: 0.3).
         threshold_method: Method for finding optimal threshold (default: "youden").
         hgnc_path: Path to a built HGNC Hail Table (.ht) for gene alias resolution.
         export_tsv: Whether to export annotated variants as TSV.
-        overwrite: Whether to overwrite existing output files.
         generate_plots: Whether to generate visualization plots.
         output_prefix: Prefix for output file names.
     """
@@ -182,7 +185,6 @@ class PSROCConfig:
     output_prefix: str = "psroc"
 
     # Processing options
-    reference_genome: str = "GRCh38"
     min_stars: int = 1
     max_missingness: float = 0.3
     threshold_method: str = "youden"
@@ -190,7 +192,6 @@ class PSROCConfig:
 
     # Output options
     export_tsv: bool = False
-    overwrite: bool = False
     generate_plots: bool = True
     group_name: Optional[str] = None
 
@@ -389,7 +390,12 @@ class PSROCState:
         with open(path, "r") as f:
             state_dict = json.load(f)
 
-        config = PSROCConfig(**state_dict["config"])
+        # Ignore keys this version no longer has (e.g. a state file written before
+        # --overwrite and --reference-genome were removed), so old states still load.
+        known = {f.name for f in fields(PSROCConfig)}
+        config = PSROCConfig(
+            **{k: v for k, v in state_dict["config"].items() if k in known}
+        )
 
         state = cls(
             config=config,
@@ -509,9 +515,11 @@ class PSROCResult:
                 self.metrics.items(), key=lambda x: x[1].auc, reverse=True
             )
             for name, roc in sorted_metrics:
+                # A lower-is-damaging score calls pathogenic at or below it
+                op = "=" if roc.higher_is_pathogenic else "<="
                 lines.append(
                     f"  {name}: AUC={roc.auc:.3f}, "
-                    f"threshold={roc.optimal_threshold:.3f}, "
+                    f"threshold{op}{roc.optimal_threshold:.3f}, "
                     f"sens={roc.sensitivity_at_optimal:.3f}, "
                     f"spec={roc.specificity_at_optimal:.3f}"
                 )
@@ -675,7 +683,6 @@ class PSROCPipeline:
 
         print("\n🔧 Configuration:")
         print(f"  Scores: {', '.join(self.config.scores)}")
-        print(f"  Reference genome: {self.config.reference_genome}")
         print(f"  Min review stars: {self.config.min_stars}")
         print(f"  Max missingness: {self.config.max_missingness:.0%}")
         print(f"  Threshold method: {self.config.threshold_method}")
@@ -829,13 +836,11 @@ class PSROCPipeline:
                 score_directions=self.config.score_directions,
                 output_dir=str(Path(self.config.output_dir) / safe_name),
                 output_prefix=f"{self.config.output_prefix}_{safe_name}",
-                reference_genome=self.config.reference_genome,
                 min_stars=self.config.min_stars,
                 max_missingness=self.config.max_missingness,
                 threshold_method=self.config.threshold_method,
                 hgnc_path=self.config.hgnc_path,
                 export_tsv=self.config.export_tsv,
-                overwrite=self.config.overwrite,
                 generate_plots=self.config.generate_plots,
                 group_name=group_name,
                 min_variants=self.config.min_variants,
@@ -1141,7 +1146,9 @@ class PSROCPipeline:
         else:
             clnsig = ht.info.CLNSIG
 
-        # Assign labels based on CLNSIG values
+        # Assign labels based on CLNSIG values. Uncertain/Conflicting variants
+        # stay in the table, counted as excluded, whatever min_stars is; only
+        # pathogenic and benign variants enter the missingness gate and the ROC.
         ht = ht.annotate(
             label=hl.case()
             .when(
@@ -1159,10 +1166,6 @@ class PSROCPipeline:
             .default("Uncertain/Conflicting"),
         )
 
-        # Filter out uncertain/conflicting variants by default
-        if self.config.min_stars <= 0:
-            ht = ht.filter(ht.label != "Uncertain/Conflicting")
-
         logger.info(
             f"   ✓ Assigned labels: {len(ht.aggregate(hl.agg.collect_as_set(ht.label)))} classes"
         )
@@ -1170,6 +1173,14 @@ class PSROCPipeline:
         # Update instance variable so downstream stages see the labeled table
         self._labeled_ht = ht
         return ht
+
+    def _score_directions(self) -> Dict[str, bool]:
+        """Effective score directions (True = higher is more damaging):
+        SCORE_DIRECTIONALITY updated by ``config.score_directions``."""
+        directions = dict(SCORE_DIRECTIONALITY)
+        if self.config.score_directions:
+            directions.update(self.config.score_directions)
+        return directions
 
     def _annotate_scores(self) -> hl.Table:
         """Stage 4: Annotate ClinVar variants with dbNSFP scores."""
@@ -1203,9 +1214,7 @@ class PSROCPipeline:
 
         # Resolve dict-typed transcript scores to scalar, respecting directionality.
         # Higher-is-pathogenic scores use max(); lower-is-pathogenic use min().
-        directions = dict(SCORE_DIRECTIONALITY)
-        if self.config.score_directions:
-            directions.update(self.config.score_directions)
+        directions = self._score_directions()
 
         resolve_ann = {}
         for sf in score_fields:
@@ -1257,7 +1266,9 @@ class PSROCPipeline:
         if self._annotated_ht is None:
             raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
+        # Over the variants the ROC uses: pathogenic and benign only
         ht = self._annotated_ht
+        ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
 
         # Identify score fields from config that are present in the table
         score_fields = [s for s in self.config.scores if s in ht.row]
@@ -1339,7 +1350,8 @@ class PSROCPipeline:
                 dtype=float, na_value=np.nan
             )
 
-        # Compute ROC metrics for all scores at once
+        # Compute ROC metrics for all scores at once, lower-is-damaging scores
+        # oriented by the same direction map that resolved their transcripts
         roc_results = compute_roc_metrics(
             labels=labels,
             scores=scores_dict,
@@ -1347,6 +1359,7 @@ class PSROCPipeline:
             pos_label=1,
             threshold_method=self.config.threshold_method,
             n_bootstrap=self.config.n_bootstrap,
+            score_directions=self._score_directions(),
         )
 
         if roc_results:

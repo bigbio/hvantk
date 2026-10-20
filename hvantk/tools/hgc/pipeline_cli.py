@@ -172,12 +172,6 @@ def register_pipeline_command(group):
 )
 # Output options
 @click.option(
-    "--keep-intermediates",
-    is_flag=True,
-    default=True,
-    help="Keep intermediate files (VDS, MT)",
-)
-@click.option(
     "--generate-qc-report",
     is_flag=True,
     default=False,
@@ -211,7 +205,6 @@ def pipeline(
     min_sample_call_rate,
     min_variant_call_rate,
     apply_qc_filters,
-    keep_intermediates,
     generate_qc_report,
     output_prefix,
 ):
@@ -271,7 +264,6 @@ def pipeline(
             min_sample_call_rate=min_sample_call_rate,
             min_variant_call_rate=min_variant_call_rate,
             apply_qc_filters=apply_qc_filters,
-            keep_intermediates=keep_intermediates,
             generate_qc_report=generate_qc_report,
         )
 

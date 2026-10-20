@@ -153,10 +153,20 @@ def _builder_commit() -> str:
     so a wheel install dropped into some unrelated project's .venv does not
     record that project's HEAD. Appends "-dirty" when the package's tracked
     files have uncommitted changes, since a bare commit then misdescribes what
-    was actually built. Falls back to the installed package version when there
-    is no (trustworthy) git checkout to ask or git is unavailable -- any
-    failure here is swallowed, since a traceability nice-to-have must never
-    break a build.
+    was actually built.
+
+    When there is no (trustworthy) git checkout to ask -- true inside the
+    Apptainer/Singularity image, which copies only hvantk/ (no .git) and purges
+    git during the build -- falls back to the HVANTK_BUILDER_COMMIT environment
+    variable. containers/hvantk.def stamps this in from its %arguments build-time
+    template (see skills/hpc-container/templates/build-image.sbatch), so an image
+    built through that template still records the commit it was built from;
+    ignored when unset, empty, or still the def file's "unknown" default.
+
+    Falls back further to the installed package version when neither of the
+    above has anything trustworthy, or git itself is unavailable -- any failure
+    here is swallowed, since a traceability nice-to-have must never break a
+    build.
     """
     import os
     import subprocess
@@ -201,6 +211,10 @@ def _builder_commit() -> str:
                 return commit
     except Exception:
         pass
+
+    env_commit = os.environ.get("HVANTK_BUILDER_COMMIT", "").strip()
+    if env_commit and env_commit != "unknown":
+        return env_commit
 
     from importlib.metadata import PackageNotFoundError, version
 

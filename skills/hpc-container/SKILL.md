@@ -68,8 +68,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    ```
    The job builds from the repository root (the def file's `%files` are relative),
    refuses a name that resolves to the profile's default image, gates the Java version
-   and records the Hail version inside the image, runs `hvantk utils check-install`
-   through the scratch pattern, and writes the provenance record. Allow ten to twenty
+   and records the Hail version inside the image, passes the commit as a build arg so
+   the image's own `HVANTK_BUILDER_COMMIT` matches it (`references/provenance.md`),
+   runs `hvantk utils check-install` through the scratch pattern, and writes the
+   provenance record. Allow ten to twenty
    minutes on a shared partition, longer the first time; the request is 8 cores, 32 GB
    and 1h45 so a slow pull does not kill it. A foreground `--wait` outlives most tool
    timeouts, so run it as
@@ -101,10 +103,11 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 - Rebuild cadence: on every lock file change, and at least at every release so the
   image's `git_commit` is a tag that the cluster can resolve (sync tags with `hpc-sync`).
 - Building elsewhere: on a laptop or a build host with the same container tool, run
-  `singularity build hvantk-<id>.sif containers/hvantk.def` from the repository root
-  (with `--fakeroot` or `proot` as the host allows), copy the file and write the
-  provenance record by hand from the same fields; then run the verification job on the
-  cluster, because an image that was never checked on a compute node is not validated.
+  `singularity build --build-arg HVANTK_COMMIT=$(git rev-parse HEAD)
+  hvantk-<id>.sif containers/hvantk.def` from the repository root (with `--fakeroot`
+  or `proot` as the host allows), copy the file and write the provenance record by
+  hand from the same fields; then run the verification job on the cluster, because an
+  image that was never checked on a compute node is not validated.
 - A site that proxies the registry or pins its own base images: the proxy and registry
   variables are shell environment for the build job. Export them in the site profile,
   which the template sources, never in a committed file.

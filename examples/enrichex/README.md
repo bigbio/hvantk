@@ -27,9 +27,8 @@ examples/enrichex/
     └── enrichex_burden_report.html
 ```
 
-The `overlap_*` files in `results/` are the output of the overlap command below. The
-`burden_*` files come from an earlier synthetic burden run; a current `burden` run adds
-the `gene_set_size`, `n_genes_found` and `gene_coverage_pct` columns.
+The `overlap_*` files in `results/` are the output of the overlap command below, and the
+`burden_*` files the output of the burden command below on the seeded synthetic cohort.
 
 ## Overlap from the command line
 
@@ -53,12 +52,27 @@ significant: eight query genes against a 35-gene background give the test little
 
 Burden needs Hail and a cohort MatrixTable with a `GT` entry and, by default, the row
 fields `SYMBOL`, `gnomad_af`, `cadd_phred` and `consequence`, plus a phenotype table
-keyed by the MatrixTable's sample IDs:
+keyed by the MatrixTable's sample IDs. To make a seeded synthetic pair with the example's
+own builders:
+
+```bash
+python - <<'EOF'
+import hail as hl
+from burden_analysis_example import create_phenotype_table, create_synthetic_cohort
+
+hl.init(quiet=True)
+hl.set_global_seed(42)
+create_synthetic_cohort().write("out/cohort.mt", overwrite=True)
+create_phenotype_table().write("out/phenotypes.ht", overwrite=True)
+EOF
+```
+
+Then:
 
 ```bash
 hvantk enrichex burden \
-  -m cohort.mt \
-  -p phenotypes.ht \
+  -m out/cohort.mt \
+  -p out/phenotypes.ht \
   -s synthetic_gene_sets.json \
   --covariates PC1,PC2,PC3,age,sex \
   --max-af 0.001 \

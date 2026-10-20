@@ -185,7 +185,8 @@ mkdir -p "$SINGULARITY_CACHEDIR" "$SINGULARITY_TMPDIR"
 
 # Build from the REPO ROOT: %files paths in the def are relative to the build CWD.
 cd <the cluster clone>
-singularity build $WORK/containers/hvantk.sif containers/hvantk.def
+singularity build --build-arg HVANTK_COMMIT=$(git rev-parse HEAD) \
+  $WORK/containers/hvantk.sif containers/hvantk.def
 ```
 
 **`--fakeroot` is not usable on every cluster.** It needs a `/etc/subuid` entry for your
@@ -206,7 +207,8 @@ instead, which needs no privileges at all:
 mkdir -p ~/bin && curl -fsSL -o ~/bin/proot https://proot.gitlab.io/proot/bin/proot
 chmod +x ~/bin/proot
 export PATH="$HOME/bin:$PATH"       # singularity picks proot up from PATH
-singularity build $WORK/containers/hvantk.sif containers/hvantk.def
+singularity build --build-arg HVANTK_COMMIT=$(git rev-parse HEAD) \
+  $WORK/containers/hvantk.sif containers/hvantk.def
 ```
 
 Builds take roughly 10 minutes and the image is ~2.2 GB.
@@ -454,6 +456,12 @@ launching at scale.
   `poetry.lock` hash; a given `hvantk.sif` reproduces the exact Hail/numpy/native
   stack. Re-derive the image only by re-running `apptainer build` against the same
   lock.
+- **Pass `--build-arg HVANTK_COMMIT=$(git rev-parse HEAD)` on every build.** The
+  image copies only `hvantk/` (no `.git`) and purges git itself, so without this a
+  dataset built inside it can only record `reprocess`'s `builder_commit` as the
+  installed package version, not the commit. The build-arg stamps the commit into
+  the image's environment, and `reprocess` picks it up from there once its own git
+  check (correctly) finds no checkout.
 - **hvantk stamps provenance** on every dataset (`ctx.provenance(...)`) and has
   `hvantk drift` for source fingerprints — keep using both on-cluster so results
   carry their input lineage.
@@ -467,8 +475,9 @@ launching at scale.
 1. **Login node:** `git clone` the repo into `$HOME`. Note partitions, scratch path,
    `--fakeroot` availability, Spark-on-Slurm launcher (§2).
 2. **Build the image:** from the repo's `containers/hvantk.def` (§3.2), set
-   `APPTAINER_*` to scratch, `apptainer build --fakeroot hvantk.sif hvantk.def` (or
-   build on a laptop + copy, or run the `hpc-container` skill).
+   `APPTAINER_*` to scratch, `apptainer build --fakeroot --build-arg
+   HVANTK_COMMIT=$(git rev-parse HEAD) hvantk.sif hvantk.def` (or build on
+   a laptop + copy, or run the `hpc-container` skill).
 3. **Validate:** `srun ... apptainer exec hvantk.sif hvantk utils check-install`.
 4. **Move data (§5):** Globus the "transfer" set into `/project/$USER/hvantk/local/`;
    refetch the public bulk on the login node; regenerate `.mt`s on-cluster; skip the

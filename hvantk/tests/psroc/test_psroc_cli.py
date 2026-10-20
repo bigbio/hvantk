@@ -203,29 +203,6 @@ class TestPSROCCLIValidation:
                 "multiple" in result.output.lower() or "cannot" in result.output.lower()
             )
 
-    def test_invalid_reference_genome(self):
-        """Test error with invalid reference genome."""
-        runner = CliRunner()
-        result = runner.invoke(
-            psroc_cmd,
-            [
-                "--genes",
-                "BRCA1",
-                "--clinvar-ht",
-                "/fake/clinvar.ht",
-                "--dbnsfp-ht",
-                "/fake/dbnsfp.ht",
-                "--scores",
-                "CADD_phred",
-                "--output-dir",
-                "/fake/output",
-                "--reference-genome",
-                "hg19",  # Invalid
-            ],
-        )
-
-        assert result.exit_code != 0
-
     def test_invalid_threshold_method(self):
         """Test error with invalid threshold method."""
         runner = CliRunner()

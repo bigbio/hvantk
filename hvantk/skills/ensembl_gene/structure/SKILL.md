@@ -36,8 +36,10 @@ Out of scope for this skill:
 - **Provider:** Ensembl (<https://www.ensembl.org/info/data/ftp/index.html>), genome build
   GRCh38.
 - **Catalog entry:** `hvantk/skills/ensembl_gene/catalog/datasets.json`, accession
-  `Ensembl_v113` (`data_source: "Ensembl"`, title "Ensembl Gene Annotations", license
-  Apache 2.0, `update_frequency: quarterly`). The catalog lists two files
+  `Ensembl_v113` (`data_source: "Ensembl"`, title "Ensembl Gene Annotations", licence:
+  Ensembl data carries no restrictions, third-party constraints aside, and Ensembl code is
+  Apache 2.0 (https://www.ensembl.org/info/about/legal/disclaimer.html),
+  `update_frequency: quarterly`). The catalog lists two files
   (`Homo_sapiens.GRCh38.113.gtf.gz` and `Homo_sapiens.GRCh38.113.gff3.gz`); only the
   `.gtf.gz` entry is consumed here.
 - **Release pin:** `hvantk/resources/ensembl_release.py` -- `ENSEMBL_RELEASE = "113"`,

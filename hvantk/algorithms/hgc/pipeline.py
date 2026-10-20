@@ -131,7 +131,6 @@ class PipelineConfig:
     apply_qc_filters: bool = False
 
     # Output options
-    keep_intermediates: bool = True
     generate_qc_report: bool = False
 
     def validate(self) -> List[str]:

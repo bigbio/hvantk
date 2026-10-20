@@ -90,9 +90,9 @@ matched exactly:
 
 Every other value (`Uncertain_significance`, `Conflicting_classifications_of_pathogenicity`,
 `not_provided`, `risk_factor` and so on), or no value, gets the label
-`Uncertain/Conflicting` and never enters the ROC. With `--min-stars 0` these variants are
-dropped here. With `--min-stars 1` or more they stay in the annotated table, are counted as
-excluded, and count in the missingness denominators below.
+`Uncertain/Conflicting`. Whatever `--min-stars` is, these variants stay in the annotated
+table and are counted as excluded, but they enter neither the missingness check nor the
+ROC.
 
 ### Scores and missingness
 
@@ -104,14 +104,15 @@ choices are `REVEL_score`, `MetaRNN_score`, `ClinPred_score`, `BayesDel_addAF_sc
 
 The dbNSFP plugin stores every `*_score` field and `CADD_phred` per transcript. PS-ROC
 reduces such a score to its most damaging transcript value: the maximum, or the minimum for
-`SIFT_score`, `SIFT4G_score`, `PROVEAN_score`, `FATHMM_score` and `LRT_score`. Scores it has
-no direction for are treated as higher = more damaging.
+a score where lower is more damaging (see [Score direction](#score-direction)).
 
 Variants with none of the requested scores (indels, and any variant dbNSFP does not
 cover) are dropped and counted as out of scope (`n_out_of_scope` in the Python result).
-For each score, the missing rate over the remaining variants then decides inclusion: a
-score missing for more than `--max-missingness` of them (default 0.3; a rate equal to the
-threshold passes) is left out of the ROC but still reported.
+For each score, the missing rate over the remaining pathogenic and benign variants, the
+ones the ROC uses, then decides inclusion: a score missing for more than
+`--max-missingness` of them (default 0.3; a rate equal to the threshold passes) is left out
+of the ROC but still reported. `Uncertain/Conflicting` variants do not count, so a score
+missing only for them still passes.
 
 ### ROC, confidence interval and threshold
 
@@ -120,8 +121,6 @@ of them remain (default 10), PS-ROC logs a warning and writes its outputs withou
 Otherwise each included score is evaluated on the variants where it is present, with
 scikit-learn's `roc_curve` and `roc_auc_score`:
 
-- A score is also left out at this step if it is missing for more than `--max-missingness`
-  of the pathogenic and benign variants alone.
 - If the variants where a score is present are all pathogenic or all benign, the run
   stops with an error.
 - The AUC 95% confidence interval is a stratified percentile bootstrap: pathogenic and
@@ -135,22 +134,29 @@ scikit-learn's `roc_curve` and `roc_auc_score`:
 | `closest_to_corner` | minimises the distance to the perfect classifier (FPR 0, TPR 1) |
 | `f1` | maximises F1 with precision approximated as TPR / (TPR + FPR), which equals the real precision only when both classes are the same size |
 
-The threshold is a score value: variants scoring at or above it are called pathogenic.
+The threshold is a value on the score's own scale: variants scoring at or above it are
+called pathogenic, or at or below it for a score where lower is more damaging.
 Sensitivity and specificity are read at that point, on the same variants that chose it.
 PS-ROC computes no p-values: there is no DeLong or permutation test for the difference
 between two AUCs, and no precision-recall curve.
 
 ### Score direction
 
-The ROC always counts a higher value as more pathogenic. Raw scores where lower means more
-damaging (`SIFT_score`, `SIFT4G_score`, `PROVEAN_score`, `FATHMM_score`, `LRT_score`)
-therefore come out with 1 minus their real AUC, below 0.5 for a useful predictor, and their
-threshold is meaningless. Use the dbNSFP rank scores instead, such as
-`SIFT_converted_rankscore` or `FATHMM_converted_rankscore`: in every `*_rankscore`, a
-higher value is more damaging, and the plugin stores it as one value per variant. A rank
-score keeps its predictor's ordering of variants, with the most damaging highest, so the
-AUC is on the usual scale; the threshold is then a rank between 0 and 1, not a cut-off on
-the predictor's own scale.
+PS-ROC knows six raw scores where lower means more damaging: `SIFT_score`,
+`SIFT4G_score`, `PROVEAN_score`, `FATHMM_score`, `LRT_score` and `ESM1b_score`. It evaluates such a score
+on its negated values, so the ROC, the AUC and its confidence interval are on the usual
+scale (above 0.5 for a useful predictor), and reports the thresholds on the score's own
+scale. Each result records the direction in `higher_is_pathogenic`: variants are called
+pathogenic at or above the threshold when it is `true`, at or below it when it is `false`.
+The console summary and the dashboard write a lower-is-damaging threshold with `<=`, for
+example `threshold<=0.050`.
+
+Every other score is treated as higher = more damaging. Check the direction of any other
+raw score you request: one that runs the other way comes out with 1 minus its real AUC
+unless you set it in `score_directions` (Python API, see below). The dbNSFP rank scores
+need no setting: in every `*_rankscore`, such as `SIFT_converted_rankscore`, a higher
+value is more damaging, and the plugin stores it as one value per variant. Their threshold
+is a rank between 0 and 1, not a cut-off on the predictor's own scale.
 
 ## Run PS-ROC
 
@@ -190,16 +196,14 @@ to a file.
 | `--dbnsfp-ht PATH` | required | dbNSFP Hail table |
 | `--scores TEXT` | required | Comma-separated dbNSFP field names |
 | `-o`, `--output-dir PATH` | required | Output directory |
-| `--reference-genome` | `GRCh38` | `GRCh37` or `GRCh38`. Shown in the `--dry-run` plan only; the tables' own build is used |
 | `--min-stars INTEGER` | `1` | Minimum ClinVar review stars; `0` turns the filter off |
-| `--max-missingness FLOAT` | `0.3` | Leave out scores missing for more than this fraction of variants (0 to 1) |
+| `--max-missingness FLOAT` | `0.3` | Leave out scores missing for more than this fraction of the pathogenic and benign variants (0 to 1) |
 | `--threshold-method` | `youden` | `youden`, `closest_to_corner` or `f1` |
 | `--min-variants INTEGER` | `10` | Minimum pathogenic + benign variants for the ROC step |
 | `--n-bootstrap INTEGER` | `2000` | Bootstrap resamples for the AUC 95% CI; `0` disables the CI |
 | `--output-prefix TEXT` | `psroc` | Prefix of every output file name |
 | `--export-tsv` | off | Also write the annotated variants as TSV |
 | `--no-plots` | off | Skip the plots |
-| `--overwrite` | off | Accepted but has no effect: existing outputs are always overwritten |
 | `--dry-run` | off | Print the execution plan and stop |
 
 ## Outputs
@@ -218,6 +222,8 @@ results/psroc_brca/
 ├── logs/                     # psroc_<timestamp>.log: the run's log, at the console's level (INFO with -v)
 └── .pipeline_state.json      # configuration, completed stages, errors and timings
 ```
+
+A rerun into the same directory with the same prefix replaces these files.
 
 With `--gene-sets`, each set gets a subdirectory named after it (characters other than
 letters, digits, `_` and `-` become `_`), and its files carry the prefix
@@ -249,6 +255,7 @@ illustrative):
     "score_name": "REVEL_score",
     "auc": 0.998,
     "optimal_threshold": 0.454,
+    "higher_is_pathogenic": true,
     "sensitivity_at_optimal": 0.98,
     "specificity_at_optimal": 1.0,
     "n_variants_used": 87,
@@ -266,22 +273,24 @@ illustrative):
 }
 ```
 
+- `higher_is_pathogenic`: the score's direction (see [Score direction](#score-direction)).
+  `true`: pathogenic at or above `optimal_threshold`; `false`: at or below it.
 - `n_variants_used`: pathogenic and benign variants where this score is present.
-- `missingness`: computed over the pathogenic and benign variants only.
+- `missingness`: over the pathogenic and benign variants, as in `{prefix}_missingness.json`.
 - `auc_ci_lower`, `auc_ci_upper`: present only when `--n-bootstrap` is above 0.
 
-`{prefix}_missingness.json` covers every requested score, computed over all variants in
-the annotated table (including `Uncertain/Conflicting` ones when `--min-stars` is 1 or
-more):
+`{prefix}_missingness.json` covers every requested score, computed over the pathogenic
+and benign variants in the annotated table (values from the
+[PS-ROC example](../examples/psroc.md), with 90 of them):
 
 ```json
 {
   "CADD_phred": {
-    "n_total": 100, "n_present": 93, "n_missing": 7, "missingness_rate": 0.07,
+    "n_total": 90, "n_present": 83, "n_missing": 7, "missingness_rate": 0.0778,
     "included_in_analysis": true, "exclusion_reason": null
   },
   "VEST4_score": {
-    "n_total": 100, "n_present": 58, "n_missing": 42, "missingness_rate": 0.42,
+    "n_total": 90, "n_present": 52, "n_missing": 38, "missingness_rate": 0.4222,
     "included_in_analysis": false,
     "exclusion_reason": "missingness_rate (0.42) exceeds max_missingness (0.30)"
   }
@@ -302,8 +311,8 @@ When reading the results:
   the variants where it is present, so two scores can be measured on different variants
   (see [Caveats](#caveats)).
 - The console summary of a single run prints the variant counts, each score's AUC [CI] and
-  threshold, and the scores left out for missingness. "Excluded" counts the
-  `Uncertain/Conflicting` variants kept in the table; it is 0 with `--min-stars 0`.
+  threshold (`threshold<=` for a lower-is-damaging score), and the scores left out for
+  missingness. "Excluded" counts the `Uncertain/Conflicting` variants kept in the table.
 
 ## Python API
 
@@ -330,15 +339,16 @@ for name, roc in result.metrics.items():
 
 `PSROCConfig` takes the CLI options as fields (`genes`, `genes_file`, `variants_path`,
 `gene_set_collection`, `clinvar_ht`, `dbnsfp_ht`, `scores`, `output_dir`, `output_prefix`,
-`reference_genome`, `min_stars`, `max_missingness`, `threshold_method`, `hgnc_path`,
-`export_tsv`, `overwrite`, `generate_plots`, `min_variants`, `n_bootstrap`), with the same
-defaults, plus:
+`min_stars`, `max_missingness`, `threshold_method`, `hgnc_path`, `export_tsv`,
+`generate_plots`, `min_variants`, `n_bootstrap`), with the same defaults, plus:
 
 - `pathogenic_labels`, `benign_labels`: required; without them `PSROCPipeline` raises
   `Configuration validation failed`.
-- `score_directions`: `{score: bool}` overriding the direction used to reduce per-transcript
-  values (`True` = higher is more damaging). It does not change the ROC. `run_collection()`
-  passes it on to every per-set run.
+- `score_directions`: `{score: bool}` setting a score's direction (`True` = higher is more
+  damaging, `False` = lower is), on top of the six lower-is-damaging scores PS-ROC knows.
+  The direction picks the per-transcript value and orients the ROC (see
+  [Score direction](#score-direction)). `run_collection()` passes it on to every per-set
+  run.
 
 For a gene set collection, pass a dict of sets and call `run_collection()`. Alias expansion
 needs a gene catalog passed to the pipeline; `hgnc_path` alone only records the path:
@@ -369,9 +379,11 @@ A `PSROCResult` holds `metrics` (score → `ROCResult`), `missingness` (score �
 `n_genes`, `scores_included`, `scores_excluded`, `max_missingness_threshold`, `output_dir`
 and `annotated_ht_path`, plus `summary()` and `to_dict()`. A `ROCResult` holds `fpr`,
 `tpr`, `thresholds`, `auc`, `auc_ci_lower`, `auc_ci_upper`, `optimal_threshold`,
-`sensitivity_at_optimal`, `specificity_at_optimal`, `n_variants_used` and `missingness`.
-`scores_included` reflects the first missingness check only, so iterate over `metrics` for
-the scores that have an AUC.
+`higher_is_pathogenic`, `sensitivity_at_optimal`, `specificity_at_optimal`,
+`n_variants_used` and `missingness`; `thresholds` and `optimal_threshold` are on the
+score's own scale. `scores_included` lists the scores that passed the missingness check,
+which still get no AUC when the ROC step is skipped for too few labelled variants, so
+iterate over `metrics` for the scores that have one.
 
 The ROC functions also work on plain arrays, without Hail tables:
 
@@ -383,14 +395,23 @@ labels = np.array([0, 0, 0, 1, 1, 1])  # 1 = pathogenic, 0 = benign
 scores = {
     "score_a": np.array([0.1, 0.4, 0.35, 0.8, 0.3, np.nan]),  # NaN = missing
     "score_b": np.array([2.0, 1.0, 3.0, 4.0, 5.0, 2.5]),
+    "score_c": np.array([0.9, 0.6, 0.7, 0.02, 0.1, 0.3]),  # lower = more damaging
 }
-results = compute_roc_metrics(labels, scores, threshold_method="youden", n_bootstrap=1000)
+results = compute_roc_metrics(
+    labels,
+    scores,
+    threshold_method="youden",
+    n_bootstrap=1000,
+    score_directions={"score_c": False},
+)
 for name, roc in results.items():
     print(name, roc.auc, roc.optimal_threshold, roc.auc_ci_lower, roc.auc_ci_upper)
 plot_roc_curves(results, output_path="roc_curves.png")
 ```
 
-`compute_roc_metrics` defaults to `n_bootstrap=0` (no CI), unlike the CLI. The package also
+`compute_roc_metrics` defaults to `n_bootstrap=0` (no CI), unlike the CLI. It treats a
+score as higher = more damaging unless `score_directions` maps it to `False`: unlike the
+pipeline, it does not know the six lower-is-damaging dbNSFP scores. The package also
 exports `compute_all_missingness`, `compute_score_missingness`,
 `filter_scores_by_missingness`, `find_optimal_threshold`, `plot_roc_curve_single`,
 `plot_auc_comparison`, `plot_missingness_summary` and `plot_psroc_summary_dashboard`; the
@@ -412,6 +433,14 @@ plot function returns the matplotlib figure and, given `output_path`, saves it a
   present, adding such a score also raises the other scores' missingness. For a
   like-for-like comparison, request scores with similar coverage and check
   `n_variants_used`.
+- **Score direction.** Only six raw scores are known to run lower = more damaging (see
+  [Score direction](#score-direction)). Any other raw score that runs that way gets 1 minus
+  its real AUC, below 0.5, unless you set its direction in `score_directions` or request
+  its `*_rankscore` instead.
+- **Coverage of uncertain variants.** Missingness is measured on the pathogenic and benign
+  variants only, so a score that is often missing for the `Uncertain/Conflicting` variants,
+  the ones you may want it to classify, still passes. Check their scores in the annotated
+  table.
 - **Label imbalance.** AUC does not depend on the ratio of pathogenic to benign variants,
   but thresholds do: the `f1` method assumes equal class sizes, and a threshold chosen in a
   gene set dominated by one class may not transfer to another.
@@ -429,7 +458,7 @@ plot function returns the matplotlib figure and, given `output_path`, saves it a
 | `Requested scores not found in dbNSFP table` | A `--scores` name is not a field of the table. Names are case-sensitive; the message lists the fields found. |
 | `Score '<name>' has only one class after filtering missing values` | Where this score is present, every variant is pathogenic (or every one benign). Widen the gene set, lower `--min-stars`, or drop the score. With `--gene-sets`, only that set is skipped. |
 | `Too few labeled variants (N) for ROC analysis` | Fewer than `--min-variants` pathogenic and benign variants remain; the outputs are written without AUCs. |
-| `No scores passed the missingness threshold` | Every score is missing for more than `--max-missingness` of the variants. Check `{prefix}_missingness.json`, raise the threshold or choose scores with better coverage. |
+| `No scores passed the missingness threshold` | Every score is missing for more than `--max-missingness` of the pathogenic and benign variants. Check `{prefix}_missingness.json`, raise the threshold or choose scores with better coverage. |
 | `No valid variants found in <file>` | The `--variants` file has no `chr:pos:ref:alt` lines. |
 
 ## See also

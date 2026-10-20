@@ -68,10 +68,9 @@ def sidecar_info(path_str) -> dict | None:
     """The sha256 of ``<path_str>.provenance.json`` plus a few identifying fields --
     just enough to bind the receipt to exactly that input build, never re-built into a
     full Provenance object. ``builder_commit`` is deliberately not one of these fields:
-    it is always null when the input was built through ``hvantk reprocess`` (the normal
-    path), so ``plugin_version``, ``build_timestamp`` and ``source_fingerprint`` are
-    what actually distinguish one build from another here
-    (``references/inputs-and-release.md``)."""
+    an image built without the commit stamp records only ``hvantk <version>`` there, so
+    ``plugin_version``, ``build_timestamp`` and ``source_fingerprint`` are what reliably
+    distinguish one build from another here (``references/inputs-and-release.md``)."""
     if not path_str:
         return None
     sidecar = Path(str(path_str) + ".provenance.json")

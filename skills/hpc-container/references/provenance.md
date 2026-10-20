@@ -34,9 +34,14 @@ How to read it:
 
 The record is a sidecar, like the `.provenance.json` hvantk writes next to every dataset:
 a job's run notes name the image digest, the image's record names the commit, and the
-dataset's record names the source fingerprint (inside the image its `builder_commit`
-field records `hvantk <version>`, since the image carries no git checkout -- see
-`dataset-build-at-scale`'s verification reference). Together they answer "what produced this file" without a conversation.
+dataset's record names the source fingerprint. Inside an image built from
+`templates/build-image.sbatch`, a dataset's own `builder_commit` field records that same
+commit too: the def file's `%arguments` section stamps it into `HVANTK_BUILDER_COMMIT`
+at build time, and `reprocess` reads it there once its own git check (correctly) finds no
+checkout to ask (see `dataset-build-at-scale`'s verification reference). An image built
+without `--build-arg HVANTK_COMMIT=...` -- a manual `singularity build` with no flag --
+falls back to recording `hvantk <version>` instead. Together they answer "what produced
+this file" without a conversation.
 
 Promotion keeps records with images: `promote-image.sh` moves the old default's record
 with the old default and points the default's record at the new one, so

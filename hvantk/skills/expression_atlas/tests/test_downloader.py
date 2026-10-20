@@ -103,6 +103,14 @@ def test_download_experiments_without_accession_or_config(download_path):
     # Assert that the command was not successful
     assert result.exit_code == 1
 
+    # The hyphenated spelling is the primary name now, but the underscore form
+    # above must keep working, and both must behave identically.
+    result_hyphenated = runner.invoke(
+        expression_atlas_downloader.download_experiments,
+        ["--download-path", download_path],
+    )
+    assert result_hyphenated.exit_code == 1
+
 
 def test_download_file_with_retry_progress_bar(download_path, monkeypatch):
     """

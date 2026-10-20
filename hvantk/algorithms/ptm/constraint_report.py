@@ -156,7 +156,6 @@ def _build_header(title: str, date: str, config: "PTMConstraintConfig") -> str:
         ("min variants/group", getattr(config, "min_variants_per_group", "")),
         ("min cells/group", getattr(config, "min_cells_per_group", "")),
         ("expressed threshold", getattr(config, "expressed_threshold", "")),
-        ("flanking codons", getattr(config, "flanking_codons", "")),
     ]
     config_lines = "<br/>".join(
         f"<span class='k'>{html.escape(str(k))}</span>: "

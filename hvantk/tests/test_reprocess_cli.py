@@ -550,6 +550,28 @@ def test_reprocess_records_a_builder_commit(tmp_path: Path, monkeypatch):
     assert manifest["builder_commit"] == ctx.builder_commit
 
 
+def test_builder_commit_falls_back_to_env_var_when_git_check_fails(monkeypatch):
+    """`_builder_commit` must use HVANTK_BUILDER_COMMIT once git is untrustworthy.
+
+    Regression test: an Apptainer/Singularity image built from containers/hvantk.def
+    has no .git (see build-image.sbatch's --build-arg), so the git-checkout path can
+    never fire there; HVANTK_BUILDER_COMMIT, stamped in at build time, is the only way
+    such an image's reprocess runs can still record the commit instead of silently
+    falling all the way back to the package version.
+    """
+    import subprocess
+
+    from hvantk.tools.plugins.reprocess_cli import _builder_commit
+
+    def _no_git(*args, **kwargs):
+        raise FileNotFoundError("git not found")
+
+    monkeypatch.setattr(subprocess, "run", _no_git)
+    monkeypatch.setenv("HVANTK_BUILDER_COMMIT", "abc1234-dirty")
+
+    assert _builder_commit() == "abc1234-dirty"
+
+
 # ---------------------------------------------------------------------------
 # Regression tests for issue #119: comma-list coercion in _coerce_plugin_arg_value
 # ---------------------------------------------------------------------------

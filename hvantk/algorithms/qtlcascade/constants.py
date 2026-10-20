@@ -100,6 +100,12 @@ KG_PANEL_URL = (
 )
 # Default fine-map super-population for the LD reference.
 DEFAULT_FINEMAP_SUPERPOP = "EUR"
+# The 1000 Genomes 3202-sample panel's five super-populations, exactly as they
+# appear in its "Superpopulation" column (_unrelated_samples in finemap.py
+# matches this case exactly). A --superpop outside this set can never find
+# founders; gating it at the CLI catches a typo immediately instead of
+# letting it fail deep inside the LD reference build.
+FINEMAP_SUPERPOPS = ("AFR", "AMR", "EAS", "EUR", "SAS")
 
 # ---------------------------------------------------------------------------
 # SuSiE-RSS + coloc.susie (susie.py) — pure-Python fine-mapping (issue #193).

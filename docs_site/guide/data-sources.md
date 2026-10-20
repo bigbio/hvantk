@@ -26,7 +26,7 @@ unrestricted. Check the source's own terms before you redistribute anything you 
 | `gnomad-metrics:metrics` | AnnotationTable | hail | CC0 |
 | `ucsc-cellbrowser:default` | ExpressionMatrix | anndata | varies per collection; not centrally stated |
 | `expression-atlas:dataset` | ExpressionMatrix | anndata | varies per accession (CC BY 4.0 for several; see `hvantk catalog show <accession>`) |
-| `ensembl-gene:structure` | AnnotationTable | hail | not stated in plugin docs |
+| `ensembl-gene:structure` | AnnotationTable | hail | No restrictions (Ensembl data; third-party constraints may apply) |
 | `uniprot-ptm:sites` | AnnotationTable | hail | not stated in plugin docs |
 | `cptac:expression` | ExpressionMatrix | anndata | not stated in plugin docs (via the `cptac` PyPI package) |
 | `cptac:phospho` | ExpressionMatrix | anndata | not stated in plugin docs (via the `cptac` PyPI package) |
@@ -207,16 +207,16 @@ hvantk reprocess hgnc:lookup \
 ### UCSC Cell Browser
 
 The UCSC Cell Browser catalog lists 270 datasets. About half are **collections** (groups
-of related datasets with no expression matrix at the top level). Use `--list_datasets`
+of related datasets with no expression matrix at the top level). Use `--list-datasets`
 and `--search` to discover downloadable datasets.
 
 ```bash
 # Discover available datasets
-hvantk download ucsc --list_datasets
+hvantk download ucsc --list-datasets
 
 # Search by name, organism, or tissue (expands collections to show children)
-hvantk download ucsc --list_datasets --search heart
-hvantk download ucsc --list_datasets --search pancreas
+hvantk download ucsc --list-datasets --search heart
+hvantk download ucsc --list-datasets --search pancreas
 
 # Download a leaf dataset directly
 hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
@@ -269,7 +269,7 @@ hvantk reprocess ucsc-cellbrowser:dev-ctx \
 
 ```bash
 # Download one accession's bulk RNA-seq experiment
-hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/expression_atlas
+hvantk download expression-atlas --accession E-MTAB-6798 --download-path data/expression_atlas
 
 # Download + build in one call (reprocess forwards --plugin-arg accession=... to the
 # download stage; the build stage ignores it and locates the two input files within

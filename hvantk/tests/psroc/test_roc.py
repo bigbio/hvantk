@@ -188,6 +188,27 @@ class TestComputeROCMetrics:
         assert "inverse_score" in results
         assert results["inverse_score"].auc == pytest.approx(0.0)
 
+    def test_lower_is_damaging_score_is_oriented(self):
+        """A score marked lower-is-damaging is evaluated on its negated values
+        and its threshold reported on its own scale. It used to get 1 - AUC
+        (0.0 here) and an infinite threshold."""
+        labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+        # SIFT-like: pathogenic variants score low, benign ones high.
+        scores = {
+            "sift_like": np.array(
+                [0.6, 0.7, 0.8, 0.9, 1.0, 0.0, 0.01, 0.02, 0.03, 0.04]
+            )
+        }
+
+        result = compute_roc_metrics(
+            labels, scores, score_directions={"sift_like": False}
+        )["sift_like"]
+
+        assert result.auc == pytest.approx(1.0)
+        assert result.higher_is_pathogenic is False
+        # Pathogenic when score <= threshold: a value between the two classes.
+        assert 0.04 <= result.optimal_threshold < 0.6
+
     def test_multiple_scores(self):
         """Test computing metrics for multiple scores simultaneously."""
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])

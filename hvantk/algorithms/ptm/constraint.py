@@ -33,16 +33,6 @@ __all__ = [
     "run_ptm_constraint",
 ]
 
-_DEFAULT_PTM_CATEGORIES = (
-    "phosphorylation",
-    "acetylation",
-    "methylation",
-    "ubiquitination",
-    "sumoylation",
-    "glycosylation",
-    "other",
-)
-
 
 @dataclass
 class PTMConstraintConfig:
@@ -65,10 +55,8 @@ class PTMConstraintConfig:
     expression_metric: str = "median"
     min_cells_per_group: int = 50
     min_variants_per_group: int = 20
-    flanking_codons: int = 7
     expressed_threshold: float = 1.0
     af_observed_only: bool = True
-    overwrite: bool = False
 
     def validate(self) -> List[str]:
         errors: List[str] = []

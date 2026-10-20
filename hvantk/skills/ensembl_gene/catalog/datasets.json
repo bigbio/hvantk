@@ -10,7 +10,7 @@
     "organism": "Homo sapiens",
     "tissue_type": "all",
     "sample_count": 70000,
-    "license": "Apache 2.0",
+    "license": "No restrictions on Ensembl data (third-party constraints may apply); Ensembl code is Apache 2.0",
     "doi": "10.1093/nar/gkz966",
     "genome_build": "GRCh38",
     "variant_types": [

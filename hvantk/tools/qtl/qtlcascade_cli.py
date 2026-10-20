@@ -21,6 +21,7 @@ from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_COLOC_WINDOW_KB,
     EQTL_CATALOGUE_DEFAULT_STUDY,
     DEFAULT_FINEMAP_SUPERPOP,
+    FINEMAP_SUPERPOPS,
 )
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ def coloc_cmd(
 )
 @click.option(
     "--superpop",
-    type=str,
+    type=click.Choice(FINEMAP_SUPERPOPS),
     default=DEFAULT_FINEMAP_SUPERPOP,
     show_default=True,
     help="1000G super-population for the LD reference.",

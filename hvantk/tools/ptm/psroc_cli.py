@@ -54,8 +54,10 @@ def _display_single_result(result, pipeline) -> None:
                 auc_str = f"AUC={roc.auc:.3f}"
                 if roc.auc_ci_lower is not None:
                     auc_str += f" [{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
+                # A lower-is-damaging score calls pathogenic at or below it
+                op = "=" if roc.higher_is_pathogenic else "<="
                 click.echo(
-                    f"    {name}: {auc_str}, threshold={roc.optimal_threshold:.3f}"
+                    f"    {name}: {auc_str}, threshold{op}{roc.optimal_threshold:.3f}"
                 )
 
         if result.scores_excluded:
@@ -155,12 +157,6 @@ def _display_collection_results(results, output_dir) -> None:
     help="Output directory for results",
 )
 @click.option(
-    "--reference-genome",
-    type=click.Choice(["GRCh37", "GRCh38"]),
-    default="GRCh38",
-    help="Reference genome build [default: GRCh38]",
-)
-@click.option(
     "--min-stars",
     type=int,
     default=1,
@@ -170,8 +166,9 @@ def _display_collection_results(results, output_dir) -> None:
     "--max-missingness",
     type=float,
     default=0.3,
-    help="Maximum allowed missingness rate per score (0.0-1.0). "
-    "Scores exceeding this threshold are excluded [default: 0.3]",
+    help="Maximum allowed missingness rate per score (0.0-1.0), over the "
+    "pathogenic and benign variants. Scores exceeding this threshold are "
+    "excluded [default: 0.3]",
 )
 @click.option(
     "--threshold-method",
@@ -196,12 +193,6 @@ def _display_collection_results(results, output_dir) -> None:
     is_flag=True,
     default=False,
     help="Skip generating visualization plots",
-)
-@click.option(
-    "--overwrite",
-    is_flag=True,
-    default=False,
-    help="Overwrite existing output files",
 )
 @click.option(
     "--min-variants",
@@ -236,14 +227,12 @@ def psroc_cmd(
     dbnsfp_ht,
     scores,
     output_dir,
-    reference_genome,
     min_stars,
     max_missingness,
     threshold_method,
     output_prefix,
     export_tsv,
     no_plots,
-    overwrite,
     min_variants,
     n_bootstrap,
     dry_run,
@@ -372,13 +361,11 @@ def psroc_cmd(
             scores=scores_list,
             output_dir=output_dir,
             output_prefix=output_prefix,
-            reference_genome=reference_genome,
             min_stars=min_stars,
             max_missingness=max_missingness,
             threshold_method=threshold_method,
             hgnc_path=hgnc,
             export_tsv=export_tsv,
-            overwrite=overwrite,
             generate_plots=not no_plots,
             min_variants=min_variants,
             n_bootstrap=n_bootstrap,
