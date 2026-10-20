@@ -324,13 +324,12 @@ report.
   `cross_tissue_heatmap.png` (class counts per tissue) when at least two tissues finish,
   and writes one combined report.
 - `--dry-run` prints the tissues, the inputs, whether coloc will run and the stages,
-  without reading any table. It still creates the empty `per_tissue/` and `plots/`
-  directories.
+  without reading any table or writing anything to `-o`.
 - Plots need matplotlib (`pip install 'hvantk[viz]'`); without it, `run` logs a warning
   for each plot and carries on.
-- `--overwrite` replaces the Hail tables, but a rerun in which no gene has both an eQTL
-  and a pQTL skips coloc and leaves an older `coloc_results.tsv` in place. Use a fresh
-  output directory for a clean rerun.
+- `--overwrite` replaces the Hail tables. A rerun in which no gene has both an eQTL and
+  a pQTL still writes an empty (header-only) `coloc_results.tsv`, replacing any file
+  from an earlier run at that path.
 
 ## Report (`report`)
 
@@ -501,7 +500,7 @@ config = CascadeConfig(
     constraint_ht="data/gnomad_metrics.ht",
     output_dir="results/qtl_liver",
 )
-pipeline = CascadePipeline(config)  # validates the config and creates the directories
+pipeline = CascadePipeline(config)  # validates the config; creates no directories yet
 result = pipeline.run(tissue="Liver")
 print(result.class_counts, result.n_cascade_genes)
 if result.coloc_df is not None:
@@ -524,11 +523,13 @@ not expose:
 | `overwrite` | `False` | `--overwrite` |
 
 `CascadePipeline(config)` raises `ValueError` for an invalid configuration
-(`config.validate()` lists the problems). `run(tissue=None)` returns a `CascadeResult`
-with `tissue`, `cascade_ht_path`, `gene_summary_ht_path`, `class_counts`,
-`n_cascade_genes` (genes in the summary) and `coloc_df`. `run_collection()` runs every
-tissue in `config.tissues` and returns `{tissue: CascadeResult}`; `show_plan()` returns
-the `--dry-run` text.
+(`config.validate()` lists the problems) but creates no directories; `run()` and
+`run_collection()` create `output_dir`, `per_tissue/` and (unless `generate_plots` is
+`False`) `plots/` when they actually execute, so `show_plan()` writes nothing.
+`run(tissue=None)` returns a `CascadeResult` with `tissue`, `cascade_ht_path`,
+`gene_summary_ht_path`, `class_counts`, `n_cascade_genes` (genes in the summary) and
+`coloc_df`. `run_collection()` runs every tissue in `config.tissues` and returns
+`{tissue: CascadeResult}`; `show_plan()` returns the `--dry-run` text.
 
 ### Components
 
@@ -632,10 +633,8 @@ config = GwasColocConfig(
     eqtl_N=372,
     gene_symbols={"ENSG00000177791": "MYOZ1"},  # fills the `gene` column
 )
-errors = config.validate()  # the CLI stops on these; run_gwas_coloc_pipeline does not check
-if errors:
-    raise ValueError(errors)
-report = run_gwas_coloc_pipeline(config)  # the JSON report, as a dict
+report = run_gwas_coloc_pipeline(config)  # the JSON report, as a dict; raises ValueError
+# for an invalid config (same problems config.validate() lists) before anything runs
 print(report["verdict"], report["results"]["goi_PP4_abf"])
 ```
 

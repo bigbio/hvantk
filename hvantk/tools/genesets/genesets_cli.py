@@ -3,6 +3,7 @@ Unified CLI for gene set extraction and preparation.
 
 Subcommands:
   hvantk genesets clingen  -- Extract from ClinGen Hail Table (by GCEP/disease/keyword)
+  hvantk genesets cosmic   -- Extract from COSMIC CGC Hail Table (by tumour-type/role/tissue/keyword)
   hvantk genesets gencc    -- Extract from GenCC Hail Table (by submitter/disease/keyword)
   hvantk genesets prepare  -- Convert a plain TSV into a GeneSetCollection
 
@@ -110,6 +111,7 @@ def genesets_group():
     \b
     Subcommands:
       clingen   Extract gene sets from ClinGen Hail Table
+      cosmic    Extract gene sets from COSMIC CGC Hail Table
       gencc     Extract gene sets from GenCC Hail Table
       prepare   Convert a plain TSV into a GeneSetCollection
     """
@@ -510,6 +512,7 @@ def genesets_cosmic(
             gene_sets = streamer.aggregate_by_disease_category(
                 categories=categories,
                 min_classification=min_classification,
+                mutation_context=mutation_context,
             )
             if min_genes > 0:
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}

@@ -490,6 +490,66 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     assert output.with_name(output.name + ".provenance.json").exists()
 
 
+def test_reprocess_records_a_builder_commit(tmp_path: Path, monkeypatch):
+    """`reprocess` must forward a builder_commit to run_builder_for_spec.
+
+    Regression test: reprocess_cmd called run_builder_for_spec with no
+    builder_commit at all, so every sidecar .provenance.json recorded `null`
+    for a field run_builder_for_spec has supported since BuildContext gained it.
+    """
+    import json
+
+    import pandas as pd
+    from hvantk.core.models import AnnotationTable, BuildContext
+
+    captured_ctx: dict = {}
+
+    def phase_b_builder(parsed, ctx, **params):
+        captured_ctx["ctx"] = ctx
+        df = pd.DataFrame({"x": [1, 2, 3]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="test-rows-v1")
+        )
+
+    spec = _make_spec(builder=phase_b_builder)
+    object.__setattr__(spec, "artifact_type", AnnotationTable)
+    object.__setattr__(spec, "schema_id", "test-rows-v1")
+    object.__setattr__(spec, "plugin_version", "0.1.0")
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "v1"})
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    output = tmp_path / "out.parquet"
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--skip-download",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    import re
+
+    ctx: BuildContext = captured_ctx["ctx"]
+    # A 40-hex SHA (optionally "-dirty", since this repo checkout may have
+    # uncommitted changes while the suite runs), or the version fallback.
+    assert re.fullmatch(
+        r"[0-9a-f]{40}(-dirty)?", ctx.builder_commit or ""
+    ) or ctx.builder_commit.startswith("hvantk ")
+
+    manifest_path = output.with_name(output.name + ".provenance.json")
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["builder_commit"] == ctx.builder_commit
+
+
 # ---------------------------------------------------------------------------
 # Regression tests for issue #119: comma-list coercion in _coerce_plugin_arg_value
 # ---------------------------------------------------------------------------

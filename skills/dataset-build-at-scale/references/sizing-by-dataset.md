@@ -64,9 +64,9 @@ files, like any Hail table; a `.h5ad`/`.parquet` output is a single file). Keep 
 dated raw file that produced it and the output's `.provenance.json` sidecar next to the
 output, or at least discoverable from it: the sidecar is the only record of which
 plugin version built it (`references/verification.md` lists its actual fields --
-`builder_commit` stays null through `reprocess`, and the sidecar does not record the
-raw file's path), and it does not live inside the output directory (moving one without
-the other loses that link).
+`builder_commit` records `hvantk <version>` for a build inside the container image, and the sidecar does
+not record the raw file's path), and it does not live inside the output directory
+(moving one without the other loses that link).
 
 ## Re-running only failed indices
 

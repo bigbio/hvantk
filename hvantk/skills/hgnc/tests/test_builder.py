@@ -192,3 +192,40 @@ def test_genes_listing_symbols_reads_one_list_and_keeps_every_gene(
         "SHARED": {"HGNC:1"},
         "BOTH": {"HGNC:1", "HGNC:2"},
     }
+
+
+@pytest.mark.hail
+def test_annotate_table_works_with_its_own_default_fields_to_add(
+    hail_session, tmp_path
+):
+    """``annotate_table()`` must not crash on its own default ``fields_to_add``.
+
+    The HGNC table is always keyed by ``hgnc_id`` (``_validate_schema`` enforces
+    it). For ``source_type="hgnc_id"`` the method selects ``fields_to_add``
+    straight off that table with no re-key, and for ``source_type="gene_symbol"``
+    it re-keys to ``gene_symbol`` first -- either way, the default
+    ``fields_to_add=["hgnc_id", "gene_symbol", "gene_name", "locus_group"]``
+    names whichever field is the *active* key at that point, which Hail's
+    ``Table.select()`` forbids (``ExpressionException: cannot overwrite key
+    field``), regardless of what table was passed in to annotate.
+    """
+    import hail as hl
+    from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
+    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
+    builder = phase_b_snapshot_adapter(build_hgnc_gene_lookup, "hgnc:lookup")
+    out = str(tmp_path / "hgnc.ht")
+    builder(input_path=FIXTURE, output_path=out)
+    streamer = HGNCGeneCatalogStreamer.from_path(out)
+
+    target = hl.Table.parallelize(
+        [hl.Struct(id="HGNC:1100", symbol="BRCA1")],
+        hl.tstruct(id=hl.tstr, symbol=hl.tstr),
+        key="id",
+    )
+
+    by_hgnc_id = streamer.annotate_table(target, "id", "hgnc_id")
+    assert by_hgnc_id.collect()[0].hgnc_gene_symbol == "BRCA1"
+
+    by_gene_symbol = streamer.annotate_table(target, "symbol", "gene_symbol")
+    assert by_gene_symbol.collect()[0].hgnc_hgnc_id == "HGNC:1100"

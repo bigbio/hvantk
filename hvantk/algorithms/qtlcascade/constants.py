@@ -5,7 +5,7 @@ Moved from hvantk/core/qtl_constants.py per issue #122 (clean-core principle).
 References
 ----------
 - Giambartolomei et al. (2014) PLoS Genet 10(5):e1004383 — coloc priors
-- Wakefield (2009) Am J Hum Genet 84(1):60-71 — ABF W parameter
+- Wakefield (2009) Genet Epidemiol 33(1):79-86 — ABF W parameter
 - Fang et al. (2025) — tissue-matched eQTL/pQTL data (eGTEx)
 """
 
@@ -45,8 +45,10 @@ DEFAULT_COLOC_P1 = 1e-4  # P(variant causal for trait 1 only)
 DEFAULT_COLOC_P2 = 1e-4  # P(variant causal for trait 2 only)
 DEFAULT_COLOC_P12 = 1e-5  # P(variant causal for both traits)
 
-# Prior variance on true effect size — Wakefield (2009)
-# 0.04 is appropriate for quantitative-trait QTLs
+# Prior variance on true effect size — Wakefield (2009). 0.04 (prior SD 0.2) is
+# coloc's case-control default; used here for both the eQTL and the pQTL side
+# (see DEFAULT_EQTL_W_QUANT below for the 0.0225 quantitative-trait default
+# that gwas-coloc uses instead).
 DEFAULT_COLOC_W = 0.04
 
 # Posterior threshold for declaring colocalization

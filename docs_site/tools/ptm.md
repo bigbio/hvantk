@@ -320,7 +320,8 @@ from the JSON, embedded in the page and also written next to it as
 `ptm_landscape_summary.png`, `ptm_overlap_by_category.png`,
 `ptm_distance_distribution.png` and `ptm_population_af.png`. The methods paragraph is
 fixed text that does not reflect the options you ran; for example, it always states the
-default 5-codon window.
+tool's default flanking width, not the `--flanking-codons` value a `landscape` or
+`population` run actually used.
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -340,8 +341,8 @@ hvantk ptm test --test lmm \
 ```
 
 `test` fits one linear mixed model for each value of `--stratum-col`, typically a tissue
-or cell type you assigned to each variant. It reads a CSV or TSV, plain or `.gz` (a
-`.csv` name is read as CSV, any other as TSV), with one row per variant: the gene
+or cell type you assigned to each variant. It reads a CSV or TSV, plain, `.gz` or `.bgz`
+(a `.csv` name is read as CSV, any other as TSV), with one row per variant: the gene
 (`--gene-col`), the AF (`--af-col`), the PTM status as a boolean or 0/1
 (`--is-ptm-col`) and the stratum. No `ptm` command writes this table. Export it yourself,
 for example from an `annotate` output with `is_ptm` true for site and proximal variants.

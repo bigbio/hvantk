@@ -124,7 +124,7 @@ def _display_collection_results(results, output_dir) -> None:
     "--hgnc",
     type=click.Path(exists=True),
     default=None,
-    help="Path to HGNC data file (TSV or .ht) for gene alias resolution. "
+    help="Path to a built HGNC Hail Table (.ht) for gene alias resolution. "
     "When provided, the gene set is expanded to include known aliases "
     "and previous symbols.",
 )
@@ -208,13 +208,14 @@ def _display_collection_results(results, output_dir) -> None:
     type=int,
     default=10,
     help="Minimum labeled (P+B) variants required for ROC analysis. "
-    "Groups below this threshold are skipped [default: 10]",
+    "Below this threshold, outputs are still written but without ROC "
+    "metrics (not skipped) [default: 10]",
 )
 @click.option(
     "--n-bootstrap",
     type=int,
     default=2000,
-    help="Number of bootstrap resamples for AUC 95%% confidence intervals. "
+    help="Number of bootstrap resamples for AUC 95% confidence intervals. "
     "Set to 0 to disable [default: 2000]",
 )
 @click.option(

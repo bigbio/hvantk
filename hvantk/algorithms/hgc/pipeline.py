@@ -34,7 +34,9 @@ from hvantk.algorithms.hgc import (
     filter_samples_by_qc,
     filter_variants_by_qc,
     QCMetrics,
+    save_qc_metrics,
 )
+from hvantk.algorithms.hgc.qc import _assert_export_is_parseable
 
 logger = logging.getLogger(__name__)
 
@@ -329,13 +331,21 @@ class PipelineRunner:
         logs_dir = output_dir / "logs"
         logs_dir.mkdir(exist_ok=True)
 
+        self.qc_dir = qc_dir
+
         self.paths = {
             "vds": self.config.vds_path or str(output_dir / f"{prefix}.vds"),
             "mt": self.config.mt_path or str(output_dir / f"{prefix}.mt"),
             "sample_qc": str(qc_dir / f"{prefix}_sample_qc.ht"),
             "variant_qc": str(qc_dir / f"{prefix}_variant_qc.ht"),
             "sample_qc_csv": str(qc_dir / f"{prefix}_sample_qc.csv"),
-            "variant_qc_csv": str(qc_dir / f"{prefix}_variant_qc.csv"),
+            # A TAB-delimited preview of the first 10,000 variants, in
+            # save_qc_metrics' layout (see _run_compute_variant_qc). No
+            # QC-annotated MatrixTable is written here: --apply-qc-filters and
+            # --generate-qc-report instead annotate the plain MT with sample_qc.ht/
+            # variant_qc.ht on the fly (see _read_qc_table), so a default run never
+            # pays for an extra full MatrixTable write.
+            "variant_qc_tsv": str(qc_dir / f"{prefix}_variant_qc.tsv"),
             "pvcf": str(output_dir / f"{prefix}.vcf.bgz"),
             "qc_report": str(qc_dir / f"{prefix}_qc_report.html"),
             "state": str(output_dir / ".pipeline_state.json"),
@@ -588,15 +598,27 @@ class PipelineRunner:
         # Compute sample QC
         mt_qc = compute_sample_qc(mt)
 
-        # Extract and save sample QC table
+        # Extract and save the Hail Table of sample QC metrics.
         sample_qc_ht = mt_qc.cols().select("sample_qc")
         sample_qc_ht.write(self.paths["sample_qc"], overwrite=self.config.overwrite)
 
-        # Export to CSV for easy inspection
-        sample_qc_ht.export(self.paths["sample_qc_csv"])
+        # Real comma CSV via save_qc_metrics -- the same helper `hvantk hgc
+        # compute-qc` uses (Table.export, used here until this fix, is
+        # TAB-delimited regardless of file extension). save_mt=False: a
+        # QC-annotated MatrixTable copy would cost a full extra write of the
+        # whole cohort on EVERY run, even when neither --apply-qc-filters nor
+        # --generate-qc-report is set. Those two instead annotate the plain MT
+        # with this Table on the fly -- see _run_export_pvcf,
+        # _generate_qc_report, _read_qc_table.
+        saved = save_qc_metrics(
+            QCMetrics(mt_qc, sample_qc=sample_qc_ht, variant_qc=None),
+            output_dir=self.qc_dir,
+            prefix=self.config.output_prefix,
+            save_mt=False,
+        )
 
         self.logger.info(f"   ✓ Sample QC saved: {self.paths['sample_qc']}")
-        self.logger.info(f"   ✓ Sample QC CSV: {self.paths['sample_qc_csv']}")
+        self.logger.info(f"   ✓ Sample QC CSV: {saved['sample_qc']}")
 
         return self.paths["sample_qc"]
 
@@ -610,20 +632,44 @@ class PipelineRunner:
         # Compute variant QC
         mt_qc = compute_variant_qc(mt)
 
-        # Extract and save variant QC table
+        # Extract and save the Hail Table of variant QC metrics.
         variant_qc_ht = mt_qc.rows().select("variant_qc")
         variant_qc_ht.write(self.paths["variant_qc"], overwrite=self.config.overwrite)
 
-        # Export sample to CSV (limit rows for large datasets)
-        variant_qc_sample = variant_qc_ht.head(10000)
-        variant_qc_sample.export(self.paths["variant_qc_csv"])
+        # A TSV preview of the first 10,000 variants, in the flattened, TAB-delimited
+        # layout save_qc_metrics writes; the full table is the Hail Table above.
+        # Exporting every variant (what `compute-qc` does on request) would add a
+        # WGS-scale text write to every default pipeline run.
+        variant_qc_ht.head(10000).flatten().export(self.paths["variant_qc_tsv"])
+        _assert_export_is_parseable(Path(self.paths["variant_qc_tsv"]))
 
         self.logger.info(f"   ✓ Variant QC saved: {self.paths['variant_qc']}")
         self.logger.info(
-            f"   ✓ Variant QC CSV (sample): {self.paths['variant_qc_csv']}"
+            f"   ✓ Variant QC TSV (first 10,000 variants): {self.paths['variant_qc_tsv']}"
         )
 
         return self.paths["variant_qc"]
+
+    def _read_qc_table(self, key: str, stage: PipelineStage) -> Optional[hl.Table]:
+        """Read a QC-compute stage's small Hail Table (``sample_qc.ht``/
+        ``variant_qc.ht``), if one is available.
+
+        Checks the pipeline's own state first (the stage ran earlier in THIS
+        invocation), then falls back to the path existing on disk: a resumed run
+        with ``--skip-compute-sample-qc``/``--skip-compute-variant-qc`` starts with
+        a fresh, empty ``PipelineState`` (state.json is not auto-loaded -- see the
+        docs' Resuming section), but an earlier invocation's
+        ``qc/<prefix>_{sample,variant}_qc.ht`` is still there at the same path.
+
+        Returns ``None``, never raises, when neither holds -- callers decide
+        whether that is an error (``_run_export_pvcf``, gated by the matching
+        ``--skip-compute-*`` flag, should always find one) or a normal "QC never
+        ran" case (``_generate_qc_report``).
+        """
+        path = self.paths[key]
+        if self.state.is_stage_complete(stage) or Path(path).exists():
+            return hl.read_table(path)
+        return None
 
     def _run_export_pvcf(self) -> str:
         """Stage 5: Export to project VCF."""
@@ -635,26 +681,50 @@ class PipelineRunner:
         if self.config.apply_qc_filters:
             self.logger.info("   Applying QC filters...")
 
-            # Load the MT
+            # Load the plain MT and annotate it with the small sample_qc.ht/
+            # variant_qc.ht Tables the compute-QC stages wrote, rather than reading
+            # back a separate QC-annotated MT copy: writing one on every run, even
+            # without --apply-qc-filters/--generate-qc-report, cost a full extra
+            # MatrixTable write of the whole cohort.
             mt = hl.read_matrix_table(mt_path)
 
             # Filter samples
             if not self.config.skip_compute_sample_qc:
-                mt = filter_samples_by_qc(
-                    mt, min_call_rate=self.config.min_sample_call_rate
+                sample_qc_ht = self._read_qc_table(
+                    "sample_qc", PipelineStage.COMPUTE_SAMPLE_QC
                 )
-                self.logger.info(
-                    f"   ✓ Filtered samples by call rate >= {self.config.min_sample_call_rate}"
-                )
+                if sample_qc_ht is not None:
+                    mt = mt.annotate_cols(sample_qc=sample_qc_ht[mt.col_key].sample_qc)
+                    mt = filter_samples_by_qc(
+                        mt, min_call_rate=self.config.min_sample_call_rate
+                    )
+                    self.logger.info(
+                        f"   ✓ Filtered samples by call rate >= {self.config.min_sample_call_rate}"
+                    )
+                else:
+                    self.logger.warning(
+                        "   sample_qc table not found; skipping sample filtering"
+                    )
 
             # Filter variants
             if not self.config.skip_compute_variant_qc:
-                mt = filter_variants_by_qc(
-                    mt, min_call_rate=self.config.min_variant_call_rate
+                variant_qc_ht = self._read_qc_table(
+                    "variant_qc", PipelineStage.COMPUTE_VARIANT_QC
                 )
-                self.logger.info(
-                    f"   ✓ Filtered variants by call rate >= {self.config.min_variant_call_rate}"
-                )
+                if variant_qc_ht is not None:
+                    mt = mt.annotate_rows(
+                        variant_qc=variant_qc_ht[mt.row_key].variant_qc
+                    )
+                    mt = filter_variants_by_qc(
+                        mt, min_call_rate=self.config.min_variant_call_rate
+                    )
+                    self.logger.info(
+                        f"   ✓ Filtered variants by call rate >= {self.config.min_variant_call_rate}"
+                    )
+                else:
+                    self.logger.warning(
+                        "   variant_qc table not found; skipping variant filtering"
+                    )
 
             # Save filtered MT
             filtered_mt_path = str(
@@ -686,22 +756,25 @@ class PipelineRunner:
         """Generate HTML QC report."""
         self.logger.info("📝 Generating HTML QC report...")
 
-        mt_path = self.state.outputs.get("mt") or self.config.mt_path
-        mt = hl.read_matrix_table(mt_path)
+        # Read the small sample_qc.ht/variant_qc.ht Tables the compute-QC stages
+        # wrote (this run, or an earlier one -- see _read_qc_table), not a
+        # QC-annotated MT copy: generate_qc_report only ever reads QCMetrics'
+        # .sample_qc/.variant_qc Tables (via get_sample_metrics_df()/
+        # get_variant_metrics_df()), never .mt, so there is nothing to gain by
+        # annotating or rewriting the MatrixTable just for this.
+        sample_qc_ht = self._read_qc_table("sample_qc", PipelineStage.COMPUTE_SAMPLE_QC)
+        variant_qc_ht = self._read_qc_table(
+            "variant_qc", PipelineStage.COMPUTE_VARIANT_QC
+        )
 
-        # Check for QC annotations
-        has_sample_qc = "sample_qc" in mt.col
-        has_variant_qc = "variant_qc" in mt.row
-
-        if not has_sample_qc and not has_variant_qc:
+        if sample_qc_ht is None and variant_qc_ht is None:
             self.logger.warning("No QC annotations found, skipping report generation")
             return
 
-        # Create QCMetrics object
-        sample_qc = mt.cols().select("sample_qc") if has_sample_qc else None
-        variant_qc = mt.rows().select("variant_qc") if has_variant_qc else None
+        mt_path = self.state.outputs.get("mt") or self.config.mt_path
+        mt = hl.read_matrix_table(mt_path)
 
-        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc, variant_qc=variant_qc)
+        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc_ht, variant_qc=variant_qc_ht)
 
         # Generate report
         report_path = qc_results.generate_html_report(

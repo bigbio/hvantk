@@ -6,6 +6,7 @@ gene list is enriched in gene sets.
 """
 
 import logging
+from pathlib import Path
 
 import click
 
@@ -139,13 +140,18 @@ def overlap_test(
     click.echo(f"  Correction method: {correction}")
     click.echo(f"  Significance threshold: {alpha}")
 
-    df = compute_overlap_enrichment_pandas(query_genes, gene_set_collection, correction)
+    df = compute_overlap_enrichment_pandas(
+        query_genes, gene_set_collection, correction, alpha=alpha
+    )
 
     if df.empty:
         click.echo("\nNo results generated (check gene ID matching)")
         return
 
-    # Output results
+    # Output results. -o's parent directory may not exist yet (e.g. a fresh
+    # results/ tree); create it so to_csv()/to_json() below don't raise.
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+
     if output_format in ("tsv", "both"):
         tsv_path = output if output.endswith(".tsv") else f"{output}.tsv"
         df.to_csv(tsv_path, sep="\t", index=False)
@@ -158,23 +164,31 @@ def overlap_test(
 
     # Generate report if requested
     if generate_report:
-        from pathlib import Path
-
         from hvantk.algorithms.enrichex.report import generate_report
 
         click.echo("\nGenerating report...")
 
-        # Determine output directory and file paths
+        # Determine the output directory exactly as above (file suffix ->
+        # its parent; otherwise -o names a directory).
         output_path = Path(output)
         if output_path.suffix in [".tsv", ".json"]:
             output_dir = output_path.parent
-            results_path = output_path
         else:
             output_dir = output_path
-            output_dir.mkdir(parents=True, exist_ok=True)
-            results_path = output_dir / "overlap_results.tsv"
-            if not results_path.exists():
-                df.to_csv(results_path, sep="\t", index=False)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # The report reader (_load_results) always expects TSV. Reuse the
+        # primary output when it already is one; otherwise (JSON output, or
+        # a directory output) stage a dedicated TSV copy rather than
+        # misreading JSON as TSV, or reading a file that was never written
+        # at the literal -o path.
+        results_path = (
+            output_path
+            if output_path.suffix == ".tsv"
+            else output_dir / "overlap_results.tsv"
+        )
+        if not results_path.exists():
+            df.to_csv(results_path, sep="\t", index=False)
 
         report_path = output_dir / "enrichex_overlap_report.html"
 

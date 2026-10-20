@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("annotate")
 def annotate_group():
-    """Build gene- and cohort-level annotation artifacts."""
+    """Build gene- and cohort-level annotation datasets."""
 
 
 @annotate_group.command("spine")

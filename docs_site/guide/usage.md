@@ -116,7 +116,7 @@ Every build writes a sidecar `<output>.provenance.json` next to the output, reco
   "source_fingerprint": "sha256:...",
   "schema_id": "clinvar-variants-v3",
   "build_timestamp": "2026-10-20T12:00:00+00:00",
-  "builder_commit": null,
+  "builder_commit": "a1b2c3d...",
   "parents": [],
   "build_parameters": {}
 }
@@ -125,8 +125,9 @@ Every build writes a sidecar `<output>.provenance.json` next to the output, reco
 `source_fingerprint` is the drift probe's fingerprint at build time. `parents` is
 filled only for a dataset derived from other hvantk datasets. `build_parameters` records
 the options a builder chose to stamp, and is `null` only in a sidecar written before the
-field existed. `builder_commit` is always `null` for `reprocess` builds today. Loading the
-dataset later (`hvantk.core.io.load`) re-attaches this `Provenance`.
+field existed. `builder_commit` records the hvantk git commit `reprocess` ran from, or
+`hvantk <version>` when there is no git checkout to ask (e.g. a wheel install). Loading
+the dataset later (`hvantk.core.io.load`) re-attaches this `Provenance`.
 
 ### Drift check at the end of a build
 

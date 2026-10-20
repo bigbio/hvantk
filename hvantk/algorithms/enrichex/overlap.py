@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from scipy.stats import fisher_exact
 
+from hvantk.algorithms.enrichex.constants import DEFAULT_ALPHA
 from hvantk.algorithms.statistics.correction import apply_correction
 from hvantk.core.utils.gene_sets import GeneSetCollection
 
@@ -236,6 +237,7 @@ def compute_overlap_enrichment_pandas(
     query_genes: List[str],
     gene_set_collection: GeneSetCollection,
     correction_method: str = "benjamini-hochberg",
+    alpha: float = DEFAULT_ALPHA,
 ):
     """Compute enrichment and return as pandas DataFrame.
 
@@ -250,6 +252,9 @@ def compute_overlap_enrichment_pandas(
         Gene set collection
     correction_method : str
         Multiple testing correction method
+    alpha : float
+        Significance threshold applied to ``p_adjusted`` for the
+        ``significant`` column.
 
     Returns
     -------
@@ -260,7 +265,7 @@ def compute_overlap_enrichment_pandas(
         - p_value, odds_ratio, ci_lower, ci_upper
         - p_adjusted
         - overlap_genes (comma-separated string)
-        - significant (bool, p_adjusted < 0.05)
+        - significant (bool, p_adjusted < alpha)
 
     Examples
     --------
@@ -294,6 +299,6 @@ def compute_overlap_enrichment_pandas(
 
     df = pd.DataFrame([r.to_dict() for r in results])
     df["overlap_genes"] = df["overlap_genes"].apply(lambda x: ",".join(x))
-    df["significant"] = df["p_adjusted"] < 0.05
+    df["significant"] = df["p_adjusted"] < alpha
 
     return df

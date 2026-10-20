@@ -377,9 +377,11 @@ def ptm_population_cmd(
     """Population-level PTM-variant allele frequency analysis.
 
     \b
-    Compares allele frequency distributions at PTM sites vs non-PTM coding
-    positions in gnomAD. Identifies PTM sites under purifying selection
-    (zero or near-zero AF).
+    Compares allele frequency distributions between PTM-site, PTM-proximal,
+    and non-PTM variants in the gnomAD table (no coding filter is applied;
+    the comparison covers whatever --gnomad-ht contains). Reports per-group
+    counts and AF summary statistics; whether low AF at PTM sites reflects
+    purifying selection is left for the caller to judge.
 
     \b
     Output:
@@ -624,9 +626,9 @@ def ptm_constraint(
     \b
     Compares gnomAD allele-frequency distributions between PTM-proximal and
     non-PTM variants, stratified by a metadata field from the expression
-    dataset. Runs five tests (per-group ranking, tau quartile, LOEUF x group
-    factorial, PTM category x group heatmap, within-gene Wilcoxon) and emits
-    TSVs, four PNG panels, and one self-contained HTML report.
+    dataset. Runs five tests (per-group ranking, tau quartile, tau bin x
+    LOEUF bin factorial, PTM category x group heatmap, within-gene Wilcoxon)
+    and emits TSVs, four PNG panels, and one self-contained HTML report.
 
     \b
     Note: this is a stratified DEPLETION analysis — not a per-variant scorer.
@@ -639,14 +641,15 @@ def ptm_constraint(
           --expression-source hail-mt \\
           --expression-path /data/GTEX_v7.mt \\
           --grouping SMTSD \\
+          --expression-metric mean \\
           --output-dir results/ptm-gtex/
 
       hvantk ptm constraint \\
           --variants-ht clinvar_ptm.ht \\
           --expression-source anndata \\
-          --expression-path /data/farah_2024.h5ad \\
+          --expression-path /data/celltype_atlas.h5ad \\
           --grouping major_cell_class \\
-          --output-dir results/ptm-farah/
+          --output-dir results/ptm-atlas/
     """
     try:
         from hvantk.algorithms.ptm.constraint import (
@@ -710,12 +713,9 @@ def _read_variants_table(path: str):
     # Derive the delimiter from the last non-compression suffix so inputs like
     # ``variants.csv.bgz`` are parsed as CSV, not TSV.
     compression_suffixes = {".gz", ".bgz", ".bz2"}
+    suffixes = [s.lower() for s in Path(p).suffixes]
     base_suffix = next(
-        (
-            s.lower()
-            for s in reversed(Path(p).suffixes)
-            if s.lower() not in compression_suffixes
-        ),
+        (s for s in reversed(suffixes) if s not in compression_suffixes),
         "",
     )
     if base_suffix in {".tsv", ".tab"}:
@@ -724,7 +724,13 @@ def _read_variants_table(path: str):
         sep = ","
     else:
         sep = "\t"
-    return _pd.read_csv(p, sep=sep, low_memory=False)
+    # pandas does not infer ".bgz"; map it (and .gz) to gzip explicitly. BGZF is a
+    # valid multi-member gzip stream, so the gzip codec reads it transparently.
+    comp_map = {".gz": "gzip", ".bgz": "gzip", ".bz2": "bz2"}
+    compression = next(
+        (comp_map[s] for s in reversed(suffixes) if s in comp_map), "infer"
+    )
+    return _pd.read_csv(p, sep=sep, low_memory=False, compression=compression)
 
 
 def _read_expression_wide(pkl_path, tsv_path):

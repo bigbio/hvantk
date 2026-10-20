@@ -120,6 +120,13 @@ def _json_safe(obj):
 
 def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     """Run the pipeline and write a provenance-stamped report. Returns the report dict."""
+    errors = config.validate()
+    if errors:
+        raise ValueError(
+            "GwasColocConfig validation failed:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
+
     half = config.window_kb * 1000
     start, end = (
         max(1, config.lead - half),

@@ -67,9 +67,12 @@ file.
 
 ### Review status and labels
 
-With `--min-stars` above 0 (the default is 1), `CLNREVSTAT` (its first element when the
-field is an array) is converted to review stars, and variants below the minimum or without
-a review status are dropped. `--min-stars 0` turns the filter off.
+With `--min-stars` above 0 (the default is 1), `CLNREVSTAT` is converted to review stars
+and variants below the minimum or without a review status are dropped. `--min-stars 0`
+turns the filter off. `hvantk reprocess clinvar:variants` stores `CLNREVSTAT` as Hail reads
+it from the VCF: an array split at commas, so `criteria_provided,_single_submitter` becomes
+`["criteria_provided", "_single_submitter"]`; PS-ROC joins it back into one string with `,`
+before the lookup below, so array- and string-typed tables are scored the same way.
 
 | `CLNREVSTAT` | Stars |
 | --- | --- |
@@ -79,25 +82,7 @@ a review status are dropped. `--min-stars 0` turns the filter off.
 | `criteria_provided,_single_submitter`; `criteria_provided,_conflicting_classifications` (or `_interpretations`) | 1 |
 | any other value | 0 |
 
-!!! warning "Review status in tables built from the ClinVar VCF"
-    `hvantk reprocess clinvar:variants` stores `CLNREVSTAT` as Hail reads it from the VCF:
-    an array split at commas, so `criteria_provided,_single_submitter` becomes
-    `["criteria_provided", "_single_submitter"]`. PS-ROC looks up only the first element,
-    and `criteria_provided` is not in the table above, so every 1- and 2-star status
-    counts as 0 stars. With such a table, `--min-stars 1` and `--min-stars 2` keep only
-    expert-panel and practice-guideline variants (3 and 4 stars). Use `--min-stars 0` to
-    keep every review status or `--min-stars 3` for 3 and 4 stars, or join the array back
-    into one string before running PS-ROC:
-
-    ```python
-    import hail as hl
-
-    ht = hl.read_table("data/clinvar.ht")
-    ht = ht.annotate(info=ht.info.annotate(CLNREVSTAT=hl.delimit(ht.info.CLNREVSTAT, ",")))
-    ht.write("data/clinvar_revstat.ht")
-    ```
-
-The label comes from `CLNSIG` (again its first element when the field is an array),
+The label comes from `CLNSIG` (its first element when the field is an array),
 matched exactly:
 
 - pathogenic: `Pathogenic`, `Likely_pathogenic`, `Pathogenic/Likely_pathogenic`
@@ -230,7 +215,7 @@ results/psroc_brca/
 │   ├── psroc_auc_comparison.png
 │   ├── psroc_missingness.png
 │   └── psroc_dashboard.png
-├── logs/                     # created, left empty
+├── logs/                     # psroc_<timestamp>.log: the run's log, at the console's level (INFO with -v)
 └── .pipeline_state.json      # configuration, completed stages, errors and timings
 ```
 
@@ -352,8 +337,8 @@ defaults, plus:
 - `pathogenic_labels`, `benign_labels`: required; without them `PSROCPipeline` raises
   `Configuration validation failed`.
 - `score_directions`: `{score: bool}` overriding the direction used to reduce per-transcript
-  values (`True` = higher is more damaging). It does not change the ROC, and
-  `run_collection()` does not pass it on to the per-set runs.
+  values (`True` = higher is more damaging). It does not change the ROC. `run_collection()`
+  passes it on to every per-set run.
 
 For a gene set collection, pass a dict of sets and call `run_collection()`. Alias expansion
 needs a gene catalog passed to the pipeline; `hgnc_path` alone only records the path:
@@ -446,7 +431,6 @@ plot function returns the matplotlib figure and, given `output_path`, saves it a
 | `Too few labeled variants (N) for ROC analysis` | Fewer than `--min-variants` pathogenic and benign variants remain; the outputs are written without AUCs. |
 | `No scores passed the missingness threshold` | Every score is missing for more than `--max-missingness` of the variants. Check `{prefix}_missingness.json`, raise the threshold or choose scores with better coverage. |
 | `No valid variants found in <file>` | The `--variants` file has no `chr:pos:ref:alt` lines. |
-| Few variants survive `--min-stars 1` or `2` | See the [review status warning](#review-status-and-labels). |
 
 ## See also
 

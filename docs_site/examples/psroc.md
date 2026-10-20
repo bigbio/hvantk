@@ -61,7 +61,7 @@ out/psroc_example/
     │   ├── psroc_example_auc_comparison.png
     │   ├── psroc_example_missingness.png
     │   └── psroc_example_dashboard.png
-    ├── logs/                # created, left empty
+    ├── logs/                # this run's log file
     └── .pipeline_state.json
 ```
 
@@ -79,10 +79,6 @@ hvantk psroc \
   --export-tsv \
   --output-dir results/psroc_example
 ```
-
-On a table built from the ClinVar VCF, read the
-[review status warning](../tools/psroc.md#review-status-and-labels) before relying on
-the default `--min-stars 1`.
 
 The [`examples/psroc/`](https://github.com/bigbio/hvantk/tree/main/examples/psroc/)
 directory holds the script and three sample dashboards from a `--gene-sets` run on real

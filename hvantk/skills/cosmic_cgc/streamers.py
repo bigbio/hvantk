@@ -323,7 +323,11 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         if ht is None:
             raise ValueError("COSMIC CGC table not loaded.")
 
-        rows = ht.select("gene_symbol", "somatic", "germline").collect()
+        # Not ht.select("gene_symbol", ...): gene_symbol is the table's key when no
+        # gene_catalog was supplied (the common case; see aggregate_by_disease_category
+        # above for the same fix). Key fields are carried on every collected row
+        # regardless, so a plain collect() keeps gene_symbol in both keying modes.
+        rows = ht.collect()
         somatic_only = set()
         germline_only = set()
         both = set()
@@ -422,36 +426,48 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         self,
         categories,
         min_classification=None,
+        mutation_context: str = "both",
     ):
         """Aggregate genes into keyword categories by matching tumour types.
 
-        Since COSMIC CGC lacks MONDO disease labels, this searches the
-        merged tumour types (somatic + germline) for keyword matches.
+        Since COSMIC CGC lacks MONDO disease labels, this searches tumour
+        types for keyword matches. ``mutation_context`` selects which genes
+        and which tumour-types field to search, mirroring
+        ``get_geneset_per_tumour_type``'s somatic/germline/both split.
         """
         from typing import Dict, Set
 
         self._ensure_table_loaded()
-        ht = self._table
-        if ht is None:
-            raise ValueError("COSMIC CGC table not loaded.")
+        ht = self.filter_by_mutation_context(mutation_context)
 
         if min_classification:
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         row_fields = set(ht.row)
-        somatic = (
-            ht.tumour_types_somatic
-            if "tumour_types_somatic" in row_fields
-            else hl.empty_array(hl.tstr)
-        )
-        germline = (
-            ht.tumour_types_germline
-            if "tumour_types_germline" in row_fields
-            else hl.empty_array(hl.tstr)
-        )
-        ht = ht.annotate(_all_tumour_types=hl.array(hl.set(somatic.extend(germline))))
-        rows = ht.select("gene_symbol", "_all_tumour_types").collect()
+        if mutation_context == "somatic" and "tumour_types_somatic" in row_fields:
+            ht = ht.annotate(_all_tumour_types=ht.tumour_types_somatic)
+        elif mutation_context == "germline" and "tumour_types_germline" in row_fields:
+            ht = ht.annotate(_all_tumour_types=ht.tumour_types_germline)
+        else:
+            somatic = (
+                ht.tumour_types_somatic
+                if "tumour_types_somatic" in row_fields
+                else hl.empty_array(hl.tstr)
+            )
+            germline = (
+                ht.tumour_types_germline
+                if "tumour_types_germline" in row_fields
+                else hl.empty_array(hl.tstr)
+            )
+            ht = ht.annotate(
+                _all_tumour_types=hl.array(hl.set(somatic.extend(germline)))
+            )
+        # Not ht.select("gene_symbol", ...): gene_symbol is the table's key when no
+        # gene_catalog was supplied (the common case), and Hail forbids naming a key
+        # field in select() -- key fields are already carried on every collected row
+        # regardless, so a plain collect() keeps gene_symbol in both keying modes.
+        rows = ht.collect()
 
         gene_sets: Dict[str, Set[str]] = {}
         for cat_name, terms in categories.items():

@@ -41,13 +41,13 @@
 Both builds write a sidecar `<output>.provenance.json` next to the table
 (`hvantk/core/io/_manifest.py`), with fields `plugin`, `dataset`, `plugin_version`,
 `source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit`, `parents` and
-`build_parameters`. `builder_commit` is **always `null`** when a dataset is built
-through `hvantk reprocess` (the normal path here) -- it is populated only when a
-builder is invoked directly from Python with a real commit to record
-(`hvantk/core/plugin/run_builder.py`; `dataset-build-at-scale`'s own
-`references/verification.md` says the same for its own datasets). Same-checkout is
-established a different way: the run notes' own `commit:` line, plus the job ids that
-produced each input, both already captured by the procedure above. The sidecar is
+`build_parameters`. `builder_commit` records the hvantk commit the build ran from:
+`hvantk reprocess` (the normal path here) sets it to the running hvantk's own checkout
+commit, or `hvantk <version>` when there is no git checkout to ask; a builder invoked
+directly from Python can also set it explicitly (`hvantk/core/plugin/run_builder.py`).
+Same-checkout is established a different way:
+the run notes' own `commit:` line, plus the job ids that produced each input, both
+already captured by the procedure above. The sidecar is
 still worth keeping: it records each build's `plugin_version`, `build_timestamp` and
 `source_fingerprint`, and its own sha256 is what a receipt cites to tie a build to
 exactly one artifact.

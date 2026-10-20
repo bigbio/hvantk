@@ -1426,10 +1426,11 @@ def permutation_burden_test(
 ) -> "pd.DataFrame":
     """Competitive gene-set burden test via gene-label permutation.
 
-    Tests whether each gene set is **more** burdened than random gene
-    sets of the same size (competitive null), as opposed to the
-    self-contained null tested by ``run_burden_analysis()``.  This
-    controls for the baseline rate of rare variation and gene set size.
+    Tests whether each gene set's association with phenotype is **more
+    extreme** (two-sided: either direction) than random gene sets of the
+    same size (competitive null), as opposed to the self-contained null
+    tested by ``run_burden_analysis()``.  This controls for the baseline
+    rate of rare variation and gene set size.
 
     Algorithm
     ---------

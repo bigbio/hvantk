@@ -194,18 +194,17 @@ Stages (each can be skipped independently):
 | `--min-sample-call-rate FLOAT` | Sample call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--min-variant-call-rate FLOAT` | Variant call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--generate-qc-report` | Generate an HTML QC report after computing QC | off |
-| `--keep-intermediates` | Keep the VDS and MT (currently always on, see caution below) | on |
+| `--keep-intermediates` | Accepted but has no effect: the VDS and MT are always kept | on |
 | `--dry-run` | Show the execution plan without running | off |
 
-> **`--apply-qc-filters` and `--generate-qc-report` do not currently work.** The
-> pipeline's QC stages compute sample/variant QC into memory and export only the `.ht`
-> tables (see [Outputs](#outputs)) — they never write the QC-annotated MatrixTable
-> back to `<prefix>.mt`. As a result `--apply-qc-filters` raises
-> `ValueError: Sample QC annotation 'sample_qc' not found` and aborts the run, and
-> `--generate-qc-report` just logs a warning and produces no file. Until this is
-> fixed, run QC filtering and reporting as separate commands against the pipeline's
-> `<prefix>.mt` instead — see [QC metrics and filters](#qc-metrics-and-filters) and the
-> Quick start above.
+`--apply-qc-filters` and `--generate-qc-report` both read the small
+`qc/<prefix>_sample_qc.ht`/`qc/<prefix>_variant_qc.ht` Tables stages 3/4 write and
+annotate the plain MT with them on the fly — see [Outputs](#outputs). Neither flag
+makes the pipeline write a QC-annotated copy of the whole MatrixTable: on a real
+cohort that would be a multi-TB write and hours of cluster time, paid on every run
+since the QC stages run by default. If both QC stages are skipped, those `.ht`
+tables don't exist: `--apply-qc-filters` then exports unfiltered (there is nothing
+to filter by), and `--generate-qc-report` logs a warning and writes no report.
 
 **Resuming.** The pipeline does not auto-resume: it always runs every stage you
 haven't explicitly `--skip-*`'d. `.pipeline_state.json` in the output directory
@@ -223,6 +222,14 @@ hvantk hgc pipeline -i /data/gvcfs -o /data/output \
 
 `--overwrite` is usually needed on a resumed run, since the stage you're re-entering
 at will try to write a path that already exists.
+
+`--generate-qc-report` is resume-aware: it looks for `qc/<prefix>_sample_qc.ht`/
+`qc/<prefix>_variant_qc.ht` on disk even if this invocation's own (fresh,
+not-auto-loaded) state has no record of computing them, so
+`--skip-compute-sample-qc --skip-compute-variant-qc --generate-qc-report` on its own
+picks up an earlier run's tables. `--apply-qc-filters` does not: it filters by
+whichever of sample/variant QC is *not* `--skip-*`'d in this same invocation, same as
+every other stage skip.
 
 ## QC metrics and filters
 
@@ -377,23 +384,28 @@ qc_results/
 output_directory/
 ├── cohort.vds/                  # Stage 1
 ├── cohort.mt/                   # Stage 2
-├── cohort.vcf.bgz                # Stage 5
+├── cohort_filtered.mt/          # Stage 5, only with --apply-qc-filters
+├── cohort.vcf.bgz               # Stage 5
 ├── qc/
 │   ├── cohort_sample_qc.ht      # Stage 3, Hail Table, every sample
-│   ├── cohort_sample_qc.csv     # same data; TAB-delimited despite the .csv name
+│   ├── cohort_sample_qc.csv     # same data, comma-separated
 │   ├── cohort_variant_qc.ht     # Stage 4, Hail Table, every variant
-│   └── cohort_variant_qc.csv    # first 10,000 variants only; also TAB-delimited
+│   ├── cohort_variant_qc.tsv    # first 10,000 variants, TAB-separated
+│   └── cohort_qc_report.html    # only with --generate-qc-report
 ├── logs/
 │   └── pipeline_<timestamp>.log
 └── .pipeline_state.json         # inspect this to resume manually, see above
 ```
 
-Two gotchas in that tree: `qc/cohort_variant_qc.csv` is a 10,000-row *sample*, not the
-full variant table (use `qc/cohort_variant_qc.ht` for the full table); and both pipeline
-CSVs are TAB-delimited internally despite the `.csv` extension (unlike the standalone
-`compute-qc` command's `_sample_qc.csv`, which is a real comma CSV). `qc-summary`
-handles both, since it sniffs the delimiter for the variant file — but reading
-`cohort_sample_qc.csv` yourself with a plain comma parser will mis-split it.
+`cohort_sample_qc.csv` (every sample, comma-separated) and `cohort_variant_qc.tsv` use
+the same names, delimiters and columns as `compute-qc`'s files. The variant TSV is a
+preview of the first 10,000 variants; the full per-variant table is
+`cohort_variant_qc.ht`, and `compute-qc` exports every variant when you need the text.
+There is no `_with_qc.mt` here: unlike `compute-qc`, the pipeline
+never writes a QC-annotated copy of the MatrixTable, since the QC stages run by
+default and that write would cost a full extra MatrixTable write of the whole cohort
+on every run. `--apply-qc-filters` and `--generate-qc-report` instead annotate
+`cohort.mt` with `cohort_sample_qc.ht`/`cohort_variant_qc.ht` on the fly.
 
 ## Performance and sizing
 
@@ -619,17 +631,20 @@ companion index and raise `FileNotFoundError` for the missing one. Create it wit
 `tabix -p vcf <file>.g.vcf.gz`.
 
 **`qc-report` says "No QC annotations found in MatrixTable. Run compute-qc first."**
-— the input MatrixTable lacks `sample_qc`/`variant_qc` columns. Either it's a plain
-`vds2mt` output (feed it `compute-qc`'s `<prefix>_with_qc.mt` instead), or it's the
-`pipeline`'s own `<prefix>.mt` — see the `--generate-qc-report` caution under
-[Run the full pipeline](#run-the-full-pipeline).
+— the input MatrixTable lacks `sample_qc`/`variant_qc` columns. This is expected for
+a plain `vds2mt` output (feed it `compute-qc`'s `<prefix>_with_qc.mt` instead) and
+for the `pipeline`'s own `<prefix>.mt`, which never carries them either: the
+pipeline keeps QC separate (`qc/<prefix>_sample_qc.ht`/`variant_qc.ht`) rather than
+writing a QC-annotated copy of the whole MatrixTable. Pass `--generate-qc-report` to
+the pipeline itself instead of running `qc-report` against `<prefix>.mt` directly.
 
 **An exported `_variant_qc.tsv` doesn't parse downstream (numeric columns come back as
 strings or empty)** — Hail's `Table.export` formats floats using the JVM's default
 locale. On a machine whose locale uses a comma decimal separator, `call_rate` is
 written `1,0000e+00` instead of `1.0000e+00`, and every numeric column reads as text.
-`compute-qc` detects this and raises instead of writing a silently broken file; fix it
-by starting the JVM with `-Duser.language=en -Duser.country=US` (for example via
+`compute-qc` and the pipeline's QC stages both detect this and raise instead of writing
+a silently broken file; fix it by starting the JVM with
+`-Duser.language=en -Duser.country=US` (for example via
 `PYSPARK_SUBMIT_ARGS="--driver-java-options='-Duser.language=en -Duser.country=US'"`).
 
 ## See also

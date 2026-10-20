@@ -84,11 +84,6 @@ print(f"Labeled training variants: {labeled_ht.count()}")
 (`CLNDN`, with spaces turned into underscores and lower-cased) equals a term exactly,
 so pass whole names such as `hereditary_breast_ovarian_cancer_syndrome`, not keywords.
 
-!!! warning
-    On a table built with `hvantk reprocess clinvar:variants`, `disease_terms` currently
-    fails with a Hail type error, because the plugin stores `CLNDN` as an array. Label by
-    `gene_set` until this is fixed.
-
 ## Tips
 
 - **Data freshness**: Update ClinVar tables regularly (monthly recommended).

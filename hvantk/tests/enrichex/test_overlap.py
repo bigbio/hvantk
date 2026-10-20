@@ -344,6 +344,34 @@ class TestComputeOverlapEnrichmentPandas:
         enriched_row = df[df["gene_set_name"] == "enriched"].iloc[0]
         assert enriched_row["significant"] == True
 
+    def test_pandas_significant_column_respects_alpha(self):
+        """`significant` must use the caller's alpha, not a hardcoded 0.05.
+
+        This table gives p_value≈0.067 (not significant at the default
+        alpha=0.05). A looser alpha=0.1 must flip it to significant; before
+        the fix, `significant` was always `p_adjusted < 0.05` regardless of
+        what alpha the caller (e.g. the --alpha CLI option) requested.
+        """
+        gene_sets_dict = {"set1": ["A", "B", "C"]}
+        background = set("ABCDEFGHIJ")
+        collection = load_gene_sets_from_dict(
+            gene_sets_dict, background_genes=background
+        )
+        query = ["A", "B"]
+
+        df_default = compute_overlap_enrichment_pandas(
+            query, collection, correction_method="none"
+        )
+        p_adj = df_default.iloc[0]["p_adjusted"]
+        assert 0.05 < p_adj < 0.1  # not significant at the default alpha
+        assert df_default.iloc[0]["significant"] == False
+
+        df_loose = compute_overlap_enrichment_pandas(
+            query, collection, correction_method="none", alpha=0.1
+        )
+        assert df_loose.iloc[0]["p_adjusted"] == p_adj
+        assert df_loose.iloc[0]["significant"] == True
+
     def test_pandas_overlap_genes_string(self):
         """Test that overlap_genes is comma-separated string in DataFrame."""
         gene_sets_dict = {"set1": ["A", "B", "C"]}

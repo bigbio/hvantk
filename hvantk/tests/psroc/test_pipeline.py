@@ -562,6 +562,57 @@ class TestPSROCPipelineValidation:
             ):
                 pipeline.run_collection()
 
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
+    def test_run_collection_forwards_score_directions_to_group_configs(
+        self, mock_exists, mock_hl, mock_pipeline_cls
+    ):
+        """run_collection() must forward score_directions to each per-group
+        PSROCConfig it builds; it used to drop the override silently."""
+        mock_exists.return_value = True
+        mock_hl.current_backend.return_value = Mock()
+
+        fake_result = PSROCResult(
+            annotated_ht_path="x",
+            metrics={},
+            missingness={},
+            n_pathogenic=0,
+            n_benign=0,
+            n_excluded=0,
+            n_total=0,
+            scores_included=[],
+            scores_excluded=[],
+            max_missingness_threshold=0.3,
+            output_dir="out",
+        )
+        mock_pipeline_cls.return_value.run.return_value = fake_result
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            score_directions = {"SIFT_score": True}
+            config = PSROCConfig(
+                gene_set_collection={"cardiac": {"BRCA1"}, "cancer": {"TP53"}},
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=tmpdir,
+                score_directions=score_directions,
+                generate_plots=False,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
+            )
+
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            pipeline = PSROCPipeline(config)
+            pipeline.run_collection()
+
+        assert mock_pipeline_cls.call_count == 2
+        for call in mock_pipeline_cls.call_args_list:
+            group_config = call.args[0]
+            assert group_config.score_directions == score_directions
+
 
 class TestVariantFileParsing:
     """Test variant file parsing in the pipeline."""
@@ -638,3 +689,64 @@ class TestShowPlan:
             assert "REVEL_score" in captured.out
             assert "Load Hail Tables" in captured.out
             assert "Compute ROC" in captured.out
+
+
+@pytest.mark.hail
+class TestFilterByReviewStars:
+    """Regression for the array-typed CLNREVSTAT bug.
+
+    Hail splits a VCF Number=. field at commas on import, so
+    "criteria_provided,_single_submitter" becomes the array
+    ["criteria_provided", "_single_submitter"]. ``_filter_by_review_stars``
+    used to look up only the first element, so every 1- and 2-star status
+    (the only ones containing a comma) missed CLNREVSTAT_STAR_MAP and scored
+    0 stars.
+    """
+
+    def test_array_clnrevstat_keeps_one_through_four_star_rows(self):
+        import hail as hl
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            config = PSROCConfig(
+                genes=["BRCA1"],
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=f"{tmpdir}/out",
+                min_stars=1,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
+            )
+            pipeline = PSROCPipeline(config)
+
+            # One row per star level, CLNREVSTAT as Hail imports it from a
+            # VCF: an array split at commas (a single-token status stays a
+            # one-element array).
+            rows = [
+                {"idx": 0, "revstat": ["no_assertion_criteria_provided"]},  # 0 stars
+                {
+                    "idx": 1,
+                    "revstat": ["criteria_provided", "_single_submitter"],
+                },  # 1 star
+                {
+                    "idx": 2,
+                    "revstat": [
+                        "criteria_provided",
+                        "_multiple_submitters",
+                        "_no_conflicts",
+                    ],
+                },  # 2 stars
+                {"idx": 3, "revstat": ["reviewed_by_expert_panel"]},  # 3 stars
+                {"idx": 4, "revstat": ["practice_guideline"]},  # 4 stars
+            ]
+            ht = hl.Table.parallelize(
+                rows, hl.tstruct(idx=hl.tint32, revstat=hl.tarray(hl.tstr))
+            )
+            ht = ht.annotate(info=hl.struct(CLNREVSTAT=ht.revstat))
+
+            filtered = pipeline._filter_by_review_stars(ht)
+
+            assert sorted(filtered.idx.collect()) == [1, 2, 3, 4]

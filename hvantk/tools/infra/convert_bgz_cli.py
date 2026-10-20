@@ -2,8 +2,8 @@
 Standalone CLI command to convert standard gzip files to block gzip (BGZF).
 
 Examples:
-  hvantk convert-bgz input.tsv.gz
-  hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
+  hvantk utils convert-bgz input.tsv.gz
+  hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 """
 
 import logging

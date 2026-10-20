@@ -541,9 +541,17 @@ def ptm_population(
             af_ptm_prox=hl.agg.filter(is_prox, hl.agg.stats(af)),
             af_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.stats(af)),
             n_zero_af_ptm=hl.agg.filter(is_ptm & (af == 0), hl.agg.count()),
-            afs_ptm_site=hl.agg.filter(is_ptm, hl.agg.take(af, 5000)),
-            afs_ptm_prox=hl.agg.filter(is_prox, hl.agg.take(af, 5000)),
-            afs_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.take(af, 5000)),
+            # hl.agg.take keeps missing values (sorted last) rather than dropping
+            # them, so exclude missing AF before taking or float() below raises.
+            afs_ptm_site=hl.agg.filter(
+                is_ptm & hl.is_defined(af), hl.agg.take(af, 5000)
+            ),
+            afs_ptm_prox=hl.agg.filter(
+                is_prox & hl.is_defined(af), hl.agg.take(af, 5000)
+            ),
+            afs_non_ptm=hl.agg.filter(
+                is_non_ptm & hl.is_defined(af), hl.agg.take(af, 5000)
+            ),
         )
     )
 

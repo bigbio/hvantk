@@ -18,9 +18,6 @@
     burden odds ratio is per qualifying gene, not per variant; ancestry PCA is fitted on
     query and reference together, not projected; `qtlcascade run` colocalises before it
     builds the gene summary.
-  - Known defects are stated where they bite: PS-ROC review stars on tables built from
-    the ClinVar VCF, `hgc pipeline --apply-qc-filters` and `--generate-qc-report`, and
-    `label_training_set(disease_terms=...)` on plugin-built ClinVar tables.
   - Data sources opens with a table of all 26 datasets, how each is acquired and its
     terms. A bring-your-own dataset does not need `--skip-download`.
   - `docs_site/contributing.md` is the full contributor guide and `CONTRIBUTING.md` a
@@ -35,6 +32,52 @@
 - `CITATION.cff` lets GitHub offer "Cite this repository".
 - The docs-claims test's floor on commands found in fenced blocks is 150 (was 200): the
   rewrite moved repeated command blocks into option tables.
+- Help text, docstrings and messages that disagreed with the code were corrected: the root
+  `hvantk --help` line, `annotate` ("datasets"), `reprocess --intermediate` (it has a
+  default) and `--plugin-arg` (a comma makes a list), `psroc --hgnc` (`.ht` only), the
+  `ptm constraint` example, the PTM report's methods text, the ancestry report's
+  validation hint, and the QTL cascade's Wakefield 2009 citation (Genet Epidemiol).
+  The GWAS Catalog catalog entry names the EBI Terms of Use, not CC0.
+
+### Fixed
+
+Found by the documentation review. Each fix has a regression test.
+
+- **PS-ROC review stars.** Tables built by `hvantk reprocess clinvar:variants` store
+  `CLNREVSTAT` as an array split at commas, and PS-ROC looked up only its first element,
+  so every 1- and 2-star status scored 0 and the default `--min-stars 1` kept only 3- and
+  4-star variants. PS-ROC now joins the array before the lookup. **Results change** for
+  runs with `--min-stars` 1 or 2 on such tables. `run_collection()` now passes
+  `score_directions` to each set, and the run log is written to `logs/`.
+- **`hgc pipeline --apply-qc-filters` and `--generate-qc-report`** failed (the first
+  raised, the second wrote nothing). Both now read the stage's saved QC tables. The sample
+  QC file is a real comma CSV, and the variant QC preview is named `.tsv`.
+- **EnrichEx.** A logistic fit that did not converge crashed the multiple-testing
+  correction in `burden` and `burden-pipeline`; it is now left out with a missing
+  `p_adjusted`. `burden-pipeline` ignored `--max-af`, `--min-score`, `--pass-only` and the
+  field options unless `--variant-classes` was given; **results change** for such runs,
+  which now apply the defaults (`--max-af 0.01` on `gnomad_af`). `overlap` applies
+  `--alpha` to the `significant` column (it was fixed at 0.05), no longer crashes with a
+  `.json` output and `--generate-report`, and both commands create the output directory.
+  Bonferroni keeps a missing p-value missing instead of turning it into 1.0, and
+  `burden --dry-run` no longer starts Hail.
+- **QTL cascade.** The colocalisation window ignored the chromosome, so a variant of the
+  same gene on another contig at a nearby position could enter it. An empty
+  colocalisation stage left an earlier run's `coloc_results.tsv` in place; it is now
+  replaced by an empty table. `run --dry-run` creates no directories, and
+  `run_gwas_coloc_pipeline` validates its config.
+- **ClinVar and gene-disease streamers.** `label_training_set(disease_terms=...)` raised
+  a type error on plugin-built ClinVar tables, whose `CLNDN` is an array.
+  `CosmicCGCGeneDiseaseTableStreamer.mutation_context_summary()` and the COSMIC
+  `--group-by keyword` path crashed on the default gene_symbol-keyed build, and the
+  keyword path ignored `--mutation-context`. `HGNCGeneCatalogStreamer.annotate_table()`
+  crashed with its own default fields.
+- **Provenance.** `hvantk reprocess` now records `builder_commit`: the hvantk commit when
+  it runs from hvantk's own git checkout (with `-dirty` for an edited tree), otherwise
+  `hvantk <version>`. It was always `null`.
+- **PTM.** `ptm test` reads `.bgz` input, `ptm population` no longer crashes on variants
+  with a missing allele frequency, and `ptm report` names the `viz` extra when matplotlib
+  is missing.
 
 ## 0.6.0 — 2026-10-17
 

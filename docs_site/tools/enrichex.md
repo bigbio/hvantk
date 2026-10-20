@@ -136,8 +136,7 @@ For each gene set S, with query list Q and background U:
    reported as [0, inf] otherwise.
 6. `p_adjusted` applies Benjamini-Hochberg (default), Bonferroni or no correction across
    the gene sets actually tested.
-7. `significant` is `p_adjusted < 0.05`. This cutoff is fixed: `--alpha` changes only the
-   count in the console summary.
+7. `significant` is `p_adjusted < --alpha`.
 
 ### Run overlap
 
@@ -156,7 +155,7 @@ hvantk enrichex overlap \
 | `-s`, `--gene-sets` | required | Gene-set collection JSON with `background_genes`. |
 | `-o`, `--output` | required | Output path (see below). |
 | `--correction` | `benjamini-hochberg` | `bonferroni`, `benjamini-hochberg` or `none`. |
-| `--alpha` | `0.05` | Threshold for the console summary only. |
+| `--alpha` | `0.05` | Threshold for `significant` and the console summary. |
 | `--output-format` | `tsv` | `tsv`, `json` or `both`. |
 | `--generate-report` | off | Write a dot plot and an HTML report (see [Reports and plots](#reports-and-plots)). |
 
@@ -165,11 +164,11 @@ hvantk enrichex overlap \
 - `tsv` writes the table to `-o`, adding `.tsv` if missing; `json` writes to `-o`, adding
   `.json` if missing. For `both`, give `-o` without an extension: `-o results/overlap`
   writes `results/overlap.tsv` and `results/overlap.json`. The directory that holds these
-  files must already exist.
-- With `--generate-report`, give `-o` a `.tsv` path: the report files go to the same
-  directory. The report reads the table as TSV, so `-o` ending in `.json` fails at the
-  report step. A path without an extension is also created as a directory that receives
-  the report and a copy of the table named `overlap_results.tsv`.
+  files is created if it does not exist yet.
+- With `--generate-report`, the report and its plot are written next to `-o` (its
+  directory for a `.tsv`/`.json` path, or `-o` itself when it names a directory). The
+  report always reads a TSV: a `.tsv` `-o` is reused, otherwise (`.json`, or a directory)
+  a copy named `overlap_results.tsv` is written alongside it for the report to read.
 - When nothing can be tested, the command prints "No results generated" and writes no
   file.
 
@@ -187,7 +186,7 @@ One row per tested gene set, sorted by `p_value`:
 | `ci_lower`, `ci_upper` | 95% CI (Woolf); 0 and `inf` when a cell is zero. |
 | `overlap_genes` | Overlapping genes, sorted, comma-separated. |
 | `p_adjusted` | Corrected p-value. |
-| `significant` | `p_adjusted < 0.05`. |
+| `significant` | `p_adjusted < --alpha`. |
 
 The JSON output is an array of the same records; `overlap_genes` stays a comma-separated
 string and an infinite `ci_upper` becomes `null`.
@@ -241,7 +240,9 @@ regression and is absent from the output.
 
 `p_adjusted` applies `--correction` with m equal to the number of gene sets in the JSON,
 including the sets dropped above (like R's `p.adjust(p, n = m)`), so pre-filtering does
-not lower the penalty. `significant` is `p_adjusted < --alpha`.
+not lower the penalty. `significant` is `p_adjusted < --alpha`. A gene set whose
+regression does not converge keeps a missing `p_value`, is left out of the correction,
+and gets `p_adjusted` = NaN and `significant` = false.
 
 ### Variant classes
 
@@ -338,7 +339,7 @@ hvantk enrichex burden \
 | `-m`, `--cohort-mt` | required | Cohort MatrixTable. |
 | `-p`, `--phenotypes` | required | Phenotype `.ht`, or a TSV. |
 | `-s`, `--gene-sets` | required | Gene-set collection JSON. |
-| `-o`, `--output` | required | A directory, created if needed, that receives `burden_results.tsv`; or a results `.tsv` path in an existing directory. |
+| `-o`, `--output` | required | A directory, created if needed, that receives `burden_results.tsv`; or a results `.tsv` path, whose directory is created if needed. |
 | `--phenotype-field` | `is_case` | Phenotype field. |
 | `--phenotype-type` | `binary` | `binary` (logistic) or `continuous` (linear). |
 | `--covariates` | none | Comma-separated covariate fields, no spaces. |
@@ -432,11 +433,9 @@ hvantk enrichex burden-pipeline \
   -o results/burden/
 ```
 
-!!! warning "Variant filters need `--variant-classes`"
-    `--max-af`, `--min-score`, `--pass-only` and the three field options are applied only
-    together with `--variant-classes`. Without it the pipeline makes one unstratified run
-    per collection, named `all`, with no variant filtering at all, so the MatrixTable must
-    already hold only qualifying variants.
+`--max-af`, `--min-score`, `--pass-only` and the three field options always apply, with
+or without `--variant-classes`: without it, the pipeline still makes one unstratified
+run per collection, named `all`, using those filters.
 
 Where it differs from `burden`:
 
@@ -446,7 +445,7 @@ Where it differs from `burden`:
 | `-p`, `--phenotypes` | Optional; when omitted, read from MatrixTable column fields | Required |
 | `-o` | `--output-dir`, a directory | `--output`, a file or a directory |
 | `--min-carriers` | `5` | `0` |
-| `--max-af` | `0.01` (with `--variant-classes`) | none |
+| `--max-af` | `0.01` | none |
 | `--min-score` | Applied as given; leave it unset to disable | 0 or less disables it |
 | `--pass-only` / `--no-pass-only` | `--no-pass-only`; `--pass-only` keeps rows whose `filters` set is empty | Not available |
 | Permutation test | `--competitive` | `--permutation` |
@@ -456,10 +455,10 @@ The remaining options (`--phenotype-field`, `--phenotype-type`, `--covariates`,
 `--gene-field`, `--genotype-aggregation`, `--correction`, `--alpha`,
 `--min-gene-set-size`, `--n-permutations`, `--permutation-seed`, `--normalize-by-length`,
 `--gene-lengths`, `--af-field`, `--score-field`, `--consequence-field`,
-`--sample-id-field`, `--dry-run`, `--generate-report`) behave as in `burden`, except
-that `--covariates` tolerates spaces after commas and `--dry-run` prints the run plan
-without starting Hail (it still checks that the input paths exist and creates the output
-directories).
+`--sample-id-field`, `--dry-run`, `--generate-report`) behave as in `burden`, except that
+`--covariates` tolerates spaces after commas. `--dry-run` prints the run plan without
+starting Hail in both commands (it still checks that the input paths exist and creates
+the output directories).
 
 Each run (one collection, one class) is corrected on its own, with m = gene sets in that
 collection. A gene set whose regression fails keeps a missing `p_adjusted`.

@@ -244,3 +244,84 @@ def test_densify_stage_reads_the_vds_the_combine_stage_wrote(monkeypatch, tmp_pa
     )
     assert densify.call_args.kwargs["vds_path"] == runner.paths["vds"]
     assert runner.state.outputs["mt"] == runner.paths["mt"]
+
+
+@pytest.mark.hail
+def test_pipeline_qc_filter_and_report_read_the_qc_annotated_mt(tmp_path):
+    """``--apply-qc-filters`` and ``--generate-qc-report`` must use the sample_qc/
+    variant_qc the compute-QC stages wrote, not the plain post-densify MT, which
+    never carries those annotations. Before the fix, the QC-compute stages wrote
+    only the ``.ht`` tables and nothing read them back, so ``--apply-qc-filters``
+    raised ``ValueError: Sample QC annotation 'sample_qc' not found`` and aborted
+    the run, and ``--generate-qc-report`` logged a warning and wrote nothing.
+
+    The fix must NOT write a QC-annotated MatrixTable copy to get there: on a real
+    cohort that is a multi-TB write and hours of cluster time, paid on every run
+    (QC runs by default) even when neither flag is set. ``_run_export_pvcf`` and
+    ``_generate_qc_report`` instead annotate the plain MT with the small
+    ``sample_qc.ht``/``variant_qc.ht`` Tables on the fly -- this test also asserts
+    that no such MatrixTable copy exists on disk afterwards.
+    """
+    import hail as hl
+
+    from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
+
+    mt = hl.balding_nichols_model(
+        n_populations=2, n_samples=10, n_variants=50, n_partitions=2
+    )
+    mt = mt.annotate_entries(
+        GQ=hl.int32(hl.rand_unif(10, 40)), DP=hl.int32(hl.rand_unif(5, 30))
+    )
+    # export_vcf (stage 5) requires a single string column key; balding_nichols_model
+    # keys columns by the integer sample_idx.
+    mt = mt.key_cols_by(s=hl.str(mt.sample_idx))
+    mt_path = str(tmp_path / "input.mt")
+    mt.write(mt_path)
+
+    # --skip-combine-gvcfs needs an existing --vds-path even though stage 1 never
+    # runs: PipelineConfig.validate() only checks that the path exists.
+    dummy_vds = tmp_path / "unused.vds"
+    dummy_vds.mkdir()
+
+    output_dir = tmp_path / "output"
+    config = PipelineConfig(
+        input_dir=str(tmp_path),
+        output_dir=str(output_dir),
+        skip_combine_gvcfs=True,
+        vds_path=str(dummy_vds),
+        skip_vds_to_mt=True,
+        mt_path=mt_path,
+        apply_qc_filters=True,
+        generate_qc_report=True,
+    )
+    assert config.validate() == []
+
+    runner = PipelineRunner(config)
+    state = runner.run()
+
+    assert state.errors == []
+    # _run_export_pvcf writes the filtered MT next to --mt-path (Path(paths["mt"])
+    # is config.mt_path here, not output_dir), named "<prefix>_filtered.mt".
+    assert (Path(mt_path).parent / "cohort_filtered.mt").exists()
+    report_path = Path(runner.paths["qc_report"])
+    assert report_path.exists()
+    assert report_path.stat().st_size > 0
+
+    # The QC tables must be delimited the way their extension promises (previously
+    # both were TAB-delimited via Table.export regardless of name): a real comma CSV
+    # for samples, and a TAB-delimited TSV for variants.
+    with open(runner.paths["sample_qc_csv"]) as fh:
+        sample_header = fh.readline()
+    assert "," in sample_header
+    assert "\t" not in sample_header
+
+    with open(runner.paths["variant_qc_tsv"]) as fh:
+        variant_header = fh.readline()
+    assert "\t" in variant_header
+
+    # The cost regression: no QC-annotated MatrixTable copy must be written, even
+    # here where both --apply-qc-filters and --generate-qc-report are on (the
+    # heaviest QC consumer). If it is not written in this run, it cannot be
+    # written by a default run either -- the compute-QC stages (which always run)
+    # never write one; only this flag-gated code path could have.
+    assert not (Path(runner.qc_dir) / "cohort_with_qc.mt").exists()

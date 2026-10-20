@@ -142,6 +142,74 @@ def _default_intermediate(dataset, raw_dir):
     return os.path.join(raw_dir, f"{dataset.replace(':', '_')}.intermediate")
 
 
+def _builder_commit() -> str:
+    """Identify the hvantk build running this reprocess, for provenance.
+
+    Prefers the git commit hvantk itself is checked out at (true for an editable
+    dev install, including CI and the plugin test suites), so a dataset's
+    provenance ties it to the exact code that built it. Only trusts git when the
+    repository found at the package directory is hvantk's *own* checkout --
+    confirmed by requiring its toplevel to be the package directory's parent --
+    so a wheel install dropped into some unrelated project's .venv does not
+    record that project's HEAD. Appends "-dirty" when the package's tracked
+    files have uncommitted changes, since a bare commit then misdescribes what
+    was actually built. Falls back to the installed package version when there
+    is no (trustworthy) git checkout to ask or git is unavailable -- any
+    failure here is swallowed, since a traceability nice-to-have must never
+    break a build.
+    """
+    import os
+    import subprocess
+
+    package_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    try:
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=package_dir,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        expected_root = os.path.realpath(os.path.dirname(package_dir))
+        actual_root = os.path.realpath(toplevel.stdout.strip())
+        if toplevel.returncode == 0 and actual_root == expected_root:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=package_dir,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            commit = result.stdout.strip()
+            if result.returncode == 0 and commit:
+                dirty = subprocess.run(
+                    [
+                        "git",
+                        "status",
+                        "--porcelain",
+                        "--untracked-files=no",
+                        "--",
+                        package_dir,
+                    ],
+                    cwd=package_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if dirty.returncode == 0 and dirty.stdout.strip():
+                    commit += "-dirty"
+                return commit
+    except Exception:
+        pass
+
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return f"hvantk {version('hvantk')}"
+    except PackageNotFoundError:
+        return "hvantk <unknown>"
+
+
 @click.command(name="reprocess")
 @click.argument("dataset")
 @click.option(
@@ -155,7 +223,11 @@ def _default_intermediate(dataset, raw_dir):
     required=False,
     type=click.Path(),
     default=None,
-    help="Path for parsed intermediate (required when the plugin declares lifecycle.parse)",
+    help=(
+        "Path for parsed intermediate (defaults to "
+        "<raw-dir>/<provider>_<dataset>.intermediate when the plugin declares "
+        "lifecycle.parse and this is omitted)"
+    ),
 )
 @click.option(
     "--output",
@@ -176,7 +248,9 @@ def _default_intermediate(dataset, raw_dir):
         "and build stages (e.g. --plugin-arg cancer_type=brca for "
         "cptac:phospho, --plugin-arg reference_genome=GRCh38 for clinvar). "
         "Repeatable. Values are coerced: 'true'/'false' -> bool, integer "
-        "strings -> int, decimal/scientific -> float, otherwise str."
+        "strings -> int, decimal/scientific -> float, otherwise str; a value "
+        "containing a comma becomes a list of coerced elements (e.g. "
+        "chr1,chr2,chrX)."
     ),
 )
 @click.option(
@@ -358,6 +432,7 @@ def reprocess_cmd(
                 parsed_input=parsed_path,
                 output_path=Path(output),
                 plugin_version=spec.plugin_version or "<unknown>",
+                builder_commit=_builder_commit(),
                 **extras,
             )
 

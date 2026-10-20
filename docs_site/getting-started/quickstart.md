@@ -43,6 +43,7 @@ and writes a provenance record next to it (`data/hgnc.ht.provenance.json`):
   "source_fingerprint": "sha256:6f8c05…",
   "schema_id": "hgnc-lookup-v1",
   "build_timestamp": "2026-10-19T22:30:58+00:00",
+  "builder_commit": "3af91c0…",
   "parents": [],
   "build_parameters": {}
 }

@@ -13,7 +13,7 @@ trait-specific prior variances (case-control GWAS vs quantitative eQTL).
 References
 ----------
 - Giambartolomei et al. (2014) PLoS Genet — coloc
-- Wakefield (2009) Am J Hum Genet — ABF
+- Wakefield (2009) Genet Epidemiol — ABF
 """
 
 from __future__ import annotations
@@ -214,7 +214,7 @@ def coloc_abf_two_traits(
 class GwasColocResult:
     """Ranked coloc result for one GWAS locus × one eQTL dataset."""
 
-    table: pd.DataFrame  # gene_id, n_snp, eqtl_minp, PP3, PP4 (PP4-sorted)
+    table: pd.DataFrame  # gene_id, gene, n_snp, eqtl_min_p, PP3, PP4 (PP4-sorted)
     gwas_min_p: float
     n_genes_tested: int
     region: str

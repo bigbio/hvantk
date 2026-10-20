@@ -538,39 +538,36 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
         if invalid:
             raise ValueError(f"Fields not in HGNC table: {invalid}")
 
+        def _annotate_via_join(hgnc_rekey: hl.Table, key_field: str) -> hl.Table:
+            # Table.select() forbids naming the table's *active* key field (it
+            # is carried on every collected row anyway, but a join's result
+            # struct -- unlike collect() -- exposes only the *non*-key fields
+            # select()ed here); the key field's own value never needs the
+            # join, since it is exactly what was joined on: ht[source_field].
+            non_key = [f for f in fields_to_add if f != key_field]
+            joined = hgnc_rekey.select(*non_key)[ht[source_field]]
+            return ht.annotate(
+                **{
+                    f"hgnc_{f}": (ht[source_field] if f == key_field else joined[f])
+                    for f in fields_to_add
+                }
+            )
+
         if source_type == "hgnc_id":
-            hgnc_select = self._ht.select(*fields_to_add)
-            ht = ht.annotate(
-                **{f"hgnc_{f}": hgnc_select[ht[source_field]][f] for f in fields_to_add}
-            )
+            ht = _annotate_via_join(self._ht, "hgnc_id")
         elif source_type == "ensembl_gene_id":
-            hgnc_rekey = (
-                self._ht.filter(
-                    hl.is_defined(self._ht.ensembl_gene_id)
-                    & (self._ht.ensembl_gene_id != "")
-                )
-                .key_by("ensembl_gene_id")
-                .select(*fields_to_add)
-            )
-            ht = ht.annotate(
-                **{f"hgnc_{f}": hgnc_rekey[ht[source_field]][f] for f in fields_to_add}
-            )
+            hgnc_rekey = self._ht.filter(
+                hl.is_defined(self._ht.ensembl_gene_id)
+                & (self._ht.ensembl_gene_id != "")
+            ).key_by("ensembl_gene_id")
+            ht = _annotate_via_join(hgnc_rekey, "ensembl_gene_id")
         elif source_type == "gene_symbol":
-            hgnc_rekey = self._ht.key_by("gene_symbol").select(*fields_to_add)
-            ht = ht.annotate(
-                **{f"hgnc_{f}": hgnc_rekey[ht[source_field]][f] for f in fields_to_add}
-            )
+            ht = _annotate_via_join(self._ht.key_by("gene_symbol"), "gene_symbol")
         elif source_type == "entrez_id":
-            hgnc_rekey = (
-                self._ht.filter(
-                    hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
-                )
-                .key_by("entrez_id")
-                .select(*fields_to_add)
-            )
-            ht = ht.annotate(
-                **{f"hgnc_{f}": hgnc_rekey[ht[source_field]][f] for f in fields_to_add}
-            )
+            hgnc_rekey = self._ht.filter(
+                hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
+            ).key_by("entrez_id")
+            ht = _annotate_via_join(hgnc_rekey, "entrez_id")
         else:
             raise ValueError(
                 f"source_type '{source_type}' not supported for table annotation. "

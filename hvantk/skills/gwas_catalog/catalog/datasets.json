@@ -10,7 +10,7 @@
     "organism": "Homo sapiens",
     "tissue_type": "all",
     "sample_count": 1100000,
-    "license": "CC0 1.0",
+    "license": "EBI Services Terms of Use; CC0 1.0 applies only to the separate summary-statistics product",
     "doi": "10.1093/nar/gky1120",
     "genome_build": "GRCh38",
     "variant_types": [

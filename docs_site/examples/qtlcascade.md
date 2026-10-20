@@ -250,7 +250,7 @@ hvantk qtlcascade gwas-coloc \
   -o results/myoz1
 ```
 
-Output from one run (the command prints full-precision values, and the remote data can
+Output from one run (PP4 values are rounded to three decimals, and the remote data can
 change between releases):
 
 ```text
@@ -289,8 +289,8 @@ hvantk qtlcascade gwas-coloc \
 ```
 
 ```text
-Top effector: ENSG00000073969 (PP4=0.81)
-Fine-map: credible sets GWAS=0 eQTL=0; coloc.susie PP4=0.0
+Top effector: ENSG00000073969 (PP4=0.810)
+Fine-map: credible sets GWAS=0 eQTL=0; coloc.susie PP4=0.000
 VERDICT: REFUTED (no fine-mappable signal — single-variant-ABF artifact)
 ```
 
