@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift-probe placeholder + parser unit tests live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (parser + drift-probe sanity) live in `hvantk/skills/cptac/phospho/tests/`.
+- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift probe + parser unit tests live under the plugin folder. The probe is real but indirect (§ 6): CPTAC data has no stable URL, so it fingerprints the installed `cptac` package version and the latest upstream GitHub release instead of the data itself. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (parser + drift-probe sanity) live in `hvantk/skills/cptac/phospho/tests/`.
 - **In scope:** per-cancer-type phospho fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a 13-column intermediate TSV consumed by the PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) AND a wide-format matrix CSV + metadata CSV consumed by the AnnData builder. The builder produces a `(samples x sites)` AnnData with parsed site annotations in `var`.
 - **Out of scope:** non-phospho PTM atlases on CPTAC (those would land as sibling datasets under `hvantk/skills/cptac/<ptm-type>/`); pan-cancer joint analysis (the downloader merges per-cancer TSVs but does not produce a joint AnnData).
 
@@ -69,7 +69,7 @@ AnnData (`.h5ad`) builder output:
 - **Builder:** `build_cptac_phospho(parsed_input, ctx, *, cancer_type=None, site_id_col="Site", sample_id_col="SampleID", **_)` in `hvantk/skills/cptac/phospho/builder.py`. `parsed_input` is either a `{"expression": <matrix.csv>, "metadata": <metadata.csv>}` dict (direct API) OR a raw download directory, in which case `cancer_type` selects the per-cancer `cptac-phospho-<ct>-matrix.csv` / `-metadata.csv` pair (this is the `reprocess` path — see § 7). `site_id_col` defaults to `"Site"` to match the matrix CSV header. Returns an `ExpressionMatrix` (shares `create_anndata_from_cptac_phospho` in `hvantk/skills/cptac/shared/cptac.py`).
 - **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/phospho/cli.py`, declared as command `cptac-phospho-download` in the manifest's `cli:` block. The plugin loader strips the `-download` suffix and wires it as `hvantk download cptac-phospho` (via `hvantk/tools/plugins/download_cli.py`).
 - **Lifecycle entry points:** `download_dataset` (in `phospho/cli.py`), wired via `lifecycle.download` in `plugin.yaml`. There is **no** `lifecycle.parse` for the AnnData build: the download already writes the builder's matrix+metadata inputs, so `reprocess` hands the raw dir straight to the builder (mirrors `cptac:expression`). `parse_raw_dir` (in `shared/datasets.py`) remains a public helper that consolidates the site-level TSVs for the PTM pipeline; it is not wired into the AnnData lifecycle.
-- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/phospho/drift_probe.py` (fingerprints the installed `cptac` package version).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/phospho/drift_probe.py`, a thin wrapper over the shared `hvantk/skills/cptac/shared/drift.py` (`PROBE_VERSION = 1`). CPTAC data has no stable URL -- it is fetched through the `cptac` Python package -- so the probe fingerprints the installed `cptac` version (`importlib.metadata`) plus the latest `PayneLab/cptac` GitHub release tag, not the data itself.
 - **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.cptac_tsv`) -- reads the per-cancer intermediate TSV and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk ptm build` (`--cptac-tsv`).
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:phospho`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:phospho")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - **Tests:** `hvantk/skills/cptac/phospho/tests/` (parser unit tests in `test_phospho.py` + drift-probe sanity in `test_drift_probe.py`).
@@ -100,12 +100,12 @@ build (select its matrix+metadata pair). Steps:
 
 CPTAC publishes refreshed datasets through the `cptac` Python package. When a new package release lands:
 
-1. Run the drift probe: `python -c "from hvantk.skills.cptac.phospho.drift_probe import fetch_fingerprint; print(fetch_fingerprint())"`. A change in `source_version` (the installed `cptac` package version) is the trigger.
+1. Run the drift probe: `hvantk drift cptac:phospho`. A change in `source_version` (the installed `cptac` package version) or `extras.latest_release_tag` is the trigger.
 2. Update the Poetry dep pin in `pyproject.toml` (`cptac = { version = "*", optional = true }` -- pin to the new release if reproducibility matters).
 3. Re-download every cancer type of interest with `--overwrite` and spot-check row counts and `tissue_type` distributions against the previous build.
 4. If any new modification notation or column shape appears, document it in § 4.
 5. Regenerate `tests/drift_fingerprint.json` with `hvantk drift --regenerate cptac:phospho --accepted-in "PR #N"` to record the new package version, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
-6. If a builder snapshot exists (TODO), run `pytest hvantk/skills/cptac/phospho/tests --regenerate-snapshots` and inspect the diff.
+6. Run `pytest hvantk/skills/cptac/phospho/tests/test_builder.py --regenerate-snapshots` and inspect the diff before committing the regenerated snapshots.
 
 ## 9. Validation contract
 
@@ -115,7 +115,7 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/schema.json` — seeded.
 - **row_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/sample_rows.json` — seeded.
 - **command:** `pytest hvantk/skills/cptac/phospho/tests`.
-- **drift_fingerprint:** `hvantk/skills/cptac/phospho/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
+- **drift_fingerprint:** `hvantk/skills/cptac/phospho/tests/drift_fingerprint.json` -- seeded with a real package-version/release fingerprint (§ 6); refresh via the update playbook.
 
 The plugin manifest declares these paths so the loader contract holds. Parser unit tests, download-resilience, drift-probe sanity and the builder round-trip all pass.
 

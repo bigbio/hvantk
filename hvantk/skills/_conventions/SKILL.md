@@ -131,7 +131,7 @@ tests. Seven specs named no probe at all and five named no tests before that che
 existed.
 
 Also expected, but NOT checked, so treat these as convention rather than contract: the
-plugin manifest (23 of 23 name it anyway), the `hvantk reprocess` invocation (15 of 23),
+plugin manifest (23 of 23 name it anyway), the `hvantk reprocess` invocation (23 of 23),
 and the downloader where one exists. Optional bullets where they apply: constants,
 streamer, dataset class, downstream consumers.
 

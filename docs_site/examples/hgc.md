@@ -12,11 +12,13 @@ Compute quality metrics and generate reports for a joint-called cohort:
 # Using the CLI pipeline (recommended)
 hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output
 
-# Or step by step
+# Or step by step. compute-qc's -o is an OUTPUT DIRECTORY: it writes
+# qc_results/qc_metrics_sample_qc.csv, qc_metrics_variant_qc.tsv and
+# qc_metrics_with_qc.mt (prefix set by --prefix, default "qc_metrics").
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
 hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
-hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
-hvantk hgc qc-report -i cohort_qc.mt -o report.html
+hvantk hgc compute-qc -i cohort.mt -o qc_results/
+hvantk hgc qc-report -i qc_results/qc_metrics_with_qc.mt -o report.html
 ```
 
 ### Python API
@@ -46,7 +48,7 @@ import hail as hl
 import matplotlib.pyplot as plt
 from hvantk.algorithms.hgc import compute_full_qc
 
-mt = hl.read_matrix_table("cohort_qc.mt")
+mt = hl.read_matrix_table("cohort.mt")
 qc = compute_full_qc(mt)
 df = qc.get_sample_metrics_df()
 
@@ -58,8 +60,9 @@ ax.legend()
 fig.savefig("call_rate.png", dpi=300, bbox_inches="tight")
 ```
 
-See [Quality Control Functions](../tools/hgc.md#quality-control-functions-post-combination)
-in the HGC reference for the full set of exported metrics.
+See [QC functions](../tools/hgc.md#qc-functions) and
+[Metric names](../tools/hgc.md#metric-names) in the HGC reference for the full set of
+exported metrics.
 
 ## Scalability Benchmarks
 

@@ -1,59 +1,51 @@
-# PTM (Post-Translational Modification) Variant Classification Example
+# PTM example: ClinVar and gnomAD
 
-This page walks through the end-to-end PTM pipeline: building a PTM sites table, annotating variants, running landscape and population analyses, and generating a report.
+This example builds the PTM sites table, classifies ClinVar variants, tests whether
+pathogenic variants are enriched at PTM sites, compares predictor performance at PTM
+and non-PTM variants, summarizes allele frequencies by PTM class, and renders a report.
+[PTM](../tools/ptm.md) documents the method, options and outputs of each command.
 
-## Overview
+## Before you start
 
-The PTM pipeline maps UniProt post-translational modification sites to GRCh38 genomic coordinates, cross-references them with ClinVar and gnomAD variants, and quantifies the relationship between PTM sites and variant pathogenicity.
+You need hvantk with Hail ([Installation](../getting-started/installation.md)) and, for
+the plots and the report, the `viz` extra (`poetry install --extras viz`).
 
-## Prerequisites
+| Input | How to get it |
+| --- | --- |
+| ClinVar table | `hvantk reprocess clinvar:variants --raw-dir data/clinvar/ --output data/clinvar.ht` |
+| Variant table with allele frequencies (step 5) | Bring your own, for example a gnomAD sites release; hvantk has no gnomAD variant dataset |
+| dbNSFP table (step 4) | Build it as described in [Data sources](../guide/data-sources.md) |
+| UniProt PTM sites and the Ensembl GTF | Downloaded by `hvantk ptm build` |
 
-```bash
-# Activate environment
-eval "$(poetry env activate)"
-```
-
-### Required Data
-
-| Input | Source | How to obtain |
-|-------|--------|---------------|
-| ClinVar Hail Table | NCBI | `hvantk reprocess clinvar:variants --raw-dir data/clinvar/ --output data/clinvar.ht` |
-| gnomAD Hail Table | gnomAD | Manual download (see [Data Sources](../guide/data-sources.md)) |
-| Ensembl GTF | Ensembl | Auto-downloaded by `hvantk ptm build` |
-| UniProt PTM TSV | UniProt | Auto-downloaded by `hvantk ptm build` |
-
-## Step 1: Build PTM Sites Table
-
-Download PTM data, map to genomic coordinates, and build a Hail Table.
+## Step 1: Build the PTM sites table
 
 ```bash
-# Automatic download and build
 hvantk ptm build \
   --output-dir data/ptm/ \
   --output-ht data/ptm/ptm_sites.ht
+```
 
-# Or with pre-downloaded inputs
+`build` downloads today's UniProt sites and the Ensembl GTF into `data/ptm/`, maps every
+site to its GRCh38 codon and writes the table. It prints the sites mapped per source,
+the overall mapping rate, how many proteins each transcript-resolution rule handled, and
+the paths of the mapped TSV and the table.
+
+UniProt has no versioned archive, so keep the downloaded
+`data/ptm/uniprot-ptm-human-<date>.tsv`: passing it back with `--ptm-tsv` rebuilds the
+same table later.
+
+To include PeptideAtlas phosphosites, run these two commands instead of the one above,
+passing the TSV path that the download prints:
+
+```bash
+hvantk download peptideatlas-phospho -o data/ptm/
 hvantk ptm build \
-  --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
-  --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
   --output-dir data/ptm/ \
-  --output-ht data/ptm/ptm_sites.ht
+  --output-ht data/ptm/ptm_sites.ht \
+  --peptideatlas-tsv data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
 ```
 
-**Example output** (counts depend on the UniProt release):
-```text
-Sources: UniProt (55,422 mapped)
-Mapping complete: 55422/56120 mapped (98.8%), 698 failed
-Resolution: {'xref_mane': …, 'xref_any': …, 'gene_mane': …, 'unresolved': …}
-Mapped TSV: data/ptm/ptm_sites_mapped.tsv.bgz
-Hail Table: data/ptm/ptm_sites.ht
-```
-
-`Resolution` counts proteins, not sites, by how each protein's transcript was resolved.
-
-## Step 2: Annotate Variants
-
-Cross-reference ClinVar variants with PTM sites.
+## Step 2: Classify ClinVar variants
 
 ```bash
 hvantk ptm annotate \
@@ -62,17 +54,12 @@ hvantk ptm annotate \
   -o data/clinvar_ptm.ht
 ```
 
-**Expected output:**
-```text
-Annotated 200,000 variants:
-  PTM site:  1,234
-  Proximal:  5,678
-Output: data/clinvar_ptm.ht
-```
+The output is the ClinVar table plus `is_ptm_site`, `is_ptm_proximal`, `ptm_types`,
+`ptm_distance` and `ptm_evidence`, and the command prints the number of site and
+proximal variants. [How variants are classified](../tools/ptm.md#how-variants-are-classified)
+gives the rules.
 
-## Step 3: Landscape Analysis
-
-PTM-variant overlap and enrichment analysis.
+## Step 3: Pathogenic variants at PTM sites
 
 ```bash
 hvantk ptm landscape \
@@ -82,35 +69,21 @@ hvantk ptm landscape \
   --save-plots
 ```
 
-**Expected output:**
-```text
-PTM-Variant Landscape:
-  Variants: 200,000 total, 50,000 P/LP, 30,000 B/LB
-  P/LP at PTM site: 1,234
-  P/LP proximal: 5,678
-  Enrichment: OR=2.15, p=1.23e-45
-  By PTM category (P/LP):
-    Phosphorylation: 456
-    Ubiquitination: 234
-    Acetylation: 123
-Plots saved to results/landscape/
-```
+`landscape` classifies the ClinVar table itself, so it does not need step 2. It writes
+`results/landscape/landscape_summary.json` and, with `--save-plots`,
+`landscape_summary.png`, `overlap_by_category.png` and `distance_distribution.png`. In
+the JSON, `enrichment` holds the odds ratio of P/LP against B/LB variants for PTM (site
+or proximal) against non-PTM positions, with its 95% confidence interval and Fisher's
+exact p-value. `category_enrichment` repeats the test for each PTM category among the
+PTM variants.
 
-**Output files:**
-- `results/landscape/landscape_summary.json`
-- `results/landscape/landscape_summary.png`
-- `results/landscape/overlap_by_category.png`
-- `results/landscape/distance_distribution.png`
+## Step 4: Predictor performance at PTM and non-PTM variants
 
-## Step 4: Predictor Evaluation (Composed Workflow)
-
-Export PTM-stratified variant lists, then run PSROC independently on each stratum.
+Export the two variant lists, then run PS-ROC once on each:
 
 ```bash
-# Export strata
 hvantk ptm export-strata --annotated-ht data/clinvar_ptm.ht -o strata/
 
-# Run PSROC on PTM variants
 hvantk psroc \
   --variants strata/ptm_variants.txt \
   --clinvar-ht data/clinvar.ht \
@@ -118,7 +91,6 @@ hvantk psroc \
   --scores "CADD_phred,REVEL_score,MetaLR_score" \
   --output-dir results/psroc_ptm/
 
-# Run PSROC on non-PTM variants
 hvantk psroc \
   --variants strata/non_ptm_variants.txt \
   --clinvar-ht data/clinvar.ht \
@@ -127,92 +99,48 @@ hvantk psroc \
   --output-dir results/psroc_non_ptm/
 ```
 
-Compare AUC values between strata to determine whether predictor performance differs at PTM sites.
+Compare the AUCs in `results/psroc_ptm/psroc_metrics.json` and
+`results/psroc_non_ptm/psroc_metrics.json`. [PS-ROC](../tools/psroc.md) describes the
+metrics and options.
 
-## Step 5: Population Analysis
-
-Compare allele frequency distributions at PTM sites vs non-PTM coding positions in gnomAD.
+## Step 5: Allele frequencies by PTM class
 
 ```bash
 hvantk ptm population \
-  --gnomad-ht data/gnomad.ht \
+  --gnomad-ht data/gnomad_sites.ht \
   --ptm-ht data/ptm/ptm_sites.ht \
+  --af-field AF \
   -o results/population/ \
   --save-plots
 ```
 
-**Expected output:**
-```text
-PTM Population Analysis:
-  Total variants: 5,000,000
-  At PTM site: 12,345 (mean AF=1.23e-04)
-  Proximal: 45,678 (mean AF=2.34e-04)
-  Non-PTM: 4,941,977 (mean AF=5.67e-04)
-  PTM sites with zero AF: 8,901
-```
+`--af-field` must name a top-level numeric field with a value on every row. gnomAD
+release tables keep allele frequencies in the `freq` array, so copy the entry you want
+into a top-level `AF` field first. The non-PTM class holds every other variant in the
+table; to compare against coding variants only, filter the table before this step. The
+command writes `population_summary.json`, with the counts and mean allele frequency of
+each class, and, with `--save-plots`, `population_af.png`.
 
-## Step 6: Generate Report
-
-Combine landscape and population results into a single HTML report.
+## Step 6: Report
 
 ```bash
-hvantk ptm report -o results/ptm_report.html \
+hvantk ptm report \
+  -o results/ptm_report.html \
   --landscape-json results/landscape/landscape_summary.json \
   --population-json results/population/population_summary.json \
-  --title "PTM-Variant Classification Report" \
-  --description "ClinVar and gnomAD analysis of UniProt PTM sites"
+  --title "PTM-variant report" \
+  --description "ClinVar and gnomAD variants at UniProt PTM sites"
 ```
 
-The report includes summary cards, embedded plots, per-category tables, and a methods section.
+The page embeds its plots and also writes them as PNG files next to
+`ptm_report.html`.
 
-## Python API
+## See also
 
-All steps can also be run programmatically:
-
-```python
-import hail as hl
-from hvantk.algorithms.ptm import (
-    PTMBuildConfig,
-    annotate_variants_with_ptm,
-    ptm_landscape,
-    ptm_population,
-    export_ptm_strata,
-)
-from hvantk.algorithms.ptm.report import generate_report
-from hvantk.tools.ptm.pipeline import ptm_build_pipeline
-
-# Build (downloads the UniProt TSV and builds the Hail Table; ptm_build_pipeline_core
-# is the pure mapping step this wraps and never builds output_ht itself)
-config = PTMBuildConfig(output_dir="data/ptm/", output_ht="data/ptm/ptm_sites.ht")
-build_result = ptm_build_pipeline(config)
-
-# Annotate
-clinvar = hl.read_table("data/clinvar.ht")
-ptm = hl.read_table("data/ptm/ptm_sites.ht")
-annotated = annotate_variants_with_ptm(clinvar, ptm)
-annotated = annotated.checkpoint("data/clinvar_ptm.ht")
-
-# Landscape
-landscape = ptm_landscape(clinvar, ptm, "results/landscape/")
-
-# Export strata
-strata = export_ptm_strata(annotated, "strata/")
-
-# Population
-gnomad = hl.read_table("data/gnomad.ht")
-population = ptm_population(gnomad, ptm, "results/population/")
-
-# Report
-generate_report(
-    "results/ptm_report.html",
-    landscape_result=landscape,
-    population_result=population,
-)
-```
-
-## Documentation
-
-- [PTM Documentation](../tools/ptm.md)
-- [PSROC Documentation](../tools/psroc.md) (for predictor evaluation)
-- [Data Sources](../guide/data-sources.md)
-- [Usage Guide](../guide/usage.md)
+- [PTM](../tools/ptm.md): method, options and outputs of every `hvantk ptm` command, and
+  the [Python API](../tools/ptm.md#python-api) for these steps
+- [PTM constraint](../tools/ptm-constraint.md): compare PTM and non-PTM allele frequencies
+  within the tissue or cell type where each gene is most expressed
+- [PS-ROC](../tools/psroc.md): the predictor evaluation used in step 4
+- [Data sources](../guide/data-sources.md): building the ClinVar and dbNSFP tables, and
+  the PTM site downloads

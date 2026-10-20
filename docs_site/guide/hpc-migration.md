@@ -1,8 +1,8 @@
-# Migrating hvantk to an HPC cluster
+# Running on HPC
 
-This guide describes how to move the hvantk toolkit, its environment, and its data
-from a local workstation to a shared HPC cluster, so that dataset builds, pipelines,
-and experiments run at scale on the cluster.
+This guide describes how to run the hvantk toolkit, its environment, and its data
+on a shared HPC cluster, so that dataset builds, pipelines, and experiments run at
+scale.
 
 It is written for a cluster with:
 
@@ -40,9 +40,17 @@ Adjust the partition names, paths, and Spark-on-Slurm launcher to your site.
 6. **Validate** every new node with `hvantk utils check-install` before running
    pipelines.
 
+If this cluster already has the `hvantk` agent skills set up, use them instead of the
+manual commands in this guide: `hpc-container` builds and promotes the image,
+`hpc-hail-job` sizes and submits a Hail-backed command as a job, and `hpc-sync` keeps a
+cluster clone in step with GitHub (see [Workflow skills](workflow-skills.md)). They read
+a per-cluster site profile and record provenance automatically. This guide explains the
+mechanism underneath them, and is still the reference for a manual run, debugging a
+failure, or a cluster without the skills set up yet.
+
 ---
 
-## 1. What moves, and how
+## 1. What lives where
 
 | Layer | What | Mechanism | Notes |
 |---|---|---|---|
@@ -73,20 +81,36 @@ remote** called `hpc`. Local branches track `origin` (GitHub), so a bare `git pu
 | `origin` | `git@github.com:bigbio/hvantk.git` | GitHub; PRs and CI |
 | `hpc` | `hpc:/user/<user>/git/pyvatk.git` | bare repo on the cluster; the node-side clone pulls from here |
 
-After anything lands on `main` or `dev`:
+After anything lands on `main` or `dev`, push GitHub's refs by explicit refspec, never
+local branch names — `git push hpc main dev` pushes your *local* branches, which can be
+behind while git still reports success, because sending an already-present commit is a
+legitimate no-op:
 
 ```bash
-# confirm it is a fast-forward, so no cluster-side commits are clobbered
 git fetch hpc
-git merge-base --is-ancestor hpc/dev origin/dev && echo "fast-forward, safe"
+for b in main dev; do
+  git merge-base --is-ancestor "hpc/$b" "origin/$b" && echo "$b: fast-forward, safe"
+done
 
-git push hpc main dev
+for b in main dev; do git push hpc "origin/$b:refs/heads/$b"; done
+```
+
+Do not trust the push's own output; fetch and diff the refs again afterwards — every
+line must show the same hash on both sides:
+
+```bash
+git fetch hpc
+for b in main dev; do
+  printf '%-5s origin=%s hpc=%s\n' "$b" \
+    "$(git rev-parse --short "origin/$b")" "$(git rev-parse --short "hpc/$b")"
+done
 ```
 
 **This matters more than ordinary repo hygiene**, because the `.sif` is built from
 `poetry.lock` (§3.2). A stale cluster clone rebuilds the *previous* dependency set
 without any error — the build succeeds, it is just the wrong environment. Rebuild the
-image whenever `poetry.lock` changes, not only when `hvantk/` does.
+image whenever `poetry.lock` changes, not only when `hvantk/` does. The `hpc-sync` agent
+skill automates this whole compare-push-verify sequence.
 
 ---
 
@@ -132,12 +156,15 @@ dependency set, not an unpinned `pip install hail`.
 
 Two choices in it are load-bearing and must not be "modernised" without re-validating:
 
-- **Base image is `python:3.10-slim-bullseye`, not bookworm.** Debian 12 (bookworm) has
-  no `openjdk-11` package at all — `apt-get install openjdk-11-jdk-headless` fails with
-  *"Package 'openjdk-11-jdk-headless' has no installation candidate … the following
-  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.137 supports Java 11
-  **only**, so a bookworm base either fails the build or silently gives you
-  Java 17. Debian 11 (bullseye) ships `openjdk-11-jdk-headless` (11.0.32.1).
+- **Base image is `ubuntu:22.04` (jammy).** Hail 0.2.137 / Spark 3.5 run on Java 8 or
+  11 only, which rules out a base whose own package repo has moved past both: Debian 12
+  (bookworm) ships no `openjdk-11` package at all — `apt-get install
+  openjdk-11-jdk-headless` fails, offering `openjdk-17-jre-headless` instead — and
+  Debian 11 (bullseye), the previous base, left LTS support, so its package *index*
+  still resolves while every `.deb` 404s (an `apt-get update` that succeeds followed by
+  every install failing; retrying does not help). Ubuntu 22.04's own main repository
+  carries both `python3.10` and `openjdk-11-jdk-headless` with security maintenance
+  into 2027, so one vendor covers both constraints with no third-party JDK.
 - **Extras include `expression`.** The set
   `hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression`
   is checked against `[project.optional-dependencies]` in `pyproject.toml` and covers
@@ -216,6 +243,12 @@ node, many cores, high memory**, with Spark temp on **node-local scratch**.
 > bash containers/hvantk_run.sh utils check-install
 > HVANTK_BIND="$WORK:$WORK" bash containers/hvantk_run.sh reprocess clinvar:variants ...
 > ```
+>
+> `containers/hvantk_run.sh` runs the image's own installed copy of hvantk, not your
+> checked-out code, and is meant for an interactive check. For a batch job that runs
+> the checkout (so a code change takes effect without rebuilding the image), submit
+> through the `hpc-hail-job` agent skill instead, which exports `PYTHONPATH` and sizes
+> the request for you — or write your own `sbatch` script along these lines:
 
 ```bash
 #!/bin/bash
@@ -305,10 +338,10 @@ mode unless data forces this.
 
 ---
 
-## 5. Migrating the data
+## 5. Getting data onto the cluster
 
-The gitignored `local/` tree is **not** part of the git clone — it must be moved
-explicitly. Split it by action rather than copying it wholesale.
+The gitignored `local/` tree is **not** part of the git clone — it must be copied
+there explicitly. Split it by action rather than copying it wholesale.
 
 ### 5.1 Action split
 
@@ -433,8 +466,9 @@ launching at scale.
 
 1. **Login node:** `git clone` the repo into `$HOME`. Note partitions, scratch path,
    `--fakeroot` availability, Spark-on-Slurm launcher (§2).
-2. **Build the image:** write `hvantk.def` (§3.2), set `APPTAINER_*` to scratch,
-   `apptainer build --fakeroot hvantk.sif hvantk.def` (or build on a laptop + copy).
+2. **Build the image:** from the repo's `containers/hvantk.def` (§3.2), set
+   `APPTAINER_*` to scratch, `apptainer build --fakeroot hvantk.sif hvantk.def` (or
+   build on a laptop + copy, or run the `hpc-container` skill).
 3. **Validate:** `srun ... apptainer exec hvantk.sif hvantk utils check-install`.
 4. **Move data (§5):** Globus the "transfer" set into `/project/$USER/hvantk/local/`;
    refetch the public bulk on the login node; regenerate `.mt`s on-cluster; skip the
@@ -451,8 +485,9 @@ launching at scale.
 ## 10. Gotchas quick-reference
 
 - **Java 17 default** → Hail breaks. Force **Java 11** (baked into the container).
-- **A bookworm base image** → there is no `openjdk-11` in Debian 12 at all; apt offers
-  `openjdk-17-jre-headless` instead. Use `python:3.10-slim-bullseye`.
+- **A Debian base image** → bookworm (12) ships no `openjdk-11` at all (apt offers
+  `openjdk-17-jre-headless` instead), and bullseye (11) left LTS support, so its apt
+  *index* still resolves while every `.deb` 404s. Use `ubuntu:22.04` (§3.2).
 - **`--fakeroot` with no `/etc/subuid` entry** → `no valid mapping entry found`, and an
   unprivileged build is refused. Put a static `proot` on `PATH` instead (§3.3).
 - **Container Hail init: `[Errno 111] Connection refused`** → almost never the network.

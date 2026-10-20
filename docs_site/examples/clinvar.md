@@ -67,18 +67,27 @@ print(by_sig)
 ## Deriving a Training-Label Column
 
 `label_training_set` derives a TP/TN label column (default `rf_label`) from the
-ClinVar pathogenic/benign labels, optionally restricted to a gene set or disease
-terms:
+ClinVar pathogenic/benign labels. A pathogenic variant is TP when its gene is in
+`gene_set` (or when no `gene_set` is given); a benign variant is TN. Synonymous variants
+are dropped first.
 
 ```python
 labeled_ht = streamer.label_training_set(
     gene_set={"BRCA1", "BRCA2"},
-    disease_terms={"breast", "ovarian"},
     label_column="rf_label",
 )
 labeled_ht = labeled_ht.filter(hl.is_defined(labeled_ht.rf_label))
 print(f"Labeled training variants: {labeled_ht.count()}")
 ```
+
+`disease_terms` also marks a variant TP when one of its ClinVar disease names
+(`CLNDN`, with spaces turned into underscores and lower-cased) equals a term exactly,
+so pass whole names such as `hereditary_breast_ovarian_cancer_syndrome`, not keywords.
+
+!!! warning
+    On a table built with `hvantk reprocess clinvar:variants`, `disease_terms` currently
+    fails with a Hail type error, because the plugin stores `CLNDN` as an array. Label by
+    `gene_set` until this is fixed.
 
 ## Tips
 

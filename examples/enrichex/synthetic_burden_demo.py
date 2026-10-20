@@ -7,6 +7,9 @@ Exercises the full EnrichEx pipeline end to end:
   2. Run BurdenPipeline with variant-class stratification
   3. Generate plots: heatmap, volcano, forest
   4. Check type-I error calibration on synonymous (negative control)
+
+Requires Hail (starts a local Spark session). Everything is written to a
+temporary directory that is deleted at the end; the log lists the files.
 """
 
 import json
@@ -24,7 +27,6 @@ logger = logging.getLogger("enrichex_demo")
 
 
 def main():
-    import hail as hl
     from hvantk.core.utils.hail_context import init_hail
 
     # ── 0. Init Hail ──────────────────────────────────────────────────
@@ -65,7 +67,6 @@ def main():
         null_set = {
             "neurons": [f"GENE_{i}" for i in range(30, 38)],
         }
-        all_gene_sets = {**signal_sets, **null_set}
 
         mt, pheno_ht, _ = generate_synthetic_burden_cohort(
             n_cases=200,
@@ -223,14 +224,15 @@ def main():
                 plt.close(fig)
                 logger.info("Wrote volcano: %s", plots_dir / "volcano.png")
 
-            # 3c. Forest for top cell type
+            # 3c. Forest for top cell type. ci_lower/ci_upper are on the
+            # odds-ratio scale (binary phenotype), so plot odds_ratio, not beta.
             top_gs = combined_df.sort_values("p_value").iloc[0]["gene_set_name"]
-            if "ci_lower" in combined_df.columns and effect:
+            if {"odds_ratio", "ci_lower"}.issubset(combined_df.columns):
                 fig = plot_celltype_forest(
                     combined_df,
                     str(plots_dir / "forest.png"),
                     cell_type=top_gs,
-                    effect_col=effect,
+                    effect_col="odds_ratio",
                     title=f"Forest: {top_gs}",
                 )
                 plt.close(fig)

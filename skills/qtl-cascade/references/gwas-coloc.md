@@ -15,9 +15,11 @@ alone accepts a local tabix path or URL in place of a dataset id (`--eqtl`). Run
 on a node that has egress (typically the login node, through `run-in-image.sh`); a
 compute node with no egress fails with a connection error, not a helpful message
 about the data being missing. The `qtlcascade` tool manifest
-(`hvantk/tools/qtl/qtlcascade_cli.tool.yaml`) declares `network: false` for the
-WHOLE command group — true for `cascade`/`coloc`/`run`/`report`, wrong for this one
-subcommand. Do not trust that manifest field for `gwas-coloc`.
+(`hvantk/tools/qtl/qtlcascade_cli.tool.yaml`) declares `network: true` for the
+WHOLE command group — correct for `gwas-coloc`, but imprecise for
+`cascade`/`coloc`/`run`/`report`, none of which need egress at all. The field is
+group-level, not per-subcommand, so it cannot tell you which subcommand actually
+needs it; this page is what does.
 
 pysam's remote tabix (what both fetch functions use) downloads the remote file's
 index (a `.tbi`) into the **current working directory**, not a temp location. Run

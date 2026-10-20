@@ -9,7 +9,7 @@
 # to ensure runtime varies primarily as a function of CPU cores.
 #
 # Usage:
-#   bash hgc_cpu_scaling_benchmark.sh [OPTIONS]
+#   bash benchmark.sh [OPTIONS]
 #
 # Options:
 #   --gvcf-list FILE           File containing list of GVCF paths (default: samples_500.txt)

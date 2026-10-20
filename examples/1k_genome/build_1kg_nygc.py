@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Build a Hail MatrixTable from the NYGC/CCDG 1000 Genomes (2020) VCF files.
+"""Build a Hail MatrixTable from the NYGC/CCDG 1000 Genomes high-coverage VCF files.
 
-The VCF directory should contain the CCDG per-chromosome recalibrated genotype
-VCFs.  Annotated VCFs (*.annotated.*) and "others" contig files are excluded
-automatically.  Only ``*_chr*.recalibrated_variants.vcf.gz`` files are staged.
+The VCF directory should contain the per-chromosome phased genotype VCFs from the
+high-coverage NYGC/CCDG release (see
+`data-sources.md <https://bigbio.github.io/hvantk/guide/data-sources/#1000-genomes-nygcccdg-high-coverage-callset>`_
+for the mirror). Only ``*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz`` files are
+staged; any ``*.annotated.*`` or ``*_others.*`` companion files present alongside
+them are excluded.
 
 Example usage::
 
@@ -39,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 
 def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
-    """Symlink recalibrated genotype VCFs into *stage_dir*.
+    """Symlink phased genotype VCFs into *stage_dir*.
 
-    Excludes ``*.annotated.*`` and ``*_others.*`` files.
+    Excludes ``*.annotated.*`` and ``*_others.*`` files, if present.
     Returns the number of staged VCFs.
     """
-    pattern = os.path.join(vcf_dir, "*_chr*.recalibrated_variants.vcf.gz")
+    pattern = os.path.join(vcf_dir, "*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz")
     count = 0
     for vcf in sorted(glob.glob(pattern)):
         basename = os.path.basename(vcf)
@@ -138,8 +141,8 @@ def main(
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCF files.
 
     \b
-    Stages only recalibrated genotype VCFs (*_chr*.recalibrated_variants.vcf.gz)
-    into a temporary directory, excluding annotated and "others" contig files,
+    Stages only phased genotype VCFs (*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz)
+    into a temporary directory, excluding any annotated or "others" contig files,
     then invokes the hvantk builder.
     """
     # Resolve sample annotations: absolute path used as-is, otherwise relative to vcf_dir

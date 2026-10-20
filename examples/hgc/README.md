@@ -47,8 +47,9 @@ cd examples/hgc/cpu_scaling && bash run_example.sh
 
 ## Expected Outputs
 
-- `qc_report_*.html` - Interactive HTML report
-- `qc_dashboard_*.png` - Multi-panel QC visualization
+- `qc_report_*.html` - self-contained HTML QC report with embedded plots
+- `sample_qc_call_rate_*.png`, `variant_qc_call_rate_*.png` - individual plots saved
+  directly from the exported QC tables (`qc/hgc_qc_example.py --save-example`)
 - Timing metrics and scaling plots (benchmarks)
 
 ## Requirements

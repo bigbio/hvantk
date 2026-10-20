@@ -204,10 +204,12 @@ def test_the_extractor_actually_finds_commands():
         "extractor or the DOC_FILES filter is probably broken. A fence-only scan finds "
         "about 5, so anything in that range means the inline path is gone."
     )
-    assert fenced > 200, (
-        f"only {fenced} commands from fenced ```bash blocks (was 268) -- the fenced "
+    # 180 since the 2026-10 docs polish moved repeated command blocks into option
+    # tables (it was 268); inline spans rose to 420 at the same time.
+    assert fenced > 150, (
+        f"only {fenced} commands from fenced ```bash blocks (was 180) -- the fenced "
         "extractor is broken. A floor on from_docs cannot catch this: the inline "
-        "extractor alone supplies 110 of those 373."
+        "extractor alone supplies most of them."
     )
     assert inline > 180, (
         f"only {inline} commands from inline `hvantk ...` spans (was 242) -- the inline "

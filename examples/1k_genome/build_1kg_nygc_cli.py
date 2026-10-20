@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """End-to-end CLI wrapper for building a 1000 Genomes MatrixTable via ``hvantk``.
 
-Stages NYGC-pattern VCFs and invokes ``hvantk reprocess onek-genomes:variants``
-as a subprocess so the full CLI path is exercised — useful for catching argument
+Stages per-chromosome phased VCFs from the NYGC/CCDG high-coverage release (see
+`data-sources.md <https://bigbio.github.io/hvantk/guide/data-sources/#1000-genomes-nygcccdg-high-coverage-callset>`_
+for the mirror) and invokes ``hvantk reprocess onek-genomes:variants`` as a
+subprocess so the full CLI path is exercised — useful for catching argument
 parsing bugs, entry-point issues, etc.
 
 Example usage::
@@ -40,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 
 def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
-    """Symlink recalibrated genotype VCFs into *stage_dir*.
+    """Symlink phased genotype VCFs into *stage_dir*.
 
-    Excludes ``*.annotated.*`` and ``*_others.*`` files.
+    Excludes ``*.annotated.*`` and ``*_others.*`` files, if present.
     Returns the number of staged VCFs.
     """
-    pattern = os.path.join(vcf_dir, "*_chr*.recalibrated_variants.vcf.gz")
+    pattern = os.path.join(vcf_dir, "*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz")
     count = 0
     for vcf in sorted(glob.glob(pattern)):
         basename = os.path.basename(vcf)
@@ -139,8 +141,8 @@ def main(
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCFs via the hvantk CLI.
 
     \b
-    Stages only recalibrated genotype VCFs (*_chr*.recalibrated_variants.vcf.gz)
-    into a temporary directory, excluding annotated and "others" contig files,
+    Stages only phased genotype VCFs (*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz)
+    into a temporary directory, excluding any annotated or "others" contig files,
     then invokes ``hvantk reprocess onek-genomes:variants`` as a subprocess.
     """
     # Resolve sample annotations: absolute path used as-is, otherwise relative to vcf_dir

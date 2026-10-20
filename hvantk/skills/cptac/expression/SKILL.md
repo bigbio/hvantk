@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + dataset class + builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (downloader unit tests + drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
+- **Status:** provisional. Downloader + dataset class + builder + drift probe live under the plugin folder. The probe is real but indirect (§ 6): CPTAC data is fetched through the `cptac` Python package rather than a stable URL, so it fingerprints the installed package version and the latest upstream GitHub release instead of the data itself. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (downloader unit tests + drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
 - **In scope:** per-cancer-type whole-proteome fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a long-format matrix CSV (`SampleID`, `GeneID`, `Gene Name`, `Expression`) plus a clinical metadata CSV. The builder produces a `(samples x genes)` AnnData from that pair, one cancer type at a time. A long-format TSV/CSV staged by hand (the pre-#386 workflow) still works via the `{"expression","metadata"}` mapping form of `parsed_input`.
 - **Out of scope:** phosphoproteomics (sibling dataset `cptac:phospho`); pan-cancer joint analysis (`--all` downloads every cancer type but does not merge them -- gene sets and sample columns differ per cancer type, unlike phospho's site-level TSV which does have a pan-cancer merge); any Hail-Table or wide-format representation.
 
@@ -68,10 +68,10 @@ AnnData (`.h5ad`) builder output:
 ## 6. hvantk integration points
 
 - **Dataset class + parser helpers:** `CPTACExpressionDataset`, `melt_proteomics_wide_to_long` in `hvantk/skills/cptac/shared/datasets.py`. `resolve_raw_dir_inputs`, `_tag_tissue_type`, and `download_cancer_types` are shared with `cptac:phospho` in the same module.
-- **Builder:** `build_cptac_expression(parsed_input, ctx, *, cancer_type=None, gene_id_col="GeneID", gene_name_col="Gene Name", sample_id_col="SampleID", expression_col="Expression", **_)` in `hvantk/skills/cptac/expression/builder.py`. `parsed_input` is either a `{"expression","metadata"}` dict (direct API) OR a raw download directory, in which case `cancer_type` selects the per-cancer `cptac-expression-<ct>-matrix.csv` / `-metadata.csv` pair (this is the `reprocess` path -- see § 7). Returns an `ExpressionMatrix` (shares `create_anndata_from_cptac_long` in `hvantk/skills/cptac/shared/cptac.py`).
+- **Builder:** `build_cptac_expression(parsed_input, ctx, *, cancer_type=None, gene_id_col="GeneID", gene_name_col="Gene Name", sample_id_col="SampleID", expression_col="Expression", **_ignored)` in `hvantk/skills/cptac/expression/builder.py`. `parsed_input` is either a `{"expression","metadata"}` dict (direct API) OR a raw download directory, in which case `cancer_type` selects the per-cancer `cptac-expression-<ct>-matrix.csv` / `-metadata.csv` pair (this is the `reprocess` path -- see § 7). Returns an `ExpressionMatrix` (shares `create_anndata_from_cptac_long` in `hvantk/skills/cptac/shared/cptac.py`).
 - **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/expression/cli.py`, declared as command `cptac-expression-download` in the manifest's `cli:` block. The plugin loader strips the `-download` suffix and wires it as `hvantk download cptac-expression`.
 - **Lifecycle entry points:** `download_dataset` (in `expression/cli.py`), wired via `lifecycle.download` in `plugin.yaml`. There is **no** `lifecycle.parse`: the download already writes the builder's matrix+metadata inputs, so `reprocess` hands the raw dir straight to the builder (mirrors `cptac:phospho`).
-- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py`, a thin wrapper over the shared `hvantk/skills/cptac/shared/drift.py` (`PROBE_VERSION = 1`). CPTAC data has no stable URL -- it is fetched through the `cptac` Python package -- so the probe fingerprints the installed `cptac` version (`importlib.metadata`) plus the latest `PayneLab/cptac` GitHub release tag, not the data itself.
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:expression")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - **Tests:** `hvantk/skills/cptac/expression/tests/` (downloader unit tests -- including the fetch-both-then-atomically-publish guarantee -- in `test_downloader.py` + builder round-trip in `test_builder.py` + drift-probe sanity in `test_drift_probe.py`).
 
@@ -101,7 +101,7 @@ build (select its matrix+metadata pair). Steps:
 
 CPTAC publishes refreshed datasets through the `cptac` Python package. When a new package release lands:
 
-1. Run the drift probe: `python -c "from hvantk.skills.cptac.expression.drift_probe import fetch_fingerprint; print(fetch_fingerprint())"`. A change in `source_version` (the installed `cptac` package version) is the trigger.
+1. Run the drift probe: `hvantk drift cptac:expression`. A change in `source_version` (the installed `cptac` package version) or `extras.latest_release_tag` is the trigger.
 2. Re-download every cancer type of interest with `--overwrite` and spot-check sample / gene counts and `tissue_type` distributions against the previous build.
 3. If any new column shape appears from `get_proteomics()` (e.g. a different `Database_ID` convention), document it in § 4 and adjust `melt_proteomics_wide_to_long`.
 4. Regenerate `tests/drift_fingerprint.json` with `hvantk drift --regenerate cptac:expression --accepted-in "PR #N"` once the package version is updated, and commit the rebuild-ledger row it records with it (none for a `probe_version` change; `_conventions` § 12).
@@ -114,7 +114,7 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/schema.json` — seeded.
 - **row_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/sample_rows.json` — seeded.
 - **command:** `pytest hvantk/skills/cptac/expression/tests`.
-- **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
+- **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` -- seeded with a real package-version/release fingerprint (§ 6); refresh via the update playbook.
 
 The plugin manifest declares these paths so the loader contract holds. Downloader, drift-probe sanity, and builder round-trip tests all pass.
 

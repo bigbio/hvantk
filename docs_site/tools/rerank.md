@@ -12,12 +12,12 @@ A per-axis result -- "axis X adds +0.03 AUC over the constraint baseline" -- is 
 | Presence leakage | Does a column's *missingness*, not its value, predict the label? | `leakage.py` (`Config.leakage`, `LeakagePolicy`) |
 | Multiplicity | Several axes were offered and the best one reported -- could that delta have arisen by chance? | `nulls.py` (`Config.nulls`, `NullConfig`, `--n-perm`) |
 
-This page documents the multiplicity control on the right of that last row, plus two further controls that ship alongside it and ask a related but distinct question -- not *is the delta real*, but *is the delta an artefact of one arbitrary modelling choice*:
+The **Controls** section below documents the multiplicity control on the right of that last row, plus two further controls that ship alongside it and ask a related but distinct question -- not *is the delta real*, but *is the delta an artefact of one arbitrary modelling choice*:
 
 - **Paralogue-blocked cross-validation** -- does the delta survive when a gene family is not allowed to straddle a cross-validation fold?
 - **Multi-seed evaluation** -- does the delta survive a change of the one cross-validation partition every earlier run held fixed?
 
-All three are opt-in CLI flags, and every one of them defaults to today's behaviour: a bare `hvantk rerank -c config.yaml -o out.tsv` is unaffected by any of the flags below unless you pass them.
+All three are opt-in CLI flags, and every one of them defaults to today's behaviour: a bare `hvantk rerank -c config.yaml -o out.tsv` is unaffected by any of the flags below unless you pass them. Circularity and presence leakage -- the other two rows of the table above -- are documented further down, in **Python-only controls**: they are `Config` fields with no CLI flag yet.
 
 ## Quick Start
 
@@ -192,6 +192,92 @@ The permutation null (`--n-perm`, above) already recomputes the stratified parti
 
 `SelectionPolicy.seed` (used only when a feature-selection policy is configured) is independent of `--seed` by design -- it seeds the selection wrapper's own inner cross-validation, not the outer partition `--seed` controls. Turning on `--seed-sweep N` multiplies the ablation's per-axis cost by roughly `N` (one refit per axis per seed); the baseline is fit once per seed and shared across every axis rather than refit per axis, so the extra cost scales with the number of candidate axes times `N`, not more.
 
+## Python-only controls: selection, circularity and presence leakage
+
+Three further controls exist only on `Config`: `hvantk rerank` does not yet take a
+`selection:`/`leakage:` key in `config.yaml`, nor any matching CLI flag. `Config` is a
+frozen dataclass, so set them with `dataclasses.replace(config, field=value)` rather than
+assigning to an existing instance.
+
+### Feature selection -- `Config.selection`
+
+`Config.selection: Optional[SelectionPolicy]` (default `None`, meaning off: every column of
+every axis is used, exactly as before this existed). When set, `engine.rerank` filters each
+axis down to an informative, non-redundant subset -- **within that axis only**, independently
+of every other axis -- re-run inside every cross-validation fold on the training slice alone.
+Within-axis is what keeps a per-axis delta-AUC meaningful: it compares each axis's best subset
+against the baseline's best subset, so a wide axis is not penalised merely for carrying
+redundant columns; fold-nested is what stops the reported delta-AUC from being inflated by a
+selection that has already seen the held-out labels.
+
+Three steps, in this order (`hvantk/algorithms/rerank/selection.py`):
+
+| `SelectionPolicy` field | Default | Meaning |
+|---|---|---|
+| `univariate` | `"auc"` | `"auc"` scores each column by rank-based \|AUC - 0.5\| and keeps those surviving within-axis BH-FDR at `q`; `"none"` skips this step. |
+| `q` | `0.10` | BH-FDR level for the univariate filter, within axis. |
+| `redundancy` | `"spearman"` | Greedy, best-first: drop a column whose \|Spearman rho\| against an already-kept column reaches `redundancy_max`. `"none"` skips this step. |
+| `redundancy_max` | `0.75` | The Spearman-rho cutoff above. |
+| `wrapper` | `"none"` | `"none"` runs only the two filters above. `"rfecv"` adds RFECV (RandomForest-backed) on what survives them. |
+| `wrapper_estimator` | `"random_forest"` | The only value the schema allows; not a knob anything else reads. |
+| `inner_folds` | `3` | RFECV's own inner `StratifiedKFold` count. |
+| `seed` | `42` | Independent of `Config.seed`: seeds the wrapper's inner CV only, never the outer partition. |
+
+`wrapper="rfecv"` is off by default on measured evidence, not on principle: across the
+cohorts it was tried on, its eliminations concentrated where positives were fewest (the
+signature of a wrapper fitting inner-CV noise), and it can prune columns from the *ablation
+baseline* axis itself, which silently inflates every other axis's delta-AUC. Turn it on
+deliberately, for a genuinely wide axis (dbNSFP's ~45 correlated predictors is the motivating
+case) with enough positives to trust an inner CV.
+
+A YAML policy validates against `hvantk/resources/schemas/selection_policy.schema.json`
+(every field optional; an empty document yields the defaults above) and loads with
+`hvantk.algorithms.rerank.selection.load_policy(path) -> (SelectionPolicy, equivalence)`. The
+schema also accepts an `equivalence` block -- source-name classes for the circularity check
+below -- which `load_policy` pops off and returns separately, since the resolver consumes it
+and the filters never see it; omit it to use `provenance.DEFAULT_EQUIVALENCE`.
+
+### Circularity -- `Config.feature_provenance`, `label_provenance`
+
+Statistical selection cannot detect circularity; it rewards it -- a univariate filter ranks a
+predictor highly *because* it was trained on genes like the ones in the label set. Circularity
+is declared, not computed from the data: `Config.feature_provenance` maps each column to a
+`frozenset` of the sources it was trained on (an empty `frozenset()` means "trained on nothing
+label-derived"; `None` for the whole dict means every declaration is unavailable), and
+`Config.label_provenance` is the `frozenset` of sources the labels themselves derive from (an
+explicit `frozenset()` asserts "derived from nothing curated"). Leaving `label_provenance`
+`None` while `feature_provenance` is set makes `rerank_arms` raise `ValueError` rather than
+run: an undeclared label source would otherwise conflict with nothing, so every circular
+predictor would be admitted and the run would look healthy. Source names come from a plugin's
+own manifest (`scores: {trained_on: [...]}`, see the
+[plugin conventions](https://github.com/bigbio/hvantk/blob/main/hvantk/skills/_conventions/SKILL.md),
+section 6) paired with whatever curated database the labels were derived from.
+
+`hvantk.algorithms.rerank.engine.rerank_arms(config)` -- not `rerank()` -- runs the
+circularity split, and only when both `config.selection` and `config.feature_provenance` are
+set (and, per the paragraph above, `config.label_provenance` is not left `None`); otherwise it
+returns `{"all": rerank(config)}` -- a single, unrestricted arm, unchanged from before this
+existed. When it does split, it returns `{"clean": RerankResult, "all": RerankResult}`:
+`clean` keeps only columns that do not conflict with the label's sources and is **always the
+headline**; `all` additionally admits conflicted and undeclared columns, existing only to
+measure the circularity channel as a number (`arms["all"].selection.n_conflicted`,
+`.n_unknown`) rather than leave it assumed away.
+
+### Presence leakage -- `Config.leakage`
+
+Circularity asks what a predictor was *trained* on; this asks which genes it was *run* on.
+`Config.leakage: Optional[LeakagePolicy]` (default `None`, off) bars a column whose
+**missingness**, not its value, predicts the label -- the motivating case is a predictor
+computed only for a curated, well-studied (and so disease-enriched) protein subset, where the
+bare flag "was this score computed for this gene" already carries label information before
+the score's own value is read. `LeakagePolicy.q` (default `0.10`) is the BH-FDR level for the
+presence/label association; `LeakagePolicy.min_auc` (default `0.55`) is the presence-AUC floor
+an association must also clear. Both conditions are required: significance alone flags a
+trivial coverage difference once a cohort is large, and effect size alone flags noise in a
+small one. Independent of `selection`: the leakage check runs in front of within-axis
+selection whenever both are configured, since a column whose missingness tracks the label
+would otherwise look, to a purely statistical filter, like a column worth keeping.
+
 ## Output columns
 
 ### Ranked table (`-o`/`--output`)
@@ -304,3 +390,10 @@ Read before relying on this:
 - Each array task reruns the **whole** `rerank()` call -- scoring and the ablation, not only its slice of the null -- so this fan-out only pays for itself when the permutation null, not the scoring itself, dominates the wall-clock.
 - Pickled `NullDistribution` objects are tied to the `hvantk` version that wrote them; do not merge pickles written by different versions.
 - `merge` raises rather than silently combining when any chunk: offered different candidate axes; was built under a different control setting (different leakage or selection policy, baseline, fold count, CV seed, or **block digest** -- every chunk must have used the same `--blocks` table); carries `observed` deltas that disagree with the others' (a free check that every chunk ran on the same data, seed and estimator); or overlaps another chunk's permutation indices. It also raises when the chunks together leave a gap in the planned permutations (a chunk that never arrived, such as a pre-empted array task), naming the missing indices; pass `merge(parts, allow_partial=True)` to accept the smaller null deliberately.
+
+## See also
+
+- [External cohorts](cohort.md) -- write the cohort manifest `rerank` reads for the prior
+  statistic and the audit columns.
+- [Re-rank example](../examples/rerank.md) -- a worked walkthrough on small synthetic
+  fixtures, with the commands run and their actual output.

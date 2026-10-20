@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The documentation was checked against the code and reorganised.** Every page in
+  `docs_site/`, the README, the example READMEs and the per-provider and workflow
+  `SKILL.md` files were verified against the code: commands, options, defaults, outputs,
+  Python snippets and method descriptions. What did not match was fixed.
+  - The usage guide is now "Building datasets" (`reprocess`, the registries, drift, the
+    catalog, utilities). `annotate`, `cohort`, `expression` and `genesets` have their own
+    tool pages, and the re-rank example has a walk-through page.
+  - The home page and the quick start were rewritten; the quick start builds two public
+    datasets and runs an enrichment test end to end.
+  - The EnrichEx, PS-ROC, QTL cascade, PTM, ancestry and HGC pages were rewritten around
+    what each command computes. Among the corrections: the overlap test is two-sided; the
+    burden odds ratio is per qualifying gene, not per variant; ancestry PCA is fitted on
+    query and reference together, not projected; `qtlcascade run` colocalises before it
+    builds the gene summary.
+  - Known defects are stated where they bite: PS-ROC review stars on tables built from
+    the ClinVar VCF, `hgc pipeline --apply-qc-filters` and `--generate-qc-report`, and
+    `label_training_set(disease_terms=...)` on plugin-built ClinVar tables.
+  - Data sources opens with a table of all 26 datasets, how each is acquired and its
+    terms. A bring-your-own dataset does not need `--skip-download`.
+  - `docs_site/contributing.md` is the full contributor guide and `CONTRIBUTING.md` a
+    short entry point. The HPC guide is now "Running on HPC".
+  - Six workflow figures were corrected and the unused pre-plugin architecture figure was
+    removed.
+- **Example scripts run again.** The ClinVar streamer example uses the current streamer
+  API, the ClinGen scripts import the right class and no longer download with TLS checks
+  off, the EnrichEx burden example passes valid arguments, both HGC benchmarks call
+  `n_partitions()`, and the 1000 Genomes build scripts look for the phased VCF names the
+  release uses.
+- `CITATION.cff` lets GitHub offer "Cite this repository".
+- The docs-claims test's floor on commands found in fenced blocks is 150 (was 200): the
+  rewrite moved repeated command blocks into option tables.
+
 ## 0.6.0 — 2026-10-17
 
 Twelve workflow skills let a coding agent drive hvantk: run any Hail-backed command on a

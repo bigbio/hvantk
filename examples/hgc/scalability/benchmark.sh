@@ -6,7 +6,7 @@
 # It samples GVCFs, runs the workflow, captures timing and memory metrics.
 #
 # Usage:
-#   bash hgc_scalability_benchmark.sh [OPTIONS]
+#   bash benchmark.sh [OPTIONS]
 #
 # Options:
 #   --gvcf-dir DIR        Directory containing GVCF files (required; or export GVCF_DIR)

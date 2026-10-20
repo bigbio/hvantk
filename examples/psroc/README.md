@@ -1,40 +1,60 @@
-# PSROC Example
+# PS-ROC example
 
-End-to-end example of the PSROC pipeline for evaluating variant pathogenicity prediction scores.
-
-For full documentation, see the [PSROC docs](https://bigbio.github.io/hvantk/tools/psroc/) and [PSROC examples guide](https://bigbio.github.io/hvantk/examples/psroc/).
+Runs the PS-ROC pipeline end to end on synthetic data, so you can see every output without
+real ClinVar or dbNSFP tables. Documentation: the
+[PS-ROC reference](https://bigbio.github.io/hvantk/tools/psroc/) and the
+[example walkthrough](https://bigbio.github.io/hvantk/examples/psroc/).
 
 ## Contents
 
-- **`run_psroc_example.py`** - Complete workflow using synthetic test data
+- `run_psroc_example.py`: builds two Hail tables from the synthetic TSVs in
+  `hvantk/tests/testdata/psroc/`, runs `PSROCPipeline` on BRCA1, BRCA2 and TP53 with four
+  scores and the default settings, and prints the results.
+- `results/`: three sample dashboards from a `--gene-sets` run on real ClinVar and dbNSFP
+  tables, for illustration. The script neither writes nor reads them.
 
-## Quick Start
+## Run
+
+Requires Hail (Java 11) and the `psroc` extra (`poetry install --extras psroc`):
 
 ```bash
-# Run the example (uses synthetic test data from hvantk/tests/testdata/psroc/)
-python examples/psroc/run_psroc_example.py
-
-# View results
-ls examples/psroc/results/
+python examples/psroc/run_psroc_example.py --output-dir out/psroc_example
 ```
 
-## Test Data
+The script finds the test data relative to its own location, so it runs from any
+directory. `--output-dir` defaults to `/tmp/psroc_example`.
 
-Uses synthetic data from `hvantk/tests/testdata/psroc/`:
+## Data
 
-- 50 pathogenic + 40 benign + 10 VUS variants across BRCA1, BRCA2, TP53
-- 4 prediction scores: REVEL (~0.95 AUC), CADD (~0.90), MetaLR (~0.75), VEST4 (excluded, >30% missing)
+- 100 variants in BRCA1, BRCA2 and TP53: 50 pathogenic, 40 benign and 10 uncertain, all
+  with 1- or 2-star review status.
+- Four scores, missing for some variants: `CADD_phred` (7), `REVEL_score` (3),
+  `MetaLR_score` (10) and `VEST4_score` (42).
 
-## Expected Outputs
+## Expected results
+
+The 10 uncertain variants stay in the annotated table as excluded and do not enter the ROC.
+
+| Score | Missing | AUC | Status |
+| --- | --- | --- | --- |
+| `REVEL_score` | 3% | 0.998 | included |
+| `CADD_phred` | 7% | 0.979 | included |
+| `MetaLR_score` | 10% | 0.896 | included |
+| `VEST4_score` | 42% | | excluded (above the 30% threshold) |
 
 ```text
-results/
-├── plots/
-│   ├── psroc_example_roc_curves.png
-│   ├── psroc_example_auc_comparison.png
-│   ├── psroc_example_missingness.png
-│   └── psroc_example_dashboard.png
-├── psroc_example_metrics.json
-├── psroc_example_missingness.json
-└── psroc_example_annotated.tsv
+out/psroc_example/
+├── tables/                  # clinvar.ht and dbnsfp.ht built from the TSVs
+└── results/
+    ├── psroc_example_metrics.json
+    ├── psroc_example_missingness.json
+    ├── psroc_example_annotated.ht/
+    ├── psroc_example_annotated.tsv
+    ├── plots/
+    │   ├── psroc_example_roc_curves.png
+    │   ├── psroc_example_auc_comparison.png
+    │   ├── psroc_example_missingness.png
+    │   └── psroc_example_dashboard.png
+    ├── logs/                # created, left empty
+    └── .pipeline_state.json
 ```

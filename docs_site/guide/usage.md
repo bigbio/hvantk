@@ -1,438 +1,244 @@
-# hvantk Usage Guide
+# Building datasets
 
-This guide covers how to build datasets and run analysis tools in hvantk.
+This guide covers the data layer: discovering what hvantk can build, building a dataset
+with `hvantk reprocess`, checking a source for drift, and browsing the dataset catalog.
+The analysis tools that consume built datasets (annotation matrices, cohorts,
+expression, gene sets and the rest) each have a page under Tools; [See also](#see-also)
+links them.
 
-> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full build pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
+If you haven't installed hvantk yet, see [Installation](../getting-started/installation.md).
 
-If you haven't installed hvantk yet, see the main README for install steps.
+## Discover datasets
 
-For downloading raw data files (built-in downloaders and manual steps), see [Data Sources](data-sources.md).
+Every in-tree data source ships as a plugin under `hvantk/skills/<provider>/`, declared
+by a `plugin.yaml` manifest: its datasets, lifecycle (download / parse / build), drift
+probe, and dataset contract. Every analysis command ships the same way, as a
+`tool.yaml` manifest. Two command groups inspect these registries.
 
-## 1) Build a dataset with `hvantk reprocess`
-
-Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and dataset contract. The single CLI entry point is `hvantk reprocess`.
-
-### Discover available datasets
+### `hvantk plugins`
 
 ```bash
-# List all loaded plugins and their datasets
+# List every loaded provider and how many datasets each declares
 hvantk plugins list
 
-# Show one plugin's manifest in detail
+# Full detail for one provider: its datasets, skill paths, drift fingerprints
 hvantk plugins describe clinvar
 
-# Name anything that failed to load; exits 1 if there is anything
-# (`list` exits 0 regardless; `describe` exits 1 only for a provider that is
-# unknown or failed to load as a whole, not for one failed dataset)
+# Name anything that failed to load, and why
 hvantk plugins errors
+
+# Validate a plugin.yaml against the schema, offline
+hvantk plugins validate hvantk/skills/clinvar/plugin.yaml
 ```
 
-### Build a dataset end-to-end (download → parse → build)
+`list` and `describe` are informational and exit 0 even when something failed to load
+(`describe` exits 1 only if the named provider itself is unknown or failed to load as a
+whole); `errors` is the one whose exit code reports load failures (1 if it lists
+anything, 0 if clean); `validate` exits 1 on a schema violation.
+
+### `hvantk tools`
 
 ```bash
-# ClinVar variants
+hvantk tools list
+hvantk tools describe annotate
+hvantk tools errors
+hvantk tools validate hvantk/tools/annotation/annotate_cli.tool.yaml
+```
+
+Same shape as `plugins`: `list` and `describe` exit 0; `errors` exits 1 if it lists
+anything, 0 if clean; `validate` exits 1 on a schema violation.
+
+## Build a dataset
+
+`hvantk reprocess <provider>:<dataset>` chains a plugin's lifecycle stages (download,
+parse, build), then runs the dataset's drift probe:
+
+```bash
 hvantk reprocess clinvar:variants \
-  --raw-dir /data/clinvar/ \
-  --output /out/clinvar.ht
-
-# HGNC lookup
-hvantk reprocess hgnc:lookup \
-  --raw-dir /data/hgnc/ \
-  --output /out/hgnc.ht
+  --raw-dir data/clinvar/ \
+  --output out/clinvar.ht
 ```
 
-### Skip stages when you already have intermediates
+A dataset declared `acquisition.mode: byo` (see [Data Sources](data-sources.md)) treats
+`--skip-download` as implicit and instead requires `--raw-dir` to already hold files --
+unless `--skip-parse` is combined with an explicit `--intermediate`, in which case the
+raw directory is never read and does not need to be populated.
 
-```bash
-# Already-downloaded raw file; skip the download stage
-hvantk reprocess clinvar:variants \
-  --skip-download \
-  --raw-dir /data/clinvar/ \
-  --output /out/clinvar.ht
+### Options
 
-# Pre-parsed intermediate file; skip both download and parse
-hvantk reprocess gevir:metrics \
-  --skip-download --skip-parse \
-  --raw-dir /data/gevir/ \
-  --intermediate /data/gevir.tsv.bgz \
-  --output /out/gevir.ht
-```
-
-### Pass plugin-specific parameters
-
-Use `--plugin-arg KEY=VALUE` (repeatable) to forward arguments that the plugin's download / parse / build functions accept. For example, CPTAC phosphoproteomics builds one AnnData per cancer type — the single `cancer_type` flows to both the download and the build:
-
-```bash
-hvantk reprocess cptac:phospho \
-  --raw-dir /data/cptac/ \
-  --output /out/cptac_phospho_brca.h5ad \
-  --plugin-arg cancer_type=brca
-```
-
-## 2) Ancestry Inference
-
-Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.
-
-### Basic Usage
-
-```bash
-# Predict ancestry using 1000 Genomes as reference
-hvantk ancestry-inference \
-  -q /data/my_cohort.mt \
-  -r /data/1kg_phase3.mt \
-  --ancestry-col super_pop \
-  -o /out/ancestry_predictions.ht \
-  --generate-report \
-  --export-tsv
-```
-
-### With Custom Parameters
-
-```bash
-# Conservative assignment with custom filtering
-hvantk ancestry-inference \
-  -q /data/my_cohort.mt \
-  -r /data/1kg_phase3.mt \
-  --ancestry-col super_pop \
-  -o /out/ancestry_predictions.ht \
-  --min-af 0.05 \
-  --min-call-rate 0.99 \
-  --n-pcs 30 \
-  --n-pcs-classify 15 \
-  --min-prob 0.90 \
-  --generate-report
-```
-
-### Python API
-
-```python
-import hail as hl
-from hvantk.algorithms.ancestry import run_ancestry_inference
-
-# Initialize Hail
-hl.init()
-
-# Load data
-query_mt = hl.read_matrix_table("my_cohort.mt")
-reference_mt = hl.read_matrix_table("1kg_phase3.mt")
-
-# Run inference
-result = run_ancestry_inference(
-    query_mt=query_mt,
-    reference_mt=reference_mt,
-    ancestry_col="super_pop",
-    min_prob=0.75,
-)
-
-# Get results
-predictions = result.get_predictions_df()
-print(predictions['predicted_ancestry'].value_counts())
-
-# Generate visualizations
-result.generate_report("ancestry_report.html")
-fig = result.plot_pca()
-fig.savefig("pca_plot.png", dpi=300)
-
-# Annotate original MT with predictions
-annotated_mt = result.annotate_matrixtable(query_mt)
-```
-
-### Output Files
-
-| File | Description |
-| ---- | ----------- |
-| `predictions.ht` | Hail Table with ancestry predictions |
-| `predictions.tsv` | TSV export (with `--export-tsv`) |
-| `ancestry_report.html` | HTML report with visualizations |
-| `rf_model.pkl` | Trained model (with `--save-model`) |
-| `pca_loadings.ht` | PCA loadings (with `--save-loadings`) |
-
-**[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../examples/ancestry.md)**
-
-## Expression Analysis
-
-Inspect, summarize, and extract markers from expression AnnData (`.h5ad`) files.
-
-```bash
-# Inspect observation metadata fields
-hvantk expression describe -m /data/heart_sc.h5ad
-
-# Collapse into a per-group × per-gene summary AnnData grouped by cell type
-hvantk expression summarize \
-  -m /data/heart_sc.h5ad \
-  --group-by cell_type \
-  -o /out/heart_celltype_summary.h5ad
-
-# Multi-field grouping with pre-filtering
-hvantk expression summarize \
-  -m /data/heart_sc.h5ad \
-  --group-by cell_type --group-by region \
-  --filter-by time_point=9wpc \
-  --min-cells 50 \
-  -o /out/heart_summary.h5ad
-
-# Extract marker genes (Wilcoxon rank-sum test)
-hvantk expression markers \
-  -m /data/heart_sc.h5ad \
-  --method wilcoxon \
-  --group-by cell_type \
-  --top-n 200 \
-  -o /out/heart_markers.json
-
-# Extract markers using a t-test, pre-filtered to one region
-hvantk expression markers \
-  -m /data/heart_sc.h5ad \
-  --method t-test \
-  --group-by cell_type \
-  --filter-by region=LV \
-  --top-n 200 \
-  -o /out/heart_LV_markers.json
-```
-
-`summarize` and `markers` read `var_names` as the gene id and refuse an AnnData whose
-`var` is keyed by transcript id instead (e.g. a transcript-level Expression Atlas build
-made without `--plugin-arg level=gene` — see [Data Sources](data-sources.md)). `describe`
-only inspects, so it never refuses; it labels the variable axis "transcripts" rather than
-"genes" in that case.
-
-## Prepare Custom Gene Sets
-
-Convert plain-text gene panels into `GeneSetCollection` JSON files for use
-with `hvantk psroc`, `hvantk enrichex burden`, and `hvantk enrichex overlap`.
-
-### CLI
-
-```bash
-# Format: headerless two-column TSV (gene_set_name<TAB>gene_symbol)
-hvantk genesets prepare -i panels.tsv -o panels.json
-
-# With HGNC validation and alias resolution (recommended)
-hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
-
-# Filter small sets and provide explicit background
-hvantk genesets prepare -i panels.tsv -o panels.json \
-  --hgnc /data/hgnc.ht --min-genes 5 --background bg_genes.txt
-
-# Also export as GMT for GSEA compatibility
-hvantk genesets prepare -i panels.tsv -o panels.json --export-gmt panels.gmt
-
-# Extract gene sets from COSMIC Cancer Gene Census
-hvantk genesets cosmic --ht /data/cosmic_cgc.ht -o cosmic_gene_sets.json
-```
-
-### Python API
-
-```python
-from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_catalog
-from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
-from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-
-# Parse TSV
-result = parse_geneset_tsv("panels.tsv")
-
-# Optional: validate against the HGNC gene catalog (resolves aliases)
-catalog = HGNCGeneCatalogStreamer.from_path("/data/hgnc.ht")
-vr = validate_with_catalog(result.gene_sets, catalog)
-
-# Build and save collection
-collection = load_gene_sets_from_dict(vr.gene_sets, source="prepare-geneset")
-collection.save("panels.json")
-```
-
-## ClinGen Gene-Disease streamer
-
-```python
-from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
-
-streamer = ClinGenGeneDiseaseTableStreamer("/data/clingen/clingen_gene_disease.ht")
-
-# High-confidence genes
-definitive = streamer.get_genes_by_classification("Definitive")
-
-# Disease keyword search
-cancer_genes = streamer.get_genes_by_disease(
-    ["cancer", "carcinoma", "tumor"],
-    match_mode="contains",
-    min_classification="Moderate",
-)
-
-# Dataset stats + summary
-stats = streamer.compute_stats()
-summary = streamer.classification_summary()
-
-# Export gene sets for EnrichEx
-streamer.export_for_enrichex(
-    "/out/clingen_gene_sets.json",
-    min_classification="Moderate",
-)
-
-# Translate output to Ensembl IDs using the HGNC gene catalog
-from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-
-catalog = HGNCGeneCatalogStreamer.from_path("/data/hgnc/hgnc.ht")
-
-ensembl_ids = streamer.get_genes_by_classification(
-    min_classification="Definitive",
-    gene_catalog=catalog,
-    output_id_type="ensembl_gene_id",
-)
-
-# Or translate to HGNC IDs
-hgnc_ids = streamer.to_gene_set(
-    min_classification="Moderate",
-    gene_catalog=catalog,
-    output_id_type="hgnc_id",
-)
-```
-
-## File Format Conversion
-
-Hail supports standard gzip (`.gz`) and uncompressed files but processes them single-threaded. Block gzip (BGZF) `.bgz` files enable parallel import and are strongly recommended for large datasets. Convert with `hvantk utils convert-bgz`:
-
-```bash
-# Default: replaces .gz extension with .bgz
-hvantk utils convert-bgz input.tsv.gz
-
-# Custom output path and thread count
-hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
-```
-
-The command auto-detects whether the file is already BGZF and skips conversion if so.
-
-## Gene-level annotation matrices
-
-`hvantk annotate` turns built datasets into one gene × feature matrix. It is three
-commands run in order, because each stage is independently re-runnable and the
-expensive middle stage is per-source:
-
-| Stage | Command | Produces |
+| Option | Required | Description |
 | --- | --- | --- |
-| 1. Spine | `annotate spine` | the gene table every annotation joins onto |
-| 2. Prepare | `annotate prepare` (once per axis) | one source mapped onto the spine's `gene_id` |
-| 3. Compose | `annotate compose` | the joined matrix + a manifest JSON |
+| `DATASET` (argument) | yes | `<provider>:<dataset>`, e.g. `clinvar:variants`. |
+| `--raw-dir DIRECTORY` | yes | Where to write (or, with `--skip-download`, read) raw files. |
+| `--output PATH` | yes | Final builder output path. Extension must match the dataset's native format (see below); a mismatch fails before any stage runs. |
+| `--intermediate PATH` | no | Path for the parsed intermediate. If the plugin declares `lifecycle.parse` and you omit this, it defaults to `<raw-dir>/<provider>_<dataset>.intermediate` and the default is logged. |
+| `--skip-download` | no | Skip the download stage; read from `--raw-dir` instead. |
+| `--skip-parse` | no | Skip the parse stage; the build reads `--intermediate` if given, else `--raw-dir`. |
+| `--skip-build` | no | Skip the build stage. Nothing is written to `--output`. |
+| `--plugin-arg KEY=VALUE` | no, repeatable | Forwarded to the plugin's download, parse, and build functions (e.g. `--plugin-arg cancer_type=brca` for `cptac:phospho`, `--plugin-arg reference_genome=GRCh38` for `clinvar`). |
+| `--check-drift` / `--no-check-drift` | no | Run the post-build drift probe (default: on) or skip it. |
+| `-v`, `--verbose` | no | Surface the builder's own INFO logs (e.g. per-chunk progress) on stderr. |
+| `-q`, `--quiet` | no | Suppress the per-stage progress lines; errors still print. |
 
-### 1. Build the spine
+`--plugin-arg` values are coerced before they reach the plugin: `true`/`false`
+(case-insensitive) become `bool`; an integer string becomes `int`; a decimal or
+scientific-notation string becomes `float`; a value containing a comma becomes a list
+of its comma-separated parts, each coerced the same way; anything else stays `str`.
 
-The spine fixes which genes exist and what `gene_id` means for the whole matrix.
+### Output extension by dataset type
+
+`reprocess` writes each dataset in its own native format -- there is no cross-format
+conversion -- so `--output`'s extension must match the dataset's declared
+`artifact_type` and `backend`:
+
+| Dataset type | Backend | Extension | Example |
+| --- | --- | --- | --- |
+| `AnnotationTable` | `hail` | `.ht` | `clinvar:variants` |
+| `AnnotationTable` | `pandas` | `.parquet` | `peptideatlas:phospho` |
+| `ExpressionMatrix` | `anndata` | `.h5ad` | `cptac:phospho` |
+| `VariantMatrix` | `hail` | `.mt` | `onek-genomes:variants` |
+| `GeneSet` | -- | `.geneset.json` | none built by an in-tree plugin yet |
+
+### Existing output and provenance
+
+`reprocess` always overwrites an existing `--output`: there is no `--overwrite` flag and
+no confirmation prompt. (A few individual tool subcommands -- `hvantk genesets` and
+`hvantk expression` -- do refuse an existing output unless you pass their own
+`--overwrite`; that is a property of those commands, not of `reprocess`.)
+
+Every build writes a sidecar `<output>.provenance.json` next to the output, recording:
+
+```json
+{
+  "plugin": "clinvar",
+  "dataset": "clinvar:variants",
+  "plugin_version": "0.3.0",
+  "source_fingerprint": "sha256:...",
+  "schema_id": "clinvar-variants-v3",
+  "build_timestamp": "2026-10-20T12:00:00+00:00",
+  "builder_commit": null,
+  "parents": [],
+  "build_parameters": {}
+}
+```
+
+`source_fingerprint` is the drift probe's fingerprint at build time. `parents` is
+filled only for a dataset derived from other hvantk datasets. `build_parameters` records
+the options a builder chose to stamp, and is `null` only in a sidecar written before the
+field existed. `builder_commit` is always `null` for `reprocess` builds today. Loading the
+dataset later (`hvantk.core.io.load`) re-attaches this `Provenance`.
+
+### Drift check at the end of a build
+
+With `--check-drift` (the default), `reprocess` runs the dataset's drift probe once the
+build finishes and prints `drift: <status>` -- this never changes `reprocess`'s own exit
+code, even for `drifted`. Use `--no-check-drift` to skip the probe entirely (e.g.
+offline), or run `hvantk drift <dataset>` separately when you need drift status to
+affect a script's exit code.
+
+### Downloading without building
+
+`hvantk download <source>` runs one provider's downloader on its own, without the
+parse/build/drift stages `reprocess` chains it into. Not every dataset has one -- see
+[Data Sources](data-sources.md) for which do, and for the ones that are manual-download
+only.
+
+## Check a source for drift
+
+`hvantk drift <provider>:<dataset>` (or `--all`, optionally filtered with `--domain`)
+compares the dataset's live drift-probe output against the fingerprint file committed
+in the plugin's own tree, as named by its manifest's `tests.drift_fingerprint` -- for
+example `tests/drift_fingerprint.json` for a single-dataset plugin, or, for a
+multi-dataset one, either a per-dataset subfolder (`phospho/tests/drift_fingerprint.json`)
+or a suffixed filename (`tests/drift_fingerprint_variants.json`):
 
 ```bash
-hvantk annotate spine \
-  --gene-table ensembl_structure.ht \
-  --hgnc hgnc_lookup.ht \
-  --output spine.ht
+hvantk drift clinvar:variants
+hvantk drift --all --domain genomics --json
 ```
 
-`--biotype` defaults to `protein_coding`; pass `--biotype all` to keep every biotype.
+| Status | Meaning |
+| --- | --- |
+| `clean` | The live probe output matches the committed fingerprint. |
+| `drifted` | The probe ran, but the source has changed since the fingerprint was captured; printed with a diff. |
+| `probe_failed` | The probe raised, timed out, or returned something invalid (e.g. unreachable network). |
+| `stub` | Documentation-only source with no live probe (not an error; exits clean, with a stderr warning). |
 
-### 2. Declare the sources
+Exit code is the worst outcome across the datasets checked:
 
-A feature spec names each axis, the dataset it comes from, the key to join on, and the
-columns to keep:
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Clean (and, with `--all`, no load errors). |
+| 1 | At least one dataset drifted. |
+| 2 | A probe failed, a dataset's plugin failed to load, or (with `--all`) nothing was registered to check. |
+| 3 | The dataset name is unknown. |
+| 4 | An invalid combination of flags. |
 
-```yaml
-name: chd-features
-layer1:
-  - {axis: constraint, source: gnomad-metrics:metrics, key: gene_id, columns: [mis_z]}
-  - {axis: gevir,      source: gevir:metrics,          key: gene_id, columns: [gevir_pct]}
-```
+`--regenerate`, `--accepted-in`, `--no-ledger-row`, `--ledger`, and `--mark-rebuilt`
+rewrite the committed fingerprint and the rebuild ledger; they are for maintainers
+promoting a drift result, not for routine checks -- see
+[Contributing](../contributing.md).
 
-`layer1:` is a literal key, not a label you choose — it names the gene-level evidence
-axes. Each `axis` label must be unique: it is how the later stages address the entry
-(`--axis constraint`, `--prepared constraint=…`) and it names the `{axis}_present`
-column. The join itself is on `key:`, which is `gene_id` here.
+## Browse the catalog
 
-`key` accepts `gene_id`, `hgnc_id`, `symbol`, `uniprot_id` or `variant`. Anything but
-`gene_id` needs `prepare --hgnc` to resolve the mapping — as does a `variant` entry
-that aggregates to something other than `gene_id`. Run
-`hvantk annotate prepare --help` for the authoritative rule.
-
-### 3. Prepare each axis, then compose
-
-`prepare` runs once per axis and is the stage worth parallelising — each invocation is
-independent, so they can be separate cluster jobs:
+`hvantk catalog` reads the dataset metadata every plugin declares in its own
+`catalog/datasets.json` (not every plugin has one):
 
 ```bash
-hvantk annotate prepare --spec features.yaml --axis constraint \
-  --input gnomad_metrics.ht --spine spine.ht --output constraint.ht
-
-hvantk annotate prepare --spec features.yaml --axis gevir \
-  --input gevir_metrics.ht --spine spine.ht --output gevir.ht
+hvantk catalog list --omics-type genomics --limit 10
+hvantk catalog search "clinical significance" --omics-type genomics
+hvantk catalog show ClinVar_latest --format json
+hvantk catalog stats
 ```
 
-`compose` left-joins every prepared axis onto the spine. It requires one `--prepared`
-per axis in the spec and fails if any is missing, so a partial matrix cannot be produced
-silently:
+| Subcommand | Key options |
+| --- | --- |
+| `list` | `--omics-type {transcriptomics,proteomics,genomics,epigenomics}`, `--data-source TEXT` (substring, case-insensitive), `--organism TEXT` (substring), `--limit INTEGER` (default 50) |
+| `search QUERY` | Matches title, description, and accession. `--omics-type`, `--limit` (default 50) |
+| `show ACCESSION` | `--format {yaml,json}` (default `yaml`) |
+| `stats` | No options; aggregate counts by omics type, organism, and data source |
+
+## Utilities
 
 ```bash
-hvantk annotate compose --spec features.yaml --spine spine.ht \
-  --prepared constraint=constraint.ht \
-  --prepared gevir=gevir.ht \
-  --output features.ht
+# Convert standard gzip to BGZF for parallel Hail import
+hvantk utils convert-bgz data/scores.tsv.gz --threads 4
+
+# Verify a BGZF file's block integrity
+hvantk utils validate-bgzf data/clinvar.vcf.gz --quick
+
+# Smoke-test the install: Hail init, a tiny synthetic MatrixTable, describe()
+hvantk utils check-install
 ```
 
-The manifest JSON lands next to the output (`features.ht.manifest.json` unless
-`--manifest` says otherwise) and records what went into the matrix.
+| Command | Options | Notes |
+| --- | --- | --- |
+| `convert-bgz INPUT_FILE` | `-o, --output PATH` (default: replaces `.gz` with `.bgz`); `-t, --threads INTEGER` (default 4) | No-ops if the input is already BGZF; exits 1 if the input isn't gzip at all. |
+| `validate-bgzf PATH` | `--quick` (header-only; skips CRC32/ISIZE) | `PATH` may be a directory, in which case every `*.vcf.gz` inside it is checked. Exits 1 if any file fails. |
+| `check-install` | none | The one `utils` command that starts Hail/Spark: it initializes Hail, builds a `balding_nichols_model` MatrixTable (3 populations, 50 samples, 200 variants), and prints its schema. |
 
-Scheduling is deliberately external: the commands do their work in-process and hvantk
-never imports a scheduler, so an sbatch wrapper submits them.
+Hail reads standard gzip (`.gz`) single-threaded; BGZF (`.bgz`) parallelizes, which
+matters for large raw files before `hvantk reprocess` imports them.
 
-## External cohorts
+## Tips and troubleshooting
 
-`hvantk cohort` brings a cohort's own gene-level results alongside the annotation
-matrix. A cohort is declared by a manifest, not by flags:
-
-```yaml
-name: my-cohort
-key: symbol              # or gene_id / hgnc_id
-key_column: gene         # the column in `table` holding that key
-table: cohort.tsv
-prior:
-  column: minp
-  direction: lower_is_better
-cohort_axes:
-  - axis: architecture
-    columns: [n_case_var, conc, driver_af]
-```
-
-```bash
-# Check the manifest against its table (and labels) before anything reads it
-hvantk cohort validate --cohort cohort.yaml
-
-# Originate a gene-level prior with a Fisher-exact burden test
-hvantk cohort burden --help
-
-# Join the cohort's declared columns onto the Layer-1 matrix
-hvantk cohort attach --help
-```
-
-`validate` first is the point: it fails on a key column that is not present, or a
-declared axis column missing from the table, rather than letting a silently-empty join
-propagate into the matrix.
-
-`hvantk rerank` does not read this manifest directly: it takes its own config,
-which *points* at the manifest and adds the evidence axes and labels —
-
-```yaml
-cohort: cohort.yaml        # the manifest above
-features:
-  - {name: constraint, path: constraint.tsv}
-labels:
-  path: labels.txt
-```
-
-The manifest's `prior.column` is carried through to the output as `prior_stat`. See
-[examples/rerank](https://github.com/bigbio/hvantk/tree/main/examples/rerank) for a
-complete runnable configuration.
-
-## Tips & troubleshooting
-
-- Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.
-- For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
-- Expression AnnData stores per-cell/sample metadata in `adata.obs`; inspect it with `hvantk expression describe -m <file.h5ad>` or `adata.obs` in Python.
-- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Pre-convert with `hvantk utils convert-bgz <file.gz>` for parallel import before running `hvantk reprocess`.
+- A plugin's on-disk directory name and its manifest `name:` sometimes differ by `_`
+  versus `-` (e.g. the `gwas_catalog` directory declares `name: gwas-catalog`). If
+  `hvantk plugins describe <provider>` or `hvantk drift <provider>:<dataset>` says
+  "unknown provider" or "unknown dataset", run `hvantk plugins errors` first -- a
+  provider that *failed to load* can look identical to a typo.
+- A build that fails immediately with a message about `--output`'s extension is
+  `reprocess`'s own fast-fail check, before any stage runs -- see the extension table
+  above, not a Hail error.
+- A `stub` result from `hvantk drift` means the source has no live, programmatic probe
+  (documentation-only acquisition); it is expected, not a failure.
 
 ## See also
 
-- [Architecture](../architecture.md) – system design and extension points
-- [Contributing](../contributing.md) – development workflow and contribution guidelines
-- [Data Sources](data-sources.md) – available datasets and how to acquire them
+- [Data Sources](data-sources.md) -- available datasets and how to acquire them
+- [Gene annotation matrix](../tools/annotate.md) -- build a gene x feature matrix from built datasets
+- [External cohorts](../tools/cohort.md) -- bring a cohort's own results alongside it
+- [Expression analysis](../tools/expression.md) -- summarize and extract markers from expression AnnData
+- [Gene sets](../tools/genesets.md) -- extract and prepare `GeneSetCollection` files
+- [Architecture](../architecture.md) -- system design and extension points
+- [Contributing](../contributing.md) -- development workflow and contribution guidelines

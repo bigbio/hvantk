@@ -21,7 +21,7 @@ Out of scope for this skill (per `_conventions` § 11):
 
 ## 2. Source identity
 
-Fang et al. (2025), "Regulation of protein abundance in normal human tissues", medRxiv, doi:`10.1101/2025.01.10.25320181` — 10,841 proteins across >700 GTEx samples in five tissues, quantified by TMT mass spectrometry; the cis-pQTL allpairs files are what the builder consumes (`hvantk/skills/pqtl/drift_probe.py` module docstring). `source.catalog_ref: pqtl` is declared in `plugin.yaml`; this skill does not restate catalog content (per `_conventions` § 2) — query it via `hvantk catalog show pqtl`.
+Fang et al. (2025), "Regulation of protein abundance in normal human tissues", medRxiv, doi:`10.1101/2025.01.10.25320181` — 10,841 proteins across >700 GTEx samples in five tissues, quantified by TMT mass spectrometry; the cis-pQTL allpairs files are what the builder consumes (`hvantk/skills/pqtl/drift_probe.py` module docstring). `plugin.yaml` declares `source.catalog_ref: pqtl`, but **no `catalog/datasets.json` exists for this plugin** (no `catalog:` key in `plugin.yaml`, no `catalog/` folder) — `hvantk catalog show pqtl` fails with `Error: Entry not found: pqtl`, not a redirect to richer content. This is why the citation is stated directly above rather than deferred per `_conventions` § 2; there is no catalog entry to defer to.
 
 The five profiled tissues are `Colon`, `Heart`, `Liver`, `Lung`, `Thyroid` (`FANG_TISSUES`, `hvantk/skills/pqtl/shared/constants.py`), `FANG_TISSUE_EQTL_MAPPING` in the same file records how these correspond to GTEx eQTL sub-tissue names (e.g. `Colon` → `Colon_Transverse`, `Colon_Sigmoid`; `Heart` → `Heart_Left_Ventricle`, `Heart_Atrial_Appendage`), but **nothing applies it** — it has zero call sites outside its own definition. The builder writes the raw Fang tissue name through verbatim, and `build_cascade` (`hvantk/algorithms/qtlcascade/cascade.py`) filters both the eQTL and pQTL tables by exact `==` against one `tissue` string. So `tissue="Colon"` will **not** match GTEx labels like `Colon_Transverse`; a caller wanting that alignment must apply the mapping itself.
 
@@ -100,13 +100,16 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 - `command`: `pytest hvantk/skills/pqtl/tests -m hail`
 
 `-m hail` selects only the one `@pytest.mark.hail`-marked round-trip test
-(`test_builder.py::test_pqtl_metrics_round_trip`) — 1 of the 18 tests collected
-under `hvantk/skills/pqtl/tests`. The other 17 (12 offline `test_drift_probe.py`
-cases, plus the 5 in `test_pqtl.py`: the plugin-registration check and the four
-gene-mapping tests: previous-symbol and alias resolution with the unmapped report,
-an ambiguous symbol staying unmapped, the `ValueError` when no symbol maps, and a
-missing gene name) carry no `hail` marker and run under the default
-(non-`-m hail`) pytest selection instead.
+(`test_builder.py::test_pqtl_metrics_round_trip`) — 1 of the 19 tests that exist
+under `hvantk/skills/pqtl/tests` (`pytest --collect-only` with no marker filter
+reports 19; the default, marker-filtered selection deselects this one hail test,
+collecting 18). The other 18 (12 offline `test_drift_probe.py` cases, plus the 6
+in `test_pqtl.py`: the plugin-registration check and five gene-mapping tests —
+previous-symbol and alias resolution with the unmapped report, an ambiguous
+symbol staying unmapped, a per-tissue colliding-symbol regression for
+`_find_gene_id_collisions`, the `ValueError` when no symbol maps, and a missing
+gene name) carry no `hail` marker and run under the default (non-`-m hail`)
+pytest selection instead.
 
 **Snapshot status:** fully seeded. The Fang et al. allpairs files are preprint supplementary material with no stable, redistributable download URL (§ 1, § 2) — but that restriction limits what a fixture may contain, not whether one exists. `tests/testdata/raw/pqtl/Liver.allpairs_nobsGE72-synthetic.txt.gz` is a **synthetic** fixture: 8 fabricated rows (two mapped genes `BRCA1`/`BRCA2`, a second gene at one shared variant, a `STAT == 0` row, an unmapped symbol, a chrX variant, an indel id, and an extreme `P = 1e-300`) in the exact real format verified in § 4, containing zero rows from the actual publication. Its `README.md` records the verification method, the row-purpose table, and why the two conditional rows a stricter fixture might include (an `NA` row; a `gene_name` that is itself an Ensembl id) were omitted — Step 0 found zero instances of either pattern across ~39.5M real rows checked, so fabricating them would misrepresent the format.
 

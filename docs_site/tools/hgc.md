@@ -1,101 +1,406 @@
-# HGC: Hail-based Genotype Combiner
+# HGC: joint genotyping
 
-HGC is a module within hvantk that provides high-performance tools for joint genotyping workflows using [Hail](https://hail.is/). It enables efficient combination of genomic variant call format (GVCF) files, conversion between different Hail data formats (VDS, MatrixTable), and export to standard VCF format.
+HGC (Hail-based Genotype Combiner) joint-genotypes a cohort of per-sample gVCFs: it
+combines them into a Variant DataSet (VDS), converts that to a MatrixTable (MT), runs
+quality control, and exports a cohort VCF. It is built on [Hail](https://hail.is/).
 
 ![HGC workflow](../images/hvantk-hgc-workflow.svg)
 
-**Figure 1.** *HGC joint genotyping pipeline — from GVCF combination through format conversion, quality control, and validated VCF export.*
+**Figure 1.** HGC: gVCF combining, VDS to MatrixTable conversion, sample and variant QC,
+optional filtering, and cohort VCF export.
 
-## Overview
+## Entry points
 
-The HGC module implements a complete joint genotyping pipeline with integrated quality control:
+| Entry point | Use it when |
+|---|---|
+| `hvantk hgc pipeline` | You have a directory of gVCFs and want VDS → MT → cohort VCF with QC tables in one command; you can resume it by hand from the stage outputs. |
+| Individual commands (`gvcf-combine`, `vds-combine`, `vds2mt`, `mt2vcf`, `compute-qc`, `filter-qc`, `qc-report`, `qc-summary`) | You already have a VDS or MT, want QC filter thresholds the pipeline doesn't expose (see [Filter by QC metrics](#filter-by-qc-metrics)), or want to rerun a single stage without re-running the rest. |
 
-### Primary Functionality
+Every command also takes `-h`/`--help`, and a `--dry-run` flag that prints what it
+would do without running Hail.
 
-**Pipeline Orchestration** (Recommended)
-- **End-to-End Automation** - Single command runs gVCF → VDS → MT → QC → pVCF workflow
-- **Flexible Resumption** - Skip completed stages to resume from any point
-- **Integrated QC** - Optional quality filtering and HTML report generation
-- **State Persistence** - Automatic checkpointing for error recovery
-
-**Individual Component Commands** (Advanced)
-
-1. **GVCF Combination** - Combine multiple single-sample GVCF files into a unified Variant DataSet (VDS)
-2. **VDS Operations** - Merge multiple VDS datasets and convert between formats
-3. **MatrixTable Processing** - Convert VDS to analysis-ready MatrixTable format
-4. **VCF Export** - Export processed data back to standard VCF format
-
-### Additional Functionality: Quality Control & Visualization
-5. **QC Metrics Computation** - Comprehensive sample and variant quality assessment on combined cohorts
-6. **QC Table Export** - Sample and variant QC metrics as pandas DataFrames, ready to plot with matplotlib or any plotting library
-7. **QC Reports** - Professional HTML reports with embedded plots and recommendations
-8. **QC-based Filtering** - Quality-based sample and variant filtering tools
-
-## Key Features
-
-### Pipeline Orchestration
-- **Single-Command Workflows**: Run complete gVCF → pVCF pipeline with one command
-- **Smart Resumption**: Skip completed stages to recover from errors or resume processing
-- **Integrated QC**: Built-in quality filtering and HTML report generation
-- **State Management**: Automatic checkpointing with JSON state files
-- **Dry-Run Mode**: Preview execution plan before running
-
-### Core Joint Genotyping Features
-- **Scalable Joint Genotyping**: Efficiently combine thousands of GVCF files using Hail's optimized combiner
-- **Flexible Data Formats**: Work with VDS (storage-optimized) and MatrixTable (analysis-optimized) formats
-- **Multi-allelic Handling**: Automatic splitting and normalization of multi-allelic variants
-- **Genotype Annotation**: Built-in support for adjusted genotype annotations
-
-### Quality Control Features (Post-Combination)
-- **Comprehensive QC Metrics**: Sample and variant-level quality assessment for combined cohorts
-- **Exported QC Tables**: `get_sample_metrics_df()` / `get_variant_metrics_df()` return pandas DataFrames you can plot directly with matplotlib
-- **Professional Reports**: HTML reports with embedded plots, metrics, and recommendations
-- **Quality-based Filtering**: Threshold-based sample and variant filtering tools
-
-### Interface Options
-- **CLI and Python API**: Use via command-line interface or directly in Python scripts
-
-## Quick Start
-
-### Command-Line Interface
-
-#### End-to-End Pipeline (Recommended)
-
-For most users, the **pipeline command** provides the easiest way to run the complete workflow:
+## Quick start
 
 ```bash
-# Run complete pipeline: gVCF → VDS → MT → QC → VCF
-hvantk hgc pipeline \
-  -i /path/to/gvcfs \
-  -o /path/to/output
+# 1. gVCFs -> VDS -> MatrixTable -> cohort VCF
+hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output
 
-# With QC filtering and HTML report
-hvantk hgc pipeline \
-  -i /path/to/gvcfs \
-  -o /path/to/output \
-  --apply-qc-filters \
-  --min-sample-call-rate 0.95 \
-  --generate-qc-report
-
-# View execution plan without running
-hvantk hgc pipeline \
-  -i /path/to/gvcfs \
-  -o /path/to/output \
-  --dry-run
+# 2. QC the MatrixTable the pipeline produced, and build an HTML report.
+#    compute-qc's -o is an output DIRECTORY (see "Compute QC metrics" below).
+hvantk hgc compute-qc -i /path/to/output/cohort.mt -o /path/to/output/qc
+hvantk hgc qc-report -i /path/to/output/qc/qc_metrics_with_qc.mt \
+    -o /path/to/output/qc/report.html
 ```
 
-See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
+Preview either command's plan first with `--dry-run`. For a region-restricted run
+(a single chromosome, an exome, a gene panel), see
+[Performance and sizing](#performance-and-sizing) before running the combine step —
+the default partitioning is sized for whole genomes and can leave most of your cores
+idle on a smaller region.
 
-#### Tuning combiner parallelism (`--import-interval-size`)
+## Step-by-step commands
 
-Hail's gVCF combiner partitions the import by **even genomic intervals**, and derives
-**one partition per interval**. The interval size therefore sets a *ceiling* on how many
-cores can do useful work in the combine stage — the stage that dominates joint-genotyping
-runtime.
+### Combine gVCFs into a VDS
 
-The default is Hail's genome default of **1.2 Mb**, which is sized for whole-genome gVCFs.
-For a **region-restricted** run (a single chromosome, an exome, a gene panel) it can
-produce far fewer partitions than you have cores, leaving most of them idle:
+```bash
+hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-g, --gvcf-dir TEXT` | Directory of `.g.vcf.gz` files, each with a `.tbi` index | none (need this or `-v`) |
+| `-v, --vds-paths TEXT` | Existing VDS to combine with the gVCFs (repeatable) | none |
+| `-o, --output TEXT` | Output VDS path | required |
+| `--temp-dir, --tmp TEXT` | Temporary directory for intermediate files | `$HGC_TEMP_DIR`, else the system temp dir |
+| `-s, --save-path TEXT` | Where to save the combiner's execution plan (JSON) | `<output>.plan` |
+| `--import-interval-size INT` | Interval size in bp; Hail derives **one partition per interval** | Hail's genome default, 1.2 Mb |
+| `--use-genome-default-intervals` | Explicit genome interval size (1.2 Mb) | already the default |
+| `--use-exome-default-intervals` | Hail's exome interval size (60 Mb) | off |
+| `--gvcf-batch-size INT` | gVCFs merged per tree-merge batch | Hail default, 50 |
+| `--branch-factor INT` | Branch factor of the hierarchical merge | Hail default, 100 |
+| `--dry-run` | Preview without executing | off |
+
+`--import-interval-size`, `--use-genome-default-intervals` and
+`--use-exome-default-intervals` are mutually exclusive. See
+[Performance and sizing](#performance-and-sizing) for when to change the interval size.
+
+### Combine VDS datasets
+
+Merge several VDS directories (for example, per-batch VDSes from incremental cohort
+building — see [Worked examples](#worked-examples)):
+
+```bash
+hvantk hgc vds-combine -i /data/vds_datasets -o merged.vds
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input-dir TEXT` | Directory containing VDS subdirectories (each ending in `.vds`) | required |
+| `-o, --output TEXT` | Output path for the merged VDS | required |
+| `--validate / --no-validate` | Validate the merged VDS with Hail's validator | validate |
+| `--overwrite / --no-overwrite` | Overwrite existing output | no-overwrite |
+| `--dry-run` | Preview without executing | off |
+
+### Convert a VDS to a MatrixTable
+
+```bash
+hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input TEXT` | Input VDS | required |
+| `-o, --output TEXT` | Output MatrixTable path | required |
+| `--adjust-genotypes / --no-adjust-genotypes` | Annotate the `adj` entry field (see [adjusted-genotype thresholds](#adjusted-genotype-adj-thresholds)) | adjust |
+| `--skip-split-multi` | Skip the VDS-level multi-allelic split | off (split runs) |
+| `--skip-validation` | Skip the biallelic audit and genotype repair (see below) | off |
+| `--skip-keying-by-cols` | Keep the VDS's own column order instead of keying and sorting columns by sample ID | off |
+| `--overwrite / --no-overwrite` | Overwrite existing output | no-overwrite |
+| `--n-partitions INT` | Coalesce the dense MatrixTable to this many partitions before writing (reduces only) | keep the VDS's own layout |
+| `--dry-run` | Preview without executing | off |
+
+Two things worth knowing before you reach for `--skip-validation` or `--n-partitions`:
+
+- **The densify runs exactly once.** Hail is lazy and does not cache, so any eager
+  action on the dense MatrixTable (a `count`, an `aggregate`) re-executes the whole
+  densify. `vds2mt` is written so that only the final write touches the dense matrix:
+  the biallelic audit (out-of-bounds `GT` indices, `AD` length mismatches) runs on the
+  *sparse* variant data before densification, and the repair is a lazy expression that
+  fuses into the write. The audit is cheap (it scans only the sparse records), so there
+  is rarely a reason to skip it.
+- **`--n-partitions` matters more as your cohort grows.** A VDS's on-disk layout is
+  derived from its reference-block count, which saturates as sample count grows, while
+  the dense matrix keeps growing. Past that point the VDS's partition count stops
+  tracking the size of what it partitions, and tasks get too thin to amortise overhead.
+  Size `--n-partitions` from the dense matrix you're producing, not the VDS.
+
+Also: VDS-level splitting already produces biallelic `GT`/`AD`, so there is no manual
+LGT→GT downcoding step to worry about. Adjusted-genotype annotation needs no extra
+dependency — `annotate_adj` is ported from gnomAD's `gnomad_methods` (MIT) into
+`hvantk/algorithms/hgc/adj.py`, with gnomAD's published thresholds kept verbatim.
+
+### Export a MatrixTable to VCF
+
+```bash
+hvantk hgc mt2vcf -i cohort.mt -o cohort.vcf.bgz --min-ac 1
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input TEXT` | Input MatrixTable | required |
+| `-o, --output TEXT` | Output VCF path — use `.vcf.bgz` (block gzip), not `.vcf.gz` | required |
+| `--filter-adj / --no-filter-adj` | Keep only `adj` genotypes (recommended) | filter |
+| `--min-ac INT` | Minimum alternate allele count | 1 |
+| `--split-multi / --no-split-multi` | Split multi-allelic variants if not already split | split |
+| `--check-adj / --no-check-adj` | Verify `adj` is not systematically MISSING before filtering | check |
+| `--dry-run` | Preview without executing | off |
+
+Use `.vcf.bgz`: block gzip is what bcftools, tabix and GATK expect, and `mt2vcf` warns
+if you give it a plain `.vcf.gz` path. Keep `--check-adj` on: Hail's `filter_entries`
+treats a MISSING `adj` as not-passing, so if `adj` were ever systematically missing
+(for example, from a MatrixTable built before a dependent field like `DP` was
+reliably populated), `--filter-adj` would silently delete genotypes instead of
+failing loudly. `--check-adj` catches that before it happens.
+
+The exported VCF carries standard INFO fields: `AF`, `AC`, `AN`, and `call_rate`
+(fraction of samples with a called genotype).
+
+### Run the full pipeline
+
+```bash
+hvantk hgc pipeline -i /data/gvcfs -o /data/output --output-prefix cohort
+```
+
+Stages (each can be skipped independently):
+
+1. Combine gVCFs → VDS
+2. Convert VDS → MatrixTable
+3. Compute sample QC metrics
+4. Compute variant QC metrics
+5. Export → cohort VCF
+
+**Required**
+
+| Option | Meaning |
+|---|---|
+| `-i, --input-dir PATH` | Directory of gVCF files (must exist) |
+| `-o, --output-dir PATH` | Output directory |
+
+**Stage control and combiner/conversion tuning** (same meaning as the matching
+`gvcf-combine`/`vds2mt` options above)
+
+| Option | Meaning | Default |
+|---|---|---|
+| `--skip-combine-gvcfs` | Skip stage 1 (needs `--vds-path`) | off |
+| `--skip-vds-to-mt` | Skip stage 2 (needs `--mt-path`) | off |
+| `--skip-compute-sample-qc` | Skip stage 3 | off |
+| `--skip-compute-variant-qc` | Skip stage 4 | off |
+| `--skip-export-pvcf` | Skip stage 5 | off |
+| `--skip-validation` | Skip `vds2mt`'s biallelic audit and repair | off |
+| `--vds-path PATH` | Existing VDS to resume from | - |
+| `--mt-path PATH` | Existing MatrixTable to resume from | - |
+| `--import-interval-size` / `--use-exome-default-intervals` / `--gvcf-batch-size` / `--branch-factor` | Stage-1 combiner tuning | see `gvcf-combine` |
+| `--n-partitions INT` | Stage-2 MatrixTable partition count | keep the VDS's layout |
+
+**Processing and output**
+
+| Option | Meaning | Default |
+|---|---|---|
+| `--reference-genome [GRCh37\|GRCh38]` | Reference build | GRCh38 |
+| `--tmp-dir PATH` | Temporary directory | system default |
+| `--overwrite` | Overwrite existing output files | off |
+| `--output-prefix TEXT` | Prefix for every output file | `cohort` |
+| `--apply-qc-filters` | Apply QC filters before exporting the cohort VCF | off |
+| `--min-sample-call-rate FLOAT` | Sample call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
+| `--min-variant-call-rate FLOAT` | Variant call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
+| `--generate-qc-report` | Generate an HTML QC report after computing QC | off |
+| `--keep-intermediates` | Keep the VDS and MT (currently always on, see caution below) | on |
+| `--dry-run` | Show the execution plan without running | off |
+
+> **`--apply-qc-filters` and `--generate-qc-report` do not currently work.** The
+> pipeline's QC stages compute sample/variant QC into memory and export only the `.ht`
+> tables (see [Outputs](#outputs)) — they never write the QC-annotated MatrixTable
+> back to `<prefix>.mt`. As a result `--apply-qc-filters` raises
+> `ValueError: Sample QC annotation 'sample_qc' not found` and aborts the run, and
+> `--generate-qc-report` just logs a warning and produces no file. Until this is
+> fixed, run QC filtering and reporting as separate commands against the pipeline's
+> `<prefix>.mt` instead — see [QC metrics and filters](#qc-metrics-and-filters) and the
+> Quick start above.
+
+**Resuming.** The pipeline does not auto-resume: it always runs every stage you
+haven't explicitly `--skip-*`'d. `.pipeline_state.json` in the output directory
+records what completed and the error, if any, purely for you to inspect — to resume,
+read it, then re-run with the matching `--skip-*` flags and `--vds-path`/`--mt-path`
+pointing at the stage outputs that already succeeded:
+
+```bash
+cat /data/output/.pipeline_state.json
+
+hvantk hgc pipeline -i /data/gvcfs -o /data/output \
+    --skip-combine-gvcfs --vds-path /data/output/cohort.vds \
+    --overwrite
+```
+
+`--overwrite` is usually needed on a resumed run, since the stage you're re-entering
+at will try to write a path that already exists.
+
+## QC metrics and filters
+
+### Compute QC metrics
+
+```bash
+hvantk hgc compute-qc -i cohort.mt -o qc_results/
+```
+
+`-o`/`--output-dir` is an **output directory**, not a file path — `compute-qc` writes
+`<prefix>_sample_qc.csv`, `<prefix>_variant_qc.tsv` and (unless `--no-save-mt`)
+`<prefix>_with_qc.mt` into it (`<prefix>` from `--prefix`, default `qc_metrics`). Feed
+that `_with_qc.mt` to `filter-qc` or `qc-report` — a plain `.mt` without QC
+annotations fails qc-report's "No QC annotations found" check immediately.
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input TEXT` | Input MatrixTable | required |
+| `-o, --output-dir TEXT` | Output directory (see above) | required |
+| `--sample-qc / --no-sample-qc` | Compute sample-level metrics | on |
+| `--variant-qc / --no-variant-qc` | Compute variant-level metrics | on |
+| `--call-field TEXT` | Entry field to call genotypes from | `GT` |
+| `--prefix TEXT` | Output file prefix | `qc_metrics` |
+| `--save-mt / --no-save-mt` | Also write the QC-annotated MatrixTable | save |
+| `--adj-filter / --no-adj-filter` | Filter to `adj` genotypes before computing QC, so the metrics describe the filtered callset rather than the densified matrix | off |
+| `--remove-star-alleles / --keep-star-alleles` | Drop rows whose alt allele is the gVCF placeholder `<*>`/`<NON_REF>` or the spanning-deletion `*` — not real variants, and on a densified gVCF callset they can be around half of all rows | remove |
+| `--dry-run` | Preview without executing | off |
+
+At least one of `--sample-qc`/`--variant-qc` must stay enabled. `--adj-filter`
+requires an `adj` entry field (from `vds2mt --adjust-genotypes`); if the MatrixTable
+has `adj` but you don't pass `--adj-filter`, `compute-qc` warns that the reported call
+rate describes the unfiltered matrix, not what you'd actually export.
+
+### Filter by QC metrics
+
+```bash
+hvantk hgc filter-qc -i qc_results/qc_metrics_with_qc.mt -o cohort_filtered.mt \
+    --min-sample-call-rate 0.9 --min-ac 5
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input TEXT` | MatrixTable with QC annotations (e.g. `<prefix>_with_qc.mt`) | required |
+| `-o, --output TEXT` | Output filtered MatrixTable path | required |
+| `--min-sample-call-rate FLOAT` | | 0.85 |
+| `--min-variant-call-rate FLOAT` | | 0.85 |
+| `--min-ac INT` | Minimum alt allele count | 1 |
+| `--max-ac INT` | | none |
+| `--min-af FLOAT` | | none |
+| `--max-af FLOAT` | | none |
+| `--hwe-threshold FLOAT` | Minimum `p_value_hwe` | 1e-6 |
+| `--min-mean-dp FLOAT` | | none |
+| `--max-mean-dp FLOAT` | | none |
+| `--min-mean-gq FLOAT` | | none |
+| `--sample-qc-name TEXT` | Name of the sample QC annotation to read | `sample_qc` |
+| `--variant-qc-name TEXT` | Name of the variant QC annotation to read | `variant_qc` |
+| `--overwrite / --no-overwrite` | | no-overwrite |
+| `--dry-run` | Preview without executing | off |
+
+### Generate an HTML QC report
+
+```bash
+hvantk hgc qc-report -i qc_results/qc_metrics_with_qc.mt -o report.html
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-i, --input TEXT` | MatrixTable with QC annotations | required |
+| `-o, --output TEXT` | Output HTML path | required |
+| `--title TEXT` | Report title | `Quality Control Report` |
+| `--include-plots CHOICE` (repeatable) | `sample_overview`, `variant_overview`, `sample_call_rates`, `variant_call_rates`, `allele_frequencies`, `hwe`, `titv` | all seven |
+| `--style [default\|publication]` | Plot style | default |
+| `--dry-run` | Preview without executing | off |
+
+The report is self-contained (plots embedded as base64 PNGs). There is no standalone
+plotting/dashboard CLI; for ad hoc or custom plots, export the QC metrics as pandas
+DataFrames and plot them directly (see [Worked examples](#worked-examples)).
+
+### Summarize QC metrics
+
+```bash
+hvantk hgc qc-summary -d qc_results/ -o summary.md --format markdown
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `-d, --qc-dir TEXT` | Directory containing QC metric files | required |
+| `--sample-file TEXT` | Specific sample QC file | auto-detected: the first `*sample_qc*.csv` in `--qc-dir` |
+| `--variant-file TEXT` | Specific variant QC file | auto-detected: `*variant_qc*.tsv`, falling back to `*variant_qc*.csv` |
+| `-o, --output TEXT` | Write the summary here | print to the console |
+| `--format [csv\|json\|markdown]` | Output format | markdown |
+
+No `--dry-run` on this command. It reports `describe()`-style statistics
+(count/mean/std/min/25%/50%/75%/max) per numeric metric column, not a QC pass/fail.
+
+### Metric names
+
+#### Sample metrics
+
+Field names in `sample_qc`, from Hail's `hl.sample_qc`: `call_rate`, `n_called`,
+`n_not_called`, `n_filtered`, `n_hom_ref`, `n_het`, `n_hom_var`, `n_non_ref`, `n_snp`,
+`n_insertion`, `n_deletion`, `n_singleton`, `n_transition`, `n_transversion`, `n_star`,
+`r_ti_tv`, `r_het_hom_var`, `r_insertion_deletion`, plus nested `dp_stats`/`gq_stats`
+(`mean`/`stdev`/`min`/`max`) when `DP`/`GQ` are present. hvantk additionally adds flat
+sibling columns `sample_qc_mean_dp` / `sample_qc_mean_gq` (not nested under
+`sample_qc`) — these are what `filter-qc`'s `--min-mean-dp`/`--max-mean-dp`/
+`--min-mean-gq` filter on.
+
+#### Variant metrics
+
+Field names in `variant_qc`, from Hail's `hl.variant_qc`: `AF`, `AC`,
+`homozygote_count` (arrays, one element per allele including the reference), `AN`,
+`call_rate`, `n_called`, `n_not_called`, `n_filtered`, `n_het`, `n_non_ref`,
+`het_freq_hwe`, `p_value_hwe`, `p_value_excess_het`, plus `dp_stats`/`gq_stats` and the
+same flat `variant_qc_mean_dp` / `variant_qc_mean_gq` siblings. `filter-qc` reads the
+alt-allele element of the arrays (`AC[1]`, `AF[1]`), so it assumes biallelic data —
+run after `vds2mt`'s split, not before.
+
+#### Adjusted-genotype (`adj`) thresholds
+
+From `vds2mt --adjust-genotypes`
+(`hvantk/algorithms/hgc/adj.py`, ported from gnomAD's `annotate_adj`, thresholds kept
+verbatim): `GQ >= 20`, `DP >= 10` (`DP >= 5` for a haploid call), and allele balance
+`>= 0.2` for each called allele on a heterozygous call (homozygous calls skip the
+allele-balance test).
+
+## Outputs
+
+**Data formats**
+
+| Format | What it is | On disk |
+|---|---|---|
+| gVCF | Single-sample calls plus reference blocks | `.g.vcf.gz` + `.tbi` |
+| VDS | Hail's storage-optimized format; separates reference data from variant data | directory ending `.vds` |
+| MatrixTable (MT) | Hail's dense analysis format; rows = variants, columns = samples | directory ending `.mt` |
+| VCF | Standard variant format, exported by `mt2vcf` | `.vcf.bgz` (block gzip) |
+
+**`compute-qc` output directory** (filenames use `--prefix`, default `qc_metrics`):
+
+```text
+qc_results/
+├── qc_metrics_sample_qc.csv     # comma-separated, every sample
+├── qc_metrics_variant_qc.tsv    # TAB-separated (alleles/struct fields contain
+│                                 # commas Hail doesn't quote); every variant,
+│                                 # exported directly by Hail, not collected
+└── qc_metrics_with_qc.mt         # QC-annotated MatrixTable (unless --no-save-mt)
+```
+
+**`pipeline` output directory** (filenames use `--output-prefix`, default `cohort`):
+
+```text
+output_directory/
+├── cohort.vds/                  # Stage 1
+├── cohort.mt/                   # Stage 2
+├── cohort.vcf.bgz                # Stage 5
+├── qc/
+│   ├── cohort_sample_qc.ht      # Stage 3, Hail Table, every sample
+│   ├── cohort_sample_qc.csv     # same data; TAB-delimited despite the .csv name
+│   ├── cohort_variant_qc.ht     # Stage 4, Hail Table, every variant
+│   └── cohort_variant_qc.csv    # first 10,000 variants only; also TAB-delimited
+├── logs/
+│   └── pipeline_<timestamp>.log
+└── .pipeline_state.json         # inspect this to resume manually, see above
+```
+
+Two gotchas in that tree: `qc/cohort_variant_qc.csv` is a 10,000-row *sample*, not the
+full variant table (use `qc/cohort_variant_qc.ht` for the full table); and both pipeline
+CSVs are TAB-delimited internally despite the `.csv` extension (unlike the standalone
+`compute-qc` command's `_sample_qc.csv`, which is a real comma CSV). `qc-summary`
+handles both, since it sniffs the delimiter for the variant file — but reading
+`cohort_sample_qc.csv` yourself with a plain comma parser will mis-split it.
+
+## Performance and sizing
+
+**Combiner parallelism (stage 1).** Hail's gVCF combiner creates **one partition per
+genomic interval**, so the interval size caps how many cores can do useful work. The
+default — Hail's whole-genome default, 1.2 Mb — is sized for whole-genome gVCFs. For a
+region-restricted run it produces far fewer partitions than you likely have cores:
 
 | Input region | Partitions at the 1.2 Mb default |
 |---|---|
@@ -103,842 +408,236 @@ produce far fewer partitions than you have cores, leaving most of them idle:
 | chr1 (249.0 Mb) | 208 |
 | whole genome (3.1 Gb) | ~2,584 |
 
-**Rule of thumb: keep partitions at roughly 2–4× your total core count.** If you run
-chr20 on 128 cores with the default, ~74 cores have nothing to do — which looks like
-"the tool doesn't scale" but is purely a partitioning artefact.
+Keep partitions at roughly 2-4x your core count. On a 128-core run of chr1, lower the
+interval size so partitions clear that target (600 kb -> ~415 partitions on chr1,
+~3x 128 cores):
 
 ```bash
-# chr1 on a 128-core cluster: 600 kb -> 415 partitions (~3x cores)
-hvantk hgc gvcf-combine -g /path/to/chr1_gvcfs -o cohort.vds \
-    --import-interval-size 600000
-
-# The same knob on the recommended end-to-end pipeline
-hvantk hgc pipeline -i /path/to/chr1_gvcfs -o /path/to/out \
+hvantk hgc gvcf-combine -g /data/chr1_gvcfs -o chr1.vds \
     --import-interval-size 600000
 ```
 
-Related tuning options (available on both `gvcf-combine` and `pipeline`):
+**MatrixTable partitioning (stage 2).** A VDS's on-disk partition count is derived
+from its reference blocks, which is a property of the genome and saturates as sample
+count grows — while the dense matrix you're producing keeps growing. Past that point
+the VDS's layout stops tracking the data it partitions, and `vds2mt`/the pipeline's
+stage 2 keeps using it unless you override it with `--n-partitions`, sized from the
+dense matrix you expect, not the VDS.
 
-| Option | Meaning | Hail default |
-|---|---|---|
-| `--import-interval-size` | Interval size (bp); **one partition per interval** | 1.2 Mb (genome) |
-| `--use-exome-default-intervals` | Use Hail's exome interval size | 60 Mb |
-| `--gvcf-batch-size` | gVCFs merged per tree-merge batch | 50 |
-| `--branch-factor` | Branch factor of the hierarchical merge | 100 |
+**Memory.** Set Hail's driver memory for larger cohorts:
+`export PYSPARK_SUBMIT_ARGS="--driver-memory 32g pyspark-shell"`.
 
-`--import-interval-size` and `--use-exome-default-intervals` are mutually exclusive.
+**Storage, as rough ratios of the input gVCF size** (not a measured benchmark — actual
+ratios depend on cohort size, ploidy and compression): VDS ~50-70%; MatrixTable
+~100-150% of the VDS; temporary space during combine, 2-3x the input gVCFs.
 
-#### Individual Component Commands
+**Actual runtimes vary too much by hardware, storage and gVCF size to state here.**
+`examples/hgc/scalability/` and `examples/hgc/cpu_scaling/` include benchmark scripts
+if you want numbers for your own setup.
 
-For advanced users who need fine-grained control, HGC provides individual commands:
+## Python API
 
-**Core Joint Genotyping Commands:**
-
-```bash
-# View available commands
-hvantk hgc --help
-
-# Combine GVCF files
-hvantk hgc gvcf-combine -g /path/to/gvcfs -o combined.vds
-
-# Combine VDS datasets
-hvantk hgc vds-combine -i /path/to/vds_dir -o merged.vds
-
-# Convert VDS to MatrixTable
-hvantk hgc vds2mt -i combined.vds -o analysis.mt
-
-# Export MatrixTable to VCF
-hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
-```
-
-**Quality Control Commands (Post-Combination):**
-
-Additional QC commands for analyzing combined cohorts:
-
-```bash
-# Compute QC metrics for combined cohort. -o/--output-dir is a directory; this
-# writes qc_results/qc_metrics_with_qc.mt, named from --prefix (default "qc_metrics").
-hvantk hgc compute-qc -i analysis.mt -o qc_results/
-
-# Generate comprehensive QC report
-hvantk hgc qc-report -i qc_results/qc_metrics_with_qc.mt -o qc_report.html
-
-# Filter based on QC metrics
-hvantk hgc filter-qc -i qc_results/qc_metrics_with_qc.mt -o filtered.mt --min-sample-call-rate 0.95
-```
-
-Standalone QC plotting/dashboard CLI support has been retired. `qc-report` produces
-a self-contained HTML report with embedded plots; for ad hoc or custom plots, export
-the QC metrics to a DataFrame in Python and plot with matplotlib directly (see
-[Quality Control Functions](#quality-control-functions-post-combination) below).
-
-### Python API
-
-#### Core Joint Genotyping Functions
-
-Use HGC functions directly in Python:
+### Core functions
 
 ```python
 from hvantk.algorithms.hgc import (
     combine_gvcfs,
     combine_vdses,
     convert_vds_to_mt,
-    convert_mt_to_multi_sample_vcf
-)
-
-# Combine GVCF files into VDS
-combine_gvcfs(
-    gvcf_dir="/path/to/gvcfs",
-    vds_output_path="output.vds",
-    tmp_path="/tmp/hail",
-    save_path="combiner_plan.json",
-    vdses=[],
-    kwargs={}
-)
-
-# Convert VDS to MatrixTable
-convert_vds_to_mt(
-    vds_path="output.vds",
-    output_path="analysis.mt",
-    adjust_genotypes=True,
-    skip_split_multi=False,
-    skip_validation=False
+    convert_mt_to_multi_sample_vcf,
 )
 ```
 
-#### Quality Control Functions (Post-Combination)
+| Function | Returns |
+|---|---|
+| `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome="GRCh38")` | `None` |
+| `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)` | `None` |
+| `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, skip_validation=False, skip_keying_by_cols=False, overwrite=False, n_partitions=None)` | `None` |
+| `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True, check_adj=True)` | `None` |
 
-Additional QC functionality for combined cohorts:
+`combine_gvcfs`'s `kwargs` forwards to Hail's `hl.vds.new_combiner()`; its interval
+keys (`import_interval_size`, `use_genome_default_intervals`,
+`use_exome_default_intervals`, `intervals`) are mutually exclusive, same as the CLI.
+
+### QC functions
 
 ```python
-from hvantk.algorithms.hgc import compute_full_qc, filter_samples_by_qc, filter_variants_by_qc
+from hvantk.algorithms.hgc import (
+    QCMetrics,
+    compute_sample_qc,
+    compute_variant_qc,
+    compute_full_qc,
+    extract_qc_metrics,
+    filter_samples_by_qc,
+    filter_variants_by_qc,
+    get_qc_summary_stats,
+    prepare_qc_for_visualization,
+    save_qc_metrics,
+)
+```
 
-# Load combined MatrixTable
-import hail as hl
-mt = hl.read_matrix_table("analysis.mt")
+| Function | Returns |
+|---|---|
+| `compute_sample_qc(mt, name="sample_qc", call_field="GT")` | `MatrixTable` |
+| `compute_variant_qc(mt, name="variant_qc", call_field="GT")` | `MatrixTable` |
+| `compute_full_qc(mt, sample_qc_name="sample_qc", variant_qc_name="variant_qc", call_field="GT")` | `QCMetrics` |
+| `extract_qc_metrics(mt, sample_qc_name="sample_qc", variant_qc_name="variant_qc", max_variant_rows=500_000)` | `(DataFrame, DataFrame)` |
+| `filter_samples_by_qc(mt, min_call_rate=0.85, min_mean_dp=None, max_mean_dp=None, min_mean_gq=None, sample_qc_name="sample_qc")` | `MatrixTable` |
+| `filter_variants_by_qc(mt, min_call_rate=0.85, min_ac=1, max_ac=None, min_af=None, max_af=None, hwe_threshold=1e-6, variant_qc_name="variant_qc")` | `MatrixTable` |
+| `get_qc_summary_stats(qc_df, metrics=None)` | `DataFrame` |
+| `prepare_qc_for_visualization(qc_metrics, sample_metrics=None, variant_metrics=None)` | `Dict[str, DataFrame]` |
+| `save_qc_metrics(qc_metrics, output_dir, prefix="qc_metrics", save_mt=True)` | `Dict[str, str]` |
 
-# Compute comprehensive QC metrics
+`QCMetrics` (returned by `compute_full_qc`) holds `.mt`, `.sample_qc`, `.variant_qc`
+(`Optional[hl.Table]`), `.has_sample_qc`/`.has_variant_qc`, `.count_samples()`/
+`.count_variants()`, `.get_sample_metrics_df()`, `.get_variant_metrics_df(max_rows=500_000)`
+(subsamples above the row budget — a real dense chromosome can be ~10-11M variants,
+and collecting every row to the driver has killed real runs; the full table is always
+on disk via `save_qc_metrics`/`compute-qc`), and `.generate_html_report(output_path, **kwargs)`.
+
+```python
 qc_results = compute_full_qc(mt)
-
-# Generate a self-contained HTML report (recommended for a full overview)
-qc_results.generate_html_report('qc_report.html')
-
-# Or plot directly from the exported QC tables with matplotlib
-import matplotlib.pyplot as plt
+report_path = qc_results.generate_html_report("qc_report.html")
 
 sample_df = qc_results.get_sample_metrics_df()
+import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
 ax.hist(sample_df["sample_qc.call_rate"], bins=30)
 ax.axvline(0.85, color="red", ls="--", label="min call rate")
 ax.set_xlabel("Sample call rate")
 ax.legend()
 fig.savefig("call_rate.png", dpi=300, bbox_inches="tight")
-
-# Apply quality filters
-mt_filtered = filter_samples_by_qc(
-    qc_results.mt,
-    min_call_rate=0.95,
-    min_ti_tv_ratio=1.8
-)
-
-mt_filtered = filter_variants_by_qc(
-    mt_filtered,
-    min_call_rate=0.90,
-    min_hwe_pvalue=1e-6
-)
 ```
 
-#### Pipeline Orchestration (Recommended)
-
-For end-to-end workflows, use the Pipeline API:
+### Pipeline API
 
 ```python
 from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
+```
 
-# Create configuration
+```python
 config = PipelineConfig(
     input_dir="/data/gvcfs",
     output_dir="/data/output",
-    apply_qc_filters=True,
-    min_sample_call_rate=0.95,
-    generate_qc_report=True
+    output_prefix="cohort",
+    reference_genome="GRCh38",
 )
 
-# Run pipeline
-runner = PipelineRunner(config)
-runner.show_plan()  # Optional: preview execution
-state = runner.run()
-
-# Check results
-print(f"Outputs: {state.outputs}")
-```
-
-See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
-
-## Core Components
-
-### 1. Pipeline (`hvantk.algorithms.hgc.pipeline`)
-
-**Recommended** - End-to-end workflow orchestration:
-
-- **`PipelineConfig`** - Configuration dataclass with validation
-- **`PipelineRunner`** - Orchestration engine with dry-run support
-- **`PipelineState`** - State tracking with JSON save/load
-- **`PipelineStage`** - Enum of pipeline stages
-
-See [Pipeline Orchestration](#pipeline-orchestration) for detailed usage.
-
-### 2. Combiners (`hvantk.algorithms.hgc.combiners`)
-
-Functions for combining genomic datasets:
-
-- **`combine_gvcfs()`** - Combine GVCF files and/or existing VDS datasets into a new VDS
-- **`combine_vdses()`** - Merge multiple VDS directories into a single VDS
-
-**Advanced functions** (require direct import from `hvantk.algorithms.hgc.combiners`):
-- **`combine_matrix_table_rows()`** - Combine MatrixTables by rows (variants)
-- **`combine_matrix_table_cols()`** - Combine MatrixTables by columns (samples)
-
-### 3. Converters (`hvantk.algorithms.hgc.converters`)
-
-Functions for format conversion:
-
-- **`convert_vds_to_mt()`** - Convert VDS to dense MatrixTable format
-- **`convert_mt_to_multi_sample_vcf()`** - Export MatrixTable to multi-sample VCF
-
-### 4. File Utilities (`hvantk.algorithms.hgc.file_utils`)
-
-Helper functions for file handling:
-
-- **`validate_vcfs_paths()`** - Validate GVCF files and their indices
-- **`validate_vds_paths()`** - Validate VDS directory paths
-- **`check_path_exists_and_readable()`** - Verify file accessibility
-- **`compress_files()`** / **`decompress_files()`** - Handle file compression
-- **`sort_mts_cols()`** - Sort MatrixTable columns to match reference order
-
-## Detailed Usage
-
-### GVCF Combination
-
-Combine single-sample GVCF files into a joint-called VDS:
-
-**CLI:**
-```bash
-hvantk hgc gvcf-combine \
-  --gvcf-dir /data/gvcfs \
-  --output cohort.vds \
-  --temp-dir /tmp/hail \
-  --save-path combiner_plan.json
-```
-
-**Python:**
-```python
-from hvantk.algorithms.hgc import combine_gvcfs
-
-combine_gvcfs(
-    gvcf_dir="/data/gvcfs",
-    vds_output_path="cohort.vds",
-    tmp_path="/tmp/hail",
-    save_path="combiner_plan.json",
-    vdses=[],  # Optional: existing VDS to include
-    kwargs={
-        # Optional interval parameters (mutually exclusive):
-        # 'use_genome_default_intervals': True,
-        # 'use_exome_default_intervals': True,
-        # 'intervals': [list of intervals]
-    },
-    reference_genome="GRCh38"
-)
-```
-
-**Parameters:**
-- `gvcf_dir`: Directory containing `.g.vcf.gz` files with `.tbi` indices
-- `vds_output_path`: Output path for the combined VDS
-- `tmp_path`: Temporary directory for intermediate files
-- `save_path`: Path to save the combiner execution plan (JSON)
-- `vdses`: List of existing VDS paths to combine with GVCFs
-- `kwargs`: Additional parameters for `hail.vds.new_combiner()`
-- `reference_genome`: Reference genome build (default: "GRCh38")
-
-**Requirements:**
-- GVCF files must have corresponding `.tbi` index files
-- Sufficient temporary storage (typically 2-3x input size)
-- Adequate memory for Hail operations
-
-### VDS Combination
-
-Merge multiple VDS datasets:
-
-**CLI:**
-```bash
-hvantk hgc vds-combine \
-  --input-dir /data/vds_datasets \
-  --output merged.vds \
-  --validate \
-  --overwrite
-```
-
-**Python:**
-```python
-from hvantk.algorithms.hgc import combine_vdses
-
-combine_vdses(
-    vdses_dir="/data/vds_datasets",
-    output_path="merged.vds",
-    validate=True,
-    overwrite=False
-)
-```
-
-**Parameters:**
-- `vdses_dir`: Directory containing VDS subdirectories (each ending in `.vds`)
-- `output_path`: Output path for merged VDS
-- `validate`: Whether to validate the combined VDS using Hail's validator
-- `overwrite`: Whether to overwrite existing output
-
-### VDS to MatrixTable Conversion
-
-Convert storage-optimized VDS to analysis-ready MatrixTable:
-
-**CLI:**
-```bash
-hvantk hgc vds2mt \
-  --input cohort.vds \
-  --output analysis.mt \
-  --adjust-genotypes \
-  --overwrite
-```
-
-**Python:**
-```python
-from hvantk.algorithms.hgc import convert_vds_to_mt
-
-convert_vds_to_mt(
-    vds_path="cohort.vds",
-    output_path="analysis.mt",
-    adjust_genotypes=True,
-    skip_split_multi=False,
-    skip_validation=False,
-    skip_keying_by_cols=False,
-    overwrite=False
-)
-```
-
-**Parameters:**
-- `vds_path`: Input VDS path
-- `output_path`: Output MatrixTable path
-- `adjust_genotypes`: Annotate with adjusted genotypes using gnomAD quality filters (no extra install needed)
-- `skip_split_multi`: Skip splitting multi-allelic variants (not recommended)
-- `skip_validation`: Skip the biallelic audit and genotype repair (see below)
-- `skip_keying_by_cols`: Skip keying the MatrixTable columns by sample and sorting
-  them by sample ID (the columns then keep the VDS's own order)
-- `overwrite`: Whether to overwrite existing output
-
-**Important Notes:**
-- The VDS-level split already produces biallelic GT/AD — no manual LGT→GT downcoding is needed
-- Adjusted genotype annotation needs no extra dependency: `annotate_adj` is ported from
-  gnomad_methods (MIT) into `hvantk/algorithms/hgc/adj.py`, with gnomAD's published
-  thresholds kept verbatim (GQ >= 20, DP >= 10, AB >= 0.2, haploid DP >= 5)
-- Unless `skip_keying_by_cols` is set, the output MatrixTable's columns are sorted
-  by sample ID, so the sample order in a VCF exported from it is deterministic
-
-#### The densify runs exactly once
-
-This stage is dominated by *densification*: expanding the VDS's reference blocks back into a full
-samples × sites matrix. Hail is lazy and **does not cache**, so every *eager* action on the dense
-MatrixTable — an `aggregate_entries`, a `count`, a `write` — re-executes the whole densify from
-the top.
-
-`convert_vds_to_mt` is therefore written so that **only the final `write` touches the dense
-matrix**:
-
-- the **biallelic audit** (out-of-bounds `GT` indices, `AD` length mismatches) runs on the *sparse*
-  `variant_data`, before densification. That is where such defects can originate: reference blocks
-  are hom-ref by construction and carry no `AD`, so densification cannot introduce either defect.
-- the **repair** (setting an out-of-bounds genotype to missing) is applied as a lazy, unconditional
-  expression on the dense matrix. It fuses into the write, and on clean data it is the identity.
-
-Gating the repair behind `if n_invalid > 0` would look harmless but is not: *reading* that count is
-an eager action, so it forces an entire extra densify of the cohort. That mistake cost a large share
-of the stage's wall time on a few-hundred-sample chromosome.
-
-`--skip-validation` turns off both the audit and the repair. The audit is cheap (it scans only the
-sparse variant records), so there is rarely a reason to.
-
-### MatrixTable to VCF Export
-
-Export processed MatrixTable to standard VCF format:
-
-**CLI:**
-```bash
-hvantk hgc mt2vcf \
-  --input analysis.mt \
-  --output results.vcf.gz \
-  --filter-adj \
-  --min-ac 1 \
-  --split-multi
-```
-
-**Python:**
-```python
-from hvantk.algorithms.hgc import convert_mt_to_multi_sample_vcf
-
-convert_mt_to_multi_sample_vcf(
-    mt_path="analysis.mt",
-    vcf_path="results.vcf.gz",
-    filter_adj_genotypes=True,
-    min_ac=1,
-    split_multi=True
-)
-```
-
-**Parameters:**
-- `mt_path`: Input MatrixTable path
-- `vcf_path`: Output VCF file path
-- `filter_adj_genotypes`: Filter to adjusted genotypes only (recommended)
-- `min_ac`: Minimum alternate allele count for variant inclusion
-- `split_multi`: Split multi-allelic variants (if not already split)
-
-**VCF Info Fields:**
-The output VCF includes standard INFO fields:
-- `AF`: Allele frequency
-- `AC`: Allele count
-- `AN`: Total number of alleles
-- `call_rate`: Variant call rate
-
-## Pipeline Orchestration
-
-The **HGC Pipeline** provides end-to-end workflow orchestration from gVCF files to cohort VCF with integrated quality control. This is the **recommended approach** for most users.
-
-### Overview
-
-The pipeline orchestrates five stages:
-
-1. **Combine gVCFs** → VDS (Variant Dataset)
-2. **Convert VDS** → MatrixTable
-3. **Compute Sample QC** metrics
-4. **Compute Variant QC** metrics
-5. **Export** → Project VCF (pVCF)
-
-Each stage can be skipped for flexible workflow resumption.
-
-### Basic Usage
-
-```bash
-# Run complete pipeline
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output
-
-# With QC filtering and reporting
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --apply-qc-filters \
-  --min-sample-call-rate 0.95 \
-  --min-variant-call-rate 0.90 \
-  --generate-qc-report
-
-# View execution plan (dry run)
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --dry-run
-```
-
-### Key Features
-
-- **End-to-End Automation**: Single command runs the complete workflow
-- **Stage Skipping**: Resume from any intermediate stage
-- **QC Integration**: Optional quality filtering before export
-- **State Persistence**: Automatic checkpointing for recovery
-- **Flexible Configuration**: 20+ options for customization
-
-### Common Workflows
-
-#### 1. Standard Pipeline with QC
-
-```bash
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --output-prefix my_cohort \
-  --apply-qc-filters \
-  --generate-qc-report
-```
-
-**Output:**
-- `my_cohort.vds/` - Combined variant dataset
-- `my_cohort.mt/` - MatrixTable
-- `my_cohort_filtered.mt/` - QC-filtered MatrixTable
-- `my_cohort.vcf.bgz` - Final cohort VCF
-- `qc/my_cohort_qc_report.html` - QC report
-
-#### 2. Resume from Existing VDS
-
-```bash
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --skip-combine-gvcfs \
-  --vds-path /data/existing.vds
-```
-
-#### 3. QC-Only Analysis
-
-```bash
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/qc_analysis \
-  --skip-export-pvcf \
-  --generate-qc-report
-```
-
-#### 4. Resume After Error
-
-```bash
-# If pipeline fails, check state
-cat /data/output/.pipeline_state.json
-
-# Resume from last successful stage
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --skip-combine-gvcfs \
-  --vds-path /data/output/cohort.vds \
-  --overwrite
-```
-
-### Configuration Options
-
-**Required:**
-- `-i, --input-dir` - Directory containing gVCF files
-- `-o, --output-dir` - Output directory
-
-**Stage Control:**
-- `--skip-combine-gvcfs` - Skip Stage 1 (requires `--vds-path`)
-- `--skip-vds-to-mt` - Skip Stage 2 (requires `--mt-path`)
-- `--skip-compute-sample-qc` - Skip Stage 3
-- `--skip-compute-variant-qc` - Skip Stage 4
-- `--skip-export-pvcf` - Skip Stage 5
-
-**Quality Control:**
-- `--apply-qc-filters` - Apply QC filters before export
-- `--min-sample-call-rate FLOAT` - Minimum sample call rate (default: 0.85)
-- `--min-variant-call-rate FLOAT` - Minimum variant call rate (default: 0.85)
-- `--generate-qc-report` - Create HTML QC report
-
-**Processing:**
-- `--reference-genome [GRCh37|GRCh38]` - Reference build (default: GRCh38)
-- `--n-partitions INT` - Partitions for parallel processing
-- `--tmp-dir PATH` - Temporary directory
-- `--overwrite` - Overwrite existing files
-- `--output-prefix TEXT` - Output filename prefix (default: cohort)
-
-**Utility:**
-- `--dry-run` - Show execution plan without running
-
-### Output Structure
-
-```
-output_directory/
-├── cohort.vds/                    # Stage 1: Combined VDS
-├── cohort.mt/                     # Stage 2: MatrixTable
-├── cohort_filtered.mt/            # Filtered MT (if --apply-qc-filters)
-├── cohort.vcf.bgz                 # Stage 5: Cohort VCF
-├── qc/
-│   ├── cohort_sample_qc.ht        # Stage 3: Sample QC
-│   ├── cohort_sample_qc.csv
-│   ├── cohort_variant_qc.ht       # Stage 4: Variant QC
-│   ├── cohort_variant_qc.csv
-│   └── cohort_qc_report.html      # HTML Report
-├── logs/
-│   └── pipeline_*.log
-└── .pipeline_state.json           # State for recovery
-```
-
-### Python API
-
-```python
-from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
-
-# Configure pipeline
-config = PipelineConfig(
-    input_dir="/data/gvcfs",
-    output_dir="/data/output",
-    output_prefix="my_cohort",
-    apply_qc_filters=True,
-    min_sample_call_rate=0.95,
-    min_variant_call_rate=0.90,
-    generate_qc_report=True,
-    reference_genome="GRCh38"
-)
-
-# Validate configuration
 errors = config.validate()
 if errors:
-    for error in errors:
-        print(f"Error: {error}")
-    exit(1)
+    raise SystemExit(errors)
 
-# Create and run pipeline
 runner = PipelineRunner(config)
-runner.show_plan()  # Preview execution
+runner.show_plan()       # optional preview
 state = runner.run()
 
-# Check results
-if state.errors:
-    print(f"Pipeline failed: {state.errors}")
-else:
-    print(f"Success! Outputs: {state.outputs}")
+print(state.outputs)      # {"vds": ..., "mt": ..., "compute_sample_qc": ..., ...}
+print(state.errors)
 ```
 
-### Performance Tips
+Constructing `PipelineRunner(config)` has side effects: it creates the output,
+`qc/` and `logs/` directories immediately, and initializes Hail (through the same
+idempotent `init_hail` the rest of hvantk uses, so constructing more than one runner
+in a process is safe) before you call `.show_plan()` or `.run()`.
 
-**Memory Management:**
-```bash
-# For large cohorts (>1000 samples)
-export PYSPARK_SUBMIT_ARGS='--driver-memory 32g --executor-memory 32g'
-hvantk hgc pipeline -i /data/gvcfs -o /data/output --n-partitions 1000
-```
+`PipelineConfig` is a dataclass with every option the CLI exposes (see
+[Run the full pipeline](#run-the-full-pipeline)); `PipelineRunner.run()` returns a
+`PipelineState` with `.completed_stages`, `.outputs` and `.errors`, and persists itself
+to `<output_dir>/.pipeline_state.json`. `PipelineState.load(path)` can read that file
+back, though nothing in the CLI calls it automatically — see
+[Resuming](#run-the-full-pipeline) above. `PipelineStage` is the stage-name enum
+(`COMBINE_GVCFS`, `VDS_TO_MT`, `COMPUTE_SAMPLE_QC`, `COMPUTE_VARIANT_QC`,
+`EXPORT_PVCF`).
 
-**Disk Space:**
-- VDS: ~1-2x input gVCF size
-- MatrixTable: ~0.5-1x VDS size
-- pVCF: ~0.5-1x MatrixTable size
+### Utility functions
 
-**Typical Runtime** (varies by hardware and cohort size):
-- 100 samples: ~30-60 minutes
-- 500 samples: ~2-4 hours
-- 1000 samples: ~4-8 hours
+Imported from `hvantk.algorithms.hgc`: `validate_vcfs_paths(directory, pattern=None)`
+and `validate_vds_paths(vdses)` (both `-> List[str]`),
+`check_path_exists_and_readable(path) -> str`, and
+`sort_mts_cols(mts, ref_index=0) -> List[MatrixTable]`.
 
-## Data Formats
+Two advanced functions need a direct import from `hvantk.algorithms.hgc.combiners`
+rather than the package root: `combine_matrix_table_rows(mt_paths, output_path,
+n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)` and
+`combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False,
+kwargs=None)` (both `-> None`), for combining already-built MatrixTables by variant or
+by sample.
 
-### GVCF (Genomic VCF)
-- Single-sample variant calls with reference blocks
-- Format: `.g.vcf.gz` with `.tbi` index
-- Input format for joint genotyping
+### Worked examples
 
-### VDS (Variant DataSet)
-- Hail's storage-optimized format for genomic data
-- Separates reference data from variant data
-- Efficient for large cohorts
-- Directory structure ending in `.vds`
-
-### MatrixTable (MT)
-- Hail's analysis-optimized format
-- Dense matrix representation
-- Rows: variants, Columns: samples
-- Directory structure ending in `.mt`
-
-### VCF (Variant Call Format)
-- Standard genomic variant format
-- Compatible with most genomic tools
-- Format: `.vcf.gz` with optional `.tbi` index
-
-## Performance Considerations
-
-### Memory Requirements
-- GVCF combination: ~8-16 GB for small cohorts (<100 samples)
-- Large cohorts (>1000 samples): 32-64 GB recommended
-- Set Hail memory with environment variable: `export PYSPARK_SUBMIT_ARGS="--driver-memory 32g"`
-
-### Storage Requirements
-- Temporary space: 2-3x input GVCF size
-- VDS output: ~50-70% of input GVCF size
-- MatrixTable: ~100-150% of VDS size
-
-### Optimization Tips
-1. Use SSD storage for temporary files
-2. Adjust Hail partitioning for your cluster size
-3. Process intervals in parallel for large cohorts
-4. Use genome/exome default intervals for better performance
-
-## Common Options
-
-### Interval Selection
-When combining GVCFs, you can specify genomic intervals:
-
-```python
-# Use default genome intervals (recommended for WGS)
-kwargs = {'use_genome_default_intervals': True}
-
-# Use default exome intervals (recommended for WES)
-kwargs = {'use_exome_default_intervals': True}
-
-# Specify custom intervals
-kwargs = {'intervals': [
-    hl.parse_locus_interval('chr1:1-1000000'),
-    hl.parse_locus_interval('chr2:5000000-6000000')
-]}
-```
-
-### Reference Genomes
-Supported reference genomes:
-- `GRCh38` (default) - Human genome build 38
-- `GRCh37` - Human genome build 37
-
-```python
-combine_gvcfs(..., reference_genome="GRCh38")
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: "Cannot convert LGT to GT when skip_split_multi=True"**
-```
-Solution: Either enable multi-allelic splitting or disable LGT conversion:
-convert_vds_to_mt(..., skip_split_multi=False)
-# OR
-convert_vds_to_mt(..., skip_validation=True)
-```
-
-**Issue: "Out of memory during GVCF combination"**
-```
-Solution: Increase driver memory:
-export PYSPARK_SUBMIT_ARGS="--driver-memory 64g pyspark-shell"
-```
-
-**Issue: "TBI index file not found"**
-```
-Solution: Create index files for GVCF files:
-tabix -p vcf input.g.vcf.gz
-```
-
-## Examples
-
-### Example 1: Incremental Cohort Building
+**Incremental cohort building** — combine in batches, then merge:
 
 ```python
 from hvantk.algorithms.hgc import combine_gvcfs, combine_vdses
 
-# First batch
-combine_gvcfs(
-    gvcf_dir="data/batch1",
-    vds_output_path="output/batch1.vds",
-    tmp_path="tmp",
-    save_path="output/batch1_plan.json",
-    vdses=[],
-    kwargs={}
-)
+for batch in ("batch1", "batch2"):
+    combine_gvcfs(
+        gvcf_dir=f"data/{batch}",
+        vds_output_path=f"output/{batch}.vds",
+        tmp_path="tmp",
+        save_path=f"output/{batch}_plan.json",
+        vdses=[],
+        kwargs={},
+    )
 
-# Second batch
-combine_gvcfs(
-    gvcf_dir="data/batch2",
-    vds_output_path="output/batch2.vds",
-    tmp_path="tmp",
-    save_path="output/batch2_plan.json",
-    vdses=[],
-    kwargs={}
-)
-
-# Merge batches
 combine_vdses(
-    vdses_dir="output",  # Contains batch1.vds and batch2.vds
+    vdses_dir="output",  # contains batch1.vds and batch2.vds
     output_path="output/merged.vds",
     validate=True,
-    overwrite=False
 )
 ```
 
-### Example 3: Custom Quality Filtering
+**Custom filtering with Hail expressions** — when `filter_samples_by_qc`/
+`filter_variants_by_qc`'s fixed set of thresholds isn't enough, filter the
+QC-annotated MatrixTable directly:
 
 ```python
 import hail as hl
-from hvantk.algorithms.hgc import convert_vds_to_mt
 
-# Convert VDS to MT
-convert_vds_to_mt(
-    vds_path="cohort.vds",
-    output_path="cohort.mt",
-    adjust_genotypes=True
-)
-
-# Read MT and apply custom filters
-mt = hl.read_matrix_table("cohort.mt")
-
-# Filter to high-quality variants
+mt = hl.read_matrix_table("qc_metrics_with_qc.mt")
 mt = mt.filter_rows(
-    (mt.info.AC > 2) &  # At least 2 alternate alleles
-    (mt.variant_qc.call_rate > 0.95)  # 95% call rate
+    (mt.variant_qc.AC[1] > 2) & (mt.variant_qc.call_rate > 0.95)
 )
-
-# Filter to high-quality samples
-mt = mt.filter_cols(
-    mt.sample_qc.call_rate > 0.90  # 90% sample call rate
-)
-
-# Write filtered MT
+mt = mt.filter_cols(mt.sample_qc.call_rate > 0.90)
 mt.write("cohort_filtered.mt")
 ```
 
-## API Reference
+## Troubleshooting
 
-> For detailed parameter descriptions, usage examples, and notes, see [Detailed Usage](#detailed-usage) and [Pipeline Orchestration](#pipeline-orchestration).
+**`ValueError: Call field 'GT' not found in MatrixTable entries`** — raised by
+`compute_sample_qc`/`compute_variant_qc` (and so by `compute-qc`) when the MatrixTable
+has no plain `GT` entry field and no split-dataset `LPGT` fallback either. This
+happens if `vds2mt --skip-split-multi` was used on data that still carries only local
+allele fields (`LGT`/`LA`). Re-run `vds2mt` without `--skip-split-multi`, or pass
+`--call-field LPGT` if the MatrixTable does carry per-split local genotypes.
 
-### Main Functions
+**Out of memory during gVCF combination or densify** — raise the driver memory before
+running: `export PYSPARK_SUBMIT_ARGS="--driver-memory 64g pyspark-shell"`.
 
-| Function | Description | Returns |
-|----------|-------------|---------|
-| `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')` | Combine GVCF files into a VDS. See [GVCF Combination](#gvcf-combination). | None |
-| `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)` | Merge multiple VDS directories. See [VDS Combination](#vds-combination). | None |
-| `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, skip_validation=False, skip_keying_by_cols=False, overwrite=False)` | Convert VDS to dense MatrixTable. See [VDS to MatrixTable Conversion](#vds-to-matrixtable-conversion). | None |
-| `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)` | Export MatrixTable to VCF. See [MatrixTable to VCF Export](#matrixtable-to-vcf-export). | None |
+**A gVCF's `.tbi` index is missing** — `gvcf-combine`/`pipeline` validate every gVCF's
+companion index and raise `FileNotFoundError` for the missing one. Create it with
+`tabix -p vcf <file>.g.vcf.gz`.
 
-### Utility Functions
+**`qc-report` says "No QC annotations found in MatrixTable. Run compute-qc first."**
+— the input MatrixTable lacks `sample_qc`/`variant_qc` columns. Either it's a plain
+`vds2mt` output (feed it `compute-qc`'s `<prefix>_with_qc.mt` instead), or it's the
+`pipeline`'s own `<prefix>.mt` — see the `--generate-qc-report` caution under
+[Run the full pipeline](#run-the-full-pipeline).
 
-| Function | Description | Returns |
-|----------|-------------|---------|
-| `validate_vcfs_paths(directory, pattern=None)` | Retrieve and validate GVCF file paths | List[str] |
-| `validate_vds_paths(vdses)` | Validate VDS directory paths | List[str] |
-| `check_path_exists_and_readable(path)` | Verify file accessibility | str |
-| `sort_mts_cols(mts, ref_index=0)` | Sort MatrixTable columns to match reference | List[hl.MatrixTable] |
+**An exported `_variant_qc.tsv` doesn't parse downstream (numeric columns come back as
+strings or empty)** — Hail's `Table.export` formats floats using the JVM's default
+locale. On a machine whose locale uses a comma decimal separator, `call_rate` is
+written `1,0000e+00` instead of `1.0000e+00`, and every numeric column reads as text.
+`compute-qc` detects this and raises instead of writing a silently broken file; fix it
+by starting the JVM with `-Duser.language=en -Duser.country=US` (for example via
+`PYSPARK_SUBMIT_ARGS="--driver-java-options='-Duser.language=en -Duser.country=US'"`).
 
-### Advanced Functions
+## See also
 
-These functions require direct import from `hvantk.algorithms.hgc.combiners`:
-
-| Function | Description | Returns |
-|----------|-------------|---------|
-| `combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)` | Combine MatrixTables by rows (variants) | None |
-| `combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False, kwargs=None)` | Combine MatrixTables by columns (samples) | None |
-
-## Constants
-
-The module defines commonly used constants in `hvantk.algorithms.hgc.constants`:
-
-**Reference Genomes:**
-- `HG38_GENOME_REFERENCE` - "GRCh38"
-- `HG37_GENOME_REFERENCE` - "GRCh37"
-
-**File Extensions:**
-- `GVCF_EXTENSION` - ".g.vcf.gz"
-- `GVCF_EXTENSION_TBI` - ".g.vcf.gz.tbi"
-- `VCF_EXTENSION` - ".vcf.gz"
-- `VCF_EXTENSION_TBI` - ".vcf.gz.tbi"
-- `VDS_EXTENSION` - ".vds"
-
-**Entry Fields:**
-- `GT_FIELD` - "GT" (Genotype)
-- `AD_FIELD` - "AD" (Allelic depths)
-- `DP_FIELD` - "DP" (Read depth)
-- `GQ_FIELD` - "GQ" (Genotype quality)
-- `PL_FIELD` - "PL" (Phred-scaled likelihoods)
-- `PID_FIELD` - "PID" (Physical phasing ID)
-- `SB_FIELD` - "SB" (Strand bias)
-- `MIN_DP_FIELD` - "MIN_DP" (Minimum read depth)
-- `ADJ_GT_FIELD` - "adj" (Adjusted genotype flag)
-
-**Note:** MatrixTable files use the `.mt` extension, but this is a directory structure convention rather than a defined constant in the module.
-
-## References
-
-- [Hail Documentation](https://hail.is/docs/0.2/)
-- [GVCF Format Specification](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812-GVCF-Genomic-Variant-Call-Format)
-- [VDS Format Details](https://hail.is/docs/0.2/vds/index.html)
-- [Joint Genotyping Best Practices](https://gatk.broadinstitute.org/hc/en-us/articles/360035890431-The-logic-of-joint-calling-for-germline-short-variants)
-
----
-
-See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.
+- [Installation](../getting-started/installation.md) — Hail/Spark setup, the memory
+  and locale environment variables used above.
+- [Running on HPC](../guide/hpc-migration.md) — running HGC under Slurm/Apptainer at
+  cohort scale.
+- [HGC examples](../examples/hgc.md) — a runnable QC workflow and the scalability /
+  CPU-scaling benchmark scripts.
+- [Contributing](../contributing.md) — development workflow.

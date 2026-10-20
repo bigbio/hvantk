@@ -83,8 +83,8 @@ Read the existing files at these paths as ground truth for shape. This skill doe
 When invoked to build or update a single Expression Atlas experiment:
 
 1. **Resolve raw paths.** Either download via
-   `hvantk download expression-atlas --accession <E-XXXX-N> --download_path /tmp/atlas`,
-   or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
+   `hvantk download expression-atlas --accession <E-XXXX-N> --download_path data/expression-atlas`,
+   or let `hvantk reprocess expression-atlas:dataset` run the lifecycle download stage itself (download → builder).
 2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad --skip-download` (the raw dir already holds step 1's download; without `--skip-download`, pass `--plugin-arg accession=<E-XXXX-N>` too, since `hvantk reprocess` forwards it to the download stage).
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
    - It builds from the TPM file whose columns are the SDRF's runs (the **gene-level** one when both files qualify). For E-MTAB-6798 that is the **transcript-level** file, since its gene-level file has a column per assay group (§4).
@@ -93,11 +93,12 @@ When invoked to build or update a single Expression Atlas experiment:
 
 ## 8. Update playbook
 
-Per-accession drift detection has not landed yet (see the § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`), so updating an accession is a manual procedure for now. The intended procedure, which the probe will automate:
+`hvantk drift expression-atlas:dataset` runs a real probe (`drift_probe.py`, `PROBE_VERSION = 1`), but it is atlas-wide, not per-accession: it fetches the single global experiment index (`https://www.ebi.ac.uk/gxa/json/experiments`), hashes the sorted `(experimentAccession, lastUpdate)` list over every experiment EBI hosts, and reports drift when *any* experiment anywhere in the atlas changes (`source_version` is just the experiment count, e.g. `"4562 experiments"`). A clean result means nothing moved atlas-wide; a drifted one does not say which accession moved, so updating one tracked accession is still a manual procedure:
 
-1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
-2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the committed snapshots in `tests/snapshots/` (§ 9).
+1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-download and compare by hand: `hvantk download expression-atlas --accession <E-XXXX-N> --download_path <dir>`.
+2. Rebuild via `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`, and diff the new AnnData against the committed snapshots in `tests/snapshots/` (§ 9).
 3. If the SDRF column set changed, document the new factor in § 4.
+4. Once the atlas-wide move is accounted for, accept it with `hvantk drift --regenerate expression-atlas:dataset --accepted-in "PR #N"` (`_conventions` § 12).
 
 ## 9. Validation contract
 

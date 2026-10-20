@@ -1,29 +1,28 @@
 #!/usr/bin/env python
 """
-PSROC Example: Running Prediction Score ROC Analysis
+PS-ROC example: evaluate pathogenicity scores against ClinVar labels.
 
-This example demonstrates how to use the PSROC pipeline to evaluate
-variant pathogenicity prediction scores against ClinVar truth labels
-using synthetic test data.
+Runs the PS-ROC pipeline end to end on the synthetic ClinVar and dbNSFP
+tables in hvantk/tests/testdata/psroc/:
 
-The example covers:
-1. Building Hail Tables from synthetic TSV data
-2. Running the PSROC pipeline via Python API
-3. Interpreting results and generated plots
+1. Build two Hail Tables from the synthetic TSVs (<output-dir>/tables/).
+2. Run PSROCPipeline on BRCA1, BRCA2 and TP53 with four scores and the
+   default settings (<output-dir>/results/).
+3. Print the label counts, per-score AUC with its 95% CI, the optimal
+   threshold and the missingness.
 
 Requirements:
-    - hvantk installed with Hail: poetry install
-    - Run from the repository root
+    Hail (Java 11) and the psroc extra: poetry install --extras psroc
+    The script finds the test data relative to its own location, so it
+    runs from any directory.
 
 Usage:
     python examples/psroc/run_psroc_example.py [--output-dir DIR]
 
-Output:
-    - ROC curve plots for each prediction score
-    - AUC comparison bar chart
-    - Missingness summary
-    - Summary dashboard
-    - Metrics JSON file
+Output (under <output-dir>/results/):
+    psroc_example_metrics.json, psroc_example_missingness.json,
+    psroc_example_annotated.ht and .tsv, and plots/ with the ROC curves,
+    AUC comparison, missingness and dashboard PNGs.
 """
 
 import argparse
@@ -158,7 +157,8 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
         output_prefix="psroc_example",
         max_missingness=0.3,
         threshold_method="youden",
-        min_stars=0,  # Include all variants for this example
+        # min_stars keeps its default of 1: every synthetic variant has 1 or 2
+        # stars, and the 10 uncertain ones stay in the table as excluded.
         generate_plots=True,
         export_tsv=True,
         overwrite=True,
@@ -190,15 +190,21 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     print(f"Total variants analyzed: {result.n_total}")
     print(f"  - Pathogenic: {result.n_pathogenic}")
     print(f"  - Benign: {result.n_benign}")
-    print(f"  - Excluded (VUS): {result.n_excluded}")
+    print(f"  - Excluded (uncertain, not in the ROC): {result.n_excluded}")
     print()
 
-    print("Scores included in analysis:")
-    for name in result.scores_included:
-        roc = result.metrics[name]
+    # Iterate over result.metrics, not result.scores_included: a score can pass
+    # the first missingness check and still get no AUC.
+    print("Scores with an AUC:")
+    for name, roc in sorted(
+        result.metrics.items(), key=lambda item: item[1].auc, reverse=True
+    ):
         miss = result.missingness[name]
+        auc_text = f"{roc.auc:.3f}"
+        if roc.auc_ci_lower is not None:
+            auc_text += f" [95% CI {roc.auc_ci_lower:.3f}-{roc.auc_ci_upper:.3f}]"
         print(f"  - {name}:")
-        print(f"      AUC: {roc.auc:.3f}")
+        print(f"      AUC: {auc_text}")
         print(f"      Optimal threshold: {roc.optimal_threshold:.3f}")
         print(f"      Sensitivity: {roc.sensitivity_at_optimal:.3f}")
         print(f"      Specificity: {roc.specificity_at_optimal:.3f}")

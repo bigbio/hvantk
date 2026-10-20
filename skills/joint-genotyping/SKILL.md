@@ -59,7 +59,7 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    `--n-partitions` sets the dense MatrixTable's partition count; `--min-ac` the VCF's.
 2. The orchestrated form, `hvantk hgc pipeline`, does the same stages in one process and
    is the only command that takes `--reference-genome GRCh37` (a stage-handoff defect
-   that broke a fresh run of it was fixed in 0.6.0 (PR #470); 0.5.0 and earlier fail at
+   that broke a fresh run of it was fixed in 0.6.0; 0.5.0 and earlier fail at
    the densify stage). The template keeps the chain
    above because each stage is then its own job with its own request and the run resumes
    by stage; GRCh37 gVCFs go through `hvantk hgc pipeline --reference-genome GRCh37` as

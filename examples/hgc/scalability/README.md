@@ -10,7 +10,7 @@ This directory contains scripts to benchmark the HGC (Hail-based Genotype Combin
 **Fixed**: CPU count (144 CPUs)  
 **Script**: `benchmark.sh`
 
-### 2. CPU Scaling (Strong Scaling) ⭐ NEW
+### 2. CPU Scaling (Strong Scaling)
 **Purpose**: Measure speedup and efficiency with varying CPU count  
 **Varies**: CPU count (16, 24, 32, 48, 64, 96, 144)  
 **Fixed**: Sample count (e.g., 500 samples)  
@@ -38,15 +38,15 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 ## Files
 
 ### Sample Size Scalability
-```
+```text
 ├── benchmark.sh       # Orchestration script (sample size scaling)
 ├── benchmark.py       # Python workflow runner
 ├── plot_results.py        # Visualization script
 └── README.md                          # This file
 ```
 
-### CPU Scaling (NEW)
-```
+### CPU Scaling
+```text
 ├── ../cpu_scaling/benchmark.sh       # Orchestration script (CPU scaling)
 ├── ../cpu_scaling/benchmark.py       # Python workflow runner with CPU config
 ├── ../cpu_scaling/plot_results.py        # CPU scaling visualization
@@ -116,7 +116,7 @@ This generates:
 
 ---
 
-### CPU Scaling Benchmark (NEW)
+### CPU Scaling Benchmark
 
 #### 1. Prepare Fixed Sample List
 
@@ -142,7 +142,9 @@ bash ../cpu_scaling/run_example.sh
 **Default Configuration:**
 - Sample size: 500 (FIXED)
 - CPU counts: 16, 24, 32, 48, 64, 96, 144 (VARIABLE)
-- Memory per core: 4GB
+- Driver memory: 128GB (FIXED)
+- Shuffle partitions: 2048 (FIXED)
+- Max partition bytes: 128MB
 - Reference genome: GRCh38
 
 **Options:**
@@ -150,8 +152,13 @@ bash ../cpu_scaling/run_example.sh
 - `--output-dir DIR`: Output directory for results
 - `--sample-size N`: Fixed sample size (for naming/logging)
 - `--cpu-counts COUNTS`: Comma-separated CPU counts to test
-- `--memory-per-core GB`: Memory per CPU core in GB
+- `--driver-memory GB`: Driver memory in GB, kept fixed across runs (default: 128)
+- `--shuffle-partitions N`: Shuffle partition count, kept fixed across runs (default: 2048)
+- `--max-partition-bytes MB`: Max partition bytes for input reading (default: 128)
+- `--local-dir DIR`: Spark local directory for shuffle spill (recommend fast NVMe)
+- `--aqe-enabled`: Enable Adaptive Query Execution (default: off, for pure scaling)
 - `--reference REF`: Reference genome
+- `--conda-env ENV`: Conda environment name (default: auto-detect, or `hvantk`)
 - `--resume`: Skip already completed runs
 - `--help`: Show help message
 
@@ -181,7 +188,7 @@ open ./cpu_scaling_500/cpu_scaling_comprehensive.png
 
 ## Sample Size Benchmark Output Structure
 
-```
+```text
 scalability_results/
 ├── timings.csv                      # Aggregated timing results
 ├── memory_usage.csv                 # Memory usage data
@@ -200,7 +207,7 @@ scalability_results/
 │   ├── analysis_20.mt/              # MatrixTable
 │   ├── sample_qc_20.ht/             # Sample QC table
 │   ├── variant_qc_20.ht/            # Variant QC table
-│   ├── cohort_20.vcf.gz             # Final cohort VCF
+│   ├── cohort_20.vcf.bgz             # Final cohort VCF
 │   ├── timing_20.json               # Timing breakdown
 │   └── workflow_20.log              # Workflow log
 ├── run_50/
@@ -217,20 +224,18 @@ scalability_results/
 
 ### CSV Formats
 
-**timings.csv:**
+**timings.csv** (column format; values are illustrative, not a recorded run):
 ```csv
 sample_size,gvcf_combine_sec,vds_to_mt_sec,compute_qc_sec,mt_to_vcf_sec,total_sec
-20,45.2,12.3,8.5,5.1,71.1
-50,89.5,25.7,18.2,9.3,142.7
-...
+20,<seconds>,<seconds>,<seconds>,<seconds>,<seconds>
+50,<seconds>,<seconds>,<seconds>,<seconds>,<seconds>
 ```
 
-**memory_usage.csv:**
+**memory_usage.csv** (column format):
 ```csv
 sample_size,peak_memory_mb,run_time_sec
-20,2048.5,71
-50,3072.8,143
-...
+20,<mb>,<seconds>
+50,<mb>,<seconds>
 ```
 
 ### Interpreting Plots
@@ -257,10 +262,11 @@ The summary report includes:
 - Most computationally intensive step
 
 ### Step 2: VDS to MatrixTable
-- Converts VDS to dense MatrixTable format
-- Splits multi-allelic variants
-- Annotates adjusted genotypes
-- Converts LGT to GT
+- Splits multi-allelic variants at the VDS level (the split already produces biallelic
+  `GT`/`AD`; no separate LGT→GT downcoding is needed)
+- Densifies the VDS to a dense MatrixTable
+- Annotates adjusted genotypes (`adj`)
+- Keys and sorts columns by sample ID
 
 ### Step 3: Compute QC
 - Calculates sample-level QC metrics (call rate, Ti/Tv, etc.)
@@ -269,8 +275,8 @@ The summary report includes:
 
 ### Step 4: Export VCF
 - Filters to adjusted genotypes
-- Adds standard INFO fields (AF, AC, AN)
-- Exports clean multi-sample VCF
+- Adds standard INFO fields (AF, AC, AN, call_rate)
+- Exports clean multi-sample VCF (`.vcf.bgz`)
 
 ## Notes
 
@@ -280,9 +286,11 @@ The summary report includes:
 - May not capture all Spark worker memory
 
 ### GVCF Sampling
-- Reproducible with fixed random seed
-- Uses `shuf` (Linux) or `gshuf` (macOS) for random sampling
-- Falls back to `sort -R` if neither available
+- `benchmark.sh` samples each size with Python's `random.shuffle()`, seeded by `--seed`
+  (default 42), so the same seed and GVCF list reproduce the same sample sets
+- `../common/generate_sample_list.sh` (used to build the CPU-scaling benchmark's fixed
+  list) instead uses `shuf` (Linux), `gshuf` (macOS, via `brew install coreutils`), or
+  `sort -R` as a fallback
 
 ### No Cleanup
 - All intermediate files are kept by default
@@ -365,30 +373,19 @@ bash benchmark.sh \
 
 ## Performance Expectations
 
-Typical runtime (approximate, varies by hardware):
-- 20 samples: ~1 hour
-- 50 samples: ~2 hours
-- 100 samples: ~4 hours
-- 250 samples: ~10 hours
-- 500 samples: ~20 hours
-- 750 samples: ~30 hours
-- 1000 samples: ~40 hours
-
-**Full benchmark**: ~100+ hours total
+Runtime depends on hardware, storage, and GVCF size, so no fixed numbers are given
+here. Run the smallest sample size first (20 samples) to get a real baseline for your
+own setup, then use `hgc_scalability_report.txt`'s linear fit (`y = ax + b`) to
+extrapolate to the larger sizes before committing to the full sweep — all 7 default
+sizes together can take a long time.
 
 ## Citation
 
 If you use these benchmarking scripts in your research, please cite:
-- hvantk: https://github.com/bigbio/hvantk
-- Hail: https://hail.is/
+- hvantk: <https://github.com/bigbio/hvantk>
+- Hail: <https://hail.is/>
 
 ## Support
 
-For issues or questions:
-- Open an issue on GitHub: https://github.com/bigbio/hvantk/issues
-- Contact the hvantk development team
-
----
-
-**Last Updated**: December 11, 2025
+For issues or questions, open an issue on GitHub: <https://github.com/bigbio/hvantk/issues>
 

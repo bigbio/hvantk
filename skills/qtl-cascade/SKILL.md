@@ -223,11 +223,17 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
   `--fine-map` is the default and needs both sample sizes to run SuSiE. Fix: pass
   `--gwas-n`/`--eqtl-n`, or `--no-fine-map` to keep only the single-variant ABF
   ranking.
-- A rerun's `coloc_results.tsv` is stale even though `--overwrite` was passed and
-  the run otherwise succeeded. Cause: `coloc` has no `--overwrite` of its own, and a
-  rerun that finds no gene to test returns before writing it
-  (`references/components-and-outputs.md`). Fix: delete the output directory before
-  a rerun rather than relying on `--overwrite` alone.
+- A tissue's `coloc_results.tsv` from an earlier run is still there, unchanged,
+  after a rerun that otherwise succeeded. Cause: `run`'s coloc stage skips that
+  tissue, and returns before writing anything, only when the cascade itself found
+  no gene with BOTH eQTL and pQTL evidence for it -- a cascade-level emptiness,
+  checked before coloc runs at all (`references/components-and-outputs.md`). Once
+  there is at least one such gene, the stage always writes the file, even a
+  zero-row one if every candidate then fails the per-gene window floor -- that
+  case silently REPLACES a previous good result with an empty one; it is not the
+  stale-file case. Fix: delete the output directory before a rerun rather than
+  relying on `--overwrite` alone, and read the gene count the stage logs, not just
+  whether the file exists.
 - `All tissues failed: <tissues>`, with `'Table.aggregate': source mismatch` in the
   job's log. Cause: a defect in `CascadePipeline._stage_coloc` in hvantk 0.5.0 and
   earlier (it aggregated a gene-id expression from an unfiltered table over a

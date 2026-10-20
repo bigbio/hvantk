@@ -3,6 +3,7 @@ site_description: Hail-based toolkit for multi-omics variant annotation and anal
 site_url: https://bigbio.github.io/hvantk
 repo_url: https://github.com/bigbio/hvantk
 repo_name: bigbio/hvantk
+edit_uri: edit/dev/docs_site/
 
 theme:
   name: material
@@ -13,6 +14,7 @@ theme:
     - search.suggest
     - search.highlight
     - content.code.copy
+    - content.action.edit
     - content.tabs.link
   palette:
     - scheme: default
@@ -62,32 +64,37 @@ docs_dir: docs_site
 
 nav:
   - Home: index.md
-  - Getting Started:
+  - Getting started:
     - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-  - User Guide:
-    - Building Tables: guide/usage.md
-    - Data Sources: guide/data-sources.md
-    - HPC Migration: guide/hpc-migration.md
-    - Workflow Skills: guide/workflow-skills.md
+    - Quick start: getting-started/quickstart.md
+  - User guide:
+    - Building datasets: guide/usage.md
+    - Data sources: guide/data-sources.md
+    - Running on HPC: guide/hpc-migration.md
+    - Workflow skills: guide/workflow-skills.md
   - Tools:
-    - HGC - Joint Genotyping: tools/hgc.md
-    - EnrichEx - Enrichment Analysis: tools/enrichex.md
-    - PS-ROC - Score Evaluation: tools/psroc.md
-    - Ancestry Inference: tools/ancestry.md
-    - PTM - Variant Classification: tools/ptm.md
-    - PTM Constraint: tools/ptm-constraint.md
-    - QTL Cascade: tools/qtlcascade.md
-    - ReRank - Gene Re-ranking: tools/rerank.md
+    - HGC (joint genotyping): tools/hgc.md
+    - Ancestry inference: tools/ancestry.md
+    - Gene annotation matrix: tools/annotate.md
+    - External cohorts: tools/cohort.md
+    - Re-rank: tools/rerank.md
+    - EnrichEx (enrichment and burden): tools/enrichex.md
+    - Gene sets: tools/genesets.md
+    - PS-ROC (score evaluation): tools/psroc.md
+    - PTM: tools/ptm.md
+    - PTM constraint: tools/ptm-constraint.md
+    - QTL cascade: tools/qtlcascade.md
+    - Expression analysis: tools/expression.md
   - Examples:
     - Overview: examples/index.md
     - HGC: examples/hgc.md
+    - Ancestry: examples/ancestry.md
+    - Re-rank: examples/rerank.md
     - EnrichEx: examples/enrichex.md
     - PS-ROC: examples/psroc.md
-    - Ancestry: examples/ancestry.md
-    - ClinVar Streaming: examples/clinvar.md
-    - ClinGen: examples/clingen.md
-    - QTL Cascade: examples/qtlcascade.md
     - PTM: examples/ptm.md
+    - QTL cascade: examples/qtlcascade.md
+    - ClinVar streaming: examples/clinvar.md
+    - ClinGen: examples/clingen.md
   - Architecture: architecture.md
   - Contributing: contributing.md
