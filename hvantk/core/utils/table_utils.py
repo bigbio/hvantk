@@ -88,6 +88,42 @@ def build_rename_map(
     return rename
 
 
+def select_fields(
+    ht: hl.Table,
+    fields: Optional[Union[str, Sequence[str]]],
+) -> hl.Table:
+    """Select *fields* from *ht*, keeping key fields regardless of *fields*.
+
+    ``Table.select`` raises ``ExpressionException: cannot overwrite key
+    field`` if asked to name one of the table's active key fields -- a key
+    field is carried on every row whether or not it is named, so key fields
+    are dropped from *fields* before the call rather than passed through.
+
+    Also accepts a single field name as a plain ``str``: a ``--plugin-arg
+    fields=...`` value with no comma arrives as a bare string (see
+    ``_coerce_plugin_arg_value`` in ``hvantk/tools/plugins/reprocess_cli.py``),
+    and ``ht.select(*"pLI")`` would otherwise select one field per character.
+
+    Parameters
+    ----------
+    ht : hl.Table
+        Table to select from.
+    fields : str or sequence of str, optional
+        Field name(s) to keep. Key fields are kept automatically whether or
+        not they are listed here. ``None`` returns *ht* unchanged.
+
+    Returns
+    -------
+    hl.Table
+    """
+    if fields is None:
+        return ht
+    if isinstance(fields, str):
+        fields = [fields]
+    key_fields = set(ht.key)
+    return ht.select(*(f for f in fields if f not in key_fields))
+
+
 def get_row_fields(ht: Union[hl.Table, hl.MatrixTable]) -> set[str]:
     """
     Returns the set of row field names for a Hail Table or MatrixTable.

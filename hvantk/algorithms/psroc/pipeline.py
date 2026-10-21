@@ -26,7 +26,7 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Dict, Any, List, Set
 from enum import Enum
@@ -56,6 +56,7 @@ from hvantk.algorithms.psroc.plots import (
     plot_psroc_summary_dashboard,
     plot_collection_heatmap,
 )
+from hvantk.core.utils.dataclass_utils import dataclass_from_dict
 from hvantk.core.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
@@ -390,12 +391,9 @@ class PSROCState:
         with open(path, "r") as f:
             state_dict = json.load(f)
 
-        # Ignore keys this version no longer has (e.g. a state file written before
-        # --overwrite and --reference-genome were removed), so old states still load.
-        known = {f.name for f in fields(PSROCConfig)}
-        config = PSROCConfig(
-            **{k: v for k, v in state_dict["config"].items() if k in known}
-        )
+        # A state file from before --overwrite and --reference-genome were removed
+        # still carries them.
+        config = dataclass_from_dict(PSROCConfig, state_dict["config"])
 
         state = cls(
             config=config,
@@ -515,11 +513,9 @@ class PSROCResult:
                 self.metrics.items(), key=lambda x: x[1].auc, reverse=True
             )
             for name, roc in sorted_metrics:
-                # A lower-is-damaging score calls pathogenic at or below it
-                op = "=" if roc.higher_is_pathogenic else "<="
                 lines.append(
                     f"  {name}: AUC={roc.auc:.3f}, "
-                    f"threshold{op}{roc.optimal_threshold:.3f}, "
+                    f"threshold{roc.threshold_op}{roc.optimal_threshold:.3f}, "
                     f"sens={roc.sensitivity_at_optimal:.3f}, "
                     f"spec={roc.specificity_at_optimal:.3f}"
                 )
@@ -591,6 +587,10 @@ class PSROCPipeline:
     ):
         """Initialize PSROC pipeline.
 
+        Side-effect free: no directories are created and Hail is not
+        touched here, so a dry run can construct a pipeline just to call
+        ``show_plan()``. Both happen in ``run()``.
+
         Args:
             config: Pipeline configuration.
             gene_catalog: Optional gene catalog for alias expansion. Constructed
@@ -609,8 +609,6 @@ class PSROCPipeline:
             )
 
         self.state = PSROCState(config=config)
-        self._setup_output_paths()
-        self._initialize_hail()
 
         # Internal state
         self._clinvar_ht: Optional[hl.Table] = None
@@ -732,11 +730,19 @@ class PSROCPipeline:
                 "Use run_collection() for multi-group execution."
             )
 
+        # Directories and Hail are touched here, not in __init__, so
+        # show_plan() (and --dry-run) never creates output_dir or starts Hail.
+        self._setup_output_paths()
+        self._initialize_hail()
+
         self.state.start_time = datetime.now().isoformat()
         logger.info("Starting PSROC pipeline execution")
 
         # Attach a file handler for this run so `logs/` is not left empty;
-        # removed in the `finally` block below once the run finishes.
+        # removed in the `finally` block below once the run finishes. It
+        # sits on the package logger, not this module's, so warnings logged
+        # by sibling modules (roc.py, plots.py) reach the run log too.
+        package_logger = logging.getLogger("hvantk.algorithms.psroc")
         log_handler = logging.FileHandler(self.paths["log"])
         log_handler.setFormatter(
             logging.Formatter(
@@ -744,7 +750,7 @@ class PSROCPipeline:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
         )
-        logger.addHandler(log_handler)
+        package_logger.addHandler(log_handler)
 
         try:
             # Stage 1: Load tables
@@ -781,7 +787,7 @@ class PSROCPipeline:
 
         finally:
             self.state.save(Path(self.paths["state"]))
-            logger.removeHandler(log_handler)
+            package_logger.removeHandler(log_handler)
             log_handler.close()
 
     def run_collection(self) -> Dict[str, PSROCResult]:
@@ -1239,6 +1245,12 @@ class PSROCPipeline:
         # Keep only label and score fields
         ht = ht.select("label", *score_fields)
 
+        # Checkpoint the join here, once: every action below (both these
+        # counts, the missingness and ROC ``to_pandas`` calls in stages 5-6,
+        # the write and the label-count aggregate in stage 7) would otherwise
+        # re-run the ClinVar x dbNSFP join from scratch, once per action.
+        ht = ht.checkpoint(hl.utils.new_temp_file(extension="ht"), overwrite=True)
+
         # Drop variants outside dbNSFP domain (all scores null)
         n_before = ht.count()
         score_defined = [hl.is_defined(ht[sf]) for sf in score_fields]
@@ -1259,6 +1271,15 @@ class PSROCPipeline:
         self._annotated_ht = ht
         return ht
 
+    def _labelled_ht(self) -> hl.Table:
+        """Pathogenic/Benign slice of the annotated table.
+
+        Stages 5 and 6 both gate on exactly this filter, so sharing it
+        means they provably see the same variants.
+        """
+        ht = self._annotated_ht
+        return ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
+
     def _compute_missingness(self) -> Dict[str, ScoreMissingness]:
         """Stage 5: Compute missingness statistics for each score."""
         logger.info("🔄 [5/7] Computing missingness statistics...")
@@ -1267,8 +1288,7 @@ class PSROCPipeline:
             raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
         # Over the variants the ROC uses: pathogenic and benign only
-        ht = self._annotated_ht
-        ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
+        ht = self._labelled_ht()
 
         # Identify score fields from config that are present in the table
         score_fields = [s for s in self.config.scores if s in ht.row]
@@ -1306,10 +1326,8 @@ class PSROCPipeline:
         if self._annotated_ht is None:
             raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
-        ht = self._annotated_ht
-
         # Filter to pathogenic/benign only (exclude uncertain/conflicting)
-        ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
+        ht = self._labelled_ht()
 
         n_labeled = ht.count()
         if n_labeled < self.config.min_variants:

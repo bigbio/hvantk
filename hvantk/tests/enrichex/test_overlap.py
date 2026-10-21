@@ -364,13 +364,13 @@ class TestComputeOverlapEnrichmentPandas:
         )
         p_adj = df_default.iloc[0]["p_adjusted"]
         assert 0.05 < p_adj < 0.1  # not significant at the default alpha
-        assert df_default.iloc[0]["significant"] == False
+        assert not df_default.iloc[0]["significant"]
 
         df_loose = compute_overlap_enrichment_pandas(
             query, collection, correction_method="none", alpha=0.1
         )
         assert df_loose.iloc[0]["p_adjusted"] == p_adj
-        assert df_loose.iloc[0]["significant"] == True
+        assert df_loose.iloc[0]["significant"]
 
     def test_pandas_overlap_genes_string(self):
         """Test that overlap_genes is comma-separated string in DataFrame."""

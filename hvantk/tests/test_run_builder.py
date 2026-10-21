@@ -65,6 +65,38 @@ def test_run_builder_returns_provenance(tmp_path):
     assert out.with_name("rows.parquet.provenance.json").exists()
 
 
+def test_run_builder_records_a_builder_commit_when_the_caller_passes_none(tmp_path):
+    """Every build records the code that ran, not only a `reprocess` build.
+
+    Regression test: only `reprocess` resolved a builder_commit, so `hvantk ptm
+    build` and Python-API builds, which pass none, recorded `null`.
+    """
+    from hvantk.core.io._manifest import read_manifest
+
+    def build(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="test-rows-v1")
+        )
+
+    spec = _make_spec(build)
+    out = tmp_path / "rows.parquet"
+    prov = run_builder_for_spec(
+        spec, parsed_input=None, output_path=out, plugin_version="0.1.0"
+    )
+
+    assert prov.builder_commit
+    assert read_manifest(out).builder_commit == prov.builder_commit
+    explicit = run_builder_for_spec(
+        spec,
+        parsed_input=None,
+        output_path=tmp_path / "explicit.parquet",
+        plugin_version="0.1.0",
+        builder_commit="abc1234",
+    )
+    assert explicit.builder_commit == "abc1234"
+
+
 def test_run_builder_validates_artifact_type(tmp_path):
     def build_wrong(parsed, ctx, **params):
         df = pd.DataFrame({"x": [1]})

@@ -650,7 +650,8 @@ def filter_variants_by_qc(
         variant_qc_name: Name of variant QC annotation
 
     Returns:
-        Filtered MatrixTable
+        Filtered MatrixTable. Nothing is counted here: counting the filtered rows is a
+        full scan that writing the result repeats, so count the written MatrixTable.
 
     Example:
         >>> mt_qc = compute_variant_qc(mt)
@@ -687,18 +688,7 @@ def filter_variants_by_qc(
 
         # Apply combined filter
         filter_expr = hl.all(filters) if len(filters) > 1 else filters[0]
-        mt_filtered = mt.filter_rows(filter_expr)
-
-        n_variants_before = mt.count_rows()
-        n_variants_after = mt_filtered.count_rows()
-        n_removed = n_variants_before - n_variants_after
-
-        logger.info(
-            f"Filtered {n_removed} variants ({n_removed / n_variants_before * 100:.1f}%), "
-            f"{n_variants_after} variants remaining"
-        )
-
-        return mt_filtered
+        return mt.filter_rows(filter_expr)
 
     except Exception as e:
         logger.error(f"Failed to filter variants: {e}")

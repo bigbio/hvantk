@@ -149,7 +149,7 @@ def register_pipeline_command(group):
     "--dry-run",
     is_flag=True,
     default=False,
-    help="Show what would be done without executing",
+    help="Print the execution plan and stop, without creating files or starting Hail",
 )
 # QC configuration
 @click.option(
@@ -168,7 +168,14 @@ def register_pipeline_command(group):
     "--apply-qc-filters",
     is_flag=True,
     default=False,
-    help="Apply QC filters before exporting pVCF",
+    help=(
+        "Filter before exporting the cohort VCF, writing <prefix>_filtered.mt in the "
+        "output directory: drop samples below --min-sample-call-rate, and variants "
+        "below --min-variant-call-rate, with no alternate allele call (AC < 1), or "
+        "with a Hardy-Weinberg p-value below 1e-6. Uses both QC tables, from this run "
+        "or from an earlier run in the same output directory; the run stops before "
+        "any stage if a skipped QC stage left no table."
+    ),
 )
 # Output options
 @click.option(

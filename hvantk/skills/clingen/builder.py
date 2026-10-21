@@ -32,6 +32,7 @@ from hvantk.core.utils.table_utils import (
     strip_curie_prefix,
     annotate_classification_level,
     filter_min_classification,
+    select_fields,
 )
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,7 @@ def build_clingen_gene_disease(
         ht = ht.key_by("hgnc_id", "mondo_id")
 
         if fields is not None:
-            ht = ht.select(*fields)
+            ht = select_fields(ht, fields)
 
         return AnnotationTable.from_hail(
             ht, provenance=ctx.provenance(schema_id="clingen-gene-disease-v1")

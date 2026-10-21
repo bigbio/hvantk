@@ -77,7 +77,7 @@ prior:
   direction: lower_is_better
 ```
 
-This section describes only the fields a rerank config needs, not a full reference for the cohort manifest itself (see `hvantk/algorithms/cohort/spec.py` for the complete `CohortManifest` shape: `key`, `key_column`, `table`, `prior.{column,direction}`, optional `cohort_axes`/`labels`) -- no dedicated cohort-manifest reference page exists under `docs_site/` yet.
+This section describes only the fields a rerank config needs, not a full reference for the cohort manifest itself -- see cohort's [Manifest reference](cohort.md#manifest-reference) for the complete shape (`name`, `key`, `key_column`, `table`, `min_mapping_rate`, `prior.{column,direction}`, optional `cohort_axes`/`labels`).
 
 ## Controls
 

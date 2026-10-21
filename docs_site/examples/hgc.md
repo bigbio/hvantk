@@ -36,7 +36,11 @@ runner.run()
 
 ### Expected Outputs
 
-- `qc_report_*.html` - Self-contained HTML report with embedded plots
+- `report.html`, the `-o` path of `hgc qc-report`: a self-contained HTML report with
+  embedded plots.
+- With `--generate-qc-report`, the pipeline writes the same report to
+  `qc/<prefix>_qc_report.html` in its output directory (`qc/cohort_qc_report.html` by
+  default).
 
 ### Custom Plots from Exported QC Tables
 

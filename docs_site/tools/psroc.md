@@ -179,11 +179,11 @@ hvantk psroc \
   --output-dir results/psroc_gcep
 ```
 
-Add `--dry-run` to validate the inputs and print the plan without running the stages (it
-still starts Hail and creates the output directory). Stage progress is logged at INFO
-level, which the CLI hides by default: add the global `-v` option before `psroc`
-(`hvantk -v psroc ...`) to see it, and `--log-file FILE` next to it to also write the log
-to a file.
+Add `--dry-run` to validate the inputs and print the plan without running the stages: it
+does not start Hail, create the output directory, or read the `--hgnc` table. Stage
+progress is logged at INFO level, which the CLI hides by default: add the global `-v`
+option before `psroc` (`hvantk -v psroc ...`) to see it, and `--log-file FILE` next to it
+to also write the log to a file.
 
 | Option | Default | Description |
 | --- | --- | --- |

@@ -22,7 +22,7 @@ from pathlib import Path
 import hail as hl
 from hvantk.algorithms.enrichex import (
     VariantFilter,
-    apply_correction,
+    apply_correction_and_flag_significance,
     run_burden_analysis,
 )
 from hvantk.core.utils.hail_context import init_hail
@@ -246,20 +246,12 @@ def run_burden_and_correct(
 
     df = result_ht.to_pandas()
     # Hail returns nullable Float64 columns; plain floats turn missing into NaN.
-    for col in (
-        "beta",
-        "standard_error",
-        "p_value",
-        "odds_ratio",
-        "ci_lower",
-        "ci_upper",
-    ):
+    for col in ("beta", "standard_error", "odds_ratio", "ci_lower", "ci_upper"):
         if col in df.columns:
             df[col] = df[col].astype(float)
-    df["p_adjusted"] = apply_correction(
-        df["p_value"].tolist(), method="benjamini-hochberg", n_total=len(gene_sets)
+    df = apply_correction_and_flag_significance(
+        df, correction="benjamini-hochberg", alpha=0.05, n_total=len(gene_sets)
     )
-    df["significant"] = df["p_adjusted"] < 0.05
     df = df.sort_values("p_value")
 
     df.to_csv(output_path, sep="\t", index=False)

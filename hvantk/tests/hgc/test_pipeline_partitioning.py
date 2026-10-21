@@ -82,14 +82,12 @@ def test_valid_combiner_tuning_passes_validate(tmp_path):
 
 
 def _runner_without_hail(pipeline_mod, monkeypatch, cfg):
-    """Build a PipelineRunner without booting a JVM.
+    """Build a PipelineRunner that cannot boot a JVM.
 
-    PipelineRunner.__init__ calls _initialize_hail(). None of these tests need Hail --
-    show_plan() only prints strings and _run_vds_to_mt's converter is stubbed -- but
-    without this the file boots Spark inside the DEFAULT `pytest -q` run, which
-    pytest.ini deliberately configures to deselect the `hail` marker, and fails outright
-    on any machine with no JVM. The pre-PR file produced zero Spark banners, this one
-    produced three.
+    None of these tests need Hail -- show_plan() only prints strings and
+    _run_vds_to_mt's converter is stubbed -- and they run in the DEFAULT `pytest -q`
+    run, which pytest.ini configures to deselect the `hail` marker: starting Spark
+    there fails outright on any machine with no JVM.
     """
     monkeypatch.setattr(
         pipeline_mod.PipelineRunner, "_initialize_hail", lambda self: None

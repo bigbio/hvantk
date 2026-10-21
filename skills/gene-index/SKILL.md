@@ -59,10 +59,12 @@ authoring a new annotation-source plugin (a resource spec under
    it is the release you intend, and that `ensembl-gene:structure` and `hgnc:lookup` were
    both built by THIS checkout -- a stale build from an older pin or an older HGNC dump
    joins silently against the wrong gene set. `builder_commit` on their `.provenance.json`
-   sidecars now tells two commits of one version apart too, for a build inside an image
-   built from the `hpc-container` templates: the def file stamps the build commit in, and
-   `reprocess` records it. An image built by hand with no `--build-arg
-   HVANTK_COMMIT=...` still only records `hvantk <version>`, so for that case
+   sidecars names the commit of the checkout a build ran, when it ran through the
+   `hpc-hail-job` templates (they pass the checkout's commit into the image, `-dirty` for
+   uncommitted edits under `hvantk/`): compare it with
+   `git -C "$HVANTK_REPO" rev-parse HEAD`. A sidecar that records `hvantk <version>`
+   instead (git could not answer on the node the job ran on) cannot tell two commits of
+   one version apart, so for that case
    same-checkout is established the older way: the run notes' own `commit:` line and the
    job ids that produced each input, not the sidecar (`references/inputs-and-release.md`).
 6. Biotype: default `protein_coding`; `all` keeps every biotype; anything else filters to

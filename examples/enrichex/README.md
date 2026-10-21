@@ -60,8 +60,7 @@ python - <<'EOF'
 import hail as hl
 from burden_analysis_example import create_phenotype_table, create_synthetic_cohort
 
-hl.init(quiet=True)
-hl.set_global_seed(42)
+hl.init(quiet=True, global_seed=42)
 create_synthetic_cohort().write("out/cohort.mt", overwrite=True)
 create_phenotype_table().write("out/phenotypes.ht", overwrite=True)
 EOF

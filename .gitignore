@@ -193,6 +193,9 @@ hvantk/skills/**/tests/.drift_fingerprint*.tmp
 # which persists by design, and writes through a temp sibling the same way.
 hvantk/resources/.drift_ledger.json.lock
 hvantk/resources/.drift_ledger.json.*.tmp
+# The container image's build stamp (containers/hvantk.def writes it). Only the image's
+# own copy may carry one: a checkout's builds must record the checkout's commit.
+/hvantk/_build_commit.txt
 
 # Temporary development files
 temp_*

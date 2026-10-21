@@ -63,9 +63,10 @@ echo "========================"
 # %files paths in the def are relative to the build directory: the repository root.
 cd "$HVANTK_REPO"
 
-# Stamp the commit being built into the image itself (def file's %arguments ->
-# %environment's HVANTK_BUILDER_COMMIT), since the image copies no .git for a
-# dataset built inside it to find with its own git check.
+# Stamp the commit being built into the image's own copy of hvantk (the def file's
+# %arguments -> a build stamp file written in %post), since the image copies no .git
+# for a dataset built by that copy to find with its own git check. --build-arg needs
+# SingularityCE 4.0+ or Apptainer 1.2+.
 HVANTK_COMMIT_ARG="$BUILD_GIT_SHA"
 [[ "$BUILD_GIT_DIRTY" == dirty ]] && HVANTK_COMMIT_ARG="${HVANTK_COMMIT_ARG}-dirty"
 "$CONTAINER_BIN" build -F --build-arg "HVANTK_COMMIT=$HVANTK_COMMIT_ARG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} "$BUILD_OUT" "$BUILD_DEF"

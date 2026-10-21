@@ -261,9 +261,10 @@ hvantk ptm population \
 `population` classifies a variant table with an allele-frequency (AF) field and
 summarizes each class. The option is named `--gnomad-ht`, but any variant table works.
 
-- `--af-field` must name a top-level numeric field with a value on every row. gnomAD
-  release tables keep frequencies in the `freq` array; copy the entry you want into a
-  top-level field first.
+- `--af-field` must name a top-level numeric field. gnomAD release tables keep
+  frequencies in the `freq` array; copy the entry you want into a top-level field
+  first. A row with a missing value is skipped, not an error: it is excluded from the
+  mean/count statistics and from the kept AF sample used for the plot.
 - Non-PTM means every other variant in the table. Nothing restricts it to coding
   positions, so filter the table first if that is the comparison you want.
 - For each class it reports the variant count and mean AF, and for site variants the

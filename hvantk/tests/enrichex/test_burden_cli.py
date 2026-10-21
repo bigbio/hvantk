@@ -10,10 +10,8 @@ import pytest
 from click.testing import CliRunner
 
 import hvantk.algorithms.enrichex.pipeline as pipeline_module
-from hvantk.tools.enrichex.burden_cli import (
-    _apply_correction_and_flag_significance,
-    burden_pipeline_cmd,
-)
+from hvantk.algorithms.enrichex.burden import apply_correction_and_flag_significance
+from hvantk.tools.enrichex.burden_cli import burden_pipeline_cmd
 
 
 def test_apply_correction_and_flag_significance_handles_non_convergent_pvalue():
@@ -26,7 +24,7 @@ def test_apply_correction_and_flag_significance_handles_non_convergent_pvalue():
     """
     df = pd.DataFrame({"gene_set_name": ["A", "B", "C"], "p_value": [0.01, pd.NA, 0.2]})
 
-    result = _apply_correction_and_flag_significance(
+    result = apply_correction_and_flag_significance(
         df, correction="benjamini-hochberg", alpha=0.05, n_total=3
     )
 
@@ -93,3 +91,35 @@ def test_burden_pipeline_cli_applies_filters_without_variant_classes(
     assert vf.max_af == 0.001
     assert vf.pass_only is True
     assert vf.af_field == "internal_af"
+
+
+def test_burden_pipeline_dry_run_creates_no_directories(tmp_path):
+    """--dry-run must not touch disk.
+
+    BurdenPipeline.__init__ used to create output_dir/per_run/plots eagerly,
+    and the CLI builds the pipeline before checking dry_run, so even a dry
+    run left directories behind. Uses the real BurdenPipeline (unstubbed):
+    show_plan() needs no Hail, so this stays a fast test.
+    """
+    cohort_mt = tmp_path / "cohort.mt"
+    cohort_mt.write_text("")
+    gene_sets_path = tmp_path / "genes.json"
+    gene_sets_path.write_text("{}")
+    output_dir = tmp_path / "out"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        burden_pipeline_cmd,
+        [
+            "-m",
+            str(cohort_mt),
+            "--gene-sets",
+            f"heart:{gene_sets_path}",
+            "-o",
+            str(output_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not output_dir.exists()

@@ -6,7 +6,7 @@ For full documentation, see the [ClinGen examples guide](https://bigbio.github.i
 
 ## Contents
 
-- **`run_with_real_data.py`** - Build ClinGen Hail Table, extract genesets per disease, view classification stats
+- **`run_with_real_data.py`** - Read the ClinGen Hail Table built by the Prerequisites command below (exits 1 if it is missing), extract genesets per disease, view classification stats
 - **`run_ontology_categorization.py`** - Categorize diseases using MONDO ontology hierarchy
 
 ## Prerequisites

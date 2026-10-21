@@ -46,7 +46,8 @@ def apply_clinvar_training_labels(
     ``array<str>`` or a scalar ``str`` depending on the VCF header's
     ``Number=`` field. Both shapes are handled below for CLNSIG (mirroring
     ``ClinVarVariantTableStreamer.filter_by_pathogenicity``) and for CLNDN
-    (tokenizing every array entry, each of which may itself be ``'|'``-joined).
+    (re-joining the array with ``','`` to restore the original value before
+    tokenizing on ``'|'``).
     """
     gene_set = set(gene_set) if gene_set else set()
     # Normalize disease terms the same way the legacy streamer did.
@@ -93,27 +94,20 @@ def apply_clinvar_training_labels(
         disease_set = hl.literal(normalized_disease_terms)
         clndn = ht.info.CLNDN
         if isinstance(clndn.dtype, hl.tarray):
-            # CLNDN may be imported as array<str> (e.g. `hvantk reprocess
-            # clinvar:variants`, one entry per overlapping ClinVar record);
-            # each entry can itself be '|'-joined like the scalar case, so
-            # tokenize every entry and flatten before matching.
-            safe_clndn = hl.or_else(clndn, hl.empty_array(hl.tstr))
-            tokens = hl.flatten(
-                safe_clndn.map(
-                    lambda d: (
-                        hl.or_else(d, "")
-                        .split(r"\|")
-                        .map(lambda t: t.replace(" ", "_").lower())
-                    )
-                )
+            # CLNDN is Number=. in the VCF header, so hl.import_vcf splits it at
+            # every comma, including commas inside a disease name
+            # ("Glycogen_storage_disease,_type_IV|..."). Re-join the fragments to
+            # restore the '|'-separated list before tokenizing.
+            clndn_str = hl.or_missing(
+                hl.is_defined(clndn) & (hl.len(clndn) > 0),
+                hl.delimit(clndn, ","),
             )
         else:
-            safe_clndn = hl.or_else(clndn, "")
-            tokens = (
-                hl.str(safe_clndn)
-                .split(r"\|")
-                .map(lambda t: t.replace(" ", "_").lower())
-            )
+            clndn_str = clndn
+        safe_clndn = hl.or_else(clndn_str, "")
+        tokens = (
+            hl.str(safe_clndn).split(r"\|").map(lambda t: t.replace(" ", "_").lower())
+        )
         disease_tp = tokens.any(lambda t: disease_set.contains(t))
     else:
         disease_tp = hl.literal(False)

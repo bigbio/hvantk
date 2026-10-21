@@ -5,6 +5,7 @@ This module tests the pipeline orchestration including configuration validation,
 label assignment, and end-to-end pipeline execution.
 """
 
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -501,6 +502,11 @@ class TestPSROCPipelineValidation:
 
             pipeline = PSROCPipeline(config)
 
+            # Construction is side-effect free: paths are only set up from run().
+            assert not hasattr(pipeline, "paths")
+
+            pipeline._setup_output_paths()
+
             assert "annotated_ht" in pipeline.paths
             assert "metrics_json" in pipeline.paths
             assert "roc_curves_png" in pipeline.paths
@@ -812,3 +818,66 @@ class TestUncertainVariantsAndMissingnessGate:
         assert result.missingness["score_b"].n_total == 10
         assert result.missingness["score_b"].included_in_analysis
         assert "score_b" in result.metrics
+
+
+@pytest.mark.hail
+class TestRunLogCapturesPackageWarnings:
+    """The FileHandler run() attaches used to sit on the pipeline module's
+    own logger, so a warning logged by a sibling module (e.g. roc.py) during
+    a run never reached the run log. It must sit on the
+    ``hvantk.algorithms.psroc`` package logger instead.
+    """
+
+    def test_run_log_captures_roc_module_warning(self, tmp_path, monkeypatch):
+        import hail as hl
+
+        from hvantk.algorithms.psroc import pipeline as psroc_pipeline_module
+
+        rows = [
+            {"pos": 1000 + i, "clnsig": sig, "score_a": float(i)}
+            for i, sig in enumerate(["Benign"] * 5 + ["Pathogenic"] * 5)
+        ]
+        ht = hl.Table.parallelize(
+            rows, hl.tstruct(pos=hl.tint32, clnsig=hl.tstr, score_a=hl.tfloat64)
+        )
+        ht = ht.annotate(
+            locus=hl.locus("chr1", ht.pos, reference_genome="GRCh38"),
+            alleles=hl.array(["A", "G"]),
+        ).key_by("locus", "alleles")
+        ht.select(info=hl.struct(CLNSIG=ht.clnsig, GENEINFO="GENE1:1")).write(
+            str(tmp_path / "clinvar.ht")
+        )
+        ht.select("score_a").write(str(tmp_path / "dbnsfp.ht"))
+
+        config = PSROCConfig(
+            genes=["GENE1"],
+            clinvar_ht=str(tmp_path / "clinvar.ht"),
+            dbnsfp_ht=str(tmp_path / "dbnsfp.ht"),
+            scores=["score_a"],
+            output_dir=str(tmp_path / "out"),
+            min_stars=0,
+            n_bootstrap=0,
+            generate_plots=False,
+            pathogenic_labels=["Pathogenic"],
+            benign_labels=["Benign"],
+        )
+
+        # Simulate a roc.py warning fired mid-run, the way the real "all
+        # scores excluded" warning in compute_roc_metrics() would.
+        real_compute_roc_metrics = psroc_pipeline_module.compute_roc_metrics
+
+        def _compute_roc_metrics_and_warn(*args, **kwargs):
+            logging.getLogger("hvantk.algorithms.psroc.roc").warning(
+                "MARKER: simulated roc.py warning"
+            )
+            return real_compute_roc_metrics(*args, **kwargs)
+
+        monkeypatch.setattr(
+            psroc_pipeline_module, "compute_roc_metrics", _compute_roc_metrics_and_warn
+        )
+
+        pipeline = PSROCPipeline(config)
+        pipeline.run()
+
+        log_contents = Path(pipeline.paths["log"]).read_text()
+        assert "MARKER: simulated roc.py warning" in log_contents

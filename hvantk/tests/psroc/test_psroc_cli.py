@@ -272,6 +272,39 @@ class TestPSROCCLIDryRun:
             mock_pipeline.show_plan.assert_called_once()
             mock_pipeline.run.assert_not_called()
 
+    def test_dry_run_creates_no_output_directory(self):
+        """--dry-run must not create the output directory. PSROCPipeline's
+        constructor used to set up output paths (and start Hail) before the
+        CLI ever checked dry_run, so a dry run left a directory behind."""
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            clinvar_path = Path(tmpdir) / "clinvar.ht"
+            dbnsfp_path = Path(tmpdir) / "dbnsfp.ht"
+            clinvar_path.mkdir()
+            dbnsfp_path.mkdir()
+            output_dir = Path(tmpdir) / "output"
+
+            result = runner.invoke(
+                psroc_cmd,
+                [
+                    "--genes",
+                    "BRCA1",
+                    "--clinvar-ht",
+                    str(clinvar_path),
+                    "--dbnsfp-ht",
+                    str(dbnsfp_path),
+                    "--scores",
+                    "CADD_phred",
+                    "--output-dir",
+                    str(output_dir),
+                    "--dry-run",
+                ],
+            )
+
+            assert result.exit_code == 0, result.output
+            assert not output_dir.exists()
+
 
 class TestPSROCCLIOptions:
     """Test CLI option handling."""

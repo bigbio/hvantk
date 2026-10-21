@@ -62,7 +62,7 @@ aggregates diseases into the categories you declare.
 | Option | Required | Description |
 | --- | --- | --- |
 | `-i, --input PATH` | yes | The panel TSV. |
-| `--hgnc PATH` | no | HGNC data (`.ht` or `.tsv`) for symbol validation and alias resolution. |
+| `--hgnc PATH` | no | A built HGNC Hail Table (`.ht`) for symbol validation and alias resolution. |
 | `--min-genes INTEGER` | no | Drop gene sets below this size, after HGNC validation. Default `0`. |
 | `--background PATH` | no | Text file, one symbol per line; default is the union of genes across all sets. |
 | `--export-gmt PATH` | no | Also write a `.gmt` alongside the JSON. |
@@ -206,8 +206,8 @@ consensus = streamer.consensus_genes(min_submitters=2)  # genes >=2 submitters a
   identifier container.
 - `--group-by keyword` (on any of `clingen`/`gencc`/`cosmic`) requires
   `--categories-json`; without it the command exits before touching the table. On
-  `cosmic`, `--mutation-context` has no effect in `keyword` mode -- it is only applied
-  for `tumour-type`/`role`/`tissue`.
+  `cosmic`, `--mutation-context` applies in every `--group-by` mode, including
+  `keyword`.
 
 ## See also
 

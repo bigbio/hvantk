@@ -16,8 +16,9 @@ optional filtering, and cohort VCF export.
 | `hvantk hgc pipeline` | You have a directory of gVCFs and want VDS → MT → cohort VCF with QC tables in one command; you can resume it by hand from the stage outputs. |
 | Individual commands (`gvcf-combine`, `vds-combine`, `vds2mt`, `mt2vcf`, `compute-qc`, `filter-qc`, `qc-report`, `qc-summary`) | You already have a VDS or MT, want QC filter thresholds the pipeline doesn't expose (see [Filter by QC metrics](#filter-by-qc-metrics)), or want to rerun a single stage without re-running the rest. |
 
-Every command also takes `-h`/`--help`, and a `--dry-run` flag that prints what it
-would do without running Hail.
+Every command takes `-h`/`--help`. Every command except `qc-summary`, which reads text
+files and never starts Hail, also takes `--dry-run`: it prints what the command would
+do without starting Hail.
 
 ## Quick start
 
@@ -190,20 +191,25 @@ Stages (each can be skipped independently):
 | `--tmp-dir PATH` | Temporary directory | system default |
 | `--overwrite` | Overwrite existing output files | off |
 | `--output-prefix TEXT` | Prefix for every output file | `cohort` |
-| `--apply-qc-filters` | Apply QC filters before exporting the cohort VCF | off |
+| `--apply-qc-filters` | Filter before exporting the cohort VCF and write `<prefix>_filtered.mt` (see below) | off |
 | `--min-sample-call-rate FLOAT` | Sample call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--min-variant-call-rate FLOAT` | Variant call-rate threshold (used only with `--apply-qc-filters`) | 0.85 |
 | `--generate-qc-report` | Generate an HTML QC report after computing QC | off |
-| `--dry-run` | Show the execution plan without running | off |
+| `--dry-run` | Print the execution plan and stop, without creating files or starting Hail | off |
 
-`--apply-qc-filters` and `--generate-qc-report` both read the small
-`qc/<prefix>_sample_qc.ht`/`qc/<prefix>_variant_qc.ht` Tables stages 3/4 write and
-annotate the plain MT with them on the fly — see [Outputs](#outputs). Neither flag
-makes the pipeline write a QC-annotated copy of the whole MatrixTable: on a real
-cohort that would be a multi-TB write and hours of cluster time, paid on every run
-since the QC stages run by default. If both QC stages are skipped, those `.ht`
-tables don't exist: `--apply-qc-filters` then exports unfiltered (there is nothing
-to filter by), and `--generate-qc-report` logs a warning and writes no report.
+`--apply-qc-filters` drops samples below `--min-sample-call-rate`, and variants below
+`--min-variant-call-rate`, with no alternate allele call (`AC` < 1), or with a
+Hardy-Weinberg p-value below 1e-6. The `AC` and HWE thresholds are fixed; use
+[`filter-qc`](#filter-by-qc-metrics) to change them.
+
+`--apply-qc-filters` and `--generate-qc-report` read the QC tables stages 3 and 4
+write, `qc/<prefix>_sample_qc.ht` and `qc/<prefix>_variant_qc.ht`. A table comes from
+this run, or, when its stage is skipped, from an earlier run in the same output
+directory; with `hvantk -v` the log says which. `--apply-qc-filters` needs both
+tables: when a skipped stage left no table, the run stops before any stage and names
+the missing table; to get it, run without that `--skip-compute-*` flag.
+`--generate-qc-report` uses the tables it finds, and logs a warning and writes no
+report when there are none.
 
 **Resuming.** The pipeline does not auto-resume: it always runs every stage you
 haven't explicitly `--skip-*`'d. `.pipeline_state.json` in the output directory
@@ -222,13 +228,9 @@ hvantk hgc pipeline -i /data/gvcfs -o /data/output \
 `--overwrite` is usually needed on a resumed run, since the stage you're re-entering
 at will try to write a path that already exists.
 
-`--generate-qc-report` is resume-aware: it looks for `qc/<prefix>_sample_qc.ht`/
-`qc/<prefix>_variant_qc.ht` on disk even if this invocation's own (fresh,
-not-auto-loaded) state has no record of computing them, so
-`--skip-compute-sample-qc --skip-compute-variant-qc --generate-qc-report` on its own
-picks up an earlier run's tables. `--apply-qc-filters` does not: it filters by
-whichever of sample/variant QC is *not* `--skip-*`'d in this same invocation, same as
-every other stage skip.
+A resumed run with `--skip-compute-sample-qc --skip-compute-variant-qc` reuses the
+QC tables the earlier run left in `qc/`, for both `--apply-qc-filters` and
+`--generate-qc-report`.
 
 ## QC metrics and filters
 
@@ -317,11 +319,13 @@ hvantk hgc qc-summary -d qc_results/ -o summary.md --format markdown
 | `-d, --qc-dir TEXT` | Directory containing QC metric files | required |
 | `--sample-file TEXT` | Specific sample QC file | auto-detected: the first `*sample_qc*.csv` in `--qc-dir` |
 | `--variant-file TEXT` | Specific variant QC file | auto-detected: `*variant_qc*.tsv`, falling back to `*variant_qc*.csv` |
-| `-o, --output TEXT` | Write the summary here | print to the console |
-| `--format [csv\|json\|markdown]` | Output format | markdown |
+| `-o, --output TEXT` | Write the summary here, creating missing parent directories | none: print only each file's name, row count and column count |
+| `--format [csv\|json\|markdown]` | Format of the `-o` file | markdown |
 
-No `--dry-run` on this command. It reports `describe()`-style statistics
-(count/mean/std/min/25%/50%/75%/max) per numeric metric column, not a QC pass/fail.
+No `--dry-run` on this command. The statistics are in the `-o` file only:
+`describe()`-style statistics (count/mean/std/min/25%/50%/75%/max) per numeric metric
+column, not a QC pass/fail. On the pipeline's `qc/` directory the variant statistics
+cover only the 10,000 variants of its preview file (see [Outputs](#outputs)).
 
 ### Metric names
 
@@ -391,19 +395,26 @@ output_directory/
 │   ├── cohort_variant_qc.tsv    # first 10,000 variants, TAB-separated
 │   └── cohort_qc_report.html    # only with --generate-qc-report
 ├── logs/
-│   └── pipeline_<timestamp>.log
+│   └── pipeline_<timestamp>.log # the run's log, see below
 └── .pipeline_state.json         # inspect this to resume manually, see above
 ```
+
+`cohort_filtered.mt` is written here even when `--mt-path` points elsewhere. It holds
+the filtered genotypes, without the QC annotations the filters used.
 
 `cohort_sample_qc.csv` (every sample, comma-separated) and `cohort_variant_qc.tsv` use
 the same names, delimiters and columns as `compute-qc`'s files. The variant TSV is a
 preview of the first 10,000 variants; the full per-variant table is
 `cohort_variant_qc.ht`, and `compute-qc` exports every variant when you need the text.
-There is no `_with_qc.mt` here: unlike `compute-qc`, the pipeline
-never writes a QC-annotated copy of the MatrixTable, since the QC stages run by
-default and that write would cost a full extra MatrixTable write of the whole cohort
-on every run. `--apply-qc-filters` and `--generate-qc-report` instead annotate
-`cohort.mt` with `cohort_sample_qc.ht`/`cohort_variant_qc.ht` on the fly.
+There is no `_with_qc.mt` here: unlike `compute-qc`, the pipeline never writes a
+QC-annotated copy of the MatrixTable, which would be a full extra write of the whole
+cohort on every run, since the QC stages run by default. `--apply-qc-filters`
+annotates `cohort.mt` with `cohort_sample_qc.ht` and `cohort_variant_qc.ht`, and
+`--generate-qc-report` reads only those two tables.
+
+The log holds the messages of every HGC module during the run (stages, QC, combiner,
+converters), at the level the console shows: warnings and errors by default, and the
+stage-by-stage progress with the global `-v` option (`hvantk -v hgc pipeline ...`).
 
 ## Performance and sizing
 
@@ -545,16 +556,18 @@ print(state.outputs)      # {"vds": ..., "mt": ..., "compute_sample_qc": ..., ..
 print(state.errors)
 ```
 
-Constructing `PipelineRunner(config)` has side effects: it creates the output,
-`qc/` and `logs/` directories immediately, and initializes Hail (through the same
-idempotent `init_hail` the rest of hvantk uses, so constructing more than one runner
-in a process is safe) before you call `.show_plan()` or `.run()`.
+Constructing `PipelineRunner(config)` creates nothing and does not start Hail, so
+`.show_plan()` is a true dry run. `.run()` creates the output, `qc/` and `logs/`
+directories, writes the run's log file, and initializes Hail through the same
+idempotent `init_hail` the rest of hvantk uses, so more than one run in a process is
+safe.
 
 `PipelineConfig` is a dataclass with every option the CLI exposes (see
 [Run the full pipeline](#run-the-full-pipeline)); `PipelineRunner.run()` returns a
 `PipelineState` with `.completed_stages`, `.outputs` and `.errors`, and persists itself
-to `<output_dir>/.pipeline_state.json`. `PipelineState.load(path)` can read that file
-back, though nothing in the CLI calls it automatically — see
+to `<output_dir>/.pipeline_state.json`. `PipelineState.load(path)` reads that file
+back, also one written by an older hvantk: it ignores configuration keys this version
+no longer has. Nothing in the CLI calls it automatically — see
 [Resuming](#run-the-full-pipeline) above. `PipelineStage` is the stage-name enum
 (`COMBINE_GVCFS`, `VDS_TO_MT`, `COMPUTE_SAMPLE_QC`, `COMPUTE_VARIANT_QC`,
 `EXPORT_PVCF`).

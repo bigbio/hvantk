@@ -14,6 +14,7 @@ import hail as hl
 
 from hvantk.core.models import AnnotationTable
 from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+from hvantk.core.utils.table_utils import select_fields
 
 logger = logging.getLogger(__name__)
 
@@ -539,16 +540,17 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
             raise ValueError(f"Fields not in HGNC table: {invalid}")
 
         def _annotate_via_join(hgnc_rekey: hl.Table, key_field: str) -> hl.Table:
-            # Table.select() forbids naming the table's *active* key field (it
-            # is carried on every collected row anyway, but a join's result
-            # struct -- unlike collect() -- exposes only the *non*-key fields
-            # select()ed here); the key field's own value never needs the
-            # join, since it is exactly what was joined on: ht[source_field].
-            non_key = [f for f in fields_to_add if f != key_field]
-            joined = hgnc_rekey.select(*non_key)[ht[source_field]]
+            # The join result never carries the key field, so hgnc_<key_field> comes
+            # from ht[source_field], and only for rows the join matched: an unmatched
+            # alias or withdrawn ID must not look HGNC-approved.
+            joined = select_fields(hgnc_rekey, fields_to_add)[ht[source_field]]
             return ht.annotate(
                 **{
-                    f"hgnc_{f}": (ht[source_field] if f == key_field else joined[f])
+                    f"hgnc_{f}": (
+                        hl.or_missing(hl.is_defined(joined), ht[source_field])
+                        if f == key_field
+                        else joined[f]
+                    )
                     for f in fields_to_add
                 }
             )

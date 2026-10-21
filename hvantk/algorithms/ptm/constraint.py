@@ -31,6 +31,7 @@ __all__ = [
     "PTMConstraintConfig",
     "PTMConstraintResult",
     "run_ptm_constraint",
+    "read_variants_tabular_file",
 ]
 
 
@@ -329,7 +330,7 @@ def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
     defaults to False when absent. Gene/AF/LOEUF/label/category columns are read
     from the configured field names, with safe fallbacks.
     """
-    raw = _read_variants_tabular_file(config.variants_ht_path)
+    raw = read_variants_tabular_file(config.variants_ht_path)
     cols = set(raw.columns)
 
     if "is_ptm_proximal" not in cols:
@@ -381,7 +382,7 @@ def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
     return out
 
 
-def _read_variants_tabular_file(path: str) -> pd.DataFrame:
+def read_variants_tabular_file(path: str) -> pd.DataFrame:
     """Read a variant table from pickle/parquet/CSV/TSV (gzip/bgz transparent)."""
     from pathlib import Path
 

@@ -32,6 +32,9 @@ hvantk reprocess hgnc:lookup --raw-dir data/hgnc --output data/hgnc.ht
 hvantk reprocess clingen:gene-disease --raw-dir data/clingen --output data/clingen.ht
 ```
 
+A second run into the same `--raw-dir` stops with `FileExistsError` when the raw file is
+already there. Add `--skip-download` to rebuild from it, or use a fresh `--raw-dir`.
+
 Each command downloads the raw file into `--raw-dir`, builds a Hail table at `--output`,
 and writes a provenance record next to it (`data/hgnc.ht.provenance.json`):
 

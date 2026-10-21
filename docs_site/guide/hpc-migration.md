@@ -189,6 +189,10 @@ singularity build --build-arg HVANTK_COMMIT=$(git rev-parse HEAD) \
   $WORK/containers/hvantk.sif containers/hvantk.def
 ```
 
+The def file's `%arguments` section and the `--build-arg` flag need **SingularityCE 4.0
+or Apptainer 1.2** or later (check with `singularity --version` or `apptainer
+--version`). An older tool stops with `unknown flag: --build-arg`.
+
 **`--fakeroot` is not usable on every cluster.** It needs a `/etc/subuid` entry for your
 account; without one the build fails immediately with
 `could not use fakeroot: no valid mapping entry found for <user>`, and a plain
@@ -200,8 +204,8 @@ non-root user`. Check before assuming:
 grep "^$USER:" /etc/subuid    # empty output => --fakeroot will NOT work here
 ```
 
-When there is no `subuid` entry, SingularityCE 3.11+/4.x accepts a static **`proot`**
-instead, which needs no privileges at all:
+When there is no `subuid` entry, SingularityCE (4.0 or later, as above) accepts a static
+**`proot`** instead, which needs no privileges at all:
 
 ```bash
 mkdir -p ~/bin && curl -fsSL -o ~/bin/proot https://proot.gitlab.io/proot/bin/proot
@@ -268,11 +272,16 @@ mkdir -p "$SCRATCH_DIR"
 export SPARK_LOCAL_DIRS="$SCRATCH_DIR"
 export NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1   # protect py4j localhost socket
 
+# run the checkout's code; the image has no git, so pass the commit a dataset
+# build records as its builder_commit
+REPO=$HOME/hvantk
 apptainer exec \
   --bind /project/$USER/hvantk:/data \
-  --bind "$SCRATCH_DIR":/scratch \
+  --bind "$SCRATCH_DIR" --bind "$REPO" \
+  --env PYTHONPATH="$REPO" \
+  --env HVANTK_BUILDER_COMMIT="$(git -C "$REPO" rev-parse HEAD)" \
   hvantk.sif \
-  hvantk hgc pipeline -i /data/gvcfs -o /data/out/cohort.vds
+  hvantk hgc pipeline -i /data/gvcfs -o /data/out/hgc
 ```
 
 The three settings that prevent the most common failures:
@@ -430,18 +439,20 @@ srun --partition=standard -c 8 --mem 48g -t 4:00:00 \
 
 ### 7.2 Embarrassingly-parallel fan-out (array job)
 
-Ideal for per-gene/per-site sweeps. Build a task list and index it with
-`$SLURM_ARRAY_TASK_ID`:
+Ideal for sweeps of one command over many independent inputs, such as one tissue per
+task. Build a task list and index it with `$SLURM_ARRAY_TASK_ID`:
 
 ```bash
 #!/bin/bash
 #SBATCH --job-name=hvantk-fanout
-#SBATCH --array=1-500%50            # 500 genes, ≤50 concurrent
+#SBATCH --array=1-3                 # one task per line of tissues.txt
 #SBATCH --cpus-per-task=4 --mem=16G --time=04:00:00
 #SBATCH --output=logs/%x_%A_%a.out
-GENE=$(sed -n "${SLURM_ARRAY_TASK_ID}p" genes.txt)
+# tissues.txt: one tissue name per line (Liver, Lung, Thyroid)
+TISSUE=$(sed -n "${SLURM_ARRAY_TASK_ID}p" tissues.txt)
 apptainer exec --bind /project/$USER/hvantk/local:/data hvantk.sif \
-  hvantk qtlcascade cascade --gene "$GENE" --out /data/out/${GENE}.ht
+  hvantk qtlcascade cascade --eqtl-ht /data/out/eqtl.ht --pqtl-ht /data/out/pqtl.ht \
+    --tissue "$TISSUE" -o "/data/out/cascade_${TISSUE}.ht"
 ```
 
 For experiments that stream remote data (e.g. phyloP bigWig, gnomAD), pre-stage those
@@ -457,11 +468,16 @@ launching at scale.
   stack. Re-derive the image only by re-running `apptainer build` against the same
   lock.
 - **Pass `--build-arg HVANTK_COMMIT=$(git rev-parse HEAD)` on every build.** The
-  image copies only `hvantk/` (no `.git`) and purges git itself, so without this a
-  dataset built inside it can only record `reprocess`'s `builder_commit` as the
-  installed package version, not the commit. The build-arg stamps the commit into
-  the image's environment, and `reprocess` picks it up from there once its own git
-  check (correctly) finds no checkout.
+  image copies only `hvantk/` (no `.git`) and purges git itself. The build arg stamps
+  the commit into the image's own copy of hvantk, so a dataset that copy builds
+  records it as its `builder_commit`; without it, such a dataset records only the
+  package version.
+- **Pass the checkout's commit to a job that runs the checkout.** With
+  `--env PYTHONPATH=<checkout>` the job runs the checkout's code, not the image's, so
+  the image's commit does not describe it. Pass
+  `--env HVANTK_BUILDER_COMMIT=$(git -C <checkout> rev-parse HEAD)` too (§4.1); the
+  `hpc-hail-job` templates do both, with `-dirty` for uncommitted edits under
+  `hvantk/`. Without it, the job's datasets record `hvantk <version>`.
 - **hvantk stamps provenance** on every dataset (`ctx.provenance(...)`) and has
   `hvantk drift` for source fingerprints — keep using both on-cluster so results
   carry their input lineage.
@@ -474,10 +490,11 @@ launching at scale.
 
 1. **Login node:** `git clone` the repo into `$HOME`. Note partitions, scratch path,
    `--fakeroot` availability, Spark-on-Slurm launcher (§2).
-2. **Build the image:** from the repo's `containers/hvantk.def` (§3.2), set
-   `APPTAINER_*` to scratch, `apptainer build --fakeroot --build-arg
-   HVANTK_COMMIT=$(git rev-parse HEAD) hvantk.sif hvantk.def` (or build on
-   a laptop + copy, or run the `hpc-container` skill).
+2. **Build the image:** from the repository root (the def file's `%files` paths are
+   relative to it), set `APPTAINER_*` to scratch and run `apptainer build --fakeroot
+   --build-arg HVANTK_COMMIT=$(git rev-parse HEAD) hvantk.sif containers/hvantk.def`
+   (§3.3; Apptainer 1.2+ or SingularityCE 4.0+), or build on a laptop and copy, or run
+   the `hpc-container` skill.
 3. **Validate:** `srun ... apptainer exec hvantk.sif hvantk utils check-install`.
 4. **Move data (§5):** Globus the "transfer" set into `/project/$USER/hvantk/local/`;
    refetch the public bulk on the login node; regenerate `.mt`s on-cluster; skip the
@@ -499,6 +516,8 @@ launching at scale.
   *index* still resolves while every `.deb` 404s. Use `ubuntu:22.04` (§3.2).
 - **`--fakeroot` with no `/etc/subuid` entry** → `no valid mapping entry found`, and an
   unprivileged build is refused. Put a static `proot` on `PATH` instead (§3.3).
+- **`unknown flag: --build-arg`** → SingularityCE older than 4.0 or Apptainer older
+  than 1.2. Use a newer one (§3.3).
 - **Container Hail init: `[Errno 111] Connection refused`** → almost never the network.
   Look one line up for `DiskBlockManager: Failed to create any local dir`: Spark has no
   writable scratch. Use `containers/hvantk_run.sh` (§4.1).

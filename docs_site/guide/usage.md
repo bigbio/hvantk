@@ -112,11 +112,11 @@ Every build writes a sidecar `<output>.provenance.json` next to the output, reco
 {
   "plugin": "clinvar",
   "dataset": "clinvar:variants",
-  "plugin_version": "0.3.0",
+  "plugin_version": "0.2.0",
   "source_fingerprint": "sha256:...",
-  "schema_id": "clinvar-variants-v3",
+  "schema_id": "clinvar-variants-v1",
   "build_timestamp": "2026-10-20T12:00:00+00:00",
-  "builder_commit": "a1b2c3d...",
+  "builder_commit": "3f5c1a9e7b2d4c6e8f0a1b3c5d7e9f0a2b4c6d8e",
   "parents": [],
   "build_parameters": {}
 }
@@ -125,12 +125,19 @@ Every build writes a sidecar `<output>.provenance.json` next to the output, reco
 `source_fingerprint` is the drift probe's fingerprint at build time. `parents` is
 filled only for a dataset derived from other hvantk datasets. `build_parameters` records
 the options a builder chose to stamp, and is `null` only in a sidecar written before the
-field existed. `builder_commit` records the hvantk git commit `reprocess` ran from;
-inside an Apptainer/Singularity image built with `--build-arg HVANTK_COMMIT=<sha>` (the
-`hpc-container` skill's templates do this), it records that commit instead, since the
-image itself has no git checkout; otherwise (e.g. a wheel install, or an image built
-without that build arg) it falls back to `hvantk <version>`. Loading the dataset later
-(`hvantk.core.io.load`) re-attaches this `Provenance`.
+field existed. `builder_commit` names the hvantk code that ran the build. It is the
+first of these that applies:
+
+- the commit of hvantk's own git checkout, with `-dirty` when files under `hvantk/` have
+  uncommitted changes;
+- for the container image's own copy of hvantk, the commit the image was built from
+  (`--build-arg HVANTK_COMMIT=<sha>`, which the `hpc-container` skill's templates pass);
+- the `HVANTK_BUILDER_COMMIT` environment variable, which the `hpc-hail-job` templates
+  set to the commit of the checkout they run inside the image, since the image has no
+  git;
+- `hvantk <version>`, for example for a wheel install.
+
+Loading the dataset later (`hvantk.core.io.load`) re-attaches this `Provenance`.
 
 ### Drift check at the end of a build
 

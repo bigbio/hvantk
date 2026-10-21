@@ -103,7 +103,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
   VCF, which drop them; `compute-qc` drops star alleles by default.
 - The variant QC file is tab-separated and the sample QC file comma-separated. Cause:
   `compute-qc` writes `<prefix>_variant_qc.tsv` and `<prefix>_sample_qc.csv`. Fix: read
-  them accordingly; the orchestrated pipeline would write a CSV capped at 10,000 rows.
+  them accordingly; the orchestrated pipeline's `qc/<prefix>_variant_qc.tsv` holds only
+  the first 10,000 variants.
 - `mt2vcf` refuses with an `adj` error. Cause: the `adj` entry field is missing or
   mostly missing, so filtering on it would delete genotypes. Fix: run `vds2mt` with
   genotype adjustment on (the default), or export with `--no-filter-adj` deliberately.

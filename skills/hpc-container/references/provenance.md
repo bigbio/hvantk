@@ -14,7 +14,7 @@ builds, before the final pass-or-fail gate, so a failed install check is recorde
   "git_branch": "<branch>",
   "worktree": "clean | dirty",
   "poetry_lock_md5": "<md5 of poetry.lock at build time>",
-  "container_tool": "singularity-ce version 4.x | apptainer version 1.x",
+  "container_tool": "singularity-ce version 4.x | apptainer version 1.x (1.2 or later)",
   "build_method": "fakeroot | unprivileged + proot",
   "hail_version": "0.2.137-<hash>",
   "java_version": "11.0.x",
@@ -30,18 +30,21 @@ How to read it:
 | `poetry_lock_md5` | whether the image matches the checkout's dependencies: compare with `md5sum "$HVANTK_REPO/poetry.lock"` | the clone was stale at build time, or the lock changed since: sync, rebuild |
 | `hail_version`, `java_version` | the two pins Hail is most sensitive to; `hail_version` starts with the locked version and carries a build hash after it | a different Hail or a Java other than 8 or 11 means the def file or the lock drifted |
 | `check_install_rc` | whether Hail started and ran its smoke test inside the image on a compute node | anything but 0 is not a usable image; read the job log |
-| `build_method`, `container_tool` | how it was built, for a site that changes its runtime | informational |
+| `build_method`, `container_tool` | how it was built, for a site that changes its runtime | the build needs SingularityCE 4.0+ or Apptainer 1.2+ (`references/build-troubleshooting.md`) |
 
 The record is a sidecar, like the `.provenance.json` hvantk writes next to every dataset:
 a job's run notes name the image digest, the image's record names the commit, and the
-dataset's record names the source fingerprint. Inside an image built from
-`templates/build-image.sbatch`, a dataset's own `builder_commit` field records that same
-commit too: the def file's `%arguments` section stamps it into `HVANTK_BUILDER_COMMIT`
-at build time, and `reprocess` reads it there once its own git check (correctly) finds no
-checkout to ask (see `dataset-build-at-scale`'s verification reference). An image built
-without `--build-arg HVANTK_COMMIT=...` -- a manual `singularity build` with no flag --
-falls back to recording `hvantk <version>` instead. Together they answer "what produced
-this file" without a conversation.
+dataset's record names the source fingerprint. A dataset's own `builder_commit` names
+the code that built it, which is not always the image's. A job from the `hpc-hail-job`
+templates runs the checkout's code inside the image, and the templates pass the
+checkout's commit in (`HVANTK_BUILDER_COMMIT`, since the image has no git), so its
+datasets record that commit. Only a build by the image's own copy of hvantk, such as one
+through `containers/hvantk_run.sh`, records the image's `git_commit`: the def file's
+`%arguments` section writes it into that copy at build time. An image built without
+`--build-arg HVANTK_COMMIT=...` -- a manual `singularity build` with no flag -- leaves its
+own copy recording `hvantk <version>` instead (see `dataset-build-at-scale`'s
+verification reference). Together they answer "what produced this file" without a
+conversation.
 
 Promotion keeps records with images: `promote-image.sh` moves the old default's record
 with the old default and points the default's record at the new one, so

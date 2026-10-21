@@ -164,11 +164,12 @@ hvantk enrichex overlap \
 - `tsv` writes the table to `-o`, adding `.tsv` if missing; `json` writes to `-o`, adding
   `.json` if missing. For `both`, give `-o` without an extension: `-o results/overlap`
   writes `results/overlap.tsv` and `results/overlap.json`. The directory that holds these
-  files is created if it does not exist yet.
-- With `--generate-report`, the report and its plot are written next to `-o` (its
-  directory for a `.tsv`/`.json` path, or `-o` itself when it names a directory). The
-  report always reads a TSV: a `.tsv` `-o` is reused, otherwise (`.json`, or a directory)
-  a copy named `overlap_results.tsv` is written alongside it for the report to read.
+  files (`-o`'s parent) is created if it does not exist yet.
+- With `--generate-report`, the report and its plot are written next to `-o`, in that
+  same directory. The report always reads a TSV: when `--output-format` wrote one this
+  run, it is reused; otherwise (`json` only) a copy named `overlap_results.tsv` is
+  written there for the report to read. Both are refreshed on every run, so rerunning
+  into the same `-o` never reports a previous run's results.
 - When nothing can be tested, the command prints "No results generated" and writes no
   file.
 
@@ -457,8 +458,8 @@ The remaining options (`--phenotype-field`, `--phenotype-type`, `--covariates`,
 `--gene-lengths`, `--af-field`, `--score-field`, `--consequence-field`,
 `--sample-id-field`, `--dry-run`, `--generate-report`) behave as in `burden`, except that
 `--covariates` tolerates spaces after commas. `--dry-run` prints the run plan without
-starting Hail in both commands (it still checks that the input paths exist and creates
-the output directories).
+starting Hail or writing anything to disk, in both commands (it still checks that the
+input paths exist).
 
 Each run (one collection, one class) is corrected on its own, with m = gene sets in that
 collection. A gene set whose regression fails keeps a missing `p_adjusted`.

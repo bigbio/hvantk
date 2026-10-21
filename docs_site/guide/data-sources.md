@@ -206,7 +206,7 @@ hvantk reprocess hgnc:lookup \
 
 ### UCSC Cell Browser
 
-The UCSC Cell Browser catalog lists 270 datasets. About half are **collections** (groups
+The UCSC Cell Browser catalog lists 267 datasets. About half are **collections** (groups
 of related datasets with no expression matrix at the top level). Use `--list-datasets`
 and `--search` to discover downloadable datasets.
 
@@ -360,11 +360,12 @@ hvantk reprocess gnomad-metrics:metrics \
   --raw-dir data/gnomad_metrics/ \
   --output gnomad_metrics.ht
 
-# v4.0 (GRCh38) instead:
+# v4.0 (GRCh38) instead, in its own --raw-dir: the builder reads the one
+# constraint file it finds there and stops if it finds two.
 hvantk download gnomad-metrics --version v4.0 \
-  --output data/gnomad_metrics/gnomad.v4.0.constraint_metrics.tsv
+  --output data/gnomad_metrics_v4/gnomad.v4.0.constraint_metrics.tsv
 hvantk reprocess gnomad-metrics:metrics --skip-download \
-  --raw-dir data/gnomad_metrics/ --output gnomad_metrics_v4.ht \
+  --raw-dir data/gnomad_metrics_v4/ --output gnomad_metrics_v4.ht \
   --plugin-arg key=transcript
 ```
 
@@ -721,7 +722,8 @@ https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_cove
 
 ```bash
 # Place per-chromosome *_chr<N>.filtered.shapeit2-duohmm-phased.vcf.gz (+ .tbi) in
-# data/onek_genomes/ then:
+# data/onek_genomes/. chrX is phased separately and ships as
+# *_chrX.filtered.eagle2-phased.v2.vcf.gz (+ .tbi) -- place that too, then:
 hvantk reprocess onek-genomes:variants \
   --raw-dir data/onek_genomes/ \
   --output onek_genomes_variants.mt \

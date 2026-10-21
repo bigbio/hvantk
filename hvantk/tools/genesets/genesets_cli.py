@@ -563,7 +563,8 @@ def genesets_cosmic(
     "--hgnc",
     type=click.Path(exists=True),
     default=None,
-    help="Path to HGNC data (.ht or .tsv) for symbol validation and alias resolution.",
+    help="Path to a built HGNC Hail Table (.ht) for symbol validation and alias "
+    "resolution.",
 )
 @click.option(
     "--min-genes",
@@ -731,7 +732,6 @@ def genesets_prepare(
 
     # Attach metadata.
     input_basename = os.path.basename(input_path)
-    collection.source_description = f"Custom gene sets from {input_basename}"
     collection.metadata = {
         "created_by": "hvantk genesets prepare",
         "input_file": input_basename,
@@ -746,7 +746,10 @@ def genesets_prepare(
 
     # 6. Save outputs.
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    collection.save(output_path)
+    if output_path.suffix.lower() == ".gmt":
+        collection.save_gmt(output_path)
+    else:
+        collection.save(output_path)
     click.echo(f"\nSaved to {output}", err=True)
 
     if export_gmt:

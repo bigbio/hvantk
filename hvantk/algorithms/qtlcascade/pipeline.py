@@ -352,31 +352,22 @@ class CascadePipeline:
         cascade_genes = coloc_gene_ids(hl.read_table(result.cascade_ht_path))
         if not cascade_genes:
             logger.info("No genes with both eQTL and pQTL — skipping coloc")
-            coloc_df = pd.DataFrame(
-                columns=[
-                    "gene_id",
-                    "tissue",
-                    "H0",
-                    "H1",
-                    "H2",
-                    "H3",
-                    "H4",
-                    "n_variants",
-                ]
-            )
         else:
             logger.info("Running coloc for %d cascade genes", len(cascade_genes))
-            coloc_df = run_coloc_per_gene(
-                eqtl_allpairs_ht_path=self.config.eqtl_allpairs_ht,
-                pqtl_allpairs_ht_path=self.config.pqtl_allpairs_ht,
-                cascade_genes=cascade_genes,
-                tissue=tissue,
-                window_kb=self.config.coloc_window_kb,
-                p1=self.config.coloc_p1,
-                p2=self.config.coloc_p2,
-                p12=self.config.coloc_p12,
-                W=self.config.coloc_W,
-            )
+        # An empty gene list returns an empty frame with the result columns and runs
+        # no Hail, so coloc_results.tsv is always written.
+        coloc_df = run_coloc_per_gene(
+            eqtl_allpairs_ht_path=self.config.eqtl_allpairs_ht,
+            pqtl_allpairs_ht_path=self.config.pqtl_allpairs_ht,
+            cascade_genes=cascade_genes,
+            tissue=tissue,
+            window_kb=self.config.coloc_window_kb,
+            p1=self.config.coloc_p1,
+            p2=self.config.coloc_p2,
+            p12=self.config.coloc_p12,
+            W=self.config.coloc_W,
+        )
+        if cascade_genes:
             n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
             logger.info(
                 "Coloc: %d/%d genes with P(H4) > %.1f",

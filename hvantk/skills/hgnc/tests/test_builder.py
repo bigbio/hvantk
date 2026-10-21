@@ -229,3 +229,35 @@ def test_annotate_table_works_with_its_own_default_fields_to_add(
 
     by_gene_symbol = streamer.annotate_table(target, "symbol", "gene_symbol")
     assert by_gene_symbol.collect()[0].hgnc_hgnc_id == "HGNC:1100"
+
+
+@pytest.mark.hail
+def test_annotate_table_leaves_hgnc_id_missing_for_unmatched_rows(
+    hail_session, tmp_path
+):
+    """An input row with no HGNC match must not get its ``hgnc_<key>`` filled in.
+
+    ``_annotate_via_join`` used to annotate ``hgnc_<key_field>`` straight from
+    the input field regardless of whether the join found a match, so an
+    alias or withdrawn ID looked HGNC-approved even though every other
+    ``hgnc_*`` field was correctly missing.
+    """
+    import hail as hl
+    from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
+    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
+    builder = phase_b_snapshot_adapter(build_hgnc_gene_lookup, "hgnc:lookup")
+    out = str(tmp_path / "hgnc.ht")
+    builder(input_path=FIXTURE, output_path=out)
+    streamer = HGNCGeneCatalogStreamer.from_path(out)
+
+    target = hl.Table.parallelize(
+        [hl.Struct(id="HGNC:not_a_real_id")],
+        hl.tstruct(id=hl.tstr),
+        key="id",
+    )
+
+    annotated = streamer.annotate_table(target, "id", "hgnc_id")
+    row = annotated.collect()[0]
+    assert row.hgnc_hgnc_id is None
+    assert row.hgnc_gene_symbol is None

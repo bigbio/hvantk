@@ -698,35 +698,6 @@ def ptm_constraint(
 # ---------------------------------------------------------------------------
 
 
-def _read_variants_table(path: str):
-    """Load a variant table from CSV/TSV with transparent gzip/bgz support."""
-    import pandas as _pd
-    from pathlib import Path
-
-    p = str(path)
-    # Derive the delimiter from the last non-compression suffix so inputs like
-    # ``variants.csv.bgz`` are parsed as CSV, not TSV.
-    compression_suffixes = {".gz", ".bgz", ".bz2"}
-    suffixes = [s.lower() for s in Path(p).suffixes]
-    base_suffix = next(
-        (s for s in reversed(suffixes) if s not in compression_suffixes),
-        "",
-    )
-    if base_suffix in {".tsv", ".tab"}:
-        sep = "\t"
-    elif base_suffix == ".csv":
-        sep = ","
-    else:
-        sep = "\t"
-    # pandas does not infer ".bgz"; map it (and .gz) to gzip explicitly. BGZF is a
-    # valid multi-member gzip stream, so the gzip codec reads it transparently.
-    comp_map = {".gz": "gzip", ".bgz": "gzip", ".bz2": "bz2"}
-    compression = next(
-        (comp_map[s] for s in reversed(suffixes) if s in comp_map), "infer"
-    )
-    return _pd.read_csv(p, sep=sep, low_memory=False, compression=compression)
-
-
 def _read_expression_wide(pkl_path, tsv_path):
     """Load a gene x stratum expression matrix from a pandas pickle or TSV."""
     import pandas as _pd
@@ -847,7 +818,9 @@ def ptm_test(
 
         import pandas as _pd
 
-        df = _read_variants_table(input_path)
+        from hvantk.algorithms.ptm.constraint import read_variants_tabular_file
+
+        df = read_variants_tabular_file(input_path)
         if stratum_col not in df.columns:
             click.echo(f"Error: stratum column '{stratum_col}' not in input.", err=True)
             ctx.exit(1)

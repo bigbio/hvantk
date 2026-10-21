@@ -270,8 +270,7 @@ def plot_roc_curve_single(
     if title is None:
         title = f"ROC Curve: {roc_result.score_name}"
 
-    # A lower-is-damaging score calls pathogenic at or below the threshold
-    lower = not roc_result.higher_is_pathogenic
+    op = roc_result.threshold_op
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -323,8 +322,7 @@ def plot_roc_curve_single(
             edgecolors="black",
             linewidths=1,
             zorder=5,
-            label=f"Optimal (t{'<=' if lower else '='}"
-            f"{roc_result.optimal_threshold:.3f})",
+            label=f"Optimal (t{op}{roc_result.optimal_threshold:.3f})",
         )
 
         # Add annotation for optimal point
@@ -348,7 +346,7 @@ def plot_roc_curve_single(
         stats_text = (
             f"Score: {roc_result.score_name}\n"
             f"{auc_line}\n"
-            f"Optimal Threshold: {'<= ' if lower else ''}"
+            f"Optimal Threshold: {op} "
             f"{roc_result.optimal_threshold:.3f}\n"
             f"Sensitivity: {roc_result.sensitivity_at_optimal:.3f}\n"
             f"Specificity: {roc_result.specificity_at_optimal:.3f}\n"
@@ -892,10 +890,9 @@ def plot_psroc_summary_dashboard(
                 f"\u2013{best_score[1].auc_ci_upper:.3f}]"
             )
         summary_text += best_auc_line + "\n"
-        # A lower-is-damaging score calls pathogenic at or below the threshold
-        op = "" if best_score[1].higher_is_pathogenic else "<= "
         summary_text += (
-            f"  Optimal Threshold: {op}{best_score[1].optimal_threshold:.3f}\n"
+            f"  Optimal Threshold: {best_score[1].threshold_op} "
+            f"{best_score[1].optimal_threshold:.3f}\n"
         )
         summary_text += f"  Sensitivity: {best_score[1].sensitivity_at_optimal:.3f}\n"
         summary_text += f"  Specificity: {best_score[1].specificity_at_optimal:.3f}\n\n"

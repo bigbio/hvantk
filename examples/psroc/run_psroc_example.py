@@ -206,7 +206,9 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
             auc_text += f" [95% CI {roc.auc_ci_lower:.3f}-{roc.auc_ci_upper:.3f}]"
         print(f"  - {name}:")
         print(f"      AUC: {auc_text}")
-        print(f"      Optimal threshold: {roc.optimal_threshold:.3f}")
+        print(
+            f"      Optimal threshold: {roc.threshold_op} {roc.optimal_threshold:.3f}"
+        )
         print(f"      Sensitivity: {roc.sensitivity_at_optimal:.3f}")
         print(f"      Specificity: {roc.specificity_at_optimal:.3f}")
         print(f"      Missingness: {miss.missingness_rate:.1%}")

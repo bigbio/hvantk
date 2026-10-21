@@ -208,6 +208,10 @@ def compose_cmd(spec, spine, prepared_opts, output, manifest):
 
     manifest_path = manifest or f"{output}.manifest.json"
 
+    from pathlib import Path
+
+    Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+
     import hail as hl
 
     from hvantk.core.utils.hail_context import init_hail

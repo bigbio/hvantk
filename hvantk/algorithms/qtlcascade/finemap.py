@@ -38,9 +38,11 @@ import numpy as np
 
 from hvantk.algorithms.qtlcascade.constants import (
     KG_PHASED_VCF_URL,
+    KG_PHASED_VCF_URL_CHRX,
     KG_PANEL_URL,
     DEFAULT_FINEMAP_SUPERPOP,
     DEFAULT_SUSIE_L,
+    FINEMAP_SUPERPOPS,
 )
 from hvantk.algorithms.qtlcascade.susie import susie_rss, coloc_susie
 
@@ -153,18 +155,31 @@ def _unrelated_samples(cache: Path, superpop: str) -> list[str]:
     if not samples:
         raise ValueError(
             f"No unrelated founders found for super-population '{superpop}' in the "
-            "1000G panel. Check --superpop (one of EUR, AFR, EAS, SAS, AMR)."
+            f"1000G panel. Check --superpop (one of {', '.join(FINEMAP_SUPERPOPS)})."
         )
     out.write_text("\n".join(samples) + "\n")
     logger.info("derived %d unrelated %s founders", len(samples), superpop)
     return samples
 
 
+def kg_phased_vcf_url(chrom: str) -> str:
+    """1000G high-coverage phased VCF URL for ``chrom`` (bare or ``chr``-prefixed).
+
+    Every autosome formats :data:`KG_PHASED_VCF_URL`, but chrX in this release
+    is phased separately (eagle2, not shapeit2-duohmm) under a fixed filename —
+    :data:`KG_PHASED_VCF_URL_CHRX` — with no ``{chrom}`` token to substitute.
+    """
+    bare = chrom[3:] if chrom.startswith("chr") else chrom
+    if bare in ("X", "23"):
+        return KG_PHASED_VCF_URL_CHRX
+    return KG_PHASED_VCF_URL.format(chrom=bare)
+
+
 def _kg_index(chrom: str, cache: Path) -> str:
     """Download the per-chrom 1000G tabix index locally (remote index is flaky)."""
     idx = cache / f"kg_chr{chrom}.tbi"
     if not idx.exists():
-        _download_file(KG_PHASED_VCF_URL.format(chrom=chrom) + ".tbi", idx, timeout=300)
+        _download_file(kg_phased_vcf_url(chrom) + ".tbi", idx, timeout=300)
     return str(idx)
 
 
@@ -199,7 +214,7 @@ def _panel_dosages(
     else:
         samples = _unrelated_samples(cache, superpop)
         idx = _kg_index(chrom, cache)
-        url = KG_PHASED_VCF_URL.format(chrom=chrom)
+        url = kg_phased_vcf_url(chrom)
         sources = [(url, idx, samples)]
 
     src, index_filename, keep = sources[0]

@@ -83,13 +83,12 @@ full build's:
 ## The provenance sidecar is what a verdict binds to
 
 `<output>.provenance.json` carries `plugin`, `dataset`, `plugin_version`,
-`source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit` (the hvantk git
-commit `reprocess` ran from, with `-dirty` for an edited checkout; else the commit an
-image built from the `hpc-container` templates stamped into `HVANTK_BUILDER_COMMIT` at
-build time, since the image itself has no checkout to ask; else `hvantk <version>` when
-neither is available, as with a wheel install or an image built without `--build-arg
-HVANTK_COMMIT=...`), `parents` and
-`build_parameters`. It does **not**
+`source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit` (the hvantk code
+that built it: the commit of the checkout a task ran, which `hail-job.sbatch` passes into
+the image as `HVANTK_BUILDER_COMMIT`, with `-dirty` for uncommitted edits under
+`hvantk/`; for a build by the image's own copy of hvantk, the commit the image was built
+from; else `hvantk <version>`, as with a wheel install or a task on a node where git
+cannot answer), `parents` and `build_parameters`. It does **not**
 record the raw file's path: `source_fingerprint` is the drift probe's fingerprint (or,
 built through a job with no egress, the `probe-unavailable:source-unreachable` token --
 see the skill's Traps), not a path, and nothing else on the sidecar names one either.

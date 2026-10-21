@@ -116,6 +116,24 @@ def test_eqtl_catalogue_url_passthrough():
     assert eqtl_catalogue_url(full) == full
 
 
+def test_kg_phased_vcf_url_chrx_uses_eagle2_name():
+    # chrX in the 20201028_3202_phased release is phased with eagle2, not
+    # shapeit2-duohmm, under a fixed filename -- not {chrom}-formattable.
+    from hvantk.algorithms.qtlcascade.finemap import kg_phased_vcf_url
+
+    for chrom in ("X", "chrX", "23"):
+        url = kg_phased_vcf_url(chrom)
+        assert url.endswith(
+            "CCDG_14151_B01_GRM_WGS_2020-08-05_chrX.filtered.eagle2-phased.v2.vcf.gz"
+        )
+
+    autosome = kg_phased_vcf_url("17")
+    assert autosome.endswith(
+        "CCDG_14151_B01_GRM_WGS_2020-08-05_chr17.filtered.shapeit2-duohmm-phased.vcf.gz"
+    )
+    assert kg_phased_vcf_url("chr17") == autosome
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -224,6 +242,26 @@ def test_pipeline_user_gene_absent_not_misattributed(tmp_path, monkeypatch):
     assert rep["results"]["goi_PP4_abf"] is None  # not the top gene's PP4
     assert rep["results"]["top_effector"] == "ENSG_OTHER"  # top still reported
     assert rep["verdict"].startswith("NO COLOC")
+
+
+def test_config_validate_rejects_a_superpop_outside_finemap_superpops():
+    # Regression: validate() used to accept any string (e.g. a case mismatch
+    # like "eur"), so a bad --superpop only surfaced deep inside the LD
+    # reference build via _unrelated_samples, degrading the verdict to
+    # SUGGESTIVE instead of failing fast with a clear error.
+    from hvantk.algorithms.qtlcascade.gwas_pipeline import GwasColocConfig
+
+    cfg = GwasColocConfig(
+        endpoint="X",
+        chrom="1",
+        lead=1_000_000,
+        eqtl_dataset="QTD",
+        output_dir="out",
+        fine_map=False,
+        superpop="eur",
+    )
+    errors = cfg.validate()
+    assert any("superpop" in e for e in errors)
 
 
 def test_fetch_eqtl_region_keeps_one_row_per_gene_and_variant(tmp_path):

@@ -85,10 +85,11 @@ No `--overwrite` flag: `attach` always overwrites an existing `--output`.
 | `--output TEXT` | yes | Output gene table (TSV). |
 | `--emit-manifest TEXT` | no | Also write a ready-to-use `cohort.yaml` stub pointing at `--output`. |
 
-`--carrier-mode` sets the gene-level "qualifies" rule: `het` -- at least one
-heterozygous carrier; `hom` -- at least one homozygous-variant carrier; `chet` -- at
-least two heterozygous carriers (a compound-het proxy); `homs_chet` -- either of the
-last two.
+`--carrier-mode` sets the per-sample "qualifies" rule for a gene (and route): `het` --
+the sample has at least one heterozygous genotype there; `hom` -- at least one
+homozygous-variant genotype; `chet` -- at least two heterozygous genotypes in that
+gene, in that same sample (a compound-het proxy -- not two different carrier samples);
+`homs_chet` -- either of the last two.
 
 For each gene and route, `burden` counts the cases and the controls that qualify and
 runs a two-sided Fisher's exact test on that 2×2 table (qualifying or not, case or
@@ -123,12 +124,14 @@ names the column).
 
 **`burden`** -- a TSV, one row per gene (its winning, min-p route): `gene`, `route`,
 `minp`, `odds_ratio`, `n_case_var`, `conc`, `driver_af`, `mean_score_case`,
-`frac_case_private`, plus `p_adj` when `--mtc` is set. `conc` is the within-route
-case/control concordance fraction; `driver_af` is the max-case-carrier variant's
-control-carrier frequency (an upper-bound leak signal, not a population allele
-frequency). With `--emit-manifest`, the stub's `cohort_axes: [{axis: architecture,
-columns: [n_case_var, conc, driver_af]}]` is exactly what
-[`hvantk rerank`](rerank.md)'s `CaseControlArchitectureAudit` looks for.
+`frac_case_private`, plus `p_adj` when `--mtc` is set. `conc` is the share of the
+gene's (and route's) total case-carrier count held by its single most-carried
+variant -- a within-cases recurrence/concentration signal; controls play no part in
+it. `driver_af` is that same top variant's control-carrier frequency (an upper-bound
+leak signal, not a population allele frequency). With `--emit-manifest`, the stub's
+`cohort_axes: [{axis: architecture, columns: [n_case_var, conc, driver_af]}]` is
+exactly what [`hvantk rerank`](rerank.md)'s `CaseControlArchitectureAudit` looks for
+-- it flags a gene `recurrent_variant` when `conc >= 0.6` and `driver_af > 5e-5`.
 
 No `--overwrite` flag on either command: both always overwrite an existing output.
 
@@ -176,9 +179,11 @@ labels:
   path: labels.txt
 ```
 
-`cohort`, `features`, and `labels` are the only top-level keys `rerank` accepts; an
-older config with a top-level `prior:` block is rejected with a hint to delete it --
-the prior now comes from the cohort manifest's own `prior:` block. The manifest's
+`rerank`'s config accepts five top-level keys -- `name`, `cohort`, `features`,
+`labels` and `min_label_coverage` (see [Re-rank](rerank.md#the-config-yaml) for the
+full reference); an older config with a top-level `prior:` block is rejected with a
+hint to delete it -- the prior now comes from the cohort manifest's own `prior:`
+block. The manifest's
 `prior.column` is carried through to `rerank`'s output as `prior_stat`. See
 [`examples/rerank`](https://github.com/bigbio/hvantk/tree/main/examples/rerank) for a
 complete runnable configuration, and [Re-rank](rerank.md) for the rest of its options.

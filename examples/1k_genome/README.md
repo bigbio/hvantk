@@ -12,7 +12,8 @@ Scripts for building a Hail MatrixTable from 1000 Genomes NYGC high-coverage dat
 ## Prerequisites
 
 Download the NYGC/CCDG 1000 Genomes high-coverage per-chromosome phased VCFs
-(`*_chr<N>.filtered.shapeit2-duohmm-phased.vcf.gz` + `.tbi`) into a local directory. See
+(`*_chr<N>.filtered.shapeit2-duohmm-phased.vcf.gz` + `.tbi`; chrX is phased separately
+and ships as `*_chrX.filtered.eagle2-phased.v2.vcf.gz` + `.tbi`) into a local directory. See
 [1000 Genomes](https://bigbio.github.io/hvantk/guide/data-sources/#1000-genomes-nygcccdg-high-coverage-callset)
 for the mirror URL — `onek-genomes:variants` is BYO (no downloader ships for it; files are
 multi-GB per chromosome).

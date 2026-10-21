@@ -135,33 +135,6 @@ def _render_burden_summary(result_df, alpha, phenotype_type: str) -> None:
     click.echo("=" * 60 + "\n")
 
 
-def _apply_correction_and_flag_significance(df, correction, alpha, n_total):
-    """Apply multiple-testing correction, skipping rows with a missing p-value.
-
-    A non-convergent logistic/linear fit leaves ``p_value`` missing (Hail
-    produces a pandas NA there), and ``apply_correction`` cannot take a NaN.
-    Those rows are excluded from the correction and left with
-    ``p_adjusted = NaN`` (not significant), the same handling
-    ``BurdenPipeline._run_single`` already applies.
-    """
-    import pandas as pd
-
-    from hvantk.algorithms.statistics.correction import apply_correction
-
-    df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
-    valid_mask = df["p_value"].notna()
-    df["p_adjusted"] = float("nan")
-    if valid_mask.any():
-        p_adjusted = apply_correction(
-            df.loc[valid_mask, "p_value"].tolist(),
-            method=correction,
-            n_total=n_total,
-        )
-        df.loc[valid_mask, "p_adjusted"] = p_adjusted
-    df["significant"] = df["p_adjusted"] < alpha
-    return df
-
-
 @click.command(name="burden")
 @click.option(
     "-m",
@@ -505,7 +478,11 @@ def burden_test(
     import hail as hl
     import pandas as pd
 
-    from hvantk.algorithms.enrichex.burden import VariantFilter, run_burden_analysis
+    from hvantk.algorithms.enrichex.burden import (
+        VariantFilter,
+        apply_correction_and_flag_significance,
+        run_burden_analysis,
+    )
     from hvantk.core.utils.gene_sets import GeneSetCollection
 
     # Load inputs
@@ -640,7 +617,7 @@ def burden_test(
         all_dfs = []
         for class_name, result_ht in stratified_results.items():
             df = result_ht.to_pandas()
-            df = _apply_correction_and_flag_significance(
+            df = apply_correction_and_flag_significance(
                 df, correction, alpha, n_gene_sets_total
             )
             df = df.sort_values("p_value")
@@ -734,7 +711,7 @@ def burden_test(
         # the multiple testing penalty.
         click.echo(f"Applying {correction} correction...")
         n_gene_sets_total = len(gene_sets_dict)
-        result_df = _apply_correction_and_flag_significance(
+        result_df = apply_correction_and_flag_significance(
             result_df, correction, alpha, n_gene_sets_total
         )
 

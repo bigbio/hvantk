@@ -54,10 +54,9 @@ def _display_single_result(result, pipeline) -> None:
                 auc_str = f"AUC={roc.auc:.3f}"
                 if roc.auc_ci_lower is not None:
                     auc_str += f" [{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
-                # A lower-is-damaging score calls pathogenic at or below it
-                op = "=" if roc.higher_is_pathogenic else "<="
                 click.echo(
-                    f"    {name}: {auc_str}, threshold{op}{roc.optimal_threshold:.3f}"
+                    f"    {name}: {auc_str}, "
+                    f"threshold{roc.threshold_op}{roc.optimal_threshold:.3f}"
                 )
 
         if result.scores_excluded:
@@ -381,22 +380,24 @@ def psroc_cmd(
                 click.echo(f"  - {error}", err=True)
             ctx.exit(1)
 
+        # Create pipeline. Construction is side-effect free (no directories,
+        # no Hail), so a dry run can show the plan without touching either.
+        pipeline = PSROCPipeline(config)
+
+        # Show plan if dry-run, before the HGNC read below or anything run()
+        # would do.
+        if dry_run:
+            pipeline.show_plan()
+            return
+
         # Construct the gene catalog in tools/ (the only layer allowed to import skills/).
         from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-        gene_catalog = (
+        pipeline.gene_catalog = (
             HGNCGeneCatalogStreamer.from_path(config.hgnc_path)
             if config.hgnc_path
             else None
         )
-
-        # Create pipeline
-        pipeline = PSROCPipeline(config, gene_catalog=gene_catalog)
-
-        # Show plan if dry-run
-        if dry_run:
-            pipeline.show_plan()
-            return
 
         # Display starting message
         click.echo("\n" + "=" * 70)

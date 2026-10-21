@@ -142,88 +142,6 @@ def _default_intermediate(dataset, raw_dir):
     return os.path.join(raw_dir, f"{dataset.replace(':', '_')}.intermediate")
 
 
-def _builder_commit() -> str:
-    """Identify the hvantk build running this reprocess, for provenance.
-
-    Prefers the git commit hvantk itself is checked out at (true for an editable
-    dev install, including CI and the plugin test suites), so a dataset's
-    provenance ties it to the exact code that built it. Only trusts git when the
-    repository found at the package directory is hvantk's *own* checkout --
-    confirmed by requiring its toplevel to be the package directory's parent --
-    so a wheel install dropped into some unrelated project's .venv does not
-    record that project's HEAD. Appends "-dirty" when the package's tracked
-    files have uncommitted changes, since a bare commit then misdescribes what
-    was actually built.
-
-    When there is no (trustworthy) git checkout to ask -- true inside the
-    Apptainer/Singularity image, which copies only hvantk/ (no .git) and purges
-    git during the build -- falls back to the HVANTK_BUILDER_COMMIT environment
-    variable. containers/hvantk.def stamps this in from its %arguments build-time
-    template (see skills/hpc-container/templates/build-image.sbatch), so an image
-    built through that template still records the commit it was built from;
-    ignored when unset, empty, or still the def file's "unknown" default.
-
-    Falls back further to the installed package version when neither of the
-    above has anything trustworthy, or git itself is unavailable -- any failure
-    here is swallowed, since a traceability nice-to-have must never break a
-    build.
-    """
-    import os
-    import subprocess
-
-    package_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    try:
-        toplevel = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=package_dir,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        expected_root = os.path.realpath(os.path.dirname(package_dir))
-        actual_root = os.path.realpath(toplevel.stdout.strip())
-        if toplevel.returncode == 0 and actual_root == expected_root:
-            result = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=package_dir,
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            commit = result.stdout.strip()
-            if result.returncode == 0 and commit:
-                dirty = subprocess.run(
-                    [
-                        "git",
-                        "status",
-                        "--porcelain",
-                        "--untracked-files=no",
-                        "--",
-                        package_dir,
-                    ],
-                    cwd=package_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if dirty.returncode == 0 and dirty.stdout.strip():
-                    commit += "-dirty"
-                return commit
-    except Exception:
-        pass
-
-    env_commit = os.environ.get("HVANTK_BUILDER_COMMIT", "").strip()
-    if env_commit and env_commit != "unknown":
-        return env_commit
-
-    from importlib.metadata import PackageNotFoundError, version
-
-    try:
-        return f"hvantk {version('hvantk')}"
-    except PackageNotFoundError:
-        return "hvantk <unknown>"
-
-
 @click.command(name="reprocess")
 @click.argument("dataset")
 @click.option(
@@ -425,8 +343,8 @@ def reprocess_cmd(
             # directly to disk. No provenance / artifact_type validation.
             spec.builder(parsed_path, output)
         else:
-            # Plugin builder contract: orchestrator handles BuildContext, validation,
-            # and save. Returns the stamped Provenance.
+            # Plugin builder contract: orchestrator handles BuildContext (including
+            # builder_commit), validation, and save. Returns the stamped Provenance.
             #
             # Interface separation (#121): builders receive a GeneCatalogStreamer
             # ABC, never construct the concrete HGNC streamer themselves (skills
@@ -446,7 +364,6 @@ def reprocess_cmd(
                 parsed_input=parsed_path,
                 output_path=Path(output),
                 plugin_version=spec.plugin_version or "<unknown>",
-                builder_commit=_builder_commit(),
                 **extras,
             )
 

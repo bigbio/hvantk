@@ -83,5 +83,4 @@ hvantk psroc \
 ```
 
 The [`examples/psroc/`](https://github.com/bigbio/hvantk/tree/main/examples/psroc/)
-directory holds the script and three sample dashboards from a `--gene-sets` run on real
-ClinVar and dbNSFP tables.
+directory holds the script above and its README.

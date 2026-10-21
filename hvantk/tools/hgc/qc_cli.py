@@ -425,13 +425,15 @@ def filter_qc(
             else:
                 raise
 
-        # Get final counts
-        n_samples_final = mt_filtered.count_cols()
-        n_variants_final = mt_filtered.count_rows()
-
         # Save filtered MatrixTable
         click.echo("💾 Saving filtered MatrixTable...")
         mt_filtered.write(output, overwrite=overwrite)
+
+        # Counted from the written MatrixTable's metadata: counting the filtered one
+        # would run the whole filter once more before the write.
+        written = hl.read_matrix_table(output)
+        n_samples_final = written.count_cols()
+        n_variants_final = written.count_rows()
 
         # Report filtering results
         samples_removed = n_samples_initial - n_samples_final
@@ -565,6 +567,7 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         # Output summary
         if output:
             output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             if format == "csv":
                 # Combine summaries into CSV
                 all_stats = []

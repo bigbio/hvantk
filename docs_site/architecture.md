@@ -446,7 +446,9 @@ hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 In-process callers drive the same plugin builder via
 `run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, builder_commit=None, **params)`
 (in `hvantk/core/plugin/run_builder.py`), which takes a resolved `DatasetSpec`
-and returns the stamped `Provenance`.
+and returns the stamped `Provenance`. Left at `None`, `builder_commit` records the
+hvantk code that ran (how it is found:
+[Existing output and provenance](guide/usage.md#existing-output-and-provenance)).
 
 #### Pattern 2: Multi-Omics Integration
 ```
@@ -461,11 +463,19 @@ import hail as hl
 import anndata as ad
 
 variants = hl.read_table("data/clinvar.ht")
-genes = hl.read_table("data/ensembl.ht")
+genes = hl.read_table("data/ensembl.ht")  # keyed by gene_id; also carries gene_name
 expression = ad.read_h5ad("data/ucsc.h5ad")  # obs=cells/samples, var=genes
 
-# Join the two Hail tables directly
-annotated = variants.annotate(gene=genes[variants.gene_id])
+# ClinVar has no gene_id: take the first gene symbol from info.GENEINFO
+# ("SYMBOL:GENEID|...") and join the Ensembl table on its gene_name column.
+variants = variants.annotate(
+    gene_symbol=hl.if_else(
+        hl.is_defined(variants.info.GENEINFO) & (hl.len(variants.info.GENEINFO) > 0),
+        variants.info.GENEINFO.split(":")[0],
+        hl.missing(hl.tstr),
+    )
+)
+annotated = variants.annotate(gene=genes.key_by("gene_name")[variants.gene_symbol])
 
 # Pull expression for a gene of interest from the AnnData var/X arrays --
 # a different backend, not a Hail join. See algorithms/rerank and

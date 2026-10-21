@@ -91,6 +91,12 @@ class ROCResult:
     auc_ci_upper: Optional[float] = None
     higher_is_pathogenic: bool = True
 
+    @property
+    def threshold_op(self) -> str:
+        """Comparison operator for ``optimal_threshold``: ">=" when higher
+        values are more pathogenic, "<=" otherwise."""
+        return ">=" if self.higher_is_pathogenic else "<="
+
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization (excludes arrays)."""
         d = {

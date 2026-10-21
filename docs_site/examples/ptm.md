@@ -114,10 +114,11 @@ hvantk ptm population \
   --save-plots
 ```
 
-`--af-field` must name a top-level numeric field with a value on every row. gnomAD
-release tables keep allele frequencies in the `freq` array, so copy the entry you want
-into a top-level `AF` field first. The non-PTM class holds every other variant in the
-table; to compare against coding variants only, filter the table before this step. The
+`--af-field` must name a top-level numeric field. gnomAD release tables keep allele
+frequencies in the `freq` array, so copy the entry you want into a top-level `AF`
+field first. A row with a missing value is skipped rather than an error. The non-PTM
+class holds every other variant in the table; to compare against coding variants only,
+filter the table before this step. The
 command writes `population_summary.json`, with the counts and mean allele frequency of
 each class, and, with `--save-plots`, `population_af.png`.
 

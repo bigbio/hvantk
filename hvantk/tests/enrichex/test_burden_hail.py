@@ -1194,8 +1194,13 @@ class TestPermutationBurdenTest:
             SYMBOL=hl.literal(gene_names)[mt.row_idx // 10],
         )
 
+        # Low carrier rates, so a gene set's burden (genes carried, 0-2 here) varies
+        # across samples: when every sample carries every gene the regression is
+        # singular. Seeded, so the data does not depend on the tests run before.
         mt = mt.annotate_entries(
-            GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
+            GT=hl.call(
+                hl.int(hl.rand_bool(0.05, seed=11)), hl.int(hl.rand_bool(0.01, seed=12))
+            ),
         )
         return mt
 
@@ -1205,7 +1210,7 @@ class TestPermutationBurdenTest:
         ht = ht.annotate(
             s=hl.str(ht.idx),
             is_case=ht.idx < 40,
-            PC1=hl.rand_norm(),
+            PC1=hl.rand_norm(seed=13),
         )
         ht = ht.key_by("s")
         return ht

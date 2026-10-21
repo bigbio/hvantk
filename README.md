@@ -58,6 +58,9 @@ hvantk plugins list
 hvantk reprocess hgnc:lookup --raw-dir data/hgnc --output hgnc.ht
 ```
 
+A second run into the same `--raw-dir` stops with `FileExistsError` because the raw file
+is already there. Add `--skip-download` to rebuild from it, or use a fresh `--raw-dir`.
+
 The output is a Hail table with a `hgnc.ht.provenance.json` sidecar. The
 [Quick start](docs_site/getting-started/quickstart.md) continues from here to gene sets
 and an enrichment test, and [Building datasets](docs_site/guide/usage.md) covers every

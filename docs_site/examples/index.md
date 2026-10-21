@@ -26,13 +26,16 @@ Runnable scripts are available in the [`examples/`](https://github.com/bigbio/hv
 
 ## Runnable examples in the repository
 
-Every example above also ships as a runnable directory under
+Most examples above also ship as a runnable directory under
 [`examples/`](https://github.com/bigbio/hvantk/tree/main/examples), with fixtures and its
-own `README.md`. One has no page on this site:
+own `README.md`. QTL Cascade and PTM are the exceptions: both are documentation-only
+pages, with no corresponding `examples/` directory. Two tracked example directories, in
+turn, have no page on this site:
 
 | Example | What it runs | Needs |
 |---------|--------------|-------|
 | [1k_genome](https://github.com/bigbio/hvantk/tree/main/examples/1k_genome) | Building a Hail MatrixTable from 1000 Genomes NYGC high-coverage data, for use as an ancestry reference panel | Hail/Spark; large download |
+| [training_sets](https://github.com/bigbio/hvantk/tree/main/examples/training_sets) | Composing a pre-built ClinVar table with algorithm-level annotators (prediction scores, expression, constraint, population frequency) into an enhanced training set | Hail/Spark; a pre-built ClinVar table (`hvantk reprocess clinvar:variants`); has no `README.md` of its own |
 
 Note that the runnable examples need more than the base install:
 
@@ -41,7 +44,7 @@ Note that the runnable examples need more than the base install:
   plotting libraries).
 - `enrichex` and the `hgc` benchmarks both plot, so they want `--extras enrichex` /
   `--extras hgc`.
-- The `enrichex` burden scripts, `hgc`, `psroc`, `ancestry`, `clinvar`, `clingen` and
-  `1k_genome` start a Hail/Spark runtime (the `enrichex` overlap scripts do not).
-  `clinvar`, `clingen` and `1k_genome` also need network access, or a local copy of the
-  raw data with the plugin's `--skip-download`.
+- The `enrichex` burden scripts, `hgc`, `psroc`, `ancestry`, `clinvar`, `clingen`,
+  `1k_genome` and `training_sets` start a Hail/Spark runtime (the `enrichex` overlap
+  scripts do not). `clinvar`, `clingen` and `1k_genome` also need network access, or a
+  local copy of the raw data with the plugin's `--skip-download`.

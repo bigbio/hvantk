@@ -167,6 +167,21 @@ def test_hgnc_validation_resolves_aliases(mock_from_path, runner, tmp_path):
     assert "FANCD1" not in set(data["gene_sets"]["panel_a"]["genes"])
 
 
+def test_output_path_with_gmt_suffix_writes_gmt_not_json(runner, tmp_path):
+    """-o with a .gmt suffix must write GMT, like the clingen/gencc/cosmic
+    subcommands do -- not JSON saved under a .gmt name."""
+    out_gmt = str(tmp_path / "out.gmt")
+    result = runner.invoke(
+        prepare_geneset_cmd,
+        ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out_gmt],
+    )
+    assert result.exit_code == 0, result.output
+    lines = Path(out_gmt).read_text().strip().split("\n")
+    assert len(lines) == 3
+    for line in lines:
+        assert len(line.split("\t")) >= 3
+
+
 def test_export_gmt(runner, tmp_path):
     """GMT export produces valid GMT format."""
     out_json = str(tmp_path / "out.json")

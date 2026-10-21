@@ -9,6 +9,7 @@ from hvantk.core.utils.table_utils import (
     get_row_fields,
     leaf_name,
     resolve_field,
+    select_fields,
     validate_fields,
 )
 
@@ -405,6 +406,33 @@ def test_validate_fields_struct_path(table_with_struct):
     """validate_fields accepts dotted struct paths."""
     errors = validate_fields(table_with_struct, ["phe.is_case", "phe.age"])
     assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# Tests for select_fields
+# ---------------------------------------------------------------------------
+
+
+def test_select_fields_keeps_key_and_accepts_plain_string(sample_table):
+    """select_fields must not crash on a key field and must not iterate a
+    plain string field name into one field per character.
+
+    Plain ``ht.select(*fields)`` raises ``ExpressionException: cannot
+    overwrite key field`` if *fields* names the table's key (here "id"), and
+    ``ht.select(*"name")`` would select the fields "n", "a", "m", "e" instead
+    of one field "name" -- the shape a comma-less ``--plugin-arg
+    fields=name`` value arrives in.
+    """
+    # A list that includes the key must not crash, and the key is kept.
+    selected = select_fields(sample_table, ["id", "name"])
+    assert get_row_fields(selected) == {"id", "name"}
+
+    # A bare string names one field, not one per character.
+    single = select_fields(sample_table, "name")
+    assert get_row_fields(single) == {"id", "name"}
+
+    # None leaves the table unchanged.
+    assert select_fields(sample_table, None) is sample_table
 
 
 # ---------------------------------------------------------------------------

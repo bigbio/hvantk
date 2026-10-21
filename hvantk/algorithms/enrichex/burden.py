@@ -287,18 +287,11 @@ def _variant_site_count_proxy(
     are provided. Filters first so the counts match the sites the burden
     test itself counted, not the full unfiltered cohort.
     """
-    import pandas as pd
-
     if variant_filter is not None:
         filter_expr = variant_filter.to_hail_expr(mt)
         mt = mt.filter_rows(filter_expr)
-    _rows = mt.rows()
-    df = (
-        _rows.group_by(gene=_rows[gene_field])
-        .aggregate(_n_sites=hl.agg.count())
-        .to_pandas()
-    )
-    return dict(zip(df["gene"], df["_n_sites"]))
+    df = _build_gene_length_ht(mt, gene_field, gene_lengths=None).to_pandas()
+    return dict(zip(df["gene"], df["_gene_length"]))
 
 
 def _build_gene_to_sets_ht(gene_sets: Dict[str, List[str]]) -> "hl.Table":
@@ -478,8 +471,6 @@ def compute_geneset_burden_mt(
         logger.info("Applying variant filter:")
         filter_expr = variant_filter.to_hail_expr(mt)
         mt = mt.filter_rows(filter_expr)
-        n_variants = mt.count_rows()
-        logger.info(f"  {n_variants} qualifying variants after filtering")
     else:
         logger.info("No variant filtering applied (MT assumed pre-filtered)")
 
@@ -1291,6 +1282,43 @@ def run_stratified_burden_analysis(
     logger.info("=" * 60)
 
     return results
+
+
+def apply_correction_and_flag_significance(
+    df: "pd.DataFrame",
+    correction: str,
+    alpha: float,
+    n_total: int,
+) -> "pd.DataFrame":
+    """Apply multiple-testing correction, skipping rows with a missing p-value.
+
+    A non-convergent logistic/linear fit leaves ``p_value`` missing as a
+    pandas NA (Hail's ``to_pandas()`` produces nullable columns there).
+    ``apply_correction`` keeps a float NaN through both correction methods,
+    but it cannot take a pandas NA directly, hence the
+    ``pd.to_numeric(errors="coerce")`` below. Rows that coerce to NaN are
+    excluded from the correction and left with ``p_adjusted = NaN`` and
+    ``significant = False``.
+
+    Shared by the ``burden`` CLI, ``BurdenPipeline`` and the burden example
+    script, which all need the same NaN-safe correction.
+    """
+    import pandas as pd
+
+    from hvantk.algorithms.statistics.correction import apply_correction
+
+    df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
+    valid_mask = df["p_value"].notna()
+    df["p_adjusted"] = float("nan")
+    if valid_mask.any():
+        p_adjusted = apply_correction(
+            df.loc[valid_mask, "p_value"].tolist(),
+            method=correction,
+            n_total=n_total,
+        )
+        df.loc[valid_mask, "p_adjusted"] = p_adjusted
+    df["significant"] = df["p_adjusted"] < alpha
+    return df
 
 
 # ---------------------------------------------------------------------------

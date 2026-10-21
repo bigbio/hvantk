@@ -23,6 +23,7 @@ from hvantk.core.utils.qtl_helpers import (
     parse_gtex_variant_id,
     scan_tissue_files,
 )
+from hvantk.core.utils.table_utils import select_fields
 
 logger = logging.getLogger(__name__)
 
@@ -378,6 +379,6 @@ def build_pqtl_metrics(
     ht = ht.key_by("locus", "alleles", "gene_id")
 
     if fields is not None:
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="pqtl-v1"))

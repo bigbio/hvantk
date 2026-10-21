@@ -68,8 +68,9 @@ pytest -q
 
 `pytest.ini` sets `testpaths` to both `hvantk/tests` and `hvantk/skills`, so a
 plain `pytest` run already collects every plugin's own tests alongside the
-top-level suite. The default run deselects slower/optional categories via
-`addopts`.
+top-level suite. `addopts` also adds `-q` and a marker expression that
+deselects slower/optional categories by default, so plain `pytest` already
+runs the same selection as `pytest -q` -- neither one runs everything.
 
 | Marker | Meaning | In default run? |
 |---|---|---|
@@ -83,13 +84,17 @@ top-level suite. The default run deselects slower/optional categories via
 Common invocations:
 
 ```bash
-pytest                          # everything, including Hail/network/slow tests
-pytest -m hail                  # Hail-dependent tests only
-pytest -m "not slow"            # exclude slow tests
-pytest -m network                # network-dependent tests only
-pytest hvantk/tests/test_file_utils.py   # one file
-pytest -v                        # verbose output
+pytest                                  # the default selection (same as pytest -q)
+pytest -m ""                            # every test, including Hail/network/slow/integration
+pytest -m hail                          # Hail-dependent tests only
+pytest -m "not slow"                    # exclude slow tests
+pytest -m network                       # network-dependent tests only
+pytest hvantk/tests/test_file_utils.py  # one file
+pytest -v                               # verbose output
 ```
+
+A command-line `-m` replaces `addopts`' marker expression rather than adding
+to it, which is why `-m ""` -- not plain `pytest` -- is what runs every test.
 
 CI additionally runs `pytest --require-round-trips`, which fails the run if a
 `@pytest.mark.round_trip(...)` test ends up skipped or `xfail`ed for real (a
@@ -110,8 +115,8 @@ dependency, so `pytest --cov=hvantk` fails unless you install it yourself.
   path disables the check for that invocation).
 - Before opening a docs PR, build with the same strict settings CI uses —
   it catches a broken internal link or anchor that a normal build only
-  warns about, and keeps the output out of the repo root (`site/` is not
-  gitignored):
+  warns about. `site/` is gitignored, but building to `/tmp/site-check`
+  instead keeps the output out of your working tree entirely:
   ```bash
   mkdocs build --strict --site-dir /tmp/site-check
   ```

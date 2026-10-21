@@ -30,14 +30,16 @@ From: ubuntu:22.04
 # `hvantk expression ...` has no scanpy. `ml` and `interactive` are deliberately
 # omitted as redundant: scikit-learn arrives via ancestry/psroc, plotly via viz.
 #
-# BUILD ARG: HVANTK_COMMIT stamps the hvantk git commit the image was built from
-# into HVANTK_BUILDER_COMMIT (%environment below), for `hvantk reprocess`
-# provenance (`_builder_commit()` in hvantk/tools/plugins/reprocess_cli.py). The
-# image copies only hvantk/ (no .git, see %files below) and purges git in %post,
-# so without this a build inside the image can only ever record the installed
-# package version. The hpc-container skill's build-image.sbatch always passes
-# `--build-arg HVANTK_COMMIT=<sha>[-dirty]`; a manual `singularity build` with no --build-arg
-# leaves the default below, which _builder_commit() treats as not set.
+# BUILD ARG: HVANTK_COMMIT is the hvantk git commit the image is built from. %post
+# stamps it into the image's own copy of the package (hvantk/_build_commit.txt), where
+# a build by that copy reads it for its builder_commit (resolve_builder_commit() in
+# hvantk/core/plugin/run_builder.py): the image has no .git (see %files below) and
+# purges git in %post. A file in the package, not an %environment variable, because
+# jobs also run a checkout's code in this image (PYTHONPATH), and a variable would
+# name the image's commit for that code too. The hpc-container skill's
+# build-image.sbatch always passes `--build-arg HVANTK_COMMIT=<sha>[-dirty]`; a manual
+# build without it leaves the default below, which resolve_builder_commit() ignores.
+# %arguments and --build-arg need SingularityCE 4.0+ or Apptainer 1.2+.
 
 %arguments
     HVANTK_COMMIT=unknown
@@ -110,6 +112,8 @@ From: ubuntu:22.04
     poetry config virtualenvs.create false
     poetry install --no-interaction --no-root \
         --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression"
+    # The build stamp (see BUILD ARG above), written before the package is installed.
+    printf '%s\n' "{{ HVANTK_COMMIT }}" > /opt/hvantk/hvantk/_build_commit.txt
     poetry install --no-interaction --only-root
 
     apt-get purge -y build-essential g++ git python3.10-dev && apt-get autoremove -y
@@ -126,8 +130,6 @@ From: ubuntu:22.04
     export LC_ALL=C.UTF-8 LANG=C.UTF-8
     export NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1
     export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-    # Baked in at build time from %arguments above; see its comment for why.
-    export HVANTK_BUILDER_COMMIT="{{ HVANTK_COMMIT }}"
 
 %runscript
     exec hvantk "$@"

@@ -41,17 +41,17 @@
 Both builds write a sidecar `<output>.provenance.json` next to the table
 (`hvantk/core/io/_manifest.py`), with fields `plugin`, `dataset`, `plugin_version`,
 `source_fingerprint`, `schema_id`, `build_timestamp`, `builder_commit`, `parents` and
-`build_parameters`. `builder_commit` records the hvantk commit the build ran from:
-`hvantk reprocess` (the normal path here) sets it to the running hvantk's own checkout
-commit, else to the `HVANTK_BUILDER_COMMIT` environment variable an image built from
-the `hpc-container` templates stamps in at build time (the image has no checkout of
-its own to ask), else to `hvantk <version>` when neither is available; a builder
-invoked directly from Python can also set it explicitly
-(`hvantk/core/plugin/run_builder.py`). Same-checkout is established a different way
-when `builder_commit` cannot resolve to a real commit (a wheel install, or an image
-built by hand with no `--build-arg HVANTK_COMMIT=...`): the run notes' own `commit:`
-line, plus the job ids that produced each input, both already captured by the
-procedure above. The sidecar is
+`build_parameters`. `builder_commit` records the hvantk code the build ran, the first of:
+the commit of hvantk's own git checkout, `-dirty` for uncommitted edits under
+`hvantk/`; for the image's own copy of hvantk, the commit the image was built from;
+the `HVANTK_BUILDER_COMMIT` environment variable, which the `hpc-hail-job` templates set
+to the commit of the checkout they run inside the image (the image has no git); else
+`hvantk <version>`. Every build sets it -- `hvantk reprocess` (the normal path here) and
+a builder run from Python through `run_builder_for_spec`, which can also be given one
+explicitly (`hvantk/core/plugin/run_builder.py`). Same-checkout is established a
+different way when `builder_commit` cannot resolve to a real commit (a wheel install, or
+a job on a node where git cannot answer): the run notes' own `commit:` line, plus the job
+ids that produced each input, both already captured by the procedure above. The sidecar is
 still worth keeping: it records each build's `plugin_version`, `build_timestamp` and
 `source_fingerprint`, and its own sha256 is what a receipt cites to tie a build to
 exactly one artifact.
