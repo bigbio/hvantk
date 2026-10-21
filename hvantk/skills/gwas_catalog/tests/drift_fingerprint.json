@@ -1,6 +1,6 @@
 {
   "probe_version": 1,
-  "source_version": "Tue, 15 Sep 2026 09:31:14 GMT",
+  "source_version": "Mon, 05 Oct 2026 10:50:08 GMT",
   "headers": {
     "gwas-catalog-associations-full.zip": [
       "ETag",
@@ -9,7 +9,7 @@
     ]
   },
   "checksums": {
-    "gwas-catalog-associations-full.zip": "2b27834864f59d3f6520d031e8cc15850426f6a8bc3ab6ee51795d2d5365d63f"
+    "gwas-catalog-associations-full.zip": "48199adf8c58b8da9df63f466b99dfe24c8a1291dc4f953a99004989a4114390"
   },
-  "fetched_at": "2026-09-15T10:45:37.216661+00:00"
+  "fetched_at": "2026-10-15T10:37:54.189949+00:00"
 }
