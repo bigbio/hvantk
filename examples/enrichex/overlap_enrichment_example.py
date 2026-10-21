@@ -6,6 +6,9 @@ This example demonstrates how to use EnrichEx overlap enrichment to test
 if a gene list (e.g., from GWAS) is enriched in cell-type specific gene sets.
 
 Use Case: Test if Alzheimer's disease GWAS genes are enriched in brain cell types.
+
+The overlap test is a two-sided Fisher's exact test per gene set (scipy), so this
+script needs neither Hail nor Spark. It writes to ./enrichex_overlap_results/.
 """
 
 import logging
@@ -15,7 +18,6 @@ from hvantk.algorithms.enrichex import (
     GeneSetCollection,
     compute_overlap_enrichment_pandas,
 )
-from hvantk.core.utils.hail_context import init_hail
 
 # Configure logging
 logging.basicConfig(
@@ -273,10 +275,6 @@ def get_alzheimers_gwas_genes():
 def main():
     """Run overlap enrichment analysis."""
 
-    # Initialize Hail
-    logger.info("Initializing Hail...")
-    init_hail(quiet=True, min_block_size=128)
-
     # Create output directory
     output_dir = Path("enrichex_overlap_results")
     output_dir.mkdir(exist_ok=True)
@@ -366,41 +364,25 @@ def main():
     if len(significant[significant["gene_set_name"] == "Microglia"]) > 0:
         logger.info(
             """
-Microglia Enrichment Detected!
+Microglia enrichment detected.
 
-This finding supports the immune/neuroinflammatory hypothesis of Alzheimer's
-disease. Key microglia genes in the overlap include:
-- TREM2: Regulates microglial activation and Aβ clearance
-- CD33: Inhibits Aβ phagocytosis
-- MS4A6A/MS4A4A: Immune regulation
-
-Clinical Implications:
-- Microglia-targeted therapies may be beneficial
-- Anti-inflammatory approaches warrant investigation
-- Focus on innate immune pathway modulation
-
-Next Steps:
-1. Validate findings in independent GWAS cohorts
-2. Test for rare variant burden in microglia genes (see burden_analysis_example.py)
-3. Perform functional studies in microglia cell lines
-4. Screen for microglia-modulating compounds
+The overlap (TREM2, CD33, MS4A6A, MS4A4A, ...) is consistent with the
+immune/microglial component of Alzheimer's disease genetics. Read it with care:
+- The test is two-sided; check that the odds ratio is above 1.
+- The background here is a small hand-made universe (the union of the gene
+  sets plus a few extra genes). Against a genome-wide background, such as all
+  protein-coding genes, the odds ratios and p-values change.
+- A next step is a rare-variant burden test of the same gene sets
+  (see burden_analysis_example.py).
         """
         )
     else:
         logger.info(
             """
-No significant microglia enrichment detected in this example.
+No significant microglia enrichment in this example.
 
-This could indicate:
-1. Sample size limitations
-2. Disease heterogeneity
-3. Involvement of other cell types
-4. Need for rare variant analysis (not just common GWAS hits)
-
-Consider:
-- Running burden analysis on sequencing data
-- Testing additional gene sets
-- Combining with expression data
+With ~20 query genes and a small background the test has little power; try a
+larger query list, a genome-wide background, or a burden test on sequencing data.
         """
         )
 

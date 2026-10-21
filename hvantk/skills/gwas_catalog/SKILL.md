@@ -39,7 +39,7 @@ Type coercions in transform (all string at import):
 
 - `chr_pos` → `int32` (after multi-chrom cleanup — see #3).
 - `p_value`, `pvalue_mlog`, `or_or_beta`, `risk_allele_frequency`, `upstream_gene_distance`, `downstream_gene_distance` → `float64`. `p_value` arrives in scientific notation (`3E-12`); `hl.float` parses directly.
-- `intergenic`, `cnv` → `bool` from `0/1` or `Y/N` (confirm against fixture).
+- `intergenic`, `cnv` → `bool` via the shared `str_to_bool` (`hvantk/core/utils/table_utils.py`): case-insensitive `"yes"`/`"y"`/`"true"`/`"1"` are `True`, every other value (including `"0"`, `"N"`, and missing) is `False` with no error raised. The fixture confirms `intergenic` uses `0`/`1` and `cnv` uses `Y`/`N`. Because unmatched values silently become `False` rather than raising, an unexpected sentinel in a future release would misclassify silently rather than fail loudly.
 - `pubmedid`, `snp_id_current`, `merged` → `int32`; `missing=''` so blanks → `NA`.
 
 ### Gotchas (maintainer's empirical pre-inspection)
@@ -91,7 +91,7 @@ Type coercions in transform (all string at import):
    - Filter rows where `STRONGEST SNP-RISK ALLELE` ends in `-?` (judgment call #2).
    - Filter rows where `CHR_ID` is not canonical (no match against `^(chr)?(\d+|X|Y|MT?)$`) — drops `;`-separated and `x`-separated malformed shapes (judgment call #3).
    - Cast numerics (`chr_pos`, `p_value`, `pvalue_mlog`, `or_or_beta`, `risk_allele_frequency`, `upstream_gene_distance`, `downstream_gene_distance`).
-   - Recode `chr_id` to GRCh38 contig form: the catalog ships bare contigs (`"7"`, `"12"`), but Hail's `GRCh38` reference expects `"chr7"` etc. Use `contig = hl.if_else(chr_id.startswith("chr"), chr_id, "chr" + chr_id)`, then `locus = hl.parse_locus(contig + ':' + hl.str(chr_pos), reference_genome=reference_genome)`.
+   - Recode `chr_id` to GRCh38 contig form: the catalog ships bare contigs (`"7"`, `"12"`), but Hail's `GRCh38` reference expects `"chr7"` etc. First normalize `"MT"`/`"chrMT"` to `"M"` (GRCh38's mitochondrial contig is `chrM`, not `chrMT`; judgment call #3's regex `MT?` admits both spellings, so this step is required, not optional) — `chr_id_norm = hl.case().when((chr_id == "MT") | (chr_id == "chrMT"), "M").default(chr_id)`. Then `contig = hl.if_else(chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm)`, and `locus = hl.parse_locus(contig + ':' + hl.str(chr_pos), reference_genome=reference_genome)`.
    - Extract `risk_allele` from `STRONGEST SNP-RISK ALLELE` (split on `-`, take suffix).
    - Construct `alleles = [risk_allele, "N"]` and `key_by(locus, alleles)`.
 4. **Wrap + return.** Return `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="gwas-catalog-associations-v1"))`. The plugin runtime handles materialization/checkpointing to `--output`.
@@ -109,7 +109,7 @@ Releases every 1-3 weeks (verified live 2026-09-30 against `releases/2026/{06..0
 
 Per conventions §9:
 
-- **fixture:** `hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv`. Agent #2 slices from the 556 MB local file (path from orchestrator). Target ≤ 100 KB, ~50–100 rows. Fixture must exercise **surviving rows only** — no `STRONGEST SNP-RISK ALLELE` ending in `-?`, no `CHR_ID` containing `;`. Must include: multi-trait-per-variant rows (same `(locus, alleles)` × multiple traits), scientific-notation p-values, and at least one row with `OR or BETA` populated plus one without.
+- **fixture:** `hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv` (37 KB, 59 rows). Sliced from a local copy of the pinned `e115_r2026-04-27` release's full TSV (556,245,182 bytes per the catalog entry's `size_bytes`; the live release has since grown to ~601 MB, § 4). Target ≤ 100 KB, ~50–100 rows. Fixture must exercise **surviving rows only** — no `STRONGEST SNP-RISK ALLELE` ending in `-?`, no `CHR_ID` containing `;`. Must include: multi-trait-per-variant rows (same `(locus, alleles)` × multiple traits), scientific-notation p-values, and at least one row with `OR or BETA` populated plus one without.
 - **schema_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_rows.json`.
 - **sample_keys:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.

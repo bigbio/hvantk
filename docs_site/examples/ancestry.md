@@ -1,45 +1,58 @@
-# Ancestry Inference Examples
+# Ancestry inference examples
 
 Predict genetic ancestry for samples using PCA projection and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes).
 
-See the [Ancestry reference](../tools/ancestry.md) for full CLI options and pipeline details.
+See the [Ancestry reference](../tools/ancestry.md) for full CLI options, the method, and caveats.
 
-## CLI Usage
+## CLI usage
 
 ```bash
 # Basic inference
 hvantk ancestry-inference \
   --query-mt cohort.mt \
   --reference-mt 1kg_reference.mt \
+  -o results/predictions.ht \
   --output-dir results/
 
 # With custom parameters
 hvantk ancestry-inference \
   --query-mt cohort.mt \
   --reference-mt 1kg_reference.mt \
+  -o results/predictions.ht \
   --output-dir results/ \
   --n-pcs 20 \
   --ancestry-col pop \
   --generate-report
 ```
 
+`-o`/`--output-ht` is required; `--output-dir` only controls where the *additional*
+outputs (TSV, report, model, loadings) land.
+
 ## Python API
 
 ```python
-from hvantk.algorithms.ancestry.pipeline import run_ancestry_inference
+import hail as hl
+from hvantk.algorithms.ancestry import run_ancestry_inference
 
-run_ancestry_inference(
-    query_mt_path="cohort.mt",
-    reference_mt_path="1kg_reference.mt",
-    output_dir="results/",
+result = run_ancestry_inference(
+    query_mt=hl.read_matrix_table("cohort.mt"),
+    reference_mt=hl.read_matrix_table("1kg_reference.mt"),
+    ancestry_col="pop",
     n_pcs=20,
-    generate_report=True,
 )
+result.generate_report("results/ancestry_report.html")
+result.save("results/ancestry")
 ```
 
-## Synthetic Data for Testing
+`run_ancestry_inference` takes `hl.MatrixTable` objects, not paths — read them with
+`hl.read_matrix_table` first. There is no `output_dir`/`generate_report` keyword on the
+function itself; call `result.generate_report(...)` and `result.save(...)` separately.
 
-Generate test data using Hail's `balding_nichols_model()`:
+## Synthetic data for testing
+
+Generate test data using Hail's `balding_nichols_model()`. Its default column key is
+`sample_idx` (an integer), so re-key to a string `s` column before use — the pipeline
+assumes a column field literally named `s`:
 
 ```python
 import hail as hl
@@ -53,25 +66,37 @@ combined_mt = hl.balding_nichols_model(
 )
 
 pop_labels = hl.literal(["EUR", "AFR", "EAS", "SAS", "AMR"])
-combined_mt = combined_mt.annotate_cols(ancestry=pop_labels[combined_mt.pop])
+combined_mt = combined_mt.annotate_cols(
+    s=hl.str("sample_") + hl.str(combined_mt.sample_idx),
+    ancestry=pop_labels[combined_mt.pop],
+)
+combined_mt = combined_mt.key_cols_by("s")
 
-# Split into reference and query
+# Split into reference (labeled) and query (ancestry column dropped)
 ref_mt = combined_mt.filter_cols(combined_mt.sample_idx < 200)
-query_mt = combined_mt.filter_cols(combined_mt.sample_idx >= 200)
+query_mt = combined_mt.filter_cols(combined_mt.sample_idx >= 200).drop("ancestry")
 ```
 
-## Expected Outputs
+See [`examples/ancestry/run_ancestry_example.py`](https://github.com/bigbio/hvantk/blob/main/examples/ancestry/run_ancestry_example.py)
+for the full end-to-end version of this, including validation against the labels
+hidden from the query cohort.
 
-- `ancestry_report.html` - Interactive HTML report
-- `predictions.tsv` - Ancestry predictions (sample_id, predicted, probability)
-- `pipeline_stats.json` - Pipeline execution statistics
-- `plots/` - PCA scatter plots, ancestry proportions, confusion matrix, variance explained
+## Expected outputs
 
-## Data Requirements
+- `predictions.ht` / `predictions.tsv` — `s`, `predicted_ancestry`, `ancestry_probability`,
+  `prob_<POP>` per population, `_ancestry_source`, `_known_ancestry`, and `PC1...PCn`
+  (see [Outputs](../tools/ancestry.md#outputs) for the full schema).
+- `ancestry_report.html` — interactive HTML report.
+- `pipeline_stats.json` — pipeline execution statistics.
+- `plots/` — PCA scatter plots, ancestry proportions, confusion matrix, variance explained.
 
-- **Query MT**: Hail MatrixTable with genotype calls keyed by `(locus, alleles)`
-- **Reference MT**: Hail MatrixTable with ancestry labels in a column annotation
+## Data requirements
 
-## Runnable Scripts
+- **Query MT**: Hail MatrixTable with genotype calls keyed by `(locus, alleles)` on
+  rows and `s` (sample ID, `str`) on columns.
+- **Reference MT**: same keying, plus a categorical ancestry-label column (name it via
+  `ancestry_col`).
+
+## Runnable scripts
 
 See the [`examples/ancestry/`](https://github.com/bigbio/hvantk/tree/main/examples/ancestry/) directory for end-to-end examples with synthetic data generation.

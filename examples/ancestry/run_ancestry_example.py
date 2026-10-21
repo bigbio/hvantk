@@ -27,7 +27,7 @@ Output:
     - rf_model.pkl: Trained Random Forest model
     - pca_loadings.ht: PCA loadings for projection
     - pipeline_stats.json: Pipeline execution statistics
-    - ancestry_report.html: Comprehensive HTML report
+    - ancestry_report.html: HTML report (summary, PCA plots, CV accuracy, predictions table)
     - plots/: Directory with visualization images
 """
 

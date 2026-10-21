@@ -12,6 +12,8 @@ import logging
 
 import hail as hl
 
+from hvantk.core.utils.table_utils import select_fields
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +93,7 @@ def build_uniprot_ptm_sites(
     ht = ht.key_by("locus")
 
     if fields is not None:
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="uniprot-ptm-sites-v1")

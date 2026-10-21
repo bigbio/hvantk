@@ -2,7 +2,54 @@
 
 This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build datasets from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
 
-Every build on this page goes through the unified `hvantk reprocess <plugin>:<dataset>` entry point — see the [Usage Guide](usage.md#1-build-a-dataset-with-hvantk-reprocess) for the orchestration pattern, lifecycle flags, and `--plugin-arg KEY=VALUE` conventions used below.
+Every build on this page goes through the unified `hvantk reprocess <plugin>:<dataset>` entry point — see [Building datasets](usage.md#build-a-dataset) for the orchestration pattern, lifecycle flags, and `--plugin-arg KEY=VALUE` conventions used below.
+
+## Dataset summary
+
+Every dataset `hvantk` can build, grouped by how you get the raw data. `Backend` is the
+builder's output format (`hail` writes a Hail Table, `.ht`; `anndata` writes an AnnData,
+`.h5ad`; `pandas` writes a Parquet file, `.parquet`). Licence/terms notes are what the
+plugin's own catalog entry, its `SKILL.md` or
+[THIRD_PARTY_DATA.md](https://github.com/bigbio/hvantk/blob/main/THIRD_PARTY_DATA.md)
+states; the last quotes the source of each licence it lists. "Not stated in plugin docs"
+means the terms are not documented in this repository, not that the data is
+unrestricted. Check the source's own terms before you redistribute anything you build.
+
+### Built-in downloaders (16 datasets)
+
+| Dataset | Type | Backend | Licence / terms |
+|---|---|---|---|
+| `clinvar:variants` | AnnotationTable | hail | Public domain |
+| `clingen:gene-disease` | AnnotationTable | hail | CC BY 4.0 |
+| `gencc:submissions` | AnnotationTable | hail | not stated in plugin docs |
+| `hgnc:lookup` | AnnotationTable | hail | CC0 |
+| `gnomad-metrics:metrics` | AnnotationTable | hail | CC0 |
+| `ucsc-cellbrowser:default` | ExpressionMatrix | anndata | varies per collection; not centrally stated |
+| `expression-atlas:dataset` | ExpressionMatrix | anndata | varies per accession (CC BY 4.0 for several; see `hvantk catalog show <accession>`) |
+| `ensembl-gene:structure` | AnnotationTable | hail | No restrictions (Ensembl data; third-party constraints may apply) |
+| `uniprot-ptm:sites` | AnnotationTable | hail | not stated in plugin docs |
+| `cptac:expression` | ExpressionMatrix | anndata | not stated in plugin docs (via the `cptac` PyPI package) |
+| `cptac:phospho` | ExpressionMatrix | anndata | not stated in plugin docs (via the `cptac` PyPI package) |
+| `peptideatlas:phospho` | AnnotationTable | pandas | not stated in plugin docs |
+| `insider:interfaces` | AnnotationTable | hail | Not stated (checked 2026-10-13; see `SKILL.md`) |
+| `gwas-catalog:associations` | AnnotationTable | hail | EBI Services Terms of Use (CC0 covers only the separate summary statistics) |
+| `gevir:metrics` | AnnotationTable | hail | Academic use |
+| `onek-genomes:samples` | AnnotationTable | hail | No restriction; acknowledgement required (downloads only through `reprocess`; there is no `hvantk download` command for it) |
+
+### Bring your own (10 datasets)
+
+| Dataset | Type | Backend | Reason | Licence / terms |
+|---|---|---|---|---|
+| `alphagenome:predictions` | AnnotationTable | hail | credentialed | AlphaGenome Output Terms of Use: non-commercial |
+| `cosmic-cgc:submissions` | AnnotationTable | hail | credentialed | COSMIC account required; licence not stated in plugin docs |
+| `dbnsfp:variants` | AnnotationTable | hail | size | CC BY-NC-ND 4.0 (academic); commercial licensing via the maintainers |
+| `gtex-eqtl:eqtls` | AnnotationTable | hail | unstable-url | Open access, with GTEx's publication embargo and citation rules |
+| `insider:variants` | AnnotationTable | hail | size | Not stated (checked 2026-10-13; see `SKILL.md`) |
+| `msigdb:genesets` | AnnotationTable | hail | credentialed | CC Attribution 4.0 (academic) / commercial licence required; BioCarta and legacy KEGG sets are excluded from the CC BY grant |
+| `onek-genomes:variants` | VariantMatrix | hail | size | No restriction; acknowledgement required |
+| `pqtl:metrics` | AnnotationTable | hail | publication-only | Preprint supplementary material (Fang et al. 2025); no licence stated |
+| `ucsc-cellbrowser:adult-ctx` | ExpressionMatrix | anndata | size | varies (parent collection); not centrally stated |
+| `ucsc-cellbrowser:dev-ctx` | ExpressionMatrix | anndata | size | varies (parent collection); not centrally stated |
 
 ## Downloader or documented acquisition
 
@@ -17,6 +64,8 @@ dataset and one auto-downloaded one):
   `license`, `publication-only`, `unstable-url`). The user supplies `--raw-dir`
   themselves; `byo` and `lifecycle.download` are mutually exclusive — a manifest
   cannot claim both that fetching is impossible and ship a function that fetches.
+  `reprocess` skips the download stage automatically for a BYO dataset — passing
+  `--skip-download` yourself is legal but not required.
 - **Neither block is declared** — automatable in principle, but no downloader has
   been written yet; `hvantk reprocess` needs `--skip-download` until one lands.
 
@@ -29,9 +78,7 @@ from a **stable, predictable URL**. Document acquisition instead when the file i
 **over 1 GB**, needs **licence acceptance or manual steps**, or the URL structure is
 **complex or fragile** (FTP directory listings, versioned mirrors). The third state
 means a downloader could be written in principle but has not been yet; nothing on
-this page is currently in that state (the last four -- `insider:interfaces`,
-`gwas-catalog:associations`, `cptac:expression`, `gevir:metrics` -- shipped their
-downloaders in #386's follow-up work).
+this page is currently in that state.
 
 ## File format note
 
@@ -52,7 +99,7 @@ hvantk utils convert-bgz input.gz
 | gnomAD constraint | `hvantk download gnomad-metrics` | ~4.6 MB (v2.1.1) / ~82 MB (v4.0) |
 | UCSC Cell Browser | `hvantk download ucsc` | varies |
 | Expression Atlas | `hvantk download expression-atlas` | varies |
-| Ensembl gene annotations | `hvantk download ensembl-structure` | ~60 MB |
+| Ensembl gene annotations | `hvantk download ensembl-structure` | ~64 MB |
 | UniProt PTM sites | `hvantk download uniprot-ptm` | varies (REST API query) |
 | CPTAC protein expression | `hvantk download cptac-expression` | varies by cancer type |
 | CPTAC phosphoproteomics | `hvantk download cptac-phospho` | varies by cancer type |
@@ -78,6 +125,22 @@ hvantk download clinvar --version 20260101 --output-dir data/clinvar
 hvantk download clinvar --genome-build GRCh37 --verify-md5
 ```
 
+**Build**:
+
+```bash
+# Download + build in one step
+hvantk reprocess clinvar:variants \
+  --raw-dir data/clinvar/ \
+  --output clinvar.ht
+
+# From a VCF already in --raw-dir
+hvantk reprocess clinvar:variants \
+  --raw-dir data/clinvar/ \
+  --output clinvar.ht \
+  --skip-download \
+  --plugin-arg reference_genome=GRCh38
+```
+
 ### ClinGen
 
 ```bash
@@ -87,6 +150,15 @@ hvantk download clingen --output-dir data/clingen
 
 # Check download availability
 hvantk download clingen --list-versions
+```
+
+**Build**:
+
+```bash
+hvantk reprocess clingen:gene-disease \
+  --raw-dir data/clingen/ \
+  --output clingen.ht \
+  --plugin-arg min_classification=Strong
 ```
 
 ### GenCC
@@ -99,6 +171,15 @@ hvantk download gencc --output-dir data/gencc
 
 # Check download availability
 hvantk download gencc --list-versions
+```
+
+**Build**:
+
+```bash
+hvantk reprocess gencc:submissions \
+  --raw-dir data/gencc/ \
+  --output gencc.ht \
+  --plugin-arg min_classification=Strong
 ```
 
 ### HGNC
@@ -125,17 +206,17 @@ hvantk reprocess hgnc:lookup \
 
 ### UCSC Cell Browser
 
-The UCSC Cell Browser hosts 267+ datasets. About half are **collections** (groups of
-related datasets with no expression matrix at the top level). Use `--list_datasets`
+The UCSC Cell Browser catalog lists 267 datasets. About half are **collections** (groups
+of related datasets with no expression matrix at the top level). Use `--list-datasets`
 and `--search` to discover downloadable datasets.
 
 ```bash
 # Discover available datasets
-hvantk download ucsc --list_datasets
+hvantk download ucsc --list-datasets
 
 # Search by name, organism, or tissue (expands collections to show children)
-hvantk download ucsc --list_datasets --search heart
-hvantk download ucsc --list_datasets --search pancreas
+hvantk download ucsc --list-datasets --search heart
+hvantk download ucsc --list-datasets --search pancreas
 
 # Download a leaf dataset directly
 hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
@@ -148,11 +229,47 @@ hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 > contain no expression matrix. Use `--search` to find child dataset paths like
 > `hoc/all-heart`, then download those.
 
+**Build** (`ucsc-cellbrowser:default`, one named collection per build):
+
+```bash
+# Download + build in one step (dataset forwards to the download stage)
+hvantk reprocess ucsc-cellbrowser:default \
+  --raw-dir data/ucsc/adultPancreas \
+  --output adult_pancreas.h5ad \
+  --plugin-arg dataset=adultPancreas
+
+# From files already downloaded with `hvantk download ucsc` above
+hvantk reprocess ucsc-cellbrowser:default \
+  --raw-dir data/ucsc/adultPancreas \
+  --output adult_pancreas.h5ad \
+  --skip-download
+```
+
+**`adult-ctx` and `dev-ctx`** are per-class summaries of the `adult-ctx-meta-atlas` and
+`dev-ctx-meta-atlas` parent collections, not their own UCSC collections, so neither
+declares `lifecycle.download` (`acquisition.mode: byo`, reason `size` — the parent's raw
+per-cell matrix is multi-GB). Each needs an `expression_matrix.tsv` (a `gene` column plus
+one column per class) and a `metadata.tsv` (one row per class, with `n_cells`) in
+`--raw-dir`; `hvantk expression summarize-ucsc` builds that summary as an `.h5ad` from the
+parent collection, so exporting it back to this TSV pair takes a manual step:
+
+```bash
+hvantk reprocess ucsc-cellbrowser:adult-ctx \
+  --raw-dir data/ucsc/adult_ctx/ \
+  --output adult_ctx_summary.h5ad \
+  --skip-download
+
+hvantk reprocess ucsc-cellbrowser:dev-ctx \
+  --raw-dir data/ucsc/dev_ctx/ \
+  --output dev_ctx_summary.h5ad \
+  --skip-download
+```
+
 ### Expression Atlas
 
 ```bash
 # Download one accession's bulk RNA-seq experiment
-hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/expression_atlas
+hvantk download expression-atlas --accession E-MTAB-6798 --download-path data/expression_atlas
 
 # Download + build in one call (reprocess forwards --plugin-arg accession=... to the
 # download stage; the build stage ignores it and locates the two input files within
@@ -186,7 +303,8 @@ there.
 
 Most of these sources need manual acquisition — too large, license-gated, or a fragile URL
 — and for those, follow the instructions below, place the raw file(s) in a per-source
-directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
+directory, then build via `hvantk reprocess <plugin>:<dataset>` (a BYO dataset skips the
+download stage automatically; `--skip-download` is legal but not required). Some
 members of this section ship a downloader instead (GeVIR, gnomAD constraint, Ensembl gene
 annotations, UniProt PTM sites, CPTAC phospho and expression, PeptideAtlas phospho,
 INSIDER interfaces, the GWAS Catalog and the 1000 Genomes sample metadata); they are grouped here because
@@ -213,12 +331,12 @@ head -1 <(zcat dbNSFP<version>_variant.chr1.gz) > /tmp/dbnsfp_header.txt
 **Build**:
 
 ```bash
-# Place the concatenated BGZF file in data/dbnsfp/ (so the builder sees it),
-# then build. dbNSFP has no plugin downloader; --skip-download is required.
+# Place the concatenated BGZF file in data/dbnsfp/ (so the builder sees it), then
+# build. dbNSFP declares acquisition.mode=byo (no plugin downloader exists), so
+# reprocess skips the download stage automatically.
 hvantk reprocess dbnsfp:variants \
   --raw-dir data/dbnsfp/ \
-  --output dbnsfp.ht \
-  --skip-download
+  --output dbnsfp.ht
 ```
 
 > **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP<version>_variant.gz` before building.
@@ -242,11 +360,12 @@ hvantk reprocess gnomad-metrics:metrics \
   --raw-dir data/gnomad_metrics/ \
   --output gnomad_metrics.ht
 
-# v4.0 (GRCh38) instead:
+# v4.0 (GRCh38) instead, in its own --raw-dir: the builder reads the one
+# constraint file it finds there and stops if it finds two.
 hvantk download gnomad-metrics --version v4.0 \
-  --output data/gnomad_metrics/gnomad.v4.0.constraint_metrics.tsv
+  --output data/gnomad_metrics_v4/gnomad.v4.0.constraint_metrics.tsv
 hvantk reprocess gnomad-metrics:metrics --skip-download \
-  --raw-dir data/gnomad_metrics/ --output gnomad_metrics_v4.ht \
+  --raw-dir data/gnomad_metrics_v4/ --output gnomad_metrics_v4.ht \
   --plugin-arg key=transcript
 ```
 
@@ -290,7 +409,7 @@ locus-keyed (interaction sites as genomic intervals), `insider:interfaces` is ke
 complementary, not alternatives — use `interfaces` when the question is "how connected is
 this gene", and `variants` when it is "does this variant fall in an interaction site".
 Unlike `insider:variants`, this file is well under 1 GB, so it declares `lifecycle.download`
-(#386) and `reprocess` fetches it automatically — no `--skip-download` needed:
+and `reprocess` fetches it automatically — no `--skip-download` needed:
 
 ```bash
 hvantk reprocess insider:interfaces \
@@ -298,7 +417,7 @@ hvantk reprocess insider:interfaces \
   --output insider_interfaces.ht
 ```
 
-### Ensembl gene annotations (~60 MB GTF)
+### Ensembl gene annotations (~64 MB GTF)
 
 The canonical per-gene table (`ensembl-gene:structure`): gene ID, gene name, biotype,
 coordinates, CDS length, coding-exon count, transcript count, and MANE Select — parsed from
@@ -482,7 +601,12 @@ hvantk reprocess msigdb:genesets \
 
 ### UniProt PTM Sites
 
-Curated post-translational modification sites (phosphorylation, ubiquitination, acetylation, etc.) for reviewed human proteins from UniProt/Swiss-Prot.
+Curated post-translational modification sites for reviewed human proteins from
+UniProt/Swiss-Prot. The downloader queries only UniProt's `ft_mod_res` ("Modified
+residue") feature — phosphorylation, acetylation, methylation, hydroxylation and
+similar single-residue marks. It does not cover modifications UniProt annotates under
+a different feature type: no ubiquitination, SUMOylation or NEDDylation (`CROSSLNK`)
+and no glycosylation (`CARBOHYD`).
 URL: https://www.uniprot.org/
 
 This is a live REST query rather than a large or license-gated file, so hvantk ships a
@@ -521,9 +645,10 @@ is mapped (`hvantk download uniprot-ptm --output-dir data/ptm/` writes one), and
 is downloaded only if `Homo_sapiens.GRCh38.113.gtf.gz` is not already there. The mapping
 uses GRCh38 coordinates, so `--plugin-arg reference_genome` accepts only `GRCh38`.
 
-### Ensembl GTF (~50 MB compressed)
+### Ensembl GTF (~64 MB compressed)
 
-Gene annotation with exon coordinates and CDS phases, used by the PTM mapper for residue-to-genomic coordinate mapping.
+The same pinned-release GTF as `ensembl-gene:structure` above, used by the PTM mapper for
+residue-to-genomic coordinate mapping (exon coordinates and CDS phases).
 URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/
 
 **Download**: Auto-downloaded by `hvantk reprocess uniprot-ptm:sites` (into its
@@ -597,7 +722,8 @@ https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_cove
 
 ```bash
 # Place per-chromosome *_chr<N>.filtered.shapeit2-duohmm-phased.vcf.gz (+ .tbi) in
-# data/onek_genomes/ then:
+# data/onek_genomes/. chrX is phased separately and ships as
+# *_chrX.filtered.eagle2-phased.v2.vcf.gz (+ .tbi) -- place that too, then:
 hvantk reprocess onek-genomes:variants \
   --raw-dir data/onek_genomes/ \
   --output onek_genomes_variants.mt \
@@ -662,26 +788,37 @@ hvantk reprocess gtex-eqtl:eqtls \
 **eQTLGen** (blood eQTLs):
 URL: https://www.eqtlgen.org/cis-eqtls.html
 
+> **Caveat:** eQTLGen distributes a Z-score, not a beta/SE, and no allele frequency —
+> `beta`, `se`, `af` and `maf` all come back null, so this source cannot feed
+> colocalisation and only supports p-value-based overlap. Its coordinates are GRCh37
+> (b37); pass `--plugin-arg reference_genome=GRCh37` to match them, or the contig
+> format and the build label in the constructed variant ID disagree.
+
 ```bash
 # Place cis-eQTLs_full.txt.gz under /data/eqtlgen/ then:
 hvantk reprocess gtex-eqtl:eqtls \
   --raw-dir /data/eqtlgen/ \
   --output eqtl_blood.ht \
   --skip-download \
-  --plugin-arg source=eqtlgen
+  --plugin-arg source=eqtlgen \
+  --plugin-arg reference_genome=GRCh37
 ```
 
 ### Fang et al. (2025) pQTL data
 
 Protein quantitative trait loci from Fang et al. (2025), covering 5 tissues (Colon, Heart, Liver, Lung, Thyroid). Space-delimited allpairs format with columns: `gene_name SNP CHR BP A1 NMISS BETA STAT P`. SE is derived as `|BETA/STAT|` (rows with `STAT = 0` are filtered out).
 
-URL: Contact authors or GTEx Portal supplementary data.
+No direct data URL: the allpairs files are supplementary material to a preprint, not a
+published dataset. Source: Fang et al. (2025), "Regulation of protein abundance in normal
+human tissues", medRxiv, doi:10.1101/2025.01.10.25320181.
 
 > **Note:** Fang pQTL data uses gene symbols. For symbol → Ensembl ID mapping, pass the HGNC lookup table built by `hvantk reprocess hgnc:lookup` via `--plugin-arg hgnc_ht=<path>`. Symbols that are not approved HGNC symbols are resolved through previous symbols, then aliases, when exactly one gene lists them; the build fails if no symbol maps.
 
 ```bash
 # Build pQTL table with gene mapping
-# Place Liver_allpairs.txt.gz under /data/fang_pqtl/ then:
+# Place Liver.allpairs_nobsGE72.txt.gz under /data/fang_pqtl/ then (the tissue name
+# is inferred from the filename prefix before the first dot, so this exact naming
+# matters -- see hvantk/core/utils/qtl_helpers.py):
 hvantk reprocess pqtl:metrics \
   --raw-dir /data/fang_pqtl/ \
   --output pqtl_liver.ht \

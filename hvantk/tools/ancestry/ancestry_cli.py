@@ -164,7 +164,7 @@ logger = logging.getLogger(__name__)
     "--min-shared-variants",
     type=int,
     default=None,
-    help="Minimum shared variants required [default: 10000]",
+    help="Minimum shared variants required (omit to use the pipeline default of 10000)",
 )
 # Output formats
 @click.option(

@@ -1,11 +1,17 @@
 # Build troubleshooting
 
+## Minimum container tool
+
+The def file's `%arguments` section and the template's `--build-arg` need SingularityCE
+4.0 or later, or Apptainer 1.2 or later. Check with `"$HVANTK_CONTAINER_BIN" --version`
+before the first build on a site; an older tool fails at once (see the failure table).
+
 ## Choosing the unprivileged method
 
 | `grep -cE "^($USER|$(id -u)):" /etc/subuid` | method | flag |
 | --- | --- | --- |
 | 1 or more | fakeroot (user namespaces mapped for you) | `--fakeroot` |
-| 0, or the file does not exist | a static `proot` on `PATH` with SingularityCE 3.11 and later; Apptainer releases may build without either, so check `apptainer build --help` and your site's notes | none |
+| 0, or the file does not exist | a static `proot` on `PATH` with SingularityCE (4.0 or later, as above); Apptainer releases may build without either, so check `apptainer build --help` and your site's notes | none |
 
 Getting `proot` on a cluster without it: download the static binary from the proot
 project's release page into a directory on your `PATH` (for example `~/bin`), make it
@@ -16,6 +22,7 @@ forbids downloading binaries, ask the administrators for `/etc/subuid` entries i
 
 | text in the job log | cause | fix |
 | --- | --- | --- |
+| `unknown flag: --build-arg` | SingularityCE older than 4.0 or Apptainer older than 1.2 | use a newer container tool (a site module, or build elsewhere and copy the image) |
 | `no valid mapping entry found` | fakeroot requested without a subuid entry | use proot (table above); the template chooses automatically |
 | `--remote, --fakeroot, or the proot command are required` | neither method available | install proot on `PATH` |
 | `cp: cannot stat 'pyproject.toml'` or similar during `%files` | the build did not start from the repository root | the template `cd`s there; by hand, `cd "$HVANTK_REPO"` first |

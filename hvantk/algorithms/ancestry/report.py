@@ -363,7 +363,7 @@ def _create_validation_section(
     if accuracy is None:
         return """
         <div class="warning">
-            <p>Model validation was skipped. Enable with <code>--validate-model</code> to see performance metrics.</p>
+            <p>Model validation was skipped. Validation runs by default; omit <code>--skip-validation</code> to see performance metrics.</p>
         </div>
         """
 

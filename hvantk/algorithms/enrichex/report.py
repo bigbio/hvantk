@@ -19,6 +19,7 @@ import pandas as pd
 
 from hvantk.core.utils.gene_sets import GeneSetCollection
 from hvantk.algorithms.visualization.base import encode_figure_to_base64
+from hvantk.algorithms.enrichex.constants import DEFAULT_ALPHA
 from hvantk.algorithms.enrichex.plot import (
     _resolve_significance,
     _resolve_pvalue_column,
@@ -47,6 +48,7 @@ def generate_report(
     analysis_date: Optional[str] = None,
     analyst_name: Optional[str] = None,
     top_n: int = 20,
+    alpha: float = DEFAULT_ALPHA,
     include_methods: bool = True,
     include_gene_lists: bool = True,
     embed_static_plots: bool = True,
@@ -74,6 +76,10 @@ def generate_report(
         Optional analyst attribution shown under the header.
     top_n : int
         Number of rows to highlight in tables/plots.
+    alpha : float
+        Significance threshold, used only by the overlap dot plot's
+        threshold line (the burden/overlap tables' own `significant` column
+        is already computed upstream at the run's actual alpha).
     include_methods : bool
         Include a short Methods section describing the analyses performed.
     include_gene_lists : bool
@@ -108,6 +114,7 @@ def generate_report(
                 include_gene_lists=include_gene_lists,
                 embed_static_plots=embed_static_plots,
                 output_dir=output_path.parent,
+                alpha=alpha,
             )
             if overlap_df is not None and not overlap_df.empty
             else None
@@ -200,6 +207,7 @@ def _create_overlap_section(
     include_gene_lists: bool,
     embed_static_plots: bool,
     output_dir: Path,
+    alpha: float = DEFAULT_ALPHA,
 ) -> Dict[str, Any]:
     p_col = _resolve_pvalue_column(df)
     df = df.sort_values(p_col).head(top_n)
@@ -223,6 +231,7 @@ def _create_overlap_section(
             output_path=str(plot_path),
             top_n=top_n,
             sort_by=p_col,
+            alpha_threshold=alpha,
             title="Overlap Enrichment",
         )
         plot_src = plot_path.name

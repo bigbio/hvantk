@@ -16,7 +16,7 @@ Regenerate after an intentional change:
     pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots
 
 Fixture derivation recipe (source: the upstream E-MTAB-6798 files, ~116k transcripts x 317
-samples, fetched with `hvantk download expression-atlas --accession E-MTAB-6798 --download_path <path>`
+samples, fetched with `hvantk download expression-atlas --accession E-MTAB-6798 --download-path <path>`
 or from https://www.ebi.ac.uk/gxa/experiments-content/E-MTAB-6798/download/ ; a full copy once lived
 at hvantk/tests/testdata/raw/expression_atlas/ until it was removed as unused, but is recoverable from
 git history at commit bf2b310c):

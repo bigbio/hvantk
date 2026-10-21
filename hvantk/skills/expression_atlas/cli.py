@@ -2,13 +2,13 @@
 
 Examples:
     # List available accessions configured in the bundled registry
-    hvantk download expression-atlas --list_datasets --download_path data/atlas
+    hvantk download expression-atlas --list-datasets --download-path data/atlas
 
     # Download a single accession's files
-    hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/atlas
+    hvantk download expression-atlas --accession E-MTAB-6798 --download-path data/atlas
 
     # Download every experiment listed in a JSON config file
-    hvantk download expression-atlas --config_path /path/to/expression_atlas.json --download_path data/atlas
+    hvantk download expression-atlas --config-path /path/to/expression_atlas.json --download-path data/atlas
 """
 
 import click
@@ -243,21 +243,27 @@ def download_dataset(
     "expression-atlas-download", short_help="Download Expression Atlas dataset"
 )
 @click.option(
+    "--config-path",
     "--config_path",
+    "config_path",
     required=False,
-    help="The path to the registry config file (optional). Either --config_path or --accession must be supplied.",
+    help="The path to the registry config file (optional). Either --config-path or --accession must be supplied.",
 )
 @click.option(
     "--accession", required=False, help="The accession of the experiment to download."
 )
 @click.option(
+    "--download-path",
     "--download_path",
+    "download_path",
     type=click.Path(exists=False, file_okay=False, dir_okay=True),
     required=True,
     help="The path to download the data to.",
 )
 @click.option(
+    "--list-datasets",
     "--list_datasets",
+    "list_datasets",
     is_flag=True,
     required=False,
     help="List all available datasets in the Expression Atlas collection.",
@@ -289,7 +295,7 @@ def download_experiments(config_path, accession, download_path, list_datasets):
 
     if list_datasets:
         logger.warning(
-            "--accession and --config_path options are ignored when --list_datasets is specified."
+            "--accession and --config-path options are ignored when --list-datasets is specified."
         )
         _print_dataset_accessions()
         return
@@ -397,7 +403,7 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                             ftp, file, file_path, ftp_url, ftp_path
                         )
             else:
-                logger.error("Either --config_path or --accession must be provided.")
+                logger.error("Either --config-path or --accession must be provided.")
                 sys.exit(1)
 
     except ftplib.error_perm as e:

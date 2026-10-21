@@ -46,3 +46,4 @@ once, then adjust.
 | `OMP_NUM_THREADS` and the BLAS equivalents | `<cpus>` | libraries otherwise size their pools to the node |
 | `JAVA_TOOL_OPTIONS` | `-Duser.language=en -Duser.country=US` | decimal separators in exported text |
 | `PYTHONPATH` | the checkout (`HVANTK_REPO`) | the checkout's code runs inside the image's environment |
+| `HVANTK_BUILDER_COMMIT` | the checkout's commit, `-dirty` for uncommitted edits under `hvantk/`; empty when git cannot answer on the node | a dataset built in the job records the code that ran as its `builder_commit`; the image has no git |

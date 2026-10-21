@@ -54,7 +54,9 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    `$HVANTK_WORK/containers/{cache,tmp}`), never under the home directory; a build needs
    several GB there and the image is about 2 GB.
 6. Container binary: `HVANTK_CONTAINER_BIN` (`singularity` or `apptainer`); the template
-   uses it for the build and for the check.
+   uses it for the build and for the check. The def file's `%arguments` and the build's
+   `--build-arg` need SingularityCE 4.0+ or Apptainer 1.2+: check
+   `"$HVANTK_CONTAINER_BIN" --version` once per site.
 
 ## 3. Procedure
 
@@ -68,8 +70,10 @@ only (then the "build elsewhere and copy" note in section 4 applies).
    ```
    The job builds from the repository root (the def file's `%files` are relative),
    refuses a name that resolves to the profile's default image, gates the Java version
-   and records the Hail version inside the image, runs `hvantk utils check-install`
-   through the scratch pattern, and writes the provenance record. Allow ten to twenty
+   and records the Hail version inside the image, passes the commit as a build arg,
+   which the def file stamps into the image's own copy of hvantk
+   (`references/provenance.md`), runs `hvantk utils check-install` through the scratch
+   pattern, and writes the provenance record. Allow ten to twenty
    minutes on a shared partition, longer the first time; the request is 8 cores, 32 GB
    and 1h45 so a slow pull does not kill it. A foreground `--wait` outlives most tool
    timeouts, so run it as
@@ -101,10 +105,12 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 - Rebuild cadence: on every lock file change, and at least at every release so the
   image's `git_commit` is a tag that the cluster can resolve (sync tags with `hpc-sync`).
 - Building elsewhere: on a laptop or a build host with the same container tool, run
-  `singularity build hvantk-<id>.sif containers/hvantk.def` from the repository root
-  (with `--fakeroot` or `proot` as the host allows), copy the file and write the
-  provenance record by hand from the same fields; then run the verification job on the
-  cluster, because an image that was never checked on a compute node is not validated.
+  `singularity build --build-arg HVANTK_COMMIT=$(git rev-parse HEAD)
+  hvantk-<id>.sif containers/hvantk.def` from the repository root (SingularityCE 4.0+
+  or Apptainer 1.2+, with `--fakeroot` or `proot` as the host allows), copy the file
+  and write the provenance record by hand from the same fields; then run the
+  verification job on the cluster, because an image that was never checked on a
+  compute node is not validated.
 - A site that proxies the registry or pins its own base images: the proxy and registry
   variables are shell environment for the build job. Export them in the site profile,
   which the template sources, never in a committed file.
@@ -116,6 +122,9 @@ only (then the "build elsewhere and copy" note in section 4 applies).
 - `could not use fakeroot: no valid mapping entry found for <user>` or `--remote,
   --fakeroot, or the proot command are required`. Cause: no `/etc/subuid` entry.
   Fix: a static `proot` on `PATH` (section 2 step 3); the template detects which to use.
+- `unknown flag: --build-arg`. Cause: SingularityCE older than 4.0 or Apptainer older
+  than 1.2. Fix: a newer container tool (section 2 step 6), or build elsewhere and copy
+  the image.
 - The build fails at `%files` with files not found. Cause: it was not started from the
   repository root; the def file copies relative paths. Fix: the template `cd`s to
   `$HVANTK_REPO`; if you build by hand, do the same.

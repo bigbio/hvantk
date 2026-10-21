@@ -30,6 +30,7 @@ from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_COLOC_WINDOW_KB,
     EQTL_CATALOGUE_DEFAULT_STUDY,
     DEFAULT_FINEMAP_SUPERPOP,
+    FINEMAP_SUPERPOPS,
 )
 
 # PP4 cutoff for the verdict gate (ABF "colocalizes" and coloc.susie "confirms").
@@ -80,6 +81,10 @@ class GwasColocConfig:
             errs.append("min_snps must be >= 2")
         if not 0.0 <= self.pp4_threshold <= 1.0:
             errs.append("pp4_threshold must be in [0, 1]")
+        if self.superpop not in FINEMAP_SUPERPOPS:
+            errs.append(
+                f"superpop must be one of {FINEMAP_SUPERPOPS} (got {self.superpop!r})"
+            )
         if self.fine_map and (self.gwas_N is None or self.eqtl_N is None):
             errs.append(
                 "fine-mapping requires gwas_N and eqtl_N (or pass --no-fine-map)"
@@ -120,6 +125,13 @@ def _json_safe(obj):
 
 def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     """Run the pipeline and write a provenance-stamped report. Returns the report dict."""
+    errors = config.validate()
+    if errors:
+        raise ValueError(
+            "GwasColocConfig validation failed:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
+
     half = config.window_kb * 1000
     start, end = (
         max(1, config.lead - half),
@@ -165,22 +177,20 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
 
     fmr = None
     if config.fine_map and target is not None and target in eqtl:
-        if config.gwas_N is None or config.eqtl_N is None:
-            fmr = fm.FineMapResult(available=False, note="fine-map needs gwas_N/eqtl_N")
-        else:
-            logger.info("fine-mapping %s …", target)
-            fmr = fm.run_finemap(
-                gwas=gwas,
-                eqtl_recs=eqtl[target],
-                chrom=config.chrom,
-                start=start,
-                end=end,
-                gwas_N=config.gwas_N,
-                eqtl_N=config.eqtl_N,
-                ld_cache_dir=config.ld_cache_dir,
-                superpop=config.superpop,
-                ld_vcf=config.ld_vcf,
-            )
+        # validate() rejected fine_map=True without gwas_N/eqtl_N, so both are set here.
+        logger.info("fine-mapping %s …", target)
+        fmr = fm.run_finemap(
+            gwas=gwas,
+            eqtl_recs=eqtl[target],
+            chrom=config.chrom,
+            start=start,
+            end=end,
+            gwas_N=config.gwas_N,
+            eqtl_N=config.eqtl_N,
+            ld_cache_dir=config.ld_cache_dir,
+            superpop=config.superpop,
+            ld_vcf=config.ld_vcf,
+        )
 
     verdict = _verdict(pp4_abf, fmr, config.pp4_threshold)
 

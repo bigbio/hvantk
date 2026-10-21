@@ -149,9 +149,13 @@ class CascadePipeline:
         self._output_dir = Path(config.output_dir)
         self._per_tissue_dir = self._output_dir / "per_tissue"
         self._plots_dir = self._output_dir / "plots"
+        # Directories are created lazily, in run()/run_collection(), not here:
+        # the constructor also runs for --dry-run, which must write nothing.
+
+    def _ensure_output_dirs(self) -> None:
         self._output_dir.mkdir(parents=True, exist_ok=True)
         self._per_tissue_dir.mkdir(exist_ok=True)
-        if config.generate_plots:
+        if self.config.generate_plots:
             self._plots_dir.mkdir(exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -199,6 +203,8 @@ class CascadePipeline:
         logger.info("=" * 70)
         logger.info("QTL CASCADE — START (tissue: %s)", tissue_label)
         logger.info("=" * 70)
+
+        self._ensure_output_dirs()
 
         safe_name = _sanitize(tissue_label)
         tissue_dir = str(self._per_tissue_dir / safe_name)
@@ -346,9 +352,10 @@ class CascadePipeline:
         cascade_genes = coloc_gene_ids(hl.read_table(result.cascade_ht_path))
         if not cascade_genes:
             logger.info("No genes with both eQTL and pQTL — skipping coloc")
-            return result
-
-        logger.info("Running coloc for %d cascade genes", len(cascade_genes))
+        else:
+            logger.info("Running coloc for %d cascade genes", len(cascade_genes))
+        # An empty gene list returns an empty frame with the result columns and runs
+        # no Hail, so coloc_results.tsv is always written.
         coloc_df = run_coloc_per_gene(
             eqtl_allpairs_ht_path=self.config.eqtl_allpairs_ht,
             pqtl_allpairs_ht_path=self.config.pqtl_allpairs_ht,
@@ -360,17 +367,19 @@ class CascadePipeline:
             p12=self.config.coloc_p12,
             W=self.config.coloc_W,
         )
+        if cascade_genes:
+            n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
+            logger.info(
+                "Coloc: %d/%d genes with P(H4) > %.1f",
+                n_pass,
+                len(coloc_df),
+                DEFAULT_COLOC_H4_THRESHOLD,
+            )
+
         result.coloc_df = coloc_df
 
-        n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
-        logger.info(
-            "Coloc: %d/%d genes with P(H4) > %.1f",
-            n_pass,
-            len(coloc_df),
-            DEFAULT_COLOC_H4_THRESHOLD,
-        )
-
-        # Save coloc results
+        # Save coloc results — always, so an empty table still overwrites a
+        # stale file an earlier run left at this path.
         safe = _sanitize(tissue or "all")
         coloc_path = self._per_tissue_dir / safe / "coloc_results.tsv"
         coloc_path.parent.mkdir(parents=True, exist_ok=True)

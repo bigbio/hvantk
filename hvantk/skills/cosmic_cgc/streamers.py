@@ -20,8 +20,33 @@ from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_MUTATION_CONTEXTS,
 )
 from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
+from hvantk.core.utils.table_utils import select_fields
 
 logger = logging.getLogger(__name__)
+
+
+def _tumour_types_expr(ht: hl.Table, mutation_context: str) -> hl.Table:
+    """Annotate ``_tumour_types`` with the tumour-types array for *mutation_context*.
+
+    ``"somatic"``/``"germline"`` use that field alone; ``"both"`` (or a
+    missing somatic/germline-specific field) unions the two.
+    """
+    row_fields = set(ht.row)
+    if mutation_context == "somatic" and "tumour_types_somatic" in row_fields:
+        return ht.annotate(_tumour_types=ht.tumour_types_somatic)
+    if mutation_context == "germline" and "tumour_types_germline" in row_fields:
+        return ht.annotate(_tumour_types=ht.tumour_types_germline)
+    somatic = (
+        ht.tumour_types_somatic
+        if "tumour_types_somatic" in row_fields
+        else hl.empty_array(hl.tstr)
+    )
+    germline = (
+        ht.tumour_types_germline
+        if "tumour_types_germline" in row_fields
+        else hl.empty_array(hl.tstr)
+    )
+    return ht.annotate(_tumour_types=hl.array(hl.set(somatic.extend(germline))))
 
 
 class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
@@ -170,24 +195,7 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         # Select the tumour types field(s) based on context
-        row_fields = set(ht.row)
-        if mutation_context == "somatic" and "tumour_types_somatic" in row_fields:
-            ht = ht.annotate(_tumour_types=ht.tumour_types_somatic)
-        elif mutation_context == "germline" and "tumour_types_germline" in row_fields:
-            ht = ht.annotate(_tumour_types=ht.tumour_types_germline)
-        else:
-            # Merge both somatic and germline tumour types
-            somatic = (
-                ht.tumour_types_somatic
-                if "tumour_types_somatic" in row_fields
-                else hl.empty_array(hl.tstr)
-            )
-            germline = (
-                ht.tumour_types_germline
-                if "tumour_types_germline" in row_fields
-                else hl.empty_array(hl.tstr)
-            )
-            ht = ht.annotate(_tumour_types=hl.array(hl.set(somatic.extend(germline))))
+        ht = _tumour_types_expr(ht, mutation_context)
 
         # Explode and group
         exploded = ht.explode("_tumour_types")
@@ -323,7 +331,10 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         if ht is None:
             raise ValueError("COSMIC CGC table not loaded.")
 
-        rows = ht.select("gene_symbol", "somatic", "germline").collect()
+        # select_fields keeps gene_symbol even when it is the table's key (the
+        # common case when no gene_catalog was supplied) -- same pattern in
+        # aggregate_by_disease_category below.
+        rows = select_fields(ht, ["gene_symbol", "somatic", "germline"]).collect()
         somatic_only = set()
         germline_only = set()
         both = set()
@@ -422,43 +433,34 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         self,
         categories,
         min_classification=None,
+        mutation_context: str = "both",
     ):
         """Aggregate genes into keyword categories by matching tumour types.
 
-        Since COSMIC CGC lacks MONDO disease labels, this searches the
-        merged tumour types (somatic + germline) for keyword matches.
+        Since COSMIC CGC lacks MONDO disease labels, this searches tumour
+        types for keyword matches. ``mutation_context`` selects which genes
+        and which tumour-types field to search, mirroring
+        ``get_geneset_per_tumour_type``'s somatic/germline/both split.
         """
         from typing import Dict, Set
 
-        self._ensure_table_loaded()
-        ht = self._table
-        if ht is None:
-            raise ValueError("COSMIC CGC table not loaded.")
+        ht = self.filter_by_mutation_context(mutation_context)
 
         if min_classification:
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        row_fields = set(ht.row)
-        somatic = (
-            ht.tumour_types_somatic
-            if "tumour_types_somatic" in row_fields
-            else hl.empty_array(hl.tstr)
-        )
-        germline = (
-            ht.tumour_types_germline
-            if "tumour_types_germline" in row_fields
-            else hl.empty_array(hl.tstr)
-        )
-        ht = ht.annotate(_all_tumour_types=hl.array(hl.set(somatic.extend(germline))))
-        rows = ht.select("gene_symbol", "_all_tumour_types").collect()
+        ht = _tumour_types_expr(ht, mutation_context)
+        # select_fields keeps gene_symbol even when it is the table's key; see
+        # mutation_context_summary above for the same pattern.
+        rows = select_fields(ht, ["gene_symbol", "_tumour_types"]).collect()
 
         gene_sets: Dict[str, Set[str]] = {}
         for cat_name, terms in categories.items():
             matched_genes: Set[str] = set()
             lower_terms = [t.lower() for t in terms]
             for row in rows:
-                for tt in row._all_tumour_types or []:
+                for tt in row._tumour_types or []:
                     if any(term in tt.lower() for term in lower_terms):
                         matched_genes.add(row.gene_symbol)
                         break

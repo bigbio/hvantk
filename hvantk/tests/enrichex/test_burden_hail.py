@@ -10,10 +10,12 @@ import numpy as np
 
 from hvantk.algorithms.enrichex.burden import (
     VariantFilter,
+    _build_gene_length_ht,
     _build_gene_to_sets_ht,
     _compute_test_statistic,
     _linear_t_statistic,
     _logistic_z_statistic,
+    _variant_site_count_proxy,
     build_variant_classes_from_presets,
     permutation_burden_test,
     compute_geneset_burden_mt,
@@ -995,6 +997,57 @@ class TestNormalizeByLength:
         assert len(result_df) == 1
         assert 0 < result_df.iloc[0]["empirical_p_value"] <= 1
 
+    def test_proxy_counts_the_same_filtered_sites_as_the_main_path(self, hail_session):
+        """The permutation path's site-count proxy must count sites AFTER
+        ``variant_filter``, like the main path's ``_build_gene_length_ht``
+        (called on an already-filtered MT) -- not the raw, unfiltered cohort.
+        """
+        mt = hl.utils.range_matrix_table(30, 5)
+        mt = mt.key_cols_by(s=hl.str(mt.col_idx))
+        mt = mt.annotate_rows(
+            SYMBOL=hl.if_else(
+                mt.row_idx < 10,
+                "GENE1",
+                hl.if_else(mt.row_idx < 20, "GENE2", "GENE3"),
+            ),
+            # Each gene has 10 sites; only 6 of them qualify (stop_gained).
+            consequence=hl.if_else(
+                mt.row_idx % 10 < 6, "stop_gained", "synonymous_variant"
+            ),
+        )
+        mt = mt.annotate_entries(
+            GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
+        )
+
+        vf = VariantFilter(
+            consequences=["stop_gained"],
+            pass_only=False,
+            min_gq=0,
+            min_dp=0,
+            min_score=None,
+        )
+
+        proxy_counts = {
+            str(k): float(v)
+            for k, v in _variant_site_count_proxy(
+                mt, "SYMBOL", variant_filter=vf
+            ).items()
+        }
+
+        # Ground truth: what the main burden path counts -- filter_rows()
+        # first (as run_burden_analysis does), then count per gene.
+        filtered_mt = mt.filter_rows(vf.to_hail_expr(mt))
+        main_path_ht = _build_gene_length_ht(filtered_mt, "SYMBOL", None)
+        main_path_counts = {
+            row["gene"]: float(row["_gene_length"]) for row in main_path_ht.collect()
+        }
+
+        assert proxy_counts == main_path_counts
+        # Sanity check that the filter actually did something: each gene has
+        # 10 sites total, but only 6 qualify, so a pre-fix run (counting the
+        # unfiltered cohort) would have produced {"GENE1": 10, ...} here.
+        assert proxy_counts == {"GENE1": 6.0, "GENE2": 6.0, "GENE3": 6.0}
+
 
 class TestLocalRegressionHelpers:
     """Tests for local numpy-based regression helpers (no Hail needed)."""
@@ -1141,8 +1194,13 @@ class TestPermutationBurdenTest:
             SYMBOL=hl.literal(gene_names)[mt.row_idx // 10],
         )
 
+        # Low carrier rates, so a gene set's burden (genes carried, 0-2 here) varies
+        # across samples: when every sample carries every gene the regression is
+        # singular. Seeded, so the data does not depend on the tests run before.
         mt = mt.annotate_entries(
-            GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
+            GT=hl.call(
+                hl.int(hl.rand_bool(0.05, seed=11)), hl.int(hl.rand_bool(0.01, seed=12))
+            ),
         )
         return mt
 
@@ -1152,7 +1210,7 @@ class TestPermutationBurdenTest:
         ht = ht.annotate(
             s=hl.str(ht.idx),
             is_case=ht.idx < 40,
-            PC1=hl.rand_norm(),
+            PC1=hl.rand_norm(seed=13),
         )
         ht = ht.key_by("s")
         return ht

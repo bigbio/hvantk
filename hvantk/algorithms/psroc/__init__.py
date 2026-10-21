@@ -6,12 +6,15 @@ scores using ROC curve analysis against ClinVar truth labels.
 
 Example:
     >>> from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
+    >>> from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
     >>> config = PSROCConfig(
     ...     genes=["BRCA1", "BRCA2"],
     ...     clinvar_ht="/data/clinvar.ht",
     ...     dbnsfp_ht="/data/dbnsfp.ht",
     ...     scores=["CADD_phred", "REVEL_score"],
     ...     output_dir="/results/psroc",
+    ...     pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+    ...     benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
     ... )
     >>> pipeline = PSROCPipeline(config)
     >>> result = pipeline.run()

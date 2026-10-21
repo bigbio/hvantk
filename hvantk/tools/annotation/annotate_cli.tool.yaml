@@ -2,7 +2,7 @@ api_version: 1
 name: annotate
 domain: annotation
 type: command_group
-description: Build gene- and cohort-level annotation artifacts.
+description: Build gene- and cohort-level annotation datasets.
 cli:
   module: hvantk.tools.annotation.annotate_cli
   function: annotate_group

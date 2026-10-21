@@ -103,6 +103,25 @@ def test_pipeline_cli_dry_run():
                 mock_runner_instance.run.assert_not_called()
 
 
+def test_pipeline_cli_dry_run_creates_nothing_and_starts_no_hail(tmp_path, monkeypatch):
+    """--dry-run prints the plan without creating the output directory or starting Hail."""
+    from hvantk.algorithms.hgc import pipeline as pipeline_module
+
+    def _no_hail(**kwargs):
+        raise AssertionError("--dry-run started Hail")
+
+    monkeypatch.setattr(pipeline_module, "init_hail", _no_hail)
+    output_dir = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        pipeline, ["-i", str(tmp_path), "-o", str(output_dir), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "HGC PIPELINE EXECUTION PLAN" in result.output
+    assert not output_dir.exists()
+
+
 def test_pipeline_cli_with_errors():
     """Test pipeline command when pipeline returns errors."""
     runner = CliRunner()

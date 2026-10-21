@@ -43,7 +43,7 @@ Two releases, both hosted under `GNOMAD_RELEASE_BASE_URL`:
 - v4.0's column names are dotted — `lof.pLI`, `lof.oe_ci.upper` (= LOEUF), `mis.z_score` — and v4.0 ships **no `gene_id` column** at all; both facts are documented in `shared/constants.py` (see its module docstring). A dot is not valid in a Python identifier, so once such a column is imported these fields must be subscripted (`ht['lof.pLI']`): attribute access `ht.lof.pLI` reads as field `lof` then `.pLI` and fails. That consequence is Hail's, not something `constants.py` states.
 - `parsed_input` may be a file path or a `raw_dir` (gnomad-metrics declares no `lifecycle.parse`): when it is a directory, the shared `resolve_raw_file` (`hvantk/core/utils/raw_inputs.py`) resolves it to the single non-hidden file matching `*.bgz`/`*.tsv` (case-insensitive). Zero or more than one match both raise `ValueError` naming the directory, the patterns, and the files found, and refuse to silently pick one — a `raw_dir` must hold exactly one version's constraint file.
 - Import options: `impute=True`, `min_partitions=100` — contrast with `hgnc`, which imports with `impute=False` and keeps every field as a string.
-- Optional `fields` param (`list[str]`) selects a column subset post-import via `ht.select(*fields)`.
+- Optional `fields` param (`str` or `list[str]`) selects a column subset post-import via the shared `select_fields` helper (`hvantk/core/utils/table_utils.py`), which keeps the key field automatically even when it is not listed.
 
 ## 5. Output contract
 
@@ -64,7 +64,7 @@ Row fields (from the v2.1.1 `by_gene` schema snapshot) fall into: identifiers (`
 
 1. **Confirm the raw file is present.** If absent, run `hvantk download gnomad-metrics --output <path> [--version v2.1.1|v4.0] [--table <name>]`.
 2. **If pointing `--raw-dir` at a directory**, ensure it holds exactly one `*.bgz`/`*.tsv` constraint file — the builder raises `ValueError` on more than one candidate rather than guessing.
-3. **Build the table**: `hvantk reprocess gnomad-metrics:metrics --raw-dir <dir> --output <out>.ht [--plugin-arg fields='["gene_id","pLI","oe_lof"]'] [--plugin-arg key=transcript]` (the `key` override is required for v4.0).
+3. **Build the table**: `hvantk reprocess gnomad-metrics:metrics --raw-dir <dir> --output <out>.ht [--plugin-arg fields=pLI,oe_lof] [--plugin-arg key=transcript]` (the `key` override is required for v4.0). `gene_id` need not be listed -- `select_fields` always keeps the key.
 4. **Sanity-check the output.** Confirm the key matches what was requested (`gene_id` by default), and that `constraint_flag` values are empty strings rather than nulls for unflagged genes (§ 4).
 5. **Run the round-trip test** (§ 9) after any builder or fixture change.
 

@@ -14,12 +14,10 @@ Requirements:
     - MONDO OBO file (downloaded)
 """
 
-import logging
 import json
+import logging
+import sys
 from pathlib import Path
-from typing import Dict, Set
-
-import pandas as pd
 
 # Configure logging
 logging.basicConfig(
@@ -31,29 +29,14 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR / "data"
 OUTPUT_DIR = SCRIPT_DIR / "results"
-INPUT_CSV = DATA_DIR / "clingen_gene_disease.csv"
 MONDO_OBO = DATA_DIR / "mondo.obo"
 
 
 def ensure_data_files():
-    """Ensure ClinGen and MONDO data files are available."""
+    """Ensure the MONDO ontology file is available."""
     import subprocess
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not INPUT_CSV.exists():
-        print("Downloading ClinGen data...")
-        subprocess.run(
-            [
-                "curl",
-                "-L",
-                "-k",
-                "https://search.clinicalgenome.org/kb/gene-validity/download",
-                "-o",
-                str(INPUT_CSV),
-            ],
-            check=True,
-        )
 
     if not MONDO_OBO.exists():
         print("Downloading MONDO ontology...")
@@ -61,7 +44,7 @@ def ensure_data_files():
             [
                 "curl",
                 "-L",
-                "-k",
+                "--fail",
                 "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo",
                 "-o",
                 str(MONDO_OBO),
@@ -73,7 +56,7 @@ def ensure_data_files():
 def main():
     """Main workflow with ontology-based categorization."""
     import hail as hl
-    from hvantk.skills.clingen.streamer import ClinGenStreamer
+    from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
     from hvantk.core.ontology.mondo import MONDO_DISEASE_CATEGORIES
 
     # Ensure data files exist
@@ -101,18 +84,18 @@ def main():
         print(f"ERROR: ClinGen Hail Table not found at {output_ht}")
         print("Build it first with:")
         print(
-            f"  hvantk reprocess clingen:gene_disease "
-            f"--raw-dir {DATA_DIR} --output {output_ht} --skip-download"
+            f"  hvantk reprocess clingen:gene-disease "
+            f"--raw-dir {DATA_DIR} --output {output_ht}"
         )
-        return
+        sys.exit(1)
     logger.info(f"Using existing ClinGen table: {output_ht}")
 
-    # Step 2: Initialize ClinGenStreamer
+    # Step 2: Initialize ClinGenGeneDiseaseTableStreamer
     print("\n" + "=" * 70)
     print("Step 2: Loading ClinGen data and MONDO ontology")
     print("=" * 70)
 
-    streamer = ClinGenStreamer(output_ht, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(output_ht, init_hail=False)
     streamer.setup()
 
     # Step 3: Ontology-based categorization
@@ -255,7 +238,7 @@ def main():
     print(f"Genes in 'uncategorized': {len(uncategorized_genes)}")
     print(f"Categories with genes: {sum(1 for d in results.values() if d['genes'])}")
 
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"  - {summary_path}")
     print(f"  - {genes_path}")
     print(f"  - {diseases_path}")

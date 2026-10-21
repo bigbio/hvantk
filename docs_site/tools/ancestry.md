@@ -1,44 +1,41 @@
-# Ancestry Inference
+# Ancestry inference
 
-The ancestry inference module provides tools to predict genetic ancestry for samples using PCA-based projection and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes, HapMap).
+`hvantk ancestry-inference` assigns a population label to each sample in a query cohort
+by projecting it against a labeled reference panel (e.g. 1000 Genomes) with PCA, then
+classifying with a Random Forest trained on the reference panel's known labels.
 
 ![Ancestry workflow](../images/hvantk-ancestry-workflow.svg)
 
-*Ancestry inference pipeline — from reference panel merge through variant filtering, LD pruning, PCA, Random Forest training, and ancestry prediction.*
+**Figure 1.** Ancestry inference: merge with the reference panel, variant filtering,
+optional LD pruning, PCA fitted on query and reference together, Random Forest training
+and prediction.
 
-## Overview
+## Inputs
 
-The ancestry inference pipeline follows standard population genetics practices:
+| | Row key | Column key | Required fields |
+|---|---|---|---|
+| Query MatrixTable | `(locus, alleles)` | `s` (sample ID) | `GT` genotype calls (or `LGT` + `LA`, auto-converted) |
+| Reference MatrixTable | same as query | `s` | `GT`/`LGT` as above, plus a categorical ancestry-label column |
 
-1. **Merge** query cohort with labeled reference panel by shared variants
-2. **Filter** to high-quality, common, biallelic SNPs on autosomes
-3. **LD prune** to remove correlated variants
-4. **Compute PCA** using HWE-normalized principal component analysis
-5. **Train classifier** (Random Forest) on labeled reference samples
-6. **Predict ancestry** for unlabeled query samples with probability thresholds
+- Query and reference must use the **same reference genome** (GRCh37 or GRCh38) and the
+  same row key structure; mismatches fail immediately with a descriptive error.
+- The reference panel's ancestry-label column is named by `--ancestry-col`
+  (`ancestry_col` in Python), default `ancestry`. It must be a column field on the
+  reference MatrixTable, categorical (e.g. `"EUR"`, `"AFR"`, `"EAS"`, `"SAS"`, `"AMR"`),
+  with at least 2 distinct populations and at least 10 samples per population (lower via
+  `PipelineConfig(min_samples_per_pop=...)` in Python; there is no CLI flag for it).
+- hvantk ships no reference panel. To build a 1000 Genomes high-coverage NYGC/CCDG
+  MatrixTable and attach IGSR population labels (`super_pop`/`pop`) to use as
+  `--ancestry-col`, see the
+  [1000 Genomes example](https://github.com/bigbio/hvantk/tree/main/examples/1k_genome)
+  and [Data sources](../guide/data-sources.md#1000-genomes-nygcccdg-high-coverage-callset).
+  Other commonly used panels are 1000 Genomes Phase 3 (2,504 samples, 5
+  super-populations) and HapMap Phase 3 (1,184 samples, 11 populations) — bring your own
+  copy, keyed and labeled the same way.
 
-## Key Features
-
-- **Standard Methodology**: Implements the same approach used by gnomAD and other major projects
-- **Configurable Thresholds**: All filtering and classification parameters are customizable
-- **Cross-Validation**: Built-in model validation with confusion matrix reporting
-- **HTML Reports**: Comprehensive reports with PCA plots, ancestry distributions, and metrics
-- **Probability Thresholds**: Samples below confidence threshold are marked "unassigned"
-- **CLI and Python API**: Use via command-line or directly in Python scripts
-
-## Quick Start
-
-### Command-Line Interface
+## Quick start
 
 ```bash
-# Basic usage
-hvantk ancestry-inference \
-  -q cohort.mt \
-  -r 1kg_reference.mt \
-  --ancestry-col super_pop \
-  -o ancestry_predictions.ht
-
-# With HTML report and TSV export
 hvantk ancestry-inference \
   -q cohort.mt \
   -r 1kg_reference.mt \
@@ -46,240 +43,171 @@ hvantk ancestry-inference \
   -o ancestry_predictions.ht \
   --generate-report \
   --export-tsv
-
-# Conservative assignment (higher confidence threshold)
-hvantk ancestry-inference \
-  -q cohort.mt \
-  -r 1kg_reference.mt \
-  --ancestry-col super_pop \
-  -o ancestry_predictions.ht \
-  --min-prob 0.90 \
-  --generate-report
 ```
-
-### Python API
 
 ```python
 import hail as hl
 from hvantk.algorithms.ancestry import run_ancestry_inference
 
-# Initialize Hail
-hl.init()
-
-# Load data
-query_mt = hl.read_matrix_table("cohort.mt")
-reference_mt = hl.read_matrix_table("1kg_reference.mt")
-
-# Run inference
 result = run_ancestry_inference(
-    query_mt=query_mt,
-    reference_mt=reference_mt,
+    query_mt=hl.read_matrix_table("cohort.mt"),
+    reference_mt=hl.read_matrix_table("1kg_reference.mt"),
     ancestry_col="super_pop",
     min_prob=0.75,
 )
 
-# Get predictions as DataFrame
 predictions = result.get_predictions_df()
-print(predictions['predicted_ancestry'].value_counts())
-
-# Generate HTML report
-result.generate_report("ancestry_report.html")
-
-# Plot PCA
-fig = result.plot_pca()
-fig.savefig("pca_plot.png", dpi=300)
-
-# Annotate original MatrixTable with predictions
-annotated_mt = result.annotate_matrixtable(query_mt)
+print(predictions["predicted_ancestry"].value_counts())
+result.save("results/ancestry")
 ```
 
-## Algorithm Details
+## Method
 
-### Step 1: MatrixTable Merging
+1. **Merge.** Inner join query and reference on `(locus, alleles)`; keep only the `GT`
+   entry field; column-union the samples, tagging each with its source (`query` or
+   `reference`). Fails if there are 0 shared variants, or fewer than
+   `--min-shared-variants` (default 10,000); warns below 50,000.
+2. **Filter.** Restrict to autosomes (`locus.in_autosome()`), then biallelic SNPs, then
+   apply Hail's `variant_qc`: call rate &ge; `--min-call-rate` (default 0.98) and
+   *alternate*-allele frequency between `--min-af`/`--max-af` (default 0.01/0.99).
+   An optional HWE filter (off by default; `--apply-hwe-filter`, p &ge; `--hwe-p`,
+   default 1e-6) can additionally drop likely genotyping errors.
+3. **LD prune** (skippable with `--skip-ld-pruning`). `hl.ld_prune` on `GT` with
+   `r2` = `--ld-r2` (default 0.2) and `bp_window_size` = `--ld-window` (default 500,000).
+4. **PCA.** `hl.hwe_normalized_pca` (Patterson et al., 2006) computes `--n-pcs`
+   (default 20) principal components **jointly on the merged query+reference set** —
+   this is not a projection of the query onto a reference-only PC space; query and
+   reference samples share one PCA fit. Loadings are always computed in memory;
+   `--save-loadings` / `result.loadings` persist them (see caveats below).
+5. **Train.** A `RandomForestClassifier` (`n_estimators` = `--n-estimators`, default
+   100; `random_state` = `--seed`, default 42) is fit on the **reference** rows' first
+   `--n-pcs-classify` PC scores (default 10) against their known `--ancestry-col`
+   labels. `max_features="sqrt"`, `min_samples_leaf=5`, `class_weight="balanced"` and
+   `n_jobs=-1` are fixed and not configurable. Unless `--skip-validation`, a stratified
+   `--n-cv-folds`-fold cross-validation (default 5) gives a held-out accuracy estimate;
+   this raises if `n_cv_folds` exceeds the smallest population's sample count.
+6. **Predict.** The fitted model scores the **query** rows' PC scores. A sample's label
+   is the highest-probability class if that probability is &ge; `--min-prob` (default
+   0.75), otherwise `"unassigned"`. Reference rows are also re-scored (with no
+   threshold) for reporting and plotting — this is an in-sample fit, not the
+   cross-validated estimate from step 5.
 
-The pipeline performs an inner join on variants present in both query and reference MatrixTables:
+For a fixed reference PC space that later query batches project onto (the approach
+gnomAD and similar projects use), call `compute_pca()` on the reference alone and
+`project_samples()` with its loadings, instead of `run_ancestry_inference`'s joint PCA.
+See [Python API](#python-api).
 
-- Variants are matched by `(locus, alleles)` key
-- Samples are annotated with source ("query" or "reference")
-- Reference samples retain their known ancestry labels
+## Options
 
-**Validation checks:**
-- Same reference genome (GRCh37 or GRCh38)
-- Compatible row key structure
-- Sufficient shared variants (default: 10,000 minimum)
+### Required
 
-### Step 2: Variant Filtering
+| Flag | Description |
+|---|---|
+| `-q`, `--query-mt` | Path to the query MatrixTable. |
+| `-r`, `--reference-mt` | Path to the reference MatrixTable with known ancestry labels. |
+| `-o`, `--output-ht` | Output path for the predictions Hail Table. |
 
-Variants are filtered to retain high-quality, informative markers:
+### Reference panel and output
 
-| Filter | Default | Rationale |
-| ------ | ------- | --------- |
-| Autosomes only | chr1-22 | Avoid sex chromosome complications |
-| Biallelic | 2 alleles | Simplify analysis |
-| SNPs only | `is_snp()` | More reliable than indels |
-| Call rate | >= 98% | Ensure data quality |
-| Minor allele frequency | 1-99% | Common variants informative for ancestry |
-| HWE (optional) | p > 1e-6 | Remove potential genotyping errors |
+| Flag | Default | Description |
+|---|---|---|
+| `--ancestry-col` | `ancestry` | Column with ancestry labels in the reference MT. |
+| `--output-dir` | `<output-ht parent>/ancestry_results` | Directory for TSV/model/report/stats outputs. |
 
-### Step 3: LD Pruning
+### Variant filtering
 
-Linkage disequilibrium pruning removes correlated variants:
+| Flag | Default | Description |
+|---|---|---|
+| `--min-af` | `0.01` | Minimum alternate-allele frequency. |
+| `--max-af` | `0.99` | Maximum alternate-allele frequency. |
+| `--min-call-rate` | `0.98` | Minimum variant call rate. |
+| `--apply-hwe-filter` | off | Apply a Hardy-Weinberg equilibrium filter. |
+| `--hwe-p` | `1e-6` | HWE p-value threshold (variants below are removed). |
 
-- Default r2 threshold: 0.2
-- Default window size: 500 kb
-- Typically reduces to 50,000-200,000 independent variants
+### LD pruning
 
-### Step 4: PCA Computation
+| Flag | Default | Description |
+|---|---|---|
+| `--ld-r2` | `0.2` | LD pruning r² threshold. |
+| `--ld-window` | `500000` | LD pruning window, in base pairs. |
+| `--skip-ld-pruning` | off | Skip LD pruning (faster; may affect accuracy). |
 
-HWE-normalized PCA captures population structure:
+### PCA and classification
 
-- Uses `hl.hwe_normalized_pca()` (Patterson et al., 2006)
-- Default: 20 PCs computed, 10 used for classification
-- Loadings saved for future sample projection
+| Flag | Default | Description |
+|---|---|---|
+| `--n-pcs` | `20` | Number of principal components to compute. |
+| `--n-pcs-classify` | `10` | Number of PCs used as RF features (clamped to `--n-pcs` if larger). |
+| `--n-estimators` | `100` | Number of trees in the Random Forest. |
+| `--min-prob` | `0.75` | Minimum probability for an assignment; below this, `"unassigned"`. |
+| `--seed` | `42` | Random seed. |
 
-### Step 5: Random Forest Classification
+### Validation and merge
 
-A Random Forest classifier is trained on reference samples:
+| Flag | Default | Description |
+|---|---|---|
+| `--skip-validation` | off | Skip cross-validation. |
+| `--n-cv-folds` | `5` | Number of stratified CV folds. |
+| `--min-shared-variants` | `10000` | Minimum shared query/reference variants required. |
 
-- Features: First N principal components (default: 10)
-- Class balancing: Automatic weighting for imbalanced populations
-- Cross-validation: 5-fold stratified CV (optional)
+### Output formats and checkpointing
 
-### Step 6: Ancestry Prediction
+| Flag | Default | Description |
+|---|---|---|
+| `--generate-report` | off | Write an HTML report (needs the visualization extras). |
+| `--export-tsv` | off | Export predictions as TSV. |
+| `--save-model` | off | Pickle the trained Random Forest. |
+| `--save-loadings` | off | Write the PCA loadings Hail Table. |
+| `--checkpoint-path` | none | Directory for intermediate checkpoints. |
+| `--overwrite` | off | Overwrite existing outputs and checkpoints. |
 
-Predictions are made with probability thresholds:
+There is no `--log-level` option. Verbosity is the top-level flag, which must come
+before the subcommand: `hvantk -v ancestry-inference ...` (INFO) or
+`hvantk -vv ancestry-inference ...` (DEBUG).
 
-| Threshold | Behavior |
-| --------- | -------- |
-| 0.50 | Aggressive; may misclassify admixed individuals |
-| 0.75 | Balanced (default) |
-| 0.90 | Conservative; more "unassigned" but higher confidence |
+## Outputs
 
-Samples with max probability below threshold are labeled "unassigned".
+### Predictions Hail Table (`-o`/`--output-ht`)
 
-## CLI Reference
+Row-keyed by `s`, containing **both** query and reference samples
+(`_ancestry_source` distinguishes them):
 
-```text
-hvantk ancestry-inference [OPTIONS]
+| Field | Type | Description |
+|---|---|---|
+| `predicted_ancestry` | `str` | Assigned population label, or `"unassigned"`. |
+| `ancestry_probability` | `float` | Maximum class probability. |
+| `prob_<POP>` | `float` | Per-population probability, one column per class. |
+| `PC1`...`PC<n_pcs_classify>` | `float` | The PCs used for classification (not all `--n-pcs` computed — see Method). |
+| `_ancestry_source` | `str` | `"query"` or `"reference"`. |
+| `_known_ancestry` | `str` | Original label (reference rows only; missing for query). |
 
-Options:
-  Required:
-    -q, --query-mt PATH          Path to query MatrixTable
-    -r, --reference-mt PATH      Path to reference MatrixTable with labels
-    -o, --output-ht PATH         Output path for predictions Table
+### Additional files (under `--output-dir`)
 
-  Reference Panel:
-    --ancestry-col TEXT          Column with ancestry labels [default: ancestry]
+| File | Written when |
+|---|---|
+| `predictions.tsv` | `--export-tsv` (same columns as the predictions table). |
+| `rf_model.pkl` | `--save-model`. |
+| `pca_loadings.ht` | `--save-loadings` (loadings from the joint PCA — see caveats). |
+| `ancestry_report.html` | `--generate-report`. |
+| `pipeline_stats.json` | always. |
 
-  Output:
-    --output-dir PATH            Directory for additional outputs
-    --generate-report            Generate HTML report with visualizations
-    --export-tsv                 Export predictions as TSV file
-    --save-model                 Save trained RF model (pickle)
-    --save-loadings              Save PCA loadings for projection
+`result.save(output_path, save_model=True, save_loadings=True)` (Python only) writes a
+related but not identical set directly under `output_path`: `predictions.ht` and
+`predictions.tsv` unconditionally, `pc_scores.ht` (**all** `--n-pcs` PCs, for every
+sample) unconditionally, `rf_model.pkl`/`pca_loadings.ht` unless disabled, and
+`pipeline_stats.json` — the last one additionally carries an `"eigenvalues"` key that
+the CLI's own `pipeline_stats.json` does not.
 
-  Variant Filtering:
-    --min-af FLOAT               Minimum allele frequency [default: 0.01]
-    --max-af FLOAT               Maximum allele frequency [default: 0.99]
-    --min-call-rate FLOAT        Minimum variant call rate [default: 0.98]
-    --apply-hwe-filter           Apply Hardy-Weinberg equilibrium filter
-    --hwe-p FLOAT                HWE p-value threshold [default: 1e-6]
+### HTML report (`--generate-report`)
 
-  Merge:
-    --min-shared-variants INTEGER
-                                 Minimum shared variants required [default: 10000]
+Summary cards (query/reference sample counts, assigned/unassigned, populations, shared
+variants); an ancestry distribution table and bar chart; a two-panel PCA plot (full view
++ one zoomed population) plus a variance-explained chart; cross-validation accuracy and
+confusion matrix (or a notice that validation was skipped); a probability-distribution
+histogram; a table of the top query predictions by probability; and the full pipeline
+configuration.
 
-  LD Pruning:
-    --ld-r2 FLOAT                LD pruning r2 threshold [default: 0.2]
-    --ld-window INTEGER          LD pruning window in bp [default: 500000]
-    --skip-ld-pruning            Skip LD pruning step
-
-  PCA:
-    --n-pcs INTEGER              Number of PCs to compute [default: 20]
-    --n-pcs-classify INTEGER     Number of PCs for classification [default: 10]
-
-  Classification:
-    --n-estimators INTEGER       Number of RF trees [default: 100]
-    --min-prob FLOAT             Min probability for assignment [default: 0.75]
-    --seed INTEGER               Random seed [default: 42]
-
-  Validation:
-    --skip-validation            Skip cross-validation of model
-    --n-cv-folds INTEGER         Number of CV folds [default: 5]
-
-  Checkpointing:
-    --checkpoint-path PATH       Path for intermediate checkpoints
-    --overwrite                  Overwrite existing outputs
-```
-
-The command has no `--log-level` option of its own; verbosity is the top-level
-`hvantk -v ancestry-inference ...` (`-v`: INFO, `-vv`: DEBUG).
-
-## Input Requirements
-
-### Query MatrixTable
-
-- Standard Hail MatrixTable with genotype calls
-- Row key: `(locus, alleles)`
-- Entry field: `GT` (or `LGT` for split multi-allelics)
-- Column key: sample ID (`s`)
-
-### Reference MatrixTable
-
-- Same structure as query MT
-- Must have ancestry label column annotation
-- Labels should be categorical (e.g., "EUR", "AFR", "EAS", "SAS", "AMR")
-- Recommend >=30 samples per population
-
-### Supported Reference Panels
-
-| Panel | Populations | Samples | Notes |
-| ----- | ----------- | ------- | ----- |
-| 1000 Genomes Phase 3 | 5 super-populations | 2,504 | Widely used standard |
-| HapMap Phase 3 | 11 populations | 1,184 | Curated for pop-gen |
-| gnomAD | 8 populations | Variable | WES/WGS specific |
-
-## Output Format
-
-### Predictions Hail Table
-
-```text
-Schema:
-  Row key: 's' (sample ID)
-  Row fields:
-    - predicted_ancestry: str      Population label or "unassigned"
-    - ancestry_probability: float  Max class probability
-    - prob_<POP>: float            Per-population probabilities
-    - PC1...PCn: float             Principal component scores
-    - _ancestry_source: str        "query" or "reference"
-    - _known_ancestry: str         Original label (reference only)
-```
-
-### Additional Outputs
-
-| File | Description |
-| ---- | ----------- |
-| `predictions.tsv` | TSV export (with `--export-tsv`) |
-| `ancestry_report.html` | HTML report (with `--generate-report`) |
-| `rf_model.pkl` | Trained model (with `--save-model`) |
-| `pca_loadings.ht` | PCA loadings (with `--save-loadings`) |
-| `pipeline_stats.json` | Pipeline statistics |
-
-### HTML Report Contents
-
-The HTML report includes:
-
-1. **Summary Cards**: Sample counts, populations, shared variants
-2. **Ancestry Distribution**: Bar chart and table of predictions
-3. **PCA Visualization**: Two-panel plot (full view + zoomed cluster)
-4. **Model Performance**: Cross-validation accuracy, confusion matrix
-5. **Probability Distribution**: Histogram of prediction probabilities
-6. **Sample Predictions**: Table of top predictions
-7. **Configuration**: All pipeline parameters
-
-## Python API Reference
-
-### Main Function
+## Python API
 
 ```python
 from hvantk.algorithms.ancestry import run_ancestry_inference, PipelineConfig
@@ -289,191 +217,125 @@ result = run_ancestry_inference(
     reference_mt: hl.MatrixTable,
     ancestry_col: str = "ancestry",
     config: PipelineConfig = None,
-    **kwargs,
+    **kwargs,  # overrides individual PipelineConfig fields, e.g. min_prob=0.80
 ) -> AncestryInferenceResult
 ```
 
-### AncestryInferenceResult Methods
+`PipelineConfig` fields mirror the CLI options above 1:1, plus `min_samples_per_pop`
+(default 10, Python-only — no CLI flag).
+
+`AncestryInferenceResult` methods:
 
 ```python
 # Data access
 result.get_predictions_df() -> pd.DataFrame
-result.get_scores_df() -> pd.DataFrame
+result.get_scores_df() -> pd.DataFrame          # all computed PCs, every sample
 result.get_query_predictions() -> pd.DataFrame
 result.get_reference_predictions() -> pd.DataFrame
-result.get_accuracy() -> float
+result.get_accuracy() -> float | None           # cross-validation accuracy
+result.variance_explained() -> list[float]
+result.prediction_summary() -> dict[str, int]   # query-only counts by predicted_ancestry
 
-# Visualization
-result.plot_pca(pc_x=1, pc_y=2, **kwargs) -> Figure
-result.plot_pca_panel(**kwargs) -> Figure
-result.plot_ancestry_proportions(**kwargs) -> Figure
-result.plot_probability_distribution(**kwargs) -> Figure
-result.plot_variance_explained(n_pcs=10) -> Figure
-result.plot_confusion_matrix(normalize=True) -> Figure
+# Visualization (each returns a matplotlib Figure, or None if not applicable)
+result.plot_pca(pc_x=1, pc_y=2, show_query_as_undefined=False, **kwargs)
+result.plot_pca_panel(show_query_as_undefined=False, **kwargs)
+result.plot_ancestry_proportions(**kwargs)
+result.plot_probability_distribution(**kwargs)
+result.plot_variance_explained(n_pcs=10, **kwargs)
+result.plot_confusion_matrix(normalize=True, **kwargs) -> Figure | None
 
 # Output
-result.generate_report(output_path, title="...") -> Path
-result.save(output_path, save_model=True, save_loadings=True) -> Dict
+result.generate_report(output_path, title="Ancestry Inference Report", **kwargs) -> Path
+result.save(output_path, save_model=True, save_loadings=True) -> dict[str, str]
 
 # MatrixTable annotation
-result.annotate_matrixtable(mt) -> hl.MatrixTable
+result.annotate_matrixtable(mt: hl.MatrixTable) -> hl.MatrixTable
 ```
 
-### PipelineConfig
+`annotate_matrixtable` adds `predicted_ancestry`, `ancestry_probability` and
+`PC1`...`PC<n_pcs_classify>` column annotations to `mt`, joined on its column key —
+useful for an ancestry-stratified downstream analysis:
 
 ```python
-from hvantk.algorithms.ancestry import PipelineConfig
-
-config = PipelineConfig(
-    # Variant filtering
-    min_af=0.01,
-    max_af=0.99,
-    min_call_rate=0.98,
-    apply_hwe_filter=False,
-    hwe_p_threshold=1e-6,
-
-    # LD pruning
-    ld_r2=0.2,
-    ld_window=500000,
-    skip_ld_pruning=False,
-
-    # PCA
-    n_pcs=20,
-
-    # Classification
-    n_pcs_classify=10,
-    n_estimators=100,
-    min_prob=0.75,
-    random_seed=42,
-
-    # Validation
-    validate_model=True,
-    n_cv_folds=5,
-
-    # Checkpointing
-    checkpoint_path=None,
-    overwrite_checkpoints=False,
-)
-```
-
-## Examples
-
-### Example 1: Basic Ancestry Inference
-
-```python
-import hail as hl
-from hvantk.algorithms.ancestry import run_ancestry_inference
-
-hl.init()
-
-# Load data
-query_mt = hl.read_matrix_table("my_cohort.mt")
-reference_mt = hl.read_matrix_table("1kg_phase3.mt")
-
-# Run with defaults
-result = run_ancestry_inference(
-    query_mt=query_mt,
-    reference_mt=reference_mt,
-    ancestry_col="super_pop",
-)
-
-# Print summary
-print(result.prediction_summary())
-# {'EUR': 450, 'AFR': 230, 'EAS': 180, 'SAS': 90, 'unassigned': 50}
-
-# Save results
-result.save("output/ancestry")
-```
-
-### Example 2: Conservative Assignment
-
-```python
-# Use higher probability threshold for more confident assignments
-result = run_ancestry_inference(
-    query_mt=query_mt,
-    reference_mt=reference_mt,
-    ancestry_col="super_pop",
-    min_prob=0.90,  # Higher threshold
-    n_pcs_classify=15,  # More PCs
-)
-
-# Check unassigned rate
-predictions = result.get_query_predictions()
-unassigned_rate = (predictions['predicted_ancestry'] == 'unassigned').mean()
-print(f"Unassigned rate: {unassigned_rate:.1%}")
-```
-
-### Example 3: Custom Visualization
-
-```python
-# Create custom PCA plot
-fig = result.plot_pca(
-    pc_x=1,
-    pc_y=2,
-    show_query_as_undefined=True,  # Show query as "Undefined"
-    figsize=(12, 10),
-    alpha=0.8,
-)
-fig.savefig("pca_custom.png", dpi=300)
-
-# Two-panel plot (full + zoomed)
-fig = result.plot_pca_panel(filter_population="EUR")
-fig.savefig("pca_panel.png", dpi=300)
-```
-
-### Example 4: Using with Downstream Analysis
-
-```python
-# Annotate original MatrixTable with ancestry
 annotated_mt = result.annotate_matrixtable(query_mt)
-
-# Filter to European samples
-eur_mt = annotated_mt.filter_cols(
-    annotated_mt.predicted_ancestry == "EUR"
-)
-
-# Run ancestry-stratified GWAS
-# ... continue with analysis
+eur_mt = annotated_mt.filter_cols(annotated_mt.predicted_ancestry == "EUR")
 ```
+
+**Advanced: projecting onto a fixed reference PC space.** `run_ancestry_inference`
+always fits PCA jointly. To instead fit PCA on the reference only and project query (or
+later) samples onto that fixed space without recomputing it:
+
+```python
+from hvantk.algorithms.ancestry import compute_pca, project_samples
+
+pca_result = compute_pca(reference_mt_filtered, n_pcs=10, compute_loadings=True)
+query_scores = project_samples(query_mt_filtered, loadings=pca_result.loadings, n_pcs=10)
+```
+
+`project_samples` requires the loadings table to carry an `af` field (present when
+`compute_pca` ran with `variant_qc` annotated, which it is here); it is not called by
+`run_ancestry_inference` itself.
+
+## Interpretation and caveats
+
+- **Joint PCA, not reference-fixed projection.** The default pipeline's PCA axes are
+  influenced by the query cohort, not just the reference. A query batch run twice
+  (alone, and alongside a different second batch) can land at slightly different PC
+  coordinates. If you need a stable, reusable PC space across runs, use the
+  `compute_pca()` + `project_samples()` path above instead.
+- **`--save-loadings` saves the joint run's loadings**, not a reference-only fit. Using
+  them later with `project_samples()` projects onto *this run's* combined PC space, not
+  a clean reference-only one.
+- **The variant-frequency filter is on alternate-allele frequency**, not minor allele
+  frequency — a variant with alt AF 0.95 passes the default `--max-af 0.99` filter even
+  though its *minor* allele frequency is 0.05.
+- **Random Forest hyperparameters are mostly fixed.** Only tree count (`--n-estimators`)
+  and the random seed are configurable; `max_features`, `min_samples_leaf` and
+  `class_weight="balanced"` are not exposed.
+- **`--min-prob` is inclusive**: a probability exactly equal to the threshold is
+  assigned, not marked unassigned.
+
+  | Threshold | Behavior |
+  |---|---|
+  | 0.50 | Aggressive; may misclassify admixed individuals. |
+  | 0.75 | Balanced (default). |
+  | 0.90 | Conservative; more `"unassigned"` but higher confidence. |
+
+- **Reference rows' `predicted_ancestry` in the output table is an in-sample
+  prediction** from the model trained on all reference data, not a held-out estimate.
+  For an honest accuracy figure, use `result.get_accuracy()` or the report's confusion
+  matrix, both from cross-validation.
 
 ## Troubleshooting
 
-### Common Issues
+**No shared variants, or too few.** `merge_matrixtables` raises if query and reference
+share 0 variants (check both use the same reference genome and that variants are
+normalized the same way) or fewer than `--min-shared-variants` (default 10,000) — the
+error names the actual count. Lowering the threshold is possible but not recommended;
+a genotyping-platform mismatch is a more likely root cause than a bad threshold.
 
-#### "No shared variants between query and reference"
+**A population has too few samples.** Training requires at least 2 populations and
+`min_samples_per_pop` (default 10, Python-only) samples in each; the error names the
+underprovisioned population(s). Merge rare populations into a broader label, or exclude
+them from the reference panel.
 
-- Ensure both MTs use the same reference genome
-- Check that variants are normalized (left-aligned, trimmed)
-- Verify row keys are `(locus, alleles)`
+**`KeyError: 's'` while merging or predicting.** Both MatrixTables must have their
+column key named literally `s` (Hail's `import_vcf` default). Re-key with
+`mt.key_cols_by("s")` (renaming the existing key field first if needed) before calling
+`run_ancestry_inference`.
 
-#### "Only N shared variants; need at least 10,000"
+**Many samples `"unassigned"`.** Likely admixed individuals, or a query cohort that
+does not match the reference panel's populations well. Try a lower `--min-prob`, or
+check that the panel actually covers your cohort's ancestries.
 
-- Your cohort may have been genotyped on a different platform
-- Consider using a more compatible reference panel
-- Use `--min-shared-variants` to lower the threshold (not recommended)
+**Cross-validation accuracy is low.** Reference populations may overlap in PC space.
+Try more PCs (`--n-pcs-classify 15` or higher, up to `--n-pcs`) or a panel with better
+population separation; some populations (e.g. closely related regional groups) are
+inherently hard to separate from PCA alone.
 
-#### "Population X has only N samples (need 10)"
-
-- Reference panel may have insufficient samples for some populations
-- Consider merging similar populations or excluding sparse ones
-
-#### Many samples marked "unassigned"
-
-- May indicate admixed individuals
-- Try lowering `--min-prob` threshold
-- Check if query cohort matches reference panel populations
-
-#### Cross-validation accuracy is low
-
-- Reference panel populations may overlap in PC space
-- Try using more PCs (`--n-pcs-classify 15`)
-- Some populations are inherently difficult to separate
-
-### Performance Tips
-
-1. **Use checkpointing** for large datasets: `--checkpoint-path /tmp/ancestry`
-2. **Skip LD pruning** if variants are pre-filtered: `--skip-ld-pruning`
-3. **Reduce PCs** if memory is limited: `--n-pcs 10`
+**Large datasets.** Use `--checkpoint-path` so a failed run can resume past the
+expensive merge/filter/LD-prune/PCA steps; `--skip-ld-pruning` if variants are already
+LD-pruned; and fewer `--n-pcs` if memory-constrained.
 
 ## References
 
@@ -481,12 +343,9 @@ eur_mt = annotated_mt.filter_cols(
 2. Price AL, et al. (2006). Principal components analysis corrects for stratification in genome-wide association studies. *Nat Genet.* 38(8):904-9.
 3. 1000 Genomes Project Consortium. (2015). A global reference for human genetic variation. *Nature.* 526(7571):68-74.
 
-## See Also
+## See also
 
-- [HGC Joint Genotyping](hgc.md) - Joint genotyping pipeline
-- [Usage Examples](../guide/usage.md) - General usage documentation
-- [Architecture](../architecture.md) - Project architecture
-
----
-
-See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.
+- [Ancestry examples](../examples/ancestry.md) - runnable CLI and Python scripts, including synthetic test data.
+- [1000 Genomes example](https://github.com/bigbio/hvantk/tree/main/examples/1k_genome) - build a reference panel MatrixTable and attach population labels.
+- [HGC joint genotyping](hgc.md) - build a cohort MatrixTable to use as the query input.
+- [Architecture](../architecture.md) - project architecture.

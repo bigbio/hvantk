@@ -25,3 +25,20 @@ def require_statsmodels():
     except ModuleNotFoundError as exc:
         raise ImportError(_STATSMODELS_HINT) from exc
     return smf
+
+
+_MATPLOTLIB_HINT = (
+    "matplotlib is required for PTM report plots, and is not part of the base "
+    "install. Install the 'viz' extra:\n"
+    "    pip install 'hvantk[viz]'\n"
+    "    poetry install --extras viz"
+)
+
+
+def require_matplotlib_pyplot():
+    """Return ``matplotlib.pyplot``, or raise ``ImportError`` naming the extra."""
+    try:
+        import matplotlib.pyplot as plt
+    except ModuleNotFoundError as exc:
+        raise ImportError(_MATPLOTLIB_HINT) from exc
+    return plt

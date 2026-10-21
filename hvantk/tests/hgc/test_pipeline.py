@@ -4,6 +4,7 @@ Test script for HGC Pipeline functionality
 This script tests the HGC pipeline module to ensure all components work correctly.
 """
 
+import json
 import tempfile
 import shutil
 from pathlib import Path
@@ -110,6 +111,19 @@ class TestPipelineState:
             assert loaded_state.config.output_dir == tmpdir
             assert PipelineStage.COMBINE_GVCFS.value in loaded_state.completed_stages
             assert loaded_state.start_time == "2026-01-14T10:00:00"
+
+    def test_state_load_ignores_removed_config_keys(self, tmp_path):
+        """A state file from 0.6.0 still loads: it carries the removed keep_intermediates."""
+        config = PipelineConfig(input_dir=str(tmp_path), output_dir=str(tmp_path))
+        state_path = tmp_path / "state.json"
+        PipelineState(config=config).save(state_path)
+        saved = json.loads(state_path.read_text())
+        saved["config"]["keep_intermediates"] = True
+        state_path.write_text(json.dumps(saved))
+
+        loaded_state = PipelineState.load(state_path)
+
+        assert loaded_state.config.output_dir == str(tmp_path)
 
 
 @pytest.mark.hail
@@ -244,3 +258,161 @@ def test_densify_stage_reads_the_vds_the_combine_stage_wrote(monkeypatch, tmp_pa
     )
     assert densify.call_args.kwargs["vds_path"] == runner.paths["vds"]
     assert runner.state.outputs["mt"] == runner.paths["mt"]
+
+
+def test_run_writes_the_pipeline_log(monkeypatch, tmp_path, caplog):
+    """run() writes logs/pipeline_<timestamp>.log with the messages of every hgc module,
+    and detaches the file handler when it ends."""
+    import logging
+
+    caplog.set_level(logging.INFO, logger="hvantk.algorithms.hgc")
+    # No Hail start-up; the stand-in logs as the qc module does.
+    monkeypatch.setattr(
+        PipelineRunner,
+        "_initialize_hail",
+        lambda self: logging.getLogger("hvantk.algorithms.hgc.qc").info("a qc message"),
+    )
+    config = PipelineConfig(
+        input_dir=str(tmp_path),
+        output_dir=str(tmp_path / "out"),
+        skip_combine_gvcfs=True,
+        vds_path=str(tmp_path / "cohort.vds"),
+        skip_vds_to_mt=True,
+        mt_path=str(tmp_path / "cohort.mt"),
+        skip_compute_sample_qc=True,
+        skip_compute_variant_qc=True,
+        skip_export_pvcf=True,
+    )
+    runner = PipelineRunner(config)
+    runner.run()
+
+    log_text = Path(runner.paths["log"]).read_text()
+    assert "Starting HGC pipeline execution" in log_text
+    assert "a qc message" in log_text
+    assert not any(
+        isinstance(h, logging.FileHandler)
+        for h in logging.getLogger("hvantk.algorithms.hgc").handlers
+    )
+
+
+@pytest.mark.hail
+def test_resumed_run_filters_with_the_earlier_runs_qc_tables(tmp_path):
+    """--apply-qc-filters on a resume that skips both QC stages filters with the tables
+    an earlier run left in the output directory, never exporting an unfiltered VCF, and
+    stops before any stage when they are not there."""
+    import gzip
+
+    import hail as hl
+
+    mt = hl.balding_nichols_model(
+        n_populations=2, n_samples=20, n_variants=50, n_partitions=2
+    )
+    mt = mt.key_cols_by(s=hl.str(mt.sample_idx))
+    # Sample "0" is never called and the first five variants are called in half the
+    # samples: both fail the 0.85 call-rate thresholds.
+    mt = mt.annotate_entries(
+        GT=hl.or_missing(
+            (mt.s != "0") & ~((mt.locus.position <= 5) & (mt.sample_idx % 2 == 0)),
+            mt.GT,
+        )
+    )
+    mt_path = str(tmp_path / "input.mt")
+    mt.write(mt_path)
+    dummy_vds = tmp_path / "unused.vds"
+    dummy_vds.mkdir()
+
+    def runner(**overrides):
+        return PipelineRunner(
+            PipelineConfig(
+                input_dir=str(tmp_path),
+                output_dir=str(tmp_path / "output"),
+                skip_combine_gvcfs=True,
+                vds_path=str(dummy_vds),
+                skip_vds_to_mt=True,
+                mt_path=mt_path,
+                **overrides,
+            )
+        )
+
+    resume = dict(
+        skip_compute_sample_qc=True, skip_compute_variant_qc=True, apply_qc_filters=True
+    )
+    with pytest.raises(FileNotFoundError, match="cohort_sample_qc.ht"):
+        runner(**resume).run()
+
+    runner(skip_export_pvcf=True).run()
+    resumed = runner(**resume)
+    resumed.run()
+
+    with gzip.open(resumed.paths["pvcf"], "rt") as fh:
+        lines = [line for line in fh if not line.startswith("##")]
+    samples = lines[0].rstrip("\n").split("\t")[9:]
+    positions = {int(line.split("\t")[1]) for line in lines[1:]}
+    assert len(samples) == 19 and "0" not in samples
+    assert positions and not positions & {1, 2, 3, 4, 5}
+
+
+@pytest.mark.hail
+def test_pipeline_qc_filter_and_report_use_the_qc_tables_without_an_annotated_mt(
+    tmp_path,
+):
+    """``--apply-qc-filters`` and ``--generate-qc-report`` work from the QC tables the
+    compute stages wrote, and no QC-annotated MatrixTable copy is written (see
+    ``PipelineRunner._read_qc_table``)."""
+    import hail as hl
+
+    from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
+
+    mt = hl.balding_nichols_model(
+        n_populations=2, n_samples=10, n_variants=50, n_partitions=2
+    )
+    mt = mt.annotate_entries(
+        GQ=hl.int32(hl.rand_unif(10, 40)), DP=hl.int32(hl.rand_unif(5, 30))
+    )
+    # export_vcf (stage 5) requires a single string column key; balding_nichols_model
+    # keys columns by the integer sample_idx.
+    mt = mt.key_cols_by(s=hl.str(mt.sample_idx))
+    mt_path = str(tmp_path / "input.mt")
+    mt.write(mt_path)
+
+    # --skip-combine-gvcfs needs an existing --vds-path even though stage 1 never
+    # runs: PipelineConfig.validate() only checks that the path exists.
+    dummy_vds = tmp_path / "unused.vds"
+    dummy_vds.mkdir()
+
+    output_dir = tmp_path / "output"
+    config = PipelineConfig(
+        input_dir=str(tmp_path),
+        output_dir=str(output_dir),
+        skip_combine_gvcfs=True,
+        vds_path=str(dummy_vds),
+        skip_vds_to_mt=True,
+        mt_path=mt_path,
+        apply_qc_filters=True,
+        generate_qc_report=True,
+    )
+    assert config.validate() == []
+
+    runner = PipelineRunner(config)
+    state = runner.run()
+
+    assert state.errors == []
+    # In the output directory, not next to --mt-path.
+    assert (output_dir / "cohort_filtered.mt").exists()
+    report_path = Path(runner.paths["qc_report"])
+    assert report_path.exists()
+    assert report_path.stat().st_size > 0
+
+    # Each QC text file is delimited the way its extension says.
+    qc_dir = output_dir / "qc"
+    with open(qc_dir / "cohort_sample_qc.csv") as fh:
+        sample_header = fh.readline()
+    assert "," in sample_header
+    assert "\t" not in sample_header
+
+    with open(qc_dir / "cohort_variant_qc.tsv") as fh:
+        variant_header = fh.readline()
+    assert "\t" in variant_header
+
+    # Not even with both QC consumers on.
+    assert not (qc_dir / "cohort_with_qc.mt").exists()

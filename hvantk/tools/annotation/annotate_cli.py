@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("annotate")
 def annotate_group():
-    """Build gene- and cohort-level annotation artifacts."""
+    """Build gene- and cohort-level annotation datasets."""
 
 
 @annotate_group.command("spine")
@@ -207,6 +207,10 @@ def compose_cmd(spec, spine, prepared_opts, output, manifest):
     _validate_prepared_axes(feature_spec, prepared_paths)
 
     manifest_path = manifest or f"{output}.manifest.json"
+
+    from pathlib import Path
+
+    Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
 
     import hail as hl
 

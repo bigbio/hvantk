@@ -13,16 +13,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 
-import matplotlib.pyplot as plt
-
 from hvantk.algorithms.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
-from hvantk.algorithms.visualization.base import encode_figure_to_base64
-from hvantk.algorithms.ptm.plot import (
-    plot_distance_distribution,
-    plot_landscape_summary,
-    plot_overlap_by_category,
-    plot_population_af,
-)
+from hvantk.algorithms.ptm.constants import DEFAULT_FLANKING_CODONS, ENSEMBL_RELEASE
+
+# matplotlib (and hvantk.algorithms.ptm.plot / visualization.base, which import it at
+# module scope) is not a base dependency -- only generate_report's plotting path needs
+# it. Both are imported lazily, inside the functions that call them, and guarded by
+# optional_deps.require_matplotlib_pyplot() so a missing install names the 'viz' extra
+# instead of a bare ModuleNotFoundError, and generate_phase2_report (no plots) keeps
+# importing this module without matplotlib installed at all.
 
 if TYPE_CHECKING:  # avoid import-time Hail/statsmodels load for type hints
     from hvantk.algorithms.ptm.lmm import BinnedLMMResult, LMMResult
@@ -145,6 +144,15 @@ def _build_landscape_section(
     output_dir: Path,
     embed: bool,
 ) -> str:
+    from hvantk.algorithms.ptm.optional_deps import require_matplotlib_pyplot
+
+    require_matplotlib_pyplot()
+    from hvantk.algorithms.ptm.plot import (
+        plot_distance_distribution,
+        plot_landscape_summary,
+        plot_overlap_by_category,
+    )
+
     # Overview card
     ci_hi_str = (
         f"{result.enrichment_ci_high:.2f}" if result.enrichment_ci_high < 1e6 else "∞"
@@ -232,6 +240,11 @@ def _build_population_section(
     output_dir: Path,
     embed: bool,
 ) -> str:
+    from hvantk.algorithms.ptm.optional_deps import require_matplotlib_pyplot
+
+    require_matplotlib_pyplot()
+    from hvantk.algorithms.ptm.plot import plot_population_af
+
     overview = (
         "<div class='card-grid'>"
         f"<div class='card'><h3>Variants</h3>"
@@ -304,7 +317,7 @@ def _build_key_findings(
                 fold = population.mean_af_non_ptm / population.mean_af_ptm_site
                 bullets.append(
                     f"PTM-site variants are <strong>{fold:.1f}x rarer</strong> "
-                    f"in the population than non-PTM coding variants "
+                    f"in the population than non-PTM variants "
                     f"(mean AF {population.mean_af_ptm_site:.1e} vs "
                     f"{population.mean_af_non_ptm:.1e})."
                 )
@@ -312,13 +325,13 @@ def _build_key_findings(
                 fold = population.mean_af_ptm_site / population.mean_af_non_ptm
                 bullets.append(
                     f"PTM-site variants are <strong>{fold:.1f}x more common</strong> "
-                    f"in the population than non-PTM coding variants "
+                    f"in the population than non-PTM variants "
                     f"(mean AF {population.mean_af_ptm_site:.1e} vs "
                     f"{population.mean_af_non_ptm:.1e})."
                 )
             else:
                 bullets.append(
-                    f"PTM-site and non-PTM coding variants have similar mean AF "
+                    f"PTM-site and non-PTM variants have similar mean AF "
                     f"({population.mean_af_ptm_site:.1e})."
                 )
         else:
@@ -336,13 +349,16 @@ def _build_key_findings(
 
 def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
     paragraphs = []
+    default_flank_bp = DEFAULT_FLANKING_CODONS * 3
     if has_landscape:
         paragraphs.append(
             "<p><strong>Landscape:</strong> ClinVar P/LP and B/LB variants "
             "were cross-referenced with UniProt PTM sites mapped to GRCh38 genomic "
-            "coordinates via Ensembl GTF (release 113). A variant is classified as "
-            "'PTM site' if it overlaps a PTM-modified codon, 'proximal' if within "
-            "the flanking window (default: 5 codons / 15 bp), or 'non-PTM' otherwise. "
+            f"coordinates via Ensembl GTF (release {ENSEMBL_RELEASE}). A variant is "
+            "classified as 'PTM site' if it overlaps a PTM-modified codon, 'proximal' "
+            "if within the flanking window (default: "
+            f"{DEFAULT_FLANKING_CODONS} codons / {default_flank_bp} bp, "
+            "configurable via --flanking-codons), or 'non-PTM' otherwise. "
             "Overall enrichment was tested with Fisher's exact test on the 2×2 table "
             "of (P/B) × (PTM/non-PTM). Per-category enrichment tests each PTM type "
             "against all other PTM-proximal variants.</p>"
@@ -350,20 +366,22 @@ def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
     if has_population:
         paragraphs.append(
             "<p><strong>Population:</strong> gnomAD variant allele frequencies "
-            "were compared between PTM-site, proximal, and non-PTM coding positions. "
-            "Lower mean AF at PTM sites suggests purifying selection. The '% ultra-rare' "
-            "metric shows the fraction of variants with AF &lt; 10<sup>-4</sup>.</p>"
+            "were compared between PTM-site, proximal, and non-PTM variants (no "
+            "coding filter is applied; the comparison covers whatever the input "
+            "gnomAD table contains). Lower mean AF at PTM sites suggests purifying "
+            "selection. The '% ultra-rare' metric shows the fraction of variants "
+            "with AF &lt; 10<sup>-4</sup>.</p>"
         )
     paragraphs.append(
         "<p><strong>PTM categories:</strong> UniProt MOD_RES descriptions are mapped "
-        "to categories (phosphorylation, acetylation, methylation, ubiquitination, "
-        "glycosylation, sumoylation) by prefix matching. Unrecognized descriptions "
-        "are classified as 'other'.</p>"
+        "to categories (phosphorylation, acetylation, methylation) by prefix "
+        "matching. Unrecognized descriptions are classified as 'other'.</p>"
     )
     paragraphs.append(
         "<p><strong>Data sources:</strong> PTM sites from UniProt/Swiss-Prot "
-        "(reviewed human proteins). Gene models from Ensembl GRCh38 release 113. "
-        "Transcript resolution prioritizes MANE Select cross-references.</p>"
+        "(reviewed human proteins). Gene models from Ensembl GRCh38 "
+        f"(release {ENSEMBL_RELEASE}). Transcript resolution prioritizes MANE "
+        "Select cross-references.</p>"
     )
     return "<section><h2>Methods</h2>" + "".join(paragraphs) + "</section>"
 
@@ -379,6 +397,11 @@ def _build_footer() -> str:
 
 def _render_plot(plot_func, result, output_path: Path, embed: bool) -> str:
     """Call a plot function, return an <img> tag (base64 or file reference)."""
+    from hvantk.algorithms.ptm.optional_deps import require_matplotlib_pyplot
+
+    plt = require_matplotlib_pyplot()
+    from hvantk.algorithms.visualization.base import encode_figure_to_base64
+
     try:
         fig = plot_func(result, str(output_path))
         if embed:

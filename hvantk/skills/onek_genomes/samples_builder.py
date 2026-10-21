@@ -26,7 +26,7 @@ def build_onek_genomes_samples(parsed_input, ctx, **params):
     samples_path = raw_dir / "igsr_samples.tsv"
     if not samples_path.exists():
         raise FileNotFoundError(
-            f"Expected igsr_samples.tsv under {raw_dir}; run with --skip-download=false "
+            f"Expected igsr_samples.tsv under {raw_dir}; run without --skip-download "
             "or place the file there manually."
         )
     logger.info("Importing IGSR samples from %s", samples_path)

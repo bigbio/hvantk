@@ -17,11 +17,11 @@ datasets with provenance, and integrates them in analysis tools that help
 interpret genetic variants. It uses [Hail](https://hail.is/) for genome-scale tables and
 [AnnData](https://anndata.readthedocs.io/) for expression matrices.
 
-- **Data-source plugins.** More than 20 [sources](docs_site/guide/data-sources.md), among
-  them ClinVar, gnomAD, GTEx, UniProt and Expression Atlas. Each one builds with one
-  command, `hvantk reprocess <provider>:<dataset>`.
+- **Data-source plugins.** 21 [providers](docs_site/guide/data-sources.md), among them
+  ClinVar, gnomAD, GTEx, UniProt, dbNSFP and Expression Atlas. Each dataset builds with
+  one command, `hvantk reprocess <provider>:<dataset>`.
 - **Provenance on every dataset.** A build records its source fingerprint, schema,
-  builder commit and parameters, and a derived dataset keeps its parents.
+  plugin version and parameters, and a derived dataset keeps its parents.
 - **Drift detection.** `hvantk drift` compares a source's live fingerprint with the
   committed one. A scheduled job re-checks every source twice a month and opens pull
   requests for what changed.
@@ -58,8 +58,13 @@ hvantk plugins list
 hvantk reprocess hgnc:lookup --raw-dir data/hgnc --output hgnc.ht
 ```
 
-The output is a Hail table with a `.provenance.json` sidecar. The
-[Usage Guide](docs_site/guide/usage.md) covers the analysis tools.
+A second run into the same `--raw-dir` stops with `FileExistsError` because the raw file
+is already there. Add `--skip-download` to rebuild from it, or use a fresh `--raw-dir`.
+
+The output is a Hail table with a `hgnc.ht.provenance.json` sidecar. The
+[Quick start](docs_site/getting-started/quickstart.md) continues from here to gene sets
+and an enrichment test, and [Building datasets](docs_site/guide/usage.md) covers every
+build option.
 
 ## Workflow skills
 
@@ -76,19 +81,19 @@ says how to set up the site profile. They are not the data-source plugins under
 
 | Tool | Description | Command | Docs |
 |------|-------------|---------|------|
-| **Downloads** | Acquire external datasets (ClinVar, ClinGen, HGNC, etc.) | `hvantk download <source>` | [Data Sources](docs_site/guide/data-sources.md) |
-| **Dataset builds** | Build any plugin dataset (download → parse → build → drift check) | `hvantk reprocess <plugin>:<dataset>` | [Usage Guide](docs_site/guide/usage.md) |
-| **HGC** | Joint genotyping pipeline (GVCF combining, QC, format conversion) | `hvantk hgc` | [HGC](docs_site/tools/hgc.md) |
-| **Ancestry** | Ancestry inference (PCA + Random Forest classification) | `hvantk ancestry-inference` | [Ancestry](docs_site/tools/ancestry.md) |
-| **QTL Cascade** | Molecular QTL integration (eQTL + pQTL cascade, colocalization ABF) | `hvantk qtlcascade` | [QTL Cascade](docs_site/tools/qtlcascade.md) |
-| **EnrichEx** | Gene set enrichment (overlap testing + rare variant burden) | `hvantk enrichex` | [EnrichEx](docs_site/tools/enrichex.md) |
-| **PS-ROC** | Pathogenicity score ROC evaluation against ClinVar labels | `hvantk psroc` | [PS-ROC](docs_site/tools/psroc.md) |
-| **PTM** | Post-translational modification variant classification | `hvantk ptm` | [PTM](docs_site/tools/ptm.md) |
-| **Expression** | Expression analysis (summarize, marker extraction) | `hvantk expression` | [Usage Guide](docs_site/guide/usage.md) |
-| **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Usage Guide](docs_site/guide/usage.md#gene-level-annotation-matrices) |
-| **Cohort** | Validate and attach external cohorts | `hvantk cohort` | [Usage Guide](docs_site/guide/usage.md#external-cohorts) |
+| **Dataset builds** | Build any plugin dataset (download → parse → build → drift check) | `hvantk reprocess <provider>:<dataset>` | [Building datasets](docs_site/guide/usage.md) |
+| **Downloads** | Fetch raw files for the sources that allow it | `hvantk download <source>` | [Data sources](docs_site/guide/data-sources.md) |
+| **HGC** | Joint genotyping: gVCF combining, QC, format conversion | `hvantk hgc` | [HGC](docs_site/tools/hgc.md) |
+| **Ancestry** | Ancestry inference (PCA + Random Forest) | `hvantk ancestry-inference` | [Ancestry](docs_site/tools/ancestry.md) |
+| **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Gene annotation matrix](docs_site/tools/annotate.md) |
+| **Cohort** | Validate external cohorts, run a gene burden test, attach them to the matrix | `hvantk cohort` | [External cohorts](docs_site/tools/cohort.md) |
 | **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Re-rank](docs_site/tools/rerank.md) |
-| **Gene sets** | Extract or prepare GeneSetCollection files from curated tables | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
+| **EnrichEx** | Gene-set enrichment: overlap tests and rare-variant burden | `hvantk enrichex` | [EnrichEx](docs_site/tools/enrichex.md) |
+| **Gene sets** | Build gene-set files from ClinGen, GenCC, COSMIC or your own panels | `hvantk genesets` | [Gene sets](docs_site/tools/genesets.md) |
+| **PS-ROC** | Pathogenicity-score ROC evaluation against ClinVar labels | `hvantk psroc` | [PS-ROC](docs_site/tools/psroc.md) |
+| **PTM** | Post-translational modification variant classification | `hvantk ptm` | [PTM](docs_site/tools/ptm.md) |
+| **QTL cascade** | Molecular QTL integration (eQTL → pQTL cascade, ABF colocalisation) | `hvantk qtlcascade` | [QTL cascade](docs_site/tools/qtlcascade.md) |
+| **Expression** | Expression matrices: describe, summarise, marker genes | `hvantk expression` | [Expression analysis](docs_site/tools/expression.md) |
 
 Plus the registry and operational commands: `hvantk plugins` and `hvantk tools` (inspect the
 plugin and tool registries), `hvantk catalog` (search the aggregated dataset catalog),
@@ -163,15 +168,19 @@ has the build sequence, an annotated `plugin.yaml`, the two-pass loader and the
 
 **Full docs site:** [https://bigbio.github.io/hvantk](https://bigbio.github.io/hvantk)
 
-- [Data Sources](docs_site/guide/data-sources.md): available annotations and how to acquire them
-- [Usage Guide](docs_site/guide/usage.md): dataset builds and the analysis tools
-- [Examples](docs_site/examples/index.md): tutorials and walkthroughs for each tool
-- [Architecture](docs_site/architecture.md): design patterns and extension points
+- [Installation](docs_site/getting-started/installation.md) and
+  [Quick start](docs_site/getting-started/quickstart.md)
+- [Building datasets](docs_site/guide/usage.md) and
+  [Data sources](docs_site/guide/data-sources.md): every dataset and how to build it
+- [Running on HPC](docs_site/guide/hpc-migration.md): the container image and Slurm jobs
+- [Examples](docs_site/examples/index.md): walk-throughs for each tool
+- [Architecture](docs_site/architecture.md): design and extension points
 - [Changelog](CHANGELOG.md): what changed in each release
 
 ## Citation
 
-If you use hvantk in your research, please cite:
+If you use hvantk in your research, please cite it as below. GitHub's "Cite this
+repository" button reads the same metadata from [`CITATION.cff`](CITATION.cff).
 
 ```bibtex
 @software{hvantk2024,

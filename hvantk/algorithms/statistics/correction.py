@@ -64,7 +64,10 @@ def apply_correction(
 
     elif method == "bonferroni":
         logger.debug(f"Applying Bonferroni correction (n={n_tests})")
-        adjusted = [min(1.0, p * n_tests) for p in p_values]
+        # min(1.0, nan) returns 1.0 (nan compares False either way round),
+        # silently turning a missing p-value into a "certain" one. Keep NaN,
+        # matching the benjamini-hochberg branch below.
+        adjusted = [p if np.isnan(p) else min(1.0, p * n_tests) for p in p_values]
         return adjusted
 
     elif method == "benjamini-hochberg":

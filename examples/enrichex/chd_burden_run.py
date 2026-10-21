@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """
-CHD cell-type burden analysis — ready for external host.
+Cell-type burden analysis on a MatrixTable with non-default field names.
 
-Adapts BurdenPipeline to the CHD cohort MatrixTable schema:
-  - Consequence field: 'Consequence' (capital C)
-  - AF field: 'gnomAD_AF' (camelCase)
-  - Prediction score field: 'vep.CADD_PHRED' (nested, capital)
-  - Phenotype: 'phe.is_case' in MT columns (extracted automatically)
-  - No GQ/DP in entries, no filters field → disable QC filters
+Shows how to point BurdenPipeline at a cohort MatrixTable whose schema differs
+from the EnrichEx defaults (gnomad_af, cadd_phred, consequence, phenotype table):
+  - Consequence field: 'Consequence'
+  - AF field: 'gnomAD_AF'
+  - Prediction score field: 'vep.CADD_PHRED' (nested struct, dot path)
+  - Phenotype: 'phe.is_case' in the MT column fields (no phenotype table)
+  - No 'filters' row field, so PASS filtering is off
+
+Edit build_variant_classes() to match your own field names.
 
 Usage:
     python chd_burden_run.py \
-        --cohort-mt /path/to/cohort.mt \
-        --gene-sets heart:/path/to/heart_cell_types.json \
-        --gene-sets brain:/path/to/brain_cell_types.json \
-        --output-dir /path/to/results \
+        --cohort-mt data/cohort.mt \
+        --gene-sets heart:gene_sets/heart_cell_types.json \
+        --gene-sets brain:gene_sets/brain_cell_types.json \
+        --output-dir results/celltype_burden \
         [--dry-run]
+
+--dry-run prints the run plan without starting Hail. A full run needs Hail.
 """
 
 from __future__ import annotations
@@ -36,7 +41,9 @@ logger = logging.getLogger("chd_burden")
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="CHD cell-type burden analysis")
+    p = argparse.ArgumentParser(
+        description="Cell-type burden analysis on a MatrixTable with custom field names"
+    )
     p.add_argument("--cohort-mt", required=True, help="Path to cohort MatrixTable")
     p.add_argument(
         "--gene-sets",
@@ -45,7 +52,7 @@ def parse_args():
         help="name:/path/to/collection.json (repeatable)",
     )
     p.add_argument(
-        "--output-dir", default="results/chd_burden", help="Output directory"
+        "--output-dir", default="results/celltype_burden", help="Output directory"
     )
     p.add_argument(
         "--phenotype-field",
@@ -83,11 +90,11 @@ def parse_args():
 
 
 def build_variant_classes(max_af: float, min_score: Optional[float] = None) -> Dict:
-    """Build variant class filters for the CHD schema.
+    """Build variant class filters for this MatrixTable schema.
 
-    Maps to the CHD MT fields:
-      - Consequence (capital C)
-      - gnomAD_AF (camelCase)
+    Maps to the MT row fields:
+      - Consequence (one consequence string per variant)
+      - gnomAD_AF (variants with a missing AF are dropped by the AF filter)
       - vep.CADD_PHRED (nested)
     """
     from hvantk.algorithms.enrichex.burden import VariantFilter
@@ -130,10 +137,6 @@ def build_variant_classes(max_af: float, min_score: Optional[float] = None) -> D
 
 def main():
     args = parse_args()
-
-    from hvantk.core.utils.hail_context import init_hail
-
-    init_hail(app_name="chd-burden")
 
     # Parse gene set collections
     gene_set_collections = {}
@@ -183,6 +186,10 @@ def main():
         return
 
     # ── Run ────────────────────────────────────────────────────────────
+    from hvantk.core.utils.hail_context import init_hail
+
+    init_hail(app_name="celltype-burden")
+
     t0 = time.time()
     combined_df = pipeline.run()
     elapsed = time.time() - t0

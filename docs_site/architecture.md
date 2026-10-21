@@ -17,9 +17,8 @@ substrate that the code layers depend on, neither imports upward.
 Placement rule: dataset-registry JSON, JSON schemas, and the validator /
 aggregator code that operates on them go in `resources/`. Per-plugin
 catalog JSON (`skills/<provider>/catalog/datasets.json`) stays with its
-plugin and is aggregated by `resources/unified_registry.py`. See the
-[Resources Module](#resources-module-resources) section below for the
-full rule.
+plugin and is aggregated by `resources/unified_registry.py`. See
+[Resources](#resources-module-resources) below for the full rule.
 
 Design priorities:
 
@@ -28,7 +27,8 @@ Design priorities:
 2. **Manifest-driven** — plugins declare themselves via `plugin.yaml`; the loader
    discovers descriptively first (no imports), binds executable callables lazily.
 3. **Provenance everywhere** — every dataset carries a `Provenance` (plugin,
-   version, source fingerprint, schema id, build timestamp, derivation parents).
+   dataset, plugin version, source fingerprint, schema id, build timestamp,
+   derivation parents).
 4. **Backend-portable + native escape hatch** — the dataset API works on either
    Hail or pandas; algorithms that legitimately need raw Hail use
    `core_io.load_native` / `save_native` (zero-cost passthrough with provenance).
@@ -37,110 +37,183 @@ Design priorities:
 
 ```text
 hvantk/
-├── __main__.py            # Main CLI entry point
+├── hvantk.py / __main__.py   # CLI entry point (aggregates all subcommands)
 │
-├── core/                  # L1: Core infrastructure
-│   ├── config.py          # Configuration management
-│   ├── io/                # Dataset load/save (Hail Tables, AnnData, etc.)
-│   ├── tool/              # tool manifest discovery (descriptive)
-│   ├── models/            # Domain model types
-│   │   ├── annotation_table.py  # AnnotationTable dataset type
-│   │   ├── expression_matrix.py # ExpressionMatrix dataset type (AnnData-only)
-│   │   ├── variant_matrix.py    # VariantMatrix dataset type (Hail MatrixTable)
-│   │   ├── gene_set.py          # GeneSet dataset type
-│   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
-│   │   ├── build_context.py     # BuildContext passed to plugin builders
-│   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
-│   │   └── provenance.py        # Source-fingerprint provenance stamping
-│   ├── plugin/            # Plugin system
-│   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
-│   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
-│   │   ├── run_builder.py # run_builder_for_spec() — build orchestrator
-│   │   ├── drift_runner.py# Drift probe execution
-│   │   └── drift_ledger.py# Rebuild-ledger rows (shared by drift --regenerate and the drift bot)
-│   ├── utils/             # Cross-cutting utilities
-│   │   ├── hail_context.py   # Idempotent Hail init
-│   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
-│   │   ├── qtl_helpers.py    # GTEx variant-ID parsing (shared by eqtl/pqtl)
-│   │   ├── bgzf.py           # BGZF utilities
-│   │   ├── file_utils.py     # File I/O helpers
-│   │   ├── gene_sets.py      # Gene set utilities
-│   │   ├── geneset_io.py     # Gene set parsing / validation
-│   │   ├── genome.py         # Genome/contig utilities (contig_recoding)
-│   │   ├── table_utils.py    # Hail Table manipulation helpers
-│   │   └── http.py           # retrying HTTP helper (drift probes, downloaders)
-│   ├── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
-│   │   ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
-│   │   ├── variant_table.py      # VariantTableStreamer (clinvar base)
-│   │   └── gene_catalog.py       # GeneCatalogStreamer (hgnc base)
-│   └── ontology/          # OBO / MONDO ontology parsers
-│       ├── obo.py             # Generic OBO parser
-│       └── mondo.py           # MONDO disease-category map (MONDO_DISEASE_CATEGORIES)
+├── core/                     # L1: shared infrastructure (no domain logic)
+│   ├── config.py                 # Configuration management
+│   ├── io/                       # Dataset load/save (Hail, AnnData) + load_native/save_native
+│   │   ├── anndata_io.py            # AnnData on-disk I/O
+│   │   └── legacy_artifacts.py      # Legacy loader for pre-plugin Hail Tables
+│   ├── tool/                     # Tool-manifest system (hvantk tools list/describe; metadata only)
+│   │   ├── api.py                   # Stable tool contracts
+│   │   └── loader.py                # Tool manifest discovery
+│   ├── models/                   # Dataset types: AnnotationTable, ExpressionMatrix,
+│   │   │                         #   VariantMatrix, GeneSet, Provenance, BuildContext, col() DSL
+│   │   ├── annotation_table.py      # AnnotationTable dataset type
+│   │   ├── expression_matrix.py     # ExpressionMatrix dataset type (AnnData-only)
+│   │   ├── variant_matrix.py        # VariantMatrix dataset type (Hail MatrixTable)
+│   │   ├── gene_set.py              # GeneSet dataset type
+│   │   ├── artifact.py              # Artifact union of the four dataset types above
+│   │   ├── backends.py              # AlgorithmMeta, Backend, @algorithm decorator
+│   │   ├── build_context.py         # BuildContext passed to plugin builders
+│   │   ├── anndata_utils.py         # annotate_column_summary_ad (AnnData obs summary)
+│   │   ├── provenance.py            # Provenance: source-fingerprint stamping
+│   │   └── _expr.py                 # col() expression DSL, compiled to either backend
+│   ├── plugin/                   # Plugin system
+│   │   ├── api.py                   # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
+│   │   ├── loader.py                # Plugin discovery (filesystem + entry points)
+│   │   ├── run_builder.py           # run_builder_for_spec() — build orchestrator
+│   │   ├── drift_runner.py          # Drift probe execution
+│   │   ├── drift_ledger.py          # Rebuild-ledger rows (shared by drift --regenerate and the drift bot)
+│   │   └── skill_spec.py            # SKILL.md's nine-section contract, checked as code
+│   ├── utils/                    # Cross-cutting utilities
+│   │   ├── hail_context.py          # Idempotent Hail init
+│   │   ├── hail_helpers.py          # create_table_base, cleanup_temp_file
+│   │   ├── qtl_helpers.py           # GTEx variant-ID parsing (shared by eqtl/pqtl)
+│   │   ├── raw_inputs.py            # Resolve a no-parse dataset's raw input file
+│   │   ├── lazy_exports.py          # PEP 562 lazy package exports
+│   │   ├── bgzf.py                  # BGZF utilities
+│   │   ├── file_utils.py            # File I/O helpers
+│   │   ├── gene_sets.py             # Gene set utilities
+│   │   ├── geneset_io.py            # Gene set parsing / validation
+│   │   ├── genome.py                # Genome/contig utilities (contig_recoding)
+│   │   ├── table_utils.py           # Hail Table manipulation helpers
+│   │   └── http.py                  # Retrying HTTP helper (drift probes, downloaders)
+│   ├── streamers/                # Base streamer classes (consumed by algorithms/ + skills/)
+│   │   ├── gene_disease_table.py    # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
+│   │   ├── variant_table.py         # VariantTableStreamer (clinvar base)
+│   │   └── gene_catalog.py          # GeneCatalogStreamer (hgnc base)
+│   └── ontology/                 # OBO / MONDO ontology parsers
+│       ├── obo.py                   # Generic OBO parser
+│       └── mondo.py                 # MONDO disease-category map (MONDO_DISEASE_CATEGORIES)
 │
-├── algorithms/            # L4-L5: Analysis pipelines
-│   ├── annotation/        # Variant annotation pipeline
-│   ├── ancestry/          # Population ancestry inference
-│   ├── enrichex/          # Gene set enrichment analysis
-│   ├── expression/        # Expression data processing
-│   ├── hgc/               # Joint genotyping (HGC) pipeline
-│   ├── psroc/             # Pathogenicity score evaluation
-│   ├── ptm/               # Post-translational modification analysis
-│   ├── qtlcascade/        # QTL cascade analysis
-│   ├── statistics/        # Statistical utilities
-│   ├── burden/            # rare-variant burden
-│   ├── cohort/            # external cohort handling
-│   ├── rerank/            # multi-omic gene re-ranking
-│   └── visualization/     # Shared visualization helpers
+├── algorithms/                # Analysis pipelines (consume datasets)
+│   ├── ancestry/                  # Population ancestry inference
+│   ├── annotation/                # Variant annotation pipeline
+│   ├── burden/                    # Rare-variant burden testing
+│   ├── cohort/                    # External cohort validation + attachment
+│   ├── enrichex/                  # Gene set enrichment + burden analysis
+│   ├── expression/                # Expression (AnnData) processing
+│   ├── hgc/                       # Joint genotyping (HGC) pipeline
+│   ├── psroc/                     # Pathogenicity score ROC evaluation
+│   ├── ptm/                       # Post-translational modification analysis
+│   ├── qtlcascade/                # QTL cascade analysis
+│   ├── rerank/                    # Multi-omic gene re-ranking
+│   ├── statistics/                # Statistical utilities
+│   └── visualization/             # Shared visualization helpers
 │
-├── skills/                # L2-L3: Per-provider data plugins (21 providers;
-│                          #   a selection is shown -- see "Current providers" below
-│                          #   for the full list)
-│   ├── _conventions/      # Shared plugin contract (SKILL.md)
-│   ├── _hooks/            # Plugin lifecycle hooks
-│   ├── clingen/           # ClinGen gene-disease validity
-│   ├── clinvar/           # ClinVar variant annotations
-│   ├── cptac/             # CPTAC proteomics (expression/, phospho/)
-│   ├── expression_atlas/  # Expression Atlas bulk RNA-seq
-│   ├── gencc/             # GenCC gene-disease assertions
-│   ├── gtex_eqtl/         # GTEx eQTL data
-│   ├── gwas_catalog/      # GWAS Catalog
-│   ├── hgnc/              # HGNC gene nomenclature
-│   ├── insider/           # INSIDER protein-protein interaction sites
-│   ├── msigdb/            # MSigDB gene sets
-│   ├── peptideatlas/      # PeptideAtlas proteomics
-│   ├── ucsc_cellbrowser/  # UCSC Cell Browser single-cell RNA-seq
-│   └── uniprot_ptm/       # UniProt PTM annotations
+├── skills/                    # Per-provider data plugins (21 providers; a selection is
+│   │                          #   shown -- see "Current providers" below for the full list)
+│   ├── _conventions/              # Shared plugin contract (SKILL.md)
+│   ├── _hooks/                    # Plugin lifecycle hooks
+│   ├── clingen/                   # ClinGen gene-disease validity
+│   ├── clinvar/                   # ClinVar variant annotations
+│   ├── cptac/                     # CPTAC proteomics (expression/, phospho/)
+│   ├── expression_atlas/          # Expression Atlas bulk RNA-seq
+│   ├── gencc/                     # GenCC gene-disease assertions
+│   ├── gtex_eqtl/                 # GTEx eQTL data
+│   ├── gwas_catalog/              # GWAS Catalog
+│   ├── hgnc/                      # HGNC gene nomenclature
+│   ├── insider/                   # INSIDER protein-protein interaction sites
+│   ├── msigdb/                    # MSigDB gene sets
+│   ├── peptideatlas/              # PeptideAtlas proteomics
+│   ├── ucsc_cellbrowser/          # UCSC Cell Browser single-cell RNA-seq
+│   └── uniprot_ptm/               # UniProt PTM annotations
 │
-├── tools/                 # CLI command implementations (replaces legacy commands/)
-│   ├── ancestry/          # Ancestry CLI subcommands
-│   ├── annotation/        # Annotation CLI subcommands
-│   ├── enrichex/          # EnrichEx CLI subcommands
-│   ├── expression/        # Expression analysis commands
-│   ├── genesets/          # Gene set extraction/preparation
-│   ├── hgc/               # HGC CLI subcommands
-│   ├── infra/             # Installation check, BGZF validation, utils
-│   ├── cohort/            # Cohort validate / burden / attach
-│   ├── rerank/            # Re-ranking CLI
-│   ├── training_sets/     # Training-set construction (library; no CLI command)
-│   ├── plugins/           # hvantk plugins / hvantk drift commands
-│   ├── ptm/               # PTM CLI subcommands
-│   └── qtl/               # QTL CLI subcommands
+├── tools/                     # CLI command implementations
+│   ├── plugins/                   # hvantk reprocess / drift / plugins / tools commands
+│   ├── infra/                     # Installation check, BGZF validation, utils
+│   ├── hgc/                       # HGC CLI subcommands
+│   ├── genesets/                  # Gene set extraction/preparation
+│   ├── training_sets/             # Training-set construction (library; no CLI command yet)
+│   ├── ancestry/                  # Ancestry CLI subcommands
+│   ├── annotation/                # Annotation CLI subcommands
+│   ├── cohort/                    # Cohort validate / burden / attach
+│   ├── enrichex/                  # EnrichEx CLI subcommands
+│   ├── expression/                # Expression analysis commands
+│   ├── ptm/                       # PTM CLI subcommands
+│   ├── qtl/                       # QTL CLI subcommands
+│   └── rerank/                    # Re-ranking CLI
 │
-├── resources/             # Data catalog and schemas
-│   ├── schemas/           # JSON schema definitions
-│   ├── ensembl_release.py # pinned Ensembl release / GTF URL
-│   ├── drift_ledger.json  # rebuild ledger: one row per accepted fingerprint bump
-│   └── unified_registry.py# Aggregates the per-plugin catalog/datasets.json files
+├── resources/                  # Substrate: data catalog and schemas
+│   ├── schemas/                    # JSON schema definitions
+│   ├── ensembl_release.py          # Pinned Ensembl release / GTF URL
+│   ├── drift_ledger.json           # Rebuild ledger: one row per accepted fingerprint bump
+│   └── unified_registry.py         # Aggregates the per-plugin catalog/datasets.json files
 │
-└── tests/                 # Test suite
-    ├── conftest.py        # Pytest fixtures (hail_session, etc.)
-    ├── testdata/          # Test data fixtures
-    ├── hgc/               # HGC tests
-    ├── ancestry/          # Ancestry tests
-    ├── psroc/             # PSROC tests
-    ├── enrichex/          # EnrichEx tests
-    └── test_*.py          # Unit and integration tests
+└── tests/                      # Top-level test suite (see Testing Strategy below)
+    ├── conftest.py                 # Pytest fixtures (hail_session, etc.)
+    ├── testdata/                   # Shared test data fixtures
+    └── test_*.py                   # Unit and integration tests
 ```
+
+## Module Details
+
+Purpose and key contents of each top-level package. See Project Structure
+above for the full file layout.
+
+### Core Module (`core/`)
+
+Shared infrastructure used by every other layer: no domain logic. Holds
+configuration (`config.py`), the four dataset types and their provenance /
+build-context plumbing (`models/`), the plugin and tool manifest systems
+(`plugin/`, `tool/`), the dataset I/O layer (`io/`), and cross-cutting
+helpers (`utils/`, `streamers/`, `ontology/`).
+
+### Skills Module (`skills/`)
+
+Per-provider data plugins. Each provider folder contains `plugin.yaml`,
+`builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`,
+and `tests/`. Multi-dataset providers (e.g., `cptac/`) have one sub-folder per
+dataset.
+
+**Current providers** (21): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`,
+`cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`,
+`gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`,
+`onek_genomes`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
+
+Each plugin's builder returns one of the four dataset types — see
+[Dataset Contract](#2-dataset-contract) below for how each is keyed and
+stored.
+
+### Tools Module (`tools/`)
+
+Top-level CLI command implementations.
+
+**Key sub-packages**:
+- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/describe/errors/validate`,
+  `hvantk tools list/describe/errors/validate`
+- `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
+- `genesets/` - Gene set extraction/preparation
+- `training_sets/` - Training-set construction (library only; no CLI command yet)
+- `ancestry/`, `annotation/`, `cohort/`, `enrichex/`, `expression/`, `ptm/`, `qtl/`, `rerank/` -
+  Per-pipeline CLI subcommands
+- `infra/` - Installation check, BGZF validation, utils
+
+### Resources Module (`resources/`)
+
+**Purpose**: Substrate-level data registry and schema definitions.
+Peer of `core/`, not a layer above it.
+
+**Contents**:
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads the per-plugin catalog JSON under `skills/<provider>/catalog/` declared via each plugin's `plugin.yaml`; there is no legacy fallback.
+- `schemas/` - JSON schema definitions (`cohort_manifest.schema.json`, `feature_spec.schema.json`, `selection_policy.schema.json`), each read directly by its consumer via `jsonschema.validate()` -- e.g. `hvantk/algorithms/cohort/spec.py`, `hvantk/algorithms/annotation/spec.py`, `hvantk/algorithms/rerank/selection.py`.
+- Catalog entries are validated separately: `hvantk plugins validate` (`hvantk/tools/plugins/plugins_cli.py`) checks each `catalog/datasets.json` entry against `hvantk/core/plugin/catalog_entry.schema.json`.
+
+**Placement rule** (what goes here vs. nearby alternatives):
+
+| Lives in | Use for |
+|---|---|
+| `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
+| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON declared via each plugin's `plugin.yaml`. |
+| `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
+| `core/models/` | Dataset types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
+
+**Dependency direction**: `resources/` may be imported by `algorithms/`,
+`skills/`, and `tools/`. It must NOT import from any of those — like
+`core/`, it is substrate. This is enforced by
+`test_resources_does_not_import_upward` in
+[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py).
 
 ## Design Principles
 
@@ -161,7 +234,7 @@ The codebase is organized by function and biological domain:
   (`create_table_base`, `cleanup_temp_file`); QTL-shared helpers in
   `hvantk/core/utils/qtl_helpers.py`.
 
-**Analysis Pipelines** (separate modules):
+**Analysis Pipelines** (separate modules under `algorithms/`, highlights):
 - `hgc/` - Joint genotyping and cohort analysis
 - `ancestry/` - Population ancestry inference
 - `psroc/` - Pathogenicity score evaluation
@@ -189,10 +262,12 @@ Every data product is one of four dataset types in
 | `VariantMatrix` | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |
 
-Each dataset carries a `Provenance` record (plugin, version, source
-fingerprint, schema id, build timestamp, derivation `parents`). The
-`@algorithm` decorator chains input provenances onto output datasets
-automatically, so the build graph is preserved end-to-end.
+Each dataset carries a `Provenance` record: `plugin`, `dataset`,
+`plugin_version`, `source_fingerprint`, `schema_id`, `build_timestamp`,
+`builder_commit`, an optional `build_parameters` dict, and `parents` (the
+input datasets' provenances, for lineage). The `@algorithm` decorator chains
+input provenances onto output datasets automatically, so the build graph is
+preserved end-to-end.
 
 `AnnotationTable` exposes a **portable query API** (`filter`, `select`, `join`,
 `with_columns`, `group_by().agg()`) via the [`col(...)`](https://github.com/bigbio/hvantk/blob/main/hvantk/core/models/_expr.py)
@@ -238,12 +313,12 @@ sequenceDiagram
     Reg-->>CLI: DatasetSpec (lazy bind on first access)
     CLI->>Probe: compute source fingerprint
     Probe-->>CLI: probe dict
-    CLI->>CLI: BuildContext(plugin, version, fingerprint, …)
+    CLI->>CLI: BuildContext(plugin, dataset, plugin_version, fingerprint, …)
     CLI->>Build: (parsed_input, ctx, **params)
     Build-->>CLI: AnnotationTable(provenance=ctx.provenance(schema_id=…))
     CLI->>CLI: validate artifact_type + schema_id
-    CLI->>IO: dataset.save(path)
-    IO-->>IO: write data + sidecar .provenance.json
+    CLI->>IO: dataset.save(output_path)
+    IO-->>IO: write data + a matching *.provenance.json sidecar
 ```
 
 A minimal `plugin.yaml`:
@@ -324,7 +399,7 @@ informational and exit 0 when some units failed to load — `list` prints a one-
 summary on stderr and `describe` marks a dataset `FAILED TO LOAD` — and `describe`
 exits 1 only for a provider that is unknown or failed to load as a whole.
 
-### Streamer placement rule
+### Streamer Placement Rule
 
 Streamers (classes that yield batches over a built table) are split between a
 **base class** that lives above the skills layer and **per-provider subclasses**
@@ -338,7 +413,7 @@ multiple skills to live in `core/streamers/`.
 | Shared base class | `core/streamers/` | `GeneDiseaseTableStreamer` (`gene_disease_table.py`), `VariantTableStreamer` (`variant_table.py`), `GeneCatalogStreamer` (`gene_catalog.py`) |
 | Per-provider subclass | `skills/<provider>/streamers.py` | `ClinGenGeneDiseaseTableStreamer` (`clingen/streamers.py`), `GenCCGeneDiseaseTableStreamer` (`gencc/streamers.py`), `ClinVarVariantTableStreamer` (`clinvar/streamers.py`) |
 
-### 3. CLI-First Design
+### 4. CLI-First Design
 
 The primary interface is a well-structured CLI with domain-specific commands:
 
@@ -353,10 +428,10 @@ hvantk reprocess ucsc-cellbrowser:default --raw-dir data/ --output ucsc.h5ad \
 
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
-hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
+hvantk hgc compute-qc -i cohort.mt -o qc_results/
 ```
 
-### 4. Data Flow Patterns
+### 5. Data Flow Patterns
 
 #### Pattern 1: Builder → Table
 ```
@@ -369,121 +444,61 @@ Example:
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 ```
 In-process callers drive the same plugin builder via
-`run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, **params)`
+`run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, builder_commit=None, **params)`
 (in `hvantk/core/plugin/run_builder.py`), which takes a resolved `DatasetSpec`
-and returns the stamped `Provenance`.
+and returns the stamped `Provenance`. Left at `None`, `builder_commit` records the
+hvantk code that ran (how it is found:
+[Existing output and provenance](guide/usage.md#existing-output-and-provenance)).
 
 #### Pattern 2: Multi-Omics Integration
 ```
 Variant Table + Gene Table + Expression Matrix → Integrated Analysis
 ```
 
-Example:
+Variant and gene tables are Hail; expression is AnnData (`ExpressionMatrix`
+is AnnData-only — see Dataset Contract above):
+
 ```python
-# Load different data types
-variants = hl.read_table('clinvar.ht')
-genes = hl.read_table('ensembl.ht')
-expression = hl.read_matrix_table('ucsc.mt')
+import hail as hl
+import anndata as ad
 
-# Join for integrated analysis
-annotated = variants.annotate(
-    gene=genes[variants.gene_id],
-    expression=expression[variants.gene_id, :].expression.collect()
+variants = hl.read_table("data/clinvar.ht")
+genes = hl.read_table("data/ensembl.ht")  # keyed by gene_id; also carries gene_name
+expression = ad.read_h5ad("data/ucsc.h5ad")  # obs=cells/samples, var=genes
+
+# ClinVar has no gene_id: take the first gene symbol from info.GENEINFO
+# ("SYMBOL:GENEID|...") and join the Ensembl table on its gene_name column.
+variants = variants.annotate(
+    gene_symbol=hl.if_else(
+        hl.is_defined(variants.info.GENEINFO) & (hl.len(variants.info.GENEINFO) > 0),
+        variants.info.GENEINFO.split(":")[0],
+        hl.missing(hl.tstr),
+    )
 )
+annotated = variants.annotate(gene=genes.key_by("gene_name")[variants.gene_symbol])
+
+# Pull expression for a gene of interest from the AnnData var/X arrays --
+# a different backend, not a Hail join. See algorithms/rerank and
+# algorithms/qtlcascade for real multi-backend integration pipelines.
+gene_col = expression.var_names.get_loc("BRCA1")
+mean_expression = expression.X[:, gene_col].mean()
 ```
-
-## Module Details
-
-### Core Module (`core/`)
-
-**Purpose**: Shared infrastructure used by all other modules
-
-**Key Components**:
-- `config.py` - Configuration management, context settings
-- `constants.py` - Shared constants (e.g., Ensembl field definitions)
-- `utils/hail_context.py` - Hail session initialization and management
-- `protocols.py` - Protocol definitions for extensibility
-- `models/` - Domain dataset types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`)
-- `plugin/` - Plugin schema (`api.py`), discovery (`loader.py`), and builder dispatch (`run_builder.py`)
-
-**Design principle**: No domain logic, only infrastructure
-
-### Skills Module (`skills/`)
-
-**Purpose**: Per-provider data plugins. Each provider folder contains `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`. Multi-dataset providers (e.g., `cptac/`) have one sub-folder per dataset.
-
-**Current providers** (21): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`, `cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`, `gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `onek_genomes`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
-
-**Builder outputs**:
-- Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
-- Expression matrices rows=samples/cells (`obs`), columns=genes (`var`) → `ExpressionMatrix`
-- Multi-sample variant cohorts (variants × samples × genotypes) → `VariantMatrix`
-- Gene set collections → `GeneSet`
-
-### Tools Module (`tools/`)
-
-**Purpose**: Top-level CLI command implementations (replaces the legacy `commands/` directory)
-
-**Key sub-packages**:
-- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/describe/errors/validate` commands
-- `build/` - standalone reference panel builds (e.g. 1000 Genomes)
-- `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
-- `ancestry/`, `enrichex/`, `ptm/`, `qtl/` - Per-pipeline CLI subcommands
-- `infra/` - Installation check, BGZF validation, utils
-
-### HGC Module (`hgc/`)
-
-**Purpose**: High-performance joint genotyping workflows
-
-**Features**:
-- GVCF combination at scale
-- Format conversion (VDS ↔ MatrixTable ↔ VCF)
-- Comprehensive QC metrics and visualization
-- Optimized for large cohorts (1000s of samples)
-
-**Status**: Feature-complete, well-established module
-
-### Resources Module (`resources/`)
-
-**Purpose**: Substrate-level data registry and schema definitions.
-Peer of `core/`, not a layer above it.
-
-**Contents**:
-- (removed) the legacy per-domain `registry/` directory: the five-package refactor deleted it, and its genomics-only content moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json` files.
-- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads the per-plugin catalog JSON under `skills/<provider>/catalog/` declared via each plugin's `plugin.yaml`; there is no legacy fallback.
-- `schemas/` - JSON schema definitions (`cohort_manifest.schema.json`, `feature_spec.schema.json`, `selection_policy.schema.json`), each read directly by its consumer via `jsonschema.validate()` -- e.g. `hvantk/algorithms/cohort/spec.py`, `hvantk/algorithms/annotation/spec.py`, `hvantk/algorithms/rerank/selection.py`.
-- Catalog entries are validated separately: `hvantk plugins validate` (`hvantk/tools/plugins/plugins_cli.py`) checks each `catalog/datasets.json` entry against `hvantk/core/plugin/catalog_entry.schema.json`.
-
-**Placement rule** (what goes here vs. nearby alternatives):
-
-| Lives in | Use for |
-|---|---|
-| _(removed)_ | Was the legacy per-domain dataset registry directory under `resources/`, deleted in the five-package refactor; replaced by the per-plugin folder below. |
-| `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
-| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON declared via each plugin's `plugin.yaml`. |
-| `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
-| `core/models/` | Dataset types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
-
-**Dependency direction**: `resources/` may be imported by `algorithms/`,
-`skills/`, and `tools/`. It must NOT import from any of those — like
-`core/`, it is substrate. This is enforced by
-`test_resources_does_not_import_upward` in
-[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py).
 
 ## Testing Strategy
 
-Tests are organized to mirror the module structure:
+Tests mirror the module structure. Top-level suites run from
+[`hvantk/tests/`](https://github.com/bigbio/hvantk/tree/main/hvantk/tests):
+`conftest.py` provides shared fixtures (`hail_session`, etc.), `testdata/`
+holds shared fixtures, per-domain subdirectories (`ancestry/`, `annotation/`,
+`burden/`, `cohort/`, `enrichex/`, `hgc/`, `psroc/`, `rerank/`) hold that
+domain's tests, and top-level `test_*.py` files check cross-cutting behavior
+(plugin loading, dependency directions, CLI laziness, docs claims, and so on).
 
-```
-hvantk/tests/
-├── conftest.py        # Pytest fixtures (hail_session, etc.)
-├── test_*.py          # Unit and integration tests
-├── hgc/               # HGC module tests
-├── ancestry/          # Ancestry module tests
-├── psroc/             # PSROC module tests
-├── enrichex/          # EnrichEx module tests
-└── testdata/          # Test data fixtures
-```
+Every plugin additionally ships its own tests under
+`hvantk/skills/<provider>/tests/` (fixtures under `testdata/raw/`, snapshots,
+`test_builder.py`, `test_drift_probe.py`, …) — see
+[Plugin Contract](#3-plugin-contract-adding-a-data-source) above and the
+per-resource `SKILL.md` for the exact layout.
 
 ## Extension Points
 
@@ -510,7 +525,9 @@ checklist:
    `hvantk plugins errors`, which exits 1 if anything failed to load (`list`
    exits 0 regardless).
 
-See `hvantk/skills/_conventions/SKILL.md` for the full contract.
+See `hvantk/skills/_conventions/SKILL.md` for the full contract, and
+[Contributing](contributing.md#adding-a-new-data-provider-plugin) for the
+full step-by-step checklist.
 
 ### Adding a New Algorithm
 
@@ -564,8 +581,9 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 
     The short help is duplicated in the registry because listing the commands
     must not import them. `test_lazy_command_registry_matches_real_commands`
-    asserts your entry still matches the real command, so a later edit to the
-    docstring fails CI rather than silently staling `hvantk --help`.
+    (`hvantk/tests/test_top_level_cli.py`) asserts your entry still matches the
+    real command, so a later edit to the docstring fails CI rather than
+    silently staling `hvantk --help`.
 
 ## Dependencies
 

@@ -425,13 +425,15 @@ def filter_qc(
             else:
                 raise
 
-        # Get final counts
-        n_samples_final = mt_filtered.count_cols()
-        n_variants_final = mt_filtered.count_rows()
-
         # Save filtered MatrixTable
         click.echo("💾 Saving filtered MatrixTable...")
         mt_filtered.write(output, overwrite=overwrite)
+
+        # Counted from the written MatrixTable's metadata: counting the filtered one
+        # would run the whole filter once more before the write.
+        written = hl.read_matrix_table(output)
+        n_samples_final = written.count_cols()
+        n_variants_final = written.count_rows()
 
         # Report filtering results
         samples_removed = n_samples_initial - n_samples_final
@@ -565,6 +567,7 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         # Output summary
         if output:
             output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             if format == "csv":
                 # Combine summaries into CSV
                 all_stats = []
@@ -641,16 +644,10 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
     help="Specific plots to include (can be used multiple times)",
 )
 @click.option(
-    "--style",
-    type=click.Choice(["default", "publication"]),
-    default="default",
-    help="Plot style for embedded plots",
-)
-@click.option(
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
 @click.pass_context
-def qc_report(ctx, input, output, title, include_plots, style, dry_run):
+def qc_report(ctx, input, output, title, include_plots, dry_run):
     """
     Generate comprehensive HTML QC report with embedded plots.
 
@@ -661,7 +658,7 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --title "Cohort QC Analysis"
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --include-plots sample_overview variant_overview
-        hvantk hgc qc-report -i cohort_qc.mt -o report.html --style publication --dry-run
+        hvantk hgc qc-report -i cohort_qc.mt -o report.html --dry-run
     """
     from hvantk.algorithms.hgc import check_path_exists_and_readable
 
@@ -684,7 +681,6 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
             click.echo(f"   • Input MatrixTable: {input}")
             click.echo(f"   • Output HTML report: {output_path.absolute()}")
             click.echo(f"   • Report title: {title}")
-            click.echo(f"   • Plot style: {style}")
             if include_plots:
                 click.echo(f"   • Included plots: {', '.join(include_plots)}")
             else:

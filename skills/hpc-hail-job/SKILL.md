@@ -105,10 +105,12 @@ run fine through the same template, with a small request).
 
 The template `templates/hail-job.sbatch` sets up node-local scratch, binds it, the
 work root and the checkout into the container, caps Spark at the allocation, exports
-`PYTHONPATH` so the checkout's code runs, and runs the command inside the image from
-the log directory. `containers/hvantk_run.sh` is not its interactive equivalent: it
-sets no `PYTHONPATH`, does not bind the work root, and hardcodes `singularity`, so it
-runs the image's own installed copy, not the checkout. For an interactive shell, use
+`PYTHONPATH` so the checkout's code runs, passes the checkout's commit as
+`HVANTK_BUILDER_COMMIT` (the image has no git) so a dataset it builds records that
+commit, and runs the command inside the image from the log directory.
+`containers/hvantk_run.sh` is not its interactive equivalent: it sets no `PYTHONPATH`,
+does not bind the work root, and hardcodes `singularity`, so it runs the image's own
+installed copy, not the checkout. For an interactive shell, use
 `templates/run-in-image.sh` inside `srun --pty` instead.
 
 ## 4. Scale-up

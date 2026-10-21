@@ -3,10 +3,11 @@ CLI commands for QTL cascade analysis.
 
 Commands::
 
-    hvantk qtlcascade cascade  — Build the eQTL ⊕ pQTL cascade join
-    hvantk qtlcascade coloc    — Run colocalization on cascade genes
-    hvantk qtlcascade run      — Full pipeline (cascade + coloc + gene summary + report)
-    hvantk qtlcascade report   — Generate HTML report from existing results
+    hvantk qtlcascade cascade     — Build the eQTL ⊕ pQTL cascade join
+    hvantk qtlcascade coloc       — Run colocalization on cascade genes
+    hvantk qtlcascade run         — Full pipeline (cascade + coloc + gene summary + report)
+    hvantk qtlcascade report      — Generate HTML report from existing results
+    hvantk qtlcascade gwas-coloc  — GWAS locus colocalization against eQTL Catalogue eQTLs
 """
 
 import logging
@@ -20,6 +21,7 @@ from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_COLOC_WINDOW_KB,
     EQTL_CATALOGUE_DEFAULT_STUDY,
     DEFAULT_FINEMAP_SUPERPOP,
+    FINEMAP_SUPERPOPS,
 )
 
 logger = logging.getLogger(__name__)
@@ -211,7 +213,7 @@ def coloc_cmd(
 )
 @click.option(
     "--superpop",
-    type=str,
+    type=click.Choice(FINEMAP_SUPERPOPS),
     default=DEFAULT_FINEMAP_SUPERPOP,
     show_default=True,
     help="1000G super-population for the LD reference.",
@@ -289,14 +291,20 @@ def gwas_coloc_cmd(
         f"\nRegion {report['region']}  |  GWAS min-p {gmp_str}  |  "
         f"{res['n_genes_tested']} genes tested"
     )
-    click.echo(f"Top effector: {res['top_effector']} (PP4={res['top_PP4']})")
+    top_pp4 = res["top_PP4"]
+    top_pp4_str = f"{top_pp4:.3f}" if isinstance(top_pp4, float) else "n/a"
+    click.echo(f"Top effector: {res['top_effector']} (PP4={top_pp4_str})")
     if report["fine_map"]:
         fmr = report["fine_map"]
         if fmr["available"]:
+            susie_pp4 = fmr["coloc_susie_PP4"]
+            susie_pp4_str = (
+                f"{susie_pp4:.3f}" if isinstance(susie_pp4, float) else "n/a"
+            )
             click.echo(
                 f"Fine-map: credible sets GWAS={fmr['credible_sets_gwas']} "
                 f"eQTL={fmr['credible_sets_eqtl']}; "
-                f"coloc.susie PP4={fmr['coloc_susie_PP4']}"
+                f"coloc.susie PP4={susie_pp4_str}"
             )
         else:
             click.echo(f"Fine-map: {fmr['note']}", err=True)

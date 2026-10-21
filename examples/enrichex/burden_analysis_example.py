@@ -8,15 +8,23 @@ cases have excess rare variants in gene set genes compared to controls.
 Use Case: Test if Alzheimer's disease cases have increased burden of rare
 damaging variants in microglia genes.
 
-Note: This example creates synthetic test data for demonstration.
-In real analysis, you would use actual cohort MatrixTables and phenotype data.
+Note: This example creates synthetic test data for demonstration, so the
+phenotype is unrelated to the genotypes and no gene set is expected to be
+significant. In real analysis, you would use actual cohort MatrixTables and
+phenotype data.
+
+Requires Hail (starts a local Spark session). Writes to ./enrichex_burden_results/.
 """
 
 import json
 import logging
 from pathlib import Path
 import hail as hl
-from hvantk.algorithms.enrichex import run_burden_analysis
+from hvantk.algorithms.enrichex import (
+    VariantFilter,
+    apply_correction_and_flag_significance,
+    run_burden_analysis,
+)
 from hvantk.core.utils.hail_context import init_hail
 
 # Configure logging
@@ -100,8 +108,8 @@ def create_synthetic_cohort(n_samples=1000, n_variants=500):
         gnomad_af=hl.rand_unif(0.0, 0.01),
         # CADD score (typically from dbNSFP)
         cadd_phred=hl.rand_unif(15.0, 35.0),
-        # VEP consequence
-        most_severe_consequence=hl.literal(
+        # VEP most severe consequence (one string per variant)
+        consequence=hl.literal(
             [
                 "missense_variant",
                 "synonymous_variant",
@@ -167,8 +175,9 @@ def create_gene_sets():
     Define gene sets for burden testing.
 
     In real analysis, you would load from JSON:
-        with open("gene_sets.json") as f:
-            gene_sets = json.load(f)["gene_sets"]
+        from hvantk.algorithms.enrichex import GeneSetCollection
+        collection = GeneSetCollection.load("gene_sets.json")
+        gene_sets = {gs.name: sorted(gs.genes) for gs in collection}
     """
     return {
         "Microglia": [
@@ -205,6 +214,49 @@ def create_gene_sets():
         "Astrocytes": ["GFAP", "AQP4", "SLC1A2", "SLC1A3", "ALDOC", "GJA1"],
         "AD_Risk_Genes": ["APOE", "CLU", "CR1", "PICALM", "BIN1", "ABCA7", "SORL1"],
     }
+
+
+def run_burden_and_correct(
+    mt, phenotypes_ht, gene_sets, phenotype_field, phenotype_type, output_path
+):
+    """Run the burden regression and add p_adjusted / significant like the CLI.
+
+    run_burden_analysis() returns the raw regression table (or None when no gene
+    set is testable); the multiple-testing correction is a separate step. As in
+    `hvantk enrichex burden`, it counts every gene set in the input, including
+    sets that were not testable.
+    """
+    # Rare (AF <= 0.1%), CADD >= 25. pass_only=False because VariantFilter
+    # defaults to PASS-only filtering when a `filters` row field exists.
+    variant_filter = VariantFilter(max_af=0.001, min_score=25.0, pass_only=False)
+
+    result_ht = run_burden_analysis(
+        cohort_mt=mt,
+        phenotype_ht=phenotypes_ht,
+        gene_sets=gene_sets,
+        phenotype_field=phenotype_field,
+        phenotype_type=phenotype_type,
+        covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
+        variant_filter=variant_filter,
+        genotype_aggregation="hets",
+    )
+    if result_ht is None:
+        logger.warning("No testable gene sets for phenotype %s", phenotype_field)
+        return None
+
+    df = result_ht.to_pandas()
+    # Hail returns nullable Float64 columns; plain floats turn missing into NaN.
+    for col in ("beta", "standard_error", "odds_ratio", "ci_lower", "ci_upper"):
+        if col in df.columns:
+            df[col] = df[col].astype(float)
+    df = apply_correction_and_flag_significance(
+        df, correction="benjamini-hochberg", alpha=0.05, n_total=len(gene_sets)
+    )
+    df = df.sort_values("p_value")
+
+    df.to_csv(output_path, sep="\t", index=False)
+    logger.info(f"\nSaved {phenotype_type} phenotype results to: {output_path}")
+    return df
 
 
 def main():
@@ -250,85 +302,69 @@ def main():
     logger.info("RUNNING BURDEN ANALYSIS: BINARY PHENOTYPE (CASE/CONTROL)")
     logger.info("=" * 60)
 
-    results_binary_ht = run_burden_analysis(
-        cohort_mt=mt,
-        phenotype_ht=phenotypes_ht,
-        gene_sets=gene_sets,
+    binary_results_path = output_dir / "burden_binary_results.tsv"
+    results_binary_df = run_burden_and_correct(
+        mt,
+        phenotypes_ht,
+        gene_sets,
         phenotype_field="is_case",
         phenotype_type="binary",
-        covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
-        max_af=0.001,  # Rare variants (AF < 0.1%)
-        min_score=25.0,  # High CADD scores
-        genotype_aggregation="hets",
+        output_path=binary_results_path,
     )
 
-    # Export results
-    binary_results_path = output_dir / "burden_binary_results.tsv"
-    results_binary_ht.export(str(binary_results_path))
-    logger.info(f"\nSaved binary phenotype results to: {binary_results_path}")
-
-    # Display results
-    results_binary_df = results_binary_ht.to_pandas()
-    results_binary_df = results_binary_df.sort_values("p_value")
-
-    logger.info("\n" + "=" * 60)
-    logger.info("BINARY PHENOTYPE RESULTS")
-    logger.info("=" * 60)
-    logger.info(f"{'Gene Set':<25} {'OR':<8} {'95% CI':<20} {'P-value':<12} {'Sig':<5}")
-    logger.info("-" * 80)
-
-    for _, row in results_binary_df.iterrows():
-        ci_str = f"[{row['ci_lower']:.2f}, {row['ci_upper']:.2f}]"
-        sig_marker = "***" if row["significant"] else ""
+    if results_binary_df is not None:
+        logger.info("\n" + "=" * 60)
+        logger.info("BINARY PHENOTYPE RESULTS")
+        logger.info("=" * 60)
         logger.info(
-            f"{row['gene_set_name']:<25} "
-            f"{row['odds_ratio']:>7.2f} "
-            f"{ci_str:<20} "
-            f"{row['p_adjusted']:>11.2e} "
-            f"{sig_marker:<5}"
+            f"{'Gene Set':<25} {'OR':<8} {'95% CI':<20} {'P-adj':<12} {'Sig':<5}"
         )
+        logger.info("-" * 80)
+
+        for _, row in results_binary_df.iterrows():
+            ci_str = f"[{row['ci_lower']:.2f}, {row['ci_upper']:.2f}]"
+            sig_marker = "***" if row["significant"] else ""
+            logger.info(
+                f"{row['gene_set_name']:<25} "
+                f"{row['odds_ratio']:>7.2f} "
+                f"{ci_str:<20} "
+                f"{row['p_adjusted']:>11.2e} "
+                f"{sig_marker:<5}"
+            )
 
     # Run burden analysis - Continuous phenotype
     logger.info("\n" + "=" * 60)
     logger.info("RUNNING BURDEN ANALYSIS: CONTINUOUS PHENOTYPE")
     logger.info("=" * 60)
 
-    results_continuous_ht = run_burden_analysis(
-        cohort_mt=mt,
-        phenotype_ht=phenotypes_ht,
-        gene_sets=gene_sets,
+    continuous_results_path = output_dir / "burden_continuous_results.tsv"
+    results_continuous_df = run_burden_and_correct(
+        mt,
+        phenotypes_ht,
+        gene_sets,
         phenotype_field="cognitive_score",
         phenotype_type="continuous",
-        covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
-        max_af=0.001,
-        min_score=25.0,
-        genotype_aggregation="hets",
+        output_path=continuous_results_path,
     )
 
-    # Export results
-    continuous_results_path = output_dir / "burden_continuous_results.tsv"
-    results_continuous_ht.export(str(continuous_results_path))
-    logger.info(f"\nSaved continuous phenotype results to: {continuous_results_path}")
-
-    # Display results
-    results_continuous_df = results_continuous_ht.to_pandas()
-    results_continuous_df = results_continuous_df.sort_values("p_value")
-
-    logger.info("\n" + "=" * 60)
-    logger.info("CONTINUOUS PHENOTYPE RESULTS")
-    logger.info("=" * 60)
-    logger.info(f"{'Gene Set':<25} {'Beta':<10} {'SE':<10} {'P-value':<12} {'Sig':<5}")
-    logger.info("-" * 70)
-
-    for _, row in results_continuous_df.iterrows():
-        sig_marker = "***" if row["significant"] else ""
+    if results_continuous_df is not None:
+        logger.info("\n" + "=" * 60)
+        logger.info("CONTINUOUS PHENOTYPE RESULTS")
+        logger.info("=" * 60)
         logger.info(
-            f"{row['gene_set_name']:<25} "
-            f"{row['beta']:>9.2f} "
-            f"{row['standard_error']:>9.2f} "
-            f"{row['p_adjusted']:>11.2e} "
-            f"{sig_marker:<5}"
+            f"{'Gene Set':<25} {'Beta':<10} {'SE':<10} {'P-adj':<12} {'Sig':<5}"
         )
+        logger.info("-" * 70)
+
+        for _, row in results_continuous_df.iterrows():
+            sig_marker = "***" if row["significant"] else ""
+            logger.info(
+                f"{row['gene_set_name']:<25} "
+                f"{row['beta']:>9.2f} "
+                f"{row['standard_error']:>9.2f} "
+                f"{row['p_adjusted']:>11.2e} "
+                f"{sig_marker:<5}"
+            )
 
     # Interpretation
     logger.info("\n" + "=" * 60)
@@ -337,42 +373,24 @@ def main():
 
     logger.info(
         """
-Binary Phenotype (Case/Control):
-- Odds Ratio (OR): Effect size
-  - OR > 1: Cases have more burden than controls (risk factor)
-  - OR < 1: Cases have less burden than controls (protective)
-  - OR = 1: No difference
+Burden is, per sample and gene set, the number of genes in the set in which the
+sample carries a qualifying genotype (here: >= 1 heterozygous qualifying variant).
 
-- Example interpretation:
-  "Microglia: OR=1.57, 95% CI [1.24, 1.98], p=0.0002"
-  → Cases have 57% more rare variants in microglia genes
-  → Each additional rare variant increases AD risk by 57%
-  → Highly significant (p=0.0002)
+Binary phenotype (case/control), logistic regression:
+- odds_ratio = exp(beta) per additional qualifying gene in the set.
+  - OR > 1: higher burden goes with higher odds of being a case
+  - OR < 1: higher burden goes with lower odds of being a case
+- Example: "Microglia: OR=1.57, 95% CI [1.24, 1.98]" means each additional
+  microglia gene carrying a qualifying variant multiplies the odds of being a
+  case by 1.57. It does not mean cases carry 57% more variants.
 
-Continuous Phenotype (Cognitive Score):
-- Beta: Effect size per variant
-  - Positive beta: Higher burden → higher phenotype value
-  - Negative beta: Higher burden → lower phenotype value
+Continuous phenotype (cognitive score), linear regression:
+- beta = change in the phenotype per additional qualifying gene in the set.
+- Example: "Microglia: beta=-2.35, SE=0.65" means each additional qualifying
+  microglia gene goes with a 2.35-point lower score.
 
-- Example interpretation:
-  "Microglia: beta=-2.35, SE=0.65, p=0.0003"
-  → Each additional rare variant in microglia genes
-     decreases cognitive score by 2.35 points
-  → Effect is precise (small SE)
-  → Highly significant (p=0.0003)
-
-Statistical Significance:
-- p < 0.001: Very strong evidence
-- p < 0.01: Strong evidence
-- p < 0.05: Moderate evidence
-- p > 0.05: No significant evidence
-
-Next Steps:
-1. Replicate findings in independent cohort
-2. Identify specific genes driving burden
-3. Test different variant filters (AF, CADD thresholds)
-4. Perform stratified analyses (by sex, age, ancestry)
-5. Combine with expression data for functional validation
+Use p_adjusted (Benjamini-Hochberg over all gene sets) for significance. In this
+synthetic run the phenotype is random, so no set should be significant.
     """
     )
 
@@ -382,26 +400,18 @@ Next Steps:
 
     logger.info(
         """
-You can test different genetic models by changing --genotype-aggregation:
+Change the genetic model with --genotype-aggregation (CLI) or
+genotype_aggregation= (Python). A sample qualifies for a gene when it has:
 
-1. Heterozygous (default): --genotype-aggregation hets
-   - Counts genes with ≥1 heterozygous variant per sample
-   - Most common model for complex diseases
-
-2. Homozygous: --genotype-aggregation homs
-   - Counts genes with ≥1 homozygous variant per sample
-   - Use for recessive disorders
-
-3. Compound Heterozygous: --genotype-aggregation chets
-   - Counts genes with ≥2 heterozygous variants per sample
-   - Tests for recessive model without requiring homozygotes
-
-4. Homozygous + Compound Heterozygous: --genotype-aggregation homs_chets
-   - Counts genes with homs OR ≥2 hets per sample
-   - Combined recessive model
+1. hets (default): >= 1 heterozygous qualifying genotype
+   (homozygous-alternate genotypes are not counted)
+2. homs: >= 1 homozygous-alternate qualifying genotype
+3. multi_het: >= 2 heterozygous qualifying genotypes; unphased, so it
+   approximates compound heterozygosity (two variants in cis also count)
+4. homs_multi_het: homs or multi_het (a recessive model)
 
 Example:
-    hvantk enrichex burden ... --genotype-aggregation chets
+    hvantk enrichex burden ... --genotype-aggregation homs_multi_het
     """
     )
 
@@ -411,24 +421,30 @@ Example:
 
     logger.info(
         """
+--min-score applies to --score-field (default cadd_phred); variants with a
+missing AF or score are dropped when that filter is set.
+
 Conservative (high confidence):
-    --max-af 0.0001 --min-cadd 30 --consequences frameshift_variant,stop_gained
+    --max-af 0.0001 --min-score 30 --consequences frameshift_variant,stop_gained
     Use for: Rare disease studies, high-penetrance variants
 
 Moderate (balanced):
-    --max-af 0.001 --min-cadd 25 --consequences missense_variant,frameshift_variant
-    Use for: Complex diseases, general burden testing (DEFAULT)
+    --max-af 0.001 --min-score 25 --consequences missense_variant,frameshift_variant
+    Use for: Complex diseases, general burden testing
 
 Permissive (exploratory):
-    --max-af 0.01 --min-cadd 20 --consequences missense_variant,synonymous_variant
+    --max-af 0.01 --min-score 20 --consequences missense_variant
     Use for: Exploratory analyses, large cohorts
+
+Or stratify instead: --variant-classes lof,missense_constrained,synonymous
+(synonymous is a negative control).
     """
     )
 
     logger.info("\n" + "=" * 60)
     logger.info("Analysis complete!")
     logger.info("=" * 60)
-    logger.info(f"\nOutput files:")
+    logger.info("\nOutput files:")
     logger.info(f"  - Gene sets: {gene_sets_path}")
     logger.info(f"  - Binary results: {binary_results_path}")
     logger.info(f"  - Continuous results: {continuous_results_path}")
@@ -437,21 +453,17 @@ Permissive (exploratory):
         """
 \nTo run with your own data:
 
-# Python API:
-from hvantk.algorithms.enrichex import run_burden_analysis
-import hail as hl
+# Python API: see run_burden_and_correct() above, with
+#   mt = hl.read_matrix_table("your_cohort.mt")
+#   phenotypes_ht = hl.read_table("your_phenotypes.ht")
 
-mt = hl.read_matrix_table("your_cohort.mt")
-phenotypes_ht = hl.read_table("your_phenotypes.ht")
-# ... configure and run ...
-
-# Command-line:
+# Command-line (adds p_adjusted and significant itself):
 hvantk enrichex burden \\
   -m your_cohort.mt \\
   -p your_phenotypes.ht \\
   -s gene_sets.json \\
   --max-af 0.001 \\
-  --min-cadd 25 \\
+  --min-score 25 \\
   --covariates PC1,PC2,PC3,age,sex \\
   -o results.tsv
     """

@@ -6,21 +6,22 @@ For full documentation, see the [ClinGen examples guide](https://bigbio.github.i
 
 ## Contents
 
-- **`run_with_real_data.py`** - Build ClinGen Hail Table, extract genesets per disease, view classification stats
+- **`run_with_real_data.py`** - Read the ClinGen Hail Table built by the Prerequisites command below (exits 1 if it is missing), extract genesets per disease, view classification stats
 - **`run_ontology_categorization.py`** - Categorize diseases using MONDO ontology hierarchy
 
 ## Prerequisites
 
+Run these from the **repository root**:
+
 ```bash
-cd examples/clingen
-mkdir -p data
-
-# Download ClinGen Gene-Disease Validity CSV
-curl -L --fail "https://search.clinicalgenome.org/kb/gene-validity/download" -o data/clingen_gene_disease.csv
-
-# Download MONDO ontology (for ontology-based categorization)
-curl -L --fail "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo" -o data/mondo.obo
+# Download today's ClinGen export and build the Hail Table both scripts read
+hvantk reprocess clingen:gene-disease \
+  --raw-dir examples/clingen/data \
+  --output examples/clingen/results/clingen_full.ht
 ```
+
+`run_ontology_categorization.py` downloads the MONDO ontology (`data/mondo.obo`) on its
+first run.
 
 ## Quick Start
 

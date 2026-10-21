@@ -5,6 +5,7 @@ This module tests the pipeline orchestration including configuration validation,
 label assignment, and end-to-end pipeline execution.
 """
 
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -48,12 +49,10 @@ class TestPSROCConfig:
         """Test default configuration values."""
         config = PSROCConfig()
 
-        assert config.reference_genome == "GRCh38"
         assert config.min_stars == 1
         assert config.max_missingness == 0.3
         assert config.threshold_method == "youden"
         assert config.export_tsv is False
-        assert config.overwrite is False
         assert config.generate_plots is True
 
     def test_validation_missing_variant_source(self):
@@ -503,6 +502,11 @@ class TestPSROCPipelineValidation:
 
             pipeline = PSROCPipeline(config)
 
+            # Construction is side-effect free: paths are only set up from run().
+            assert not hasattr(pipeline, "paths")
+
+            pipeline._setup_output_paths()
+
             assert "annotated_ht" in pipeline.paths
             assert "metrics_json" in pipeline.paths
             assert "roc_curves_png" in pipeline.paths
@@ -561,6 +565,57 @@ class TestPSROCPipelineValidation:
                 ValueError, match="gene_set_collection is not configured"
             ):
                 pipeline.run_collection()
+
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
+    def test_run_collection_forwards_score_directions_to_group_configs(
+        self, mock_exists, mock_hl, mock_pipeline_cls
+    ):
+        """run_collection() must forward score_directions to each per-group
+        PSROCConfig it builds; it used to drop the override silently."""
+        mock_exists.return_value = True
+        mock_hl.current_backend.return_value = Mock()
+
+        fake_result = PSROCResult(
+            annotated_ht_path="x",
+            metrics={},
+            missingness={},
+            n_pathogenic=0,
+            n_benign=0,
+            n_excluded=0,
+            n_total=0,
+            scores_included=[],
+            scores_excluded=[],
+            max_missingness_threshold=0.3,
+            output_dir="out",
+        )
+        mock_pipeline_cls.return_value.run.return_value = fake_result
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            score_directions = {"SIFT_score": True}
+            config = PSROCConfig(
+                gene_set_collection={"cardiac": {"BRCA1"}, "cancer": {"TP53"}},
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=tmpdir,
+                score_directions=score_directions,
+                generate_plots=False,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
+            )
+
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            pipeline = PSROCPipeline(config)
+            pipeline.run_collection()
+
+        assert mock_pipeline_cls.call_count == 2
+        for call in mock_pipeline_cls.call_args_list:
+            group_config = call.args[0]
+            assert group_config.score_directions == score_directions
 
 
 class TestVariantFileParsing:
@@ -638,3 +693,191 @@ class TestShowPlan:
             assert "REVEL_score" in captured.out
             assert "Load Hail Tables" in captured.out
             assert "Compute ROC" in captured.out
+
+
+@pytest.mark.hail
+class TestFilterByReviewStars:
+    """Regression for the array-typed CLNREVSTAT bug.
+
+    Hail splits a VCF Number=. field at commas on import, so
+    "criteria_provided,_single_submitter" becomes the array
+    ["criteria_provided", "_single_submitter"]. ``_filter_by_review_stars``
+    used to look up only the first element, so every 1- and 2-star status
+    (the only ones containing a comma) missed CLNREVSTAT_STAR_MAP and scored
+    0 stars.
+    """
+
+    def test_array_clnrevstat_keeps_one_through_four_star_rows(self):
+        import hail as hl
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            config = PSROCConfig(
+                genes=["BRCA1"],
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=f"{tmpdir}/out",
+                min_stars=1,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
+            )
+            pipeline = PSROCPipeline(config)
+
+            # One row per star level, CLNREVSTAT as Hail imports it from a
+            # VCF: an array split at commas (a single-token status stays a
+            # one-element array).
+            rows = [
+                {"idx": 0, "revstat": ["no_assertion_criteria_provided"]},  # 0 stars
+                {
+                    "idx": 1,
+                    "revstat": ["criteria_provided", "_single_submitter"],
+                },  # 1 star
+                {
+                    "idx": 2,
+                    "revstat": [
+                        "criteria_provided",
+                        "_multiple_submitters",
+                        "_no_conflicts",
+                    ],
+                },  # 2 stars
+                {"idx": 3, "revstat": ["reviewed_by_expert_panel"]},  # 3 stars
+                {"idx": 4, "revstat": ["practice_guideline"]},  # 4 stars
+            ]
+            ht = hl.Table.parallelize(
+                rows, hl.tstruct(idx=hl.tint32, revstat=hl.tarray(hl.tstr))
+            )
+            ht = ht.annotate(info=hl.struct(CLNREVSTAT=ht.revstat))
+
+            filtered = pipeline._filter_by_review_stars(ht)
+
+            assert sorted(filtered.idx.collect()) == [1, 2, 3, 4]
+
+
+@pytest.mark.hail
+class TestUncertainVariantsAndMissingnessGate:
+    """Uncertain/Conflicting variants stay in the annotated table whatever
+    ``min_stars`` is, and the missingness gate counts only the pathogenic and
+    benign variants the ROC uses. With ``min_stars=0`` they used to be dropped;
+    otherwise they counted in the gate, which could leave out a score missing
+    only among them.
+    """
+
+    def test_min_stars_0_keeps_uncertain_and_gates_on_labelled_variants(self, tmp_path):
+        import hail as hl
+
+        # 5 benign, 5 pathogenic and 5 uncertain variants. score_a is present
+        # for all of them, score_b for none of the uncertain ones: missing for
+        # 5/15 = 33% of all variants (above the 0.3 default) but 0% of the
+        # pathogenic and benign ones.
+        clnsig = ["Benign"] * 5 + ["Pathogenic"] * 5 + ["Uncertain_significance"] * 5
+        rows = [
+            {
+                "pos": 1000 + i,
+                "clnsig": sig,
+                "score_a": float(i),
+                "score_b": None if sig == "Uncertain_significance" else float(i),
+            }
+            for i, sig in enumerate(clnsig)
+        ]
+        ht = hl.Table.parallelize(
+            rows,
+            hl.tstruct(
+                pos=hl.tint32,
+                clnsig=hl.tstr,
+                score_a=hl.tfloat64,
+                score_b=hl.tfloat64,
+            ),
+        )
+        ht = ht.annotate(
+            locus=hl.locus("chr1", ht.pos, reference_genome="GRCh38"),
+            alleles=hl.array(["A", "G"]),
+        ).key_by("locus", "alleles")
+        ht.select(info=hl.struct(CLNSIG=ht.clnsig, GENEINFO="GENE1:1")).write(
+            str(tmp_path / "clinvar.ht")
+        )
+        ht.select("score_a", "score_b").write(str(tmp_path / "dbnsfp.ht"))
+
+        config = PSROCConfig(
+            genes=["GENE1"],
+            clinvar_ht=str(tmp_path / "clinvar.ht"),
+            dbnsfp_ht=str(tmp_path / "dbnsfp.ht"),
+            scores=["score_a", "score_b"],
+            output_dir=str(tmp_path / "out"),
+            min_stars=0,
+            n_bootstrap=0,
+            generate_plots=False,
+            pathogenic_labels=["Pathogenic"],
+            benign_labels=["Benign"],
+        )
+        result = PSROCPipeline(config).run()
+
+        assert (result.n_pathogenic, result.n_benign, result.n_excluded) == (5, 5, 5)
+        assert result.missingness["score_b"].n_total == 10
+        assert result.missingness["score_b"].included_in_analysis
+        assert "score_b" in result.metrics
+
+
+@pytest.mark.hail
+class TestRunLogCapturesPackageWarnings:
+    """The FileHandler run() attaches used to sit on the pipeline module's
+    own logger, so a warning logged by a sibling module (e.g. roc.py) during
+    a run never reached the run log. It must sit on the
+    ``hvantk.algorithms.psroc`` package logger instead.
+    """
+
+    def test_run_log_captures_roc_module_warning(self, tmp_path, monkeypatch):
+        import hail as hl
+
+        from hvantk.algorithms.psroc import pipeline as psroc_pipeline_module
+
+        rows = [
+            {"pos": 1000 + i, "clnsig": sig, "score_a": float(i)}
+            for i, sig in enumerate(["Benign"] * 5 + ["Pathogenic"] * 5)
+        ]
+        ht = hl.Table.parallelize(
+            rows, hl.tstruct(pos=hl.tint32, clnsig=hl.tstr, score_a=hl.tfloat64)
+        )
+        ht = ht.annotate(
+            locus=hl.locus("chr1", ht.pos, reference_genome="GRCh38"),
+            alleles=hl.array(["A", "G"]),
+        ).key_by("locus", "alleles")
+        ht.select(info=hl.struct(CLNSIG=ht.clnsig, GENEINFO="GENE1:1")).write(
+            str(tmp_path / "clinvar.ht")
+        )
+        ht.select("score_a").write(str(tmp_path / "dbnsfp.ht"))
+
+        config = PSROCConfig(
+            genes=["GENE1"],
+            clinvar_ht=str(tmp_path / "clinvar.ht"),
+            dbnsfp_ht=str(tmp_path / "dbnsfp.ht"),
+            scores=["score_a"],
+            output_dir=str(tmp_path / "out"),
+            min_stars=0,
+            n_bootstrap=0,
+            generate_plots=False,
+            pathogenic_labels=["Pathogenic"],
+            benign_labels=["Benign"],
+        )
+
+        # Simulate a roc.py warning fired mid-run, the way the real "all
+        # scores excluded" warning in compute_roc_metrics() would.
+        real_compute_roc_metrics = psroc_pipeline_module.compute_roc_metrics
+
+        def _compute_roc_metrics_and_warn(*args, **kwargs):
+            logging.getLogger("hvantk.algorithms.psroc.roc").warning(
+                "MARKER: simulated roc.py warning"
+            )
+            return real_compute_roc_metrics(*args, **kwargs)
+
+        monkeypatch.setattr(
+            psroc_pipeline_module, "compute_roc_metrics", _compute_roc_metrics_and_warn
+        )
+
+        pipeline = PSROCPipeline(config)
+        pipeline.run()
+
+        log_contents = Path(pipeline.paths["log"]).read_text()
+        assert "MARKER: simulated roc.py warning" in log_contents

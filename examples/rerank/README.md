@@ -7,7 +7,7 @@ points at the small synthetic cohort manifest shipped in `data/`, not an externa
 
 ## Contents
 
-```
+```text
 examples/rerank/
 ├── config.yaml          the run: cohort + two evidence axes + labels
 ├── make_fixtures.py     regenerates data/ (seeded; rewrites the same bytes)
@@ -31,10 +31,11 @@ directory, not against the config file.
 poetry install --extras ml
 eval "$(poetry env activate)"
 
-hvantk rerank -c examples/rerank/config.yaml -o /tmp/rerank_scores.tsv
+mkdir -p out
+hvantk rerank -c examples/rerank/config.yaml -o out/rerank_scores.tsv
 
 # Compare against the committed reference
-diff /tmp/rerank_scores.tsv examples/rerank/results/rerank_scores.tsv
+diff out/rerank_scores.tsv examples/rerank/results/rerank_scores.tsv
 ```
 
 ## Test Data
@@ -60,7 +61,7 @@ read the AUCs as evidence of anything.
 `score_percentile`, `tier`, `verdict`, `flag`, `flag_reason`, `y`. On the shipped
 fixtures the run prints:
 
-```
+```text
 Wrote 150 genes -> ...
 Credibility: ROBUST=60 / INTERMEDIATE=90 (over 150 scored genes)
 Audit: 11 gene(s) FLAGGED for review (advisory; ranking not overridden).
@@ -83,13 +84,21 @@ hand-picking a few is neither defensible nor reproducible across cohorts. Settin
 `Config.selection` turns on a declarative selection stage instead:
 
 ```python
+import dataclasses
+
 from hvantk.algorithms.rerank.engine import rerank_arms
 from hvantk.algorithms.rerank.selection import SelectionPolicy, load_policy
 
-config.selection = SelectionPolicy()            # or: policy, equivalence = load_policy("selection.yaml")
-config.feature_provenance = {"REVEL_rankscore": frozenset({"HGMD", "ClinVar"}),
-                             "mis_z": frozenset()}
-config.label_provenance = frozenset({"ClinGen"})
+# Config is a frozen dataclass, so derive a changed copy rather than assigning to it.
+config = dataclasses.replace(
+    config,
+    selection=SelectionPolicy(),  # or: policy, equivalence = load_policy("selection.yaml")
+    feature_provenance={
+        "REVEL_rankscore": frozenset({"HGMD", "ClinVar"}),
+        "mis_z": frozenset(),
+    },
+    label_provenance=frozenset({"ClinGen"}),
+)
 
 arms = rerank_arms(config)
 arms["clean"].metrics.auc          # the headline

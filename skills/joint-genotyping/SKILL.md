@@ -59,7 +59,7 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
    `--n-partitions` sets the dense MatrixTable's partition count; `--min-ac` the VCF's.
 2. The orchestrated form, `hvantk hgc pipeline`, does the same stages in one process and
    is the only command that takes `--reference-genome GRCh37` (a stage-handoff defect
-   that broke a fresh run of it was fixed in 0.6.0 (PR #470); 0.5.0 and earlier fail at
+   that broke a fresh run of it was fixed in 0.6.0; 0.5.0 and earlier fail at
    the densify stage). The template keeps the chain
    above because each stage is then its own job with its own request and the run resumes
    by stage; GRCh37 gVCFs go through `hvantk hgc pipeline --reference-genome GRCh37` as
@@ -103,7 +103,8 @@ variant calling itself (gVCFs are the input), and multi-node Spark.
   VCF, which drop them; `compute-qc` drops star alleles by default.
 - The variant QC file is tab-separated and the sample QC file comma-separated. Cause:
   `compute-qc` writes `<prefix>_variant_qc.tsv` and `<prefix>_sample_qc.csv`. Fix: read
-  them accordingly; the orchestrated pipeline would write a CSV capped at 10,000 rows.
+  them accordingly; the orchestrated pipeline's `qc/<prefix>_variant_qc.tsv` holds only
+  the first 10,000 variants.
 - `mt2vcf` refuses with an `adj` error. Cause: the `adj` entry field is missing or
   mostly missing, so filtering on it would delete genotypes. Fix: run `vds2mt` with
   genotype adjustment on (the default), or export with `--no-filter-adj` deliberately.

@@ -18,7 +18,7 @@ Implementation follows the R coloc package
 References
 ----------
 - Giambartolomei et al. (2014) PLoS Genet 10(5):e1004383 — original method
-- Wakefield (2009) Am J Hum Genet 84(1):60-71 — ABF formula
+- Wakefield (2009) Genet Epidemiol 33(1):79-86 — ABF formula
 - Pullin & Wallace (2025) PLoS Genet 21(5):e1011697 — v6 extension
 """
 
@@ -98,7 +98,6 @@ def _logdiff(a: float, b: float) -> float:
 @algorithm(
     backends=[Backend.PANDAS],
     input_format="array",
-    output_format="dataframe",
 )
 def coloc_abf(
     eqtl_beta: np.ndarray,
@@ -210,7 +209,7 @@ def prepare_coloc_data(
     Returns
     -------
     pd.DataFrame
-        Columns: gene_id, pos, eqtl_beta, eqtl_se, eqtl_p, pqtl_beta,
+        Columns: gene_id, contig, pos, eqtl_beta, eqtl_se, eqtl_p, pqtl_beta,
         pqtl_se.
     """
     import hail as hl
@@ -261,6 +260,7 @@ def prepare_coloc_data(
     )
     joined = joined.select(
         "gene_id",
+        "contig",
         "pos",
         "eqtl_beta",
         "eqtl_se",
@@ -339,9 +339,16 @@ def run_coloc_per_gene(
     results = []
 
     for gene_id, group in df.groupby("gene_id"):
-        # Window around lead eQTL variant
-        lead_pos = group.loc[group["eqtl_p"].idxmin(), "pos"]
-        region = group[np.abs(group["pos"] - lead_pos) <= window_bp]
+        # Window around lead eQTL variant, same contig only: a gene_id can have
+        # rows on two chromosomes (e.g. a pseudoautosomal gene on chrX/chrY) at
+        # the same numeric position, which a position-only filter would merge.
+        lead_idx = group["eqtl_p"].idxmin()
+        lead_pos = group.loc[lead_idx, "pos"]
+        lead_contig = group.loc[lead_idx, "contig"]
+        region = group[
+            (group["contig"] == lead_contig)
+            & (np.abs(group["pos"] - lead_pos) <= window_bp)
+        ]
 
         if len(region) < 2:
             continue

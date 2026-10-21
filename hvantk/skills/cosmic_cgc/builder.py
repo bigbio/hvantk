@@ -24,6 +24,7 @@ from hvantk.core.utils.table_utils import (
     str_to_bool,
     annotate_classification_level,
     filter_min_classification,
+    select_fields,
 )
 from hvantk.core.utils.file_utils import resolve_compression
 from hvantk.core.utils.raw_inputs import resolve_raw_file
@@ -290,7 +291,7 @@ def build_cosmic_cgc_submissions(
     # 3. Optional field selection
     if fields is not None:
         logger.info("Selecting fields: %s", fields)
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     # 4. Wrap with provenance (schema ID of the detected header generation)
     return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id=schema_id))

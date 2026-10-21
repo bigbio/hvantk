@@ -94,6 +94,39 @@ def test_generate_report_external_plots(tmp_path):
     assert (tmp_path / "enrichex_overlap.png").exists()
 
 
+def test_generate_report_passes_alpha_to_overlap_dotplot(tmp_path, monkeypatch):
+    """The overlap dot plot's significance threshold line must track the
+    run's own --alpha, not a hardcoded 0.05.
+
+    Before the fix, generate_report() had no `alpha` parameter at all, so
+    _create_overlap_section() called plot_enrichment_dotplot() without
+    `alpha_threshold`, leaving it at the plot function's own 0.05 default
+    regardless of what alpha the run actually used.
+    """
+    from hvantk.algorithms.enrichex import report as report_module
+
+    overlap_path = _write_tsv(_mock_enrichment_df(), tmp_path / "overlap.tsv")
+    output_path = tmp_path / "report.html"
+
+    captured = {}
+    original = report_module.plot_enrichment_dotplot
+
+    def _spy(*args, **kwargs):
+        captured["alpha_threshold"] = kwargs.get("alpha_threshold")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(report_module, "plot_enrichment_dotplot", _spy)
+
+    generate_report(
+        output_path=str(output_path),
+        overlap_results=str(overlap_path),
+        alpha=0.2,
+        embed_static_plots=False,
+    )
+
+    assert captured["alpha_threshold"] == 0.2
+
+
 def test_report_and_plot_share_one_pvalue_column_resolver():
     """#308: report.py derived p_col with a LOCAL copy of the resolver and fed it to
     plot.py's IMPORTED _resolve_significance, so adding a column name to

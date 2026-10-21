@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use hvantk in your research, please cite it as below."
+type: software
+title: "hvantk: Hail-based toolkit for multi-omics variant annotation and analysis"
+authors:
+  - family-names: Perez-Riverol
+    given-names: Yasset
+  - family-names: Audain
+    given-names: Enrique
+repository-code: "https://github.com/bigbio/hvantk"
+url: "https://bigbio.github.io/hvantk"
+license: MIT
+keywords:
+  - genomics
+  - variant annotation
+  - multi-omics
+  - hail
+  - joint genotyping

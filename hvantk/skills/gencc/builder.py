@@ -21,6 +21,7 @@ from hvantk.core.utils.table_utils import (
     strip_curie_prefix,
     annotate_classification_level,
     filter_min_classification,
+    select_fields,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ def build_gencc_submissions(
     ht = ht.key_by("hgnc_id", "mondo_id", "submitter")
 
     if fields is not None:
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="gencc-submissions-v1")
