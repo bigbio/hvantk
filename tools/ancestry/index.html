@@ -1,0 +1,2548 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/ancestry/">
+      
+      
+        <link rel="prev" href="../hgc/">
+      
+      
+        <link rel="next" href="../annotate/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Ancestry inference - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ancestry-inference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Ancestry inference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running on HPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/workflow-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-panel-and-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference panel and output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ld-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LD pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pca-and-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PCA and classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-and-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation and merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-formats-and-checkpointing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output formats and checkpointing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#predictions-hail-table-o-output-ht" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predictions Hail Table (-o/--output-ht)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-files-under-output-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional files (under --output-dir)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#html-report-generate-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report (--generate-report)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpretation-and-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation and caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene annotation matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    External cohorts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genesets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene sets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-panel-and-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference panel and output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ld-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LD pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pca-and-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PCA and classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-and-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation and merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-formats-and-checkpointing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output formats and checkpointing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#predictions-hail-table-o-output-ht" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predictions Hail Table (-o/--output-ht)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-files-under-output-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional files (under --output-dir)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#html-report-generate-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report (--generate-report)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpretation-and-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation and caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/bigbio/hvantk/edit/dev/docs_site/tools/ancestry.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="ancestry-inference">Ancestry inference<a class="headerlink" href="#ancestry-inference" title="Permanent link">&para;</a></h1>
+<p><code>hvantk ancestry-inference</code> assigns a population label to each sample in a query cohort
+by projecting it against a labeled reference panel (e.g. 1000 Genomes) with PCA, then
+classifying with a Random Forest trained on the reference panel's known labels.</p>
+<p><img alt="Ancestry workflow" src="../../images/hvantk-ancestry-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> Ancestry inference: merge with the reference panel, variant filtering,
+optional LD pruning, PCA fitted on query and reference together, Random Forest training
+and prediction.</p>
+<h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Row key</th>
+<th>Column key</th>
+<th>Required fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query MatrixTable</td>
+<td><code>(locus, alleles)</code></td>
+<td><code>s</code> (sample ID)</td>
+<td><code>GT</code> genotype calls (or <code>LGT</code> + <code>LA</code>, auto-converted)</td>
+</tr>
+<tr>
+<td>Reference MatrixTable</td>
+<td>same as query</td>
+<td><code>s</code></td>
+<td><code>GT</code>/<code>LGT</code> as above, plus a categorical ancestry-label column</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Query and reference must use the <strong>same reference genome</strong> (GRCh37 or GRCh38) and the
+  same row key structure; mismatches fail immediately with a descriptive error.</li>
+<li>The reference panel's ancestry-label column is named by <code>--ancestry-col</code>
+  (<code>ancestry_col</code> in Python), default <code>ancestry</code>. It must be a column field on the
+  reference MatrixTable, categorical (e.g. <code>"EUR"</code>, <code>"AFR"</code>, <code>"EAS"</code>, <code>"SAS"</code>, <code>"AMR"</code>),
+  with at least 2 distinct populations and at least 10 samples per population (lower via
+  <code>PipelineConfig(min_samples_per_pop=...)</code> in Python; there is no CLI flag for it).</li>
+<li>hvantk ships no reference panel. To build a 1000 Genomes high-coverage NYGC/CCDG
+  MatrixTable and attach IGSR population labels (<code>super_pop</code>/<code>pop</code>) to use as
+  <code>--ancestry-col</code>, see the
+  <a href="https://github.com/bigbio/hvantk/tree/main/examples/1k_genome">1000 Genomes example</a>
+  and <a href="../../guide/data-sources/#1000-genomes-nygcccdg-high-coverage-callset">Data sources</a>.
+  Other commonly used panels are 1000 Genomes Phase 3 (2,504 samples, 5
+  super-populations) and HapMap Phase 3 (1,184 samples, 11 populations) — bring your own
+  copy, keyed and labeled the same way.</li>
+</ul>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hvantk<span class="w"> </span>ancestry-inference<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>-q<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-r<span class="w"> </span>1kg_reference.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--ancestry-col<span class="w"> </span>super_pop<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>-o<span class="w"> </span>ancestry_predictions.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>--generate-report<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>--export-tsv
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.ancestry</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_ancestry_inference</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">result</span> <span class="o">=</span> <span class="n">run_ancestry_inference</span><span class="p">(</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">query_mt</span><span class="o">=</span><span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"cohort.mt"</span><span class="p">),</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">reference_mt</span><span class="o">=</span><span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"1kg_reference.mt"</span><span class="p">),</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">ancestry_col</span><span class="o">=</span><span class="s2">"super_pop"</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">min_prob</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_predictions_df</span><span class="p">()</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">predictions</span><span class="p">[</span><span class="s2">"predicted_ancestry"</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">result</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"results/ancestry"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="method">Method<a class="headerlink" href="#method" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Merge.</strong> Inner join query and reference on <code>(locus, alleles)</code>; keep only the <code>GT</code>
+   entry field; column-union the samples, tagging each with its source (<code>query</code> or
+   <code>reference</code>). Fails if there are 0 shared variants, or fewer than
+   <code>--min-shared-variants</code> (default 10,000); warns below 50,000.</li>
+<li><strong>Filter.</strong> Restrict to autosomes (<code>locus.in_autosome()</code>), then biallelic SNPs, then
+   apply Hail's <code>variant_qc</code>: call rate &ge; <code>--min-call-rate</code> (default 0.98) and
+   <em>alternate</em>-allele frequency between <code>--min-af</code>/<code>--max-af</code> (default 0.01/0.99).
+   An optional HWE filter (off by default; <code>--apply-hwe-filter</code>, p &ge; <code>--hwe-p</code>,
+   default 1e-6) can additionally drop likely genotyping errors.</li>
+<li><strong>LD prune</strong> (skippable with <code>--skip-ld-pruning</code>). <code>hl.ld_prune</code> on <code>GT</code> with
+   <code>r2</code> = <code>--ld-r2</code> (default 0.2) and <code>bp_window_size</code> = <code>--ld-window</code> (default 500,000).</li>
+<li><strong>PCA.</strong> <code>hl.hwe_normalized_pca</code> (Patterson et al., 2006) computes <code>--n-pcs</code>
+   (default 20) principal components <strong>jointly on the merged query+reference set</strong> —
+   this is not a projection of the query onto a reference-only PC space; query and
+   reference samples share one PCA fit. Loadings are always computed in memory;
+   <code>--save-loadings</code> / <code>result.loadings</code> persist them (see caveats below).</li>
+<li><strong>Train.</strong> A <code>RandomForestClassifier</code> (<code>n_estimators</code> = <code>--n-estimators</code>, default
+   100; <code>random_state</code> = <code>--seed</code>, default 42) is fit on the <strong>reference</strong> rows' first
+   <code>--n-pcs-classify</code> PC scores (default 10) against their known <code>--ancestry-col</code>
+   labels. <code>max_features="sqrt"</code>, <code>min_samples_leaf=5</code>, <code>class_weight="balanced"</code> and
+   <code>n_jobs=-1</code> are fixed and not configurable. Unless <code>--skip-validation</code>, a stratified
+   <code>--n-cv-folds</code>-fold cross-validation (default 5) gives a held-out accuracy estimate;
+   this raises if <code>n_cv_folds</code> exceeds the smallest population's sample count.</li>
+<li><strong>Predict.</strong> The fitted model scores the <strong>query</strong> rows' PC scores. A sample's label
+   is the highest-probability class if that probability is &ge; <code>--min-prob</code> (default
+   0.75), otherwise <code>"unassigned"</code>. Reference rows are also re-scored (with no
+   threshold) for reporting and plotting — this is an in-sample fit, not the
+   cross-validated estimate from step 5.</li>
+</ol>
+<p>For a fixed reference PC space that later query batches project onto (the approach
+gnomAD and similar projects use), call <code>compute_pca()</code> on the reference alone and
+<code>project_samples()</code> with its loadings, instead of <code>run_ancestry_inference</code>'s joint PCA.
+See <a href="#python-api">Python API</a>.</p>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
+<h3 id="required">Required<a class="headerlink" href="#required" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-q</code>, <code>--query-mt</code></td>
+<td>Path to the query MatrixTable.</td>
+</tr>
+<tr>
+<td><code>-r</code>, <code>--reference-mt</code></td>
+<td>Path to the reference MatrixTable with known ancestry labels.</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output-ht</code></td>
+<td>Output path for the predictions Hail Table.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="reference-panel-and-output">Reference panel and output<a class="headerlink" href="#reference-panel-and-output" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--ancestry-col</code></td>
+<td><code>ancestry</code></td>
+<td>Column with ancestry labels in the reference MT.</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td><code>&lt;output-ht parent&gt;/ancestry_results</code></td>
+<td>Directory for TSV/model/report/stats outputs.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="variant-filtering">Variant filtering<a class="headerlink" href="#variant-filtering" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--min-af</code></td>
+<td><code>0.01</code></td>
+<td>Minimum alternate-allele frequency.</td>
+</tr>
+<tr>
+<td><code>--max-af</code></td>
+<td><code>0.99</code></td>
+<td>Maximum alternate-allele frequency.</td>
+</tr>
+<tr>
+<td><code>--min-call-rate</code></td>
+<td><code>0.98</code></td>
+<td>Minimum variant call rate.</td>
+</tr>
+<tr>
+<td><code>--apply-hwe-filter</code></td>
+<td>off</td>
+<td>Apply a Hardy-Weinberg equilibrium filter.</td>
+</tr>
+<tr>
+<td><code>--hwe-p</code></td>
+<td><code>1e-6</code></td>
+<td>HWE p-value threshold (variants below are removed).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ld-pruning">LD pruning<a class="headerlink" href="#ld-pruning" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--ld-r2</code></td>
+<td><code>0.2</code></td>
+<td>LD pruning r² threshold.</td>
+</tr>
+<tr>
+<td><code>--ld-window</code></td>
+<td><code>500000</code></td>
+<td>LD pruning window, in base pairs.</td>
+</tr>
+<tr>
+<td><code>--skip-ld-pruning</code></td>
+<td>off</td>
+<td>Skip LD pruning (faster; may affect accuracy).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pca-and-classification">PCA and classification<a class="headerlink" href="#pca-and-classification" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--n-pcs</code></td>
+<td><code>20</code></td>
+<td>Number of principal components to compute.</td>
+</tr>
+<tr>
+<td><code>--n-pcs-classify</code></td>
+<td><code>10</code></td>
+<td>Number of PCs used as RF features (clamped to <code>--n-pcs</code> if larger).</td>
+</tr>
+<tr>
+<td><code>--n-estimators</code></td>
+<td><code>100</code></td>
+<td>Number of trees in the Random Forest.</td>
+</tr>
+<tr>
+<td><code>--min-prob</code></td>
+<td><code>0.75</code></td>
+<td>Minimum probability for an assignment; below this, <code>"unassigned"</code>.</td>
+</tr>
+<tr>
+<td><code>--seed</code></td>
+<td><code>42</code></td>
+<td>Random seed.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validation-and-merge">Validation and merge<a class="headerlink" href="#validation-and-merge" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--skip-validation</code></td>
+<td>off</td>
+<td>Skip cross-validation.</td>
+</tr>
+<tr>
+<td><code>--n-cv-folds</code></td>
+<td><code>5</code></td>
+<td>Number of stratified CV folds.</td>
+</tr>
+<tr>
+<td><code>--min-shared-variants</code></td>
+<td><code>10000</code></td>
+<td>Minimum shared query/reference variants required.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-formats-and-checkpointing">Output formats and checkpointing<a class="headerlink" href="#output-formats-and-checkpointing" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--generate-report</code></td>
+<td>off</td>
+<td>Write an HTML report (needs the visualization extras).</td>
+</tr>
+<tr>
+<td><code>--export-tsv</code></td>
+<td>off</td>
+<td>Export predictions as TSV.</td>
+</tr>
+<tr>
+<td><code>--save-model</code></td>
+<td>off</td>
+<td>Pickle the trained Random Forest.</td>
+</tr>
+<tr>
+<td><code>--save-loadings</code></td>
+<td>off</td>
+<td>Write the PCA loadings Hail Table.</td>
+</tr>
+<tr>
+<td><code>--checkpoint-path</code></td>
+<td>none</td>
+<td>Directory for intermediate checkpoints.</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td>off</td>
+<td>Overwrite existing outputs and checkpoints.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no <code>--log-level</code> option. Verbosity is the top-level flag, which must come
+before the subcommand: <code>hvantk -v ancestry-inference ...</code> (INFO) or
+<code>hvantk -vv ancestry-inference ...</code> (DEBUG).</p>
+<h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
+<h3 id="predictions-hail-table-o-output-ht">Predictions Hail Table (<code>-o</code>/<code>--output-ht</code>)<a class="headerlink" href="#predictions-hail-table-o-output-ht" title="Permanent link">&para;</a></h3>
+<p>Row-keyed by <code>s</code>, containing <strong>both</strong> query and reference samples
+(<code>_ancestry_source</code> distinguishes them):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>predicted_ancestry</code></td>
+<td><code>str</code></td>
+<td>Assigned population label, or <code>"unassigned"</code>.</td>
+</tr>
+<tr>
+<td><code>ancestry_probability</code></td>
+<td><code>float</code></td>
+<td>Maximum class probability.</td>
+</tr>
+<tr>
+<td><code>prob_&lt;POP&gt;</code></td>
+<td><code>float</code></td>
+<td>Per-population probability, one column per class.</td>
+</tr>
+<tr>
+<td><code>PC1</code>...<code>PC&lt;n_pcs_classify&gt;</code></td>
+<td><code>float</code></td>
+<td>The PCs used for classification (not all <code>--n-pcs</code> computed — see Method).</td>
+</tr>
+<tr>
+<td><code>_ancestry_source</code></td>
+<td><code>str</code></td>
+<td><code>"query"</code> or <code>"reference"</code>.</td>
+</tr>
+<tr>
+<td><code>_known_ancestry</code></td>
+<td><code>str</code></td>
+<td>Original label (reference rows only; missing for query).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="additional-files-under-output-dir">Additional files (under <code>--output-dir</code>)<a class="headerlink" href="#additional-files-under-output-dir" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Written when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>predictions.tsv</code></td>
+<td><code>--export-tsv</code> (same columns as the predictions table).</td>
+</tr>
+<tr>
+<td><code>rf_model.pkl</code></td>
+<td><code>--save-model</code>.</td>
+</tr>
+<tr>
+<td><code>pca_loadings.ht</code></td>
+<td><code>--save-loadings</code> (loadings from the joint PCA — see caveats).</td>
+</tr>
+<tr>
+<td><code>ancestry_report.html</code></td>
+<td><code>--generate-report</code>.</td>
+</tr>
+<tr>
+<td><code>pipeline_stats.json</code></td>
+<td>always.</td>
+</tr>
+</tbody>
+</table>
+<p><code>result.save(output_path, save_model=True, save_loadings=True)</code> (Python only) writes a
+related but not identical set directly under <code>output_path</code>: <code>predictions.ht</code> and
+<code>predictions.tsv</code> unconditionally, <code>pc_scores.ht</code> (<strong>all</strong> <code>--n-pcs</code> PCs, for every
+sample) unconditionally, <code>rf_model.pkl</code>/<code>pca_loadings.ht</code> unless disabled, and
+<code>pipeline_stats.json</code> — the last one additionally carries an <code>"eigenvalues"</code> key that
+the CLI's own <code>pipeline_stats.json</code> does not.</p>
+<h3 id="html-report-generate-report">HTML report (<code>--generate-report</code>)<a class="headerlink" href="#html-report-generate-report" title="Permanent link">&para;</a></h3>
+<p>Summary cards (query/reference sample counts, assigned/unassigned, populations, shared
+variants); an ancestry distribution table and bar chart; a two-panel PCA plot (full view
++ one zoomed population) plus a variance-explained chart; cross-validation accuracy and
+confusion matrix (or a notice that validation was skipped); a probability-distribution
+histogram; a table of the top query predictions by probability; and the full pipeline
+configuration.</p>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.ancestry</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_ancestry_inference</span><span class="p">,</span> <span class="n">PipelineConfig</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">run_ancestry_inference</span><span class="p">(</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">query_mt</span><span class="p">:</span> <span class="n">hl</span><span class="o">.</span><span class="n">MatrixTable</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">reference_mt</span><span class="p">:</span> <span class="n">hl</span><span class="o">.</span><span class="n">MatrixTable</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">ancestry_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ancestry"</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">config</span><span class="p">:</span> <span class="n">PipelineConfig</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># overrides individual PipelineConfig fields, e.g. min_prob=0.80</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AncestryInferenceResult</span>
+</code></pre></div>
+<p><code>PipelineConfig</code> fields mirror the CLI options above 1:1, plus <code>min_samples_per_pop</code>
+(default 10, Python-only — no CLI flag).</p>
+<p><code>AncestryInferenceResult</code> methods:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Data access</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">result</span><span class="o">.</span><span class="n">get_predictions_df</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">result</span><span class="o">.</span><span class="n">get_scores_df</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>          <span class="c1"># all computed PCs, every sample</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">result</span><span class="o">.</span><span class="n">get_query_predictions</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">result</span><span class="o">.</span><span class="n">get_reference_predictions</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">result</span><span class="o">.</span><span class="n">get_accuracy</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span>           <span class="c1"># cross-validation accuracy</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">result</span><span class="o">.</span><span class="n">variance_explained</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">result</span><span class="o">.</span><span class="n">prediction_summary</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>   <span class="c1"># query-only counts by predicted_ancestry</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Visualization (each returns a matplotlib Figure, or None if not applicable)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_pca</span><span class="p">(</span><span class="n">pc_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pc_y</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">show_query_as_undefined</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_pca_panel</span><span class="p">(</span><span class="n">show_query_as_undefined</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_ancestry_proportions</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_probability_distribution</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_variance_explained</span><span class="p">(</span><span class="n">n_pcs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">result</span><span class="o">.</span><span class="n">plot_confusion_matrix</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="c1"># Output</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="n">result</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Ancestry Inference Report"</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="n">result</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">save_model</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_loadings</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="c1"># MatrixTable annotation</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="n">result</span><span class="o">.</span><span class="n">annotate_matrixtable</span><span class="p">(</span><span class="n">mt</span><span class="p">:</span> <span class="n">hl</span><span class="o">.</span><span class="n">MatrixTable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hl</span><span class="o">.</span><span class="n">MatrixTable</span>
+</code></pre></div>
+<p><code>annotate_matrixtable</code> adds <code>predicted_ancestry</code>, <code>ancestry_probability</code> and
+<code>PC1</code>...<code>PC&lt;n_pcs_classify&gt;</code> column annotations to <code>mt</code>, joined on its column key —
+useful for an ancestry-stratified downstream analysis:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">annotated_mt</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">annotate_matrixtable</span><span class="p">(</span><span class="n">query_mt</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">eur_mt</span> <span class="o">=</span> <span class="n">annotated_mt</span><span class="o">.</span><span class="n">filter_cols</span><span class="p">(</span><span class="n">annotated_mt</span><span class="o">.</span><span class="n">predicted_ancestry</span> <span class="o">==</span> <span class="s2">"EUR"</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Advanced: projecting onto a fixed reference PC space.</strong> <code>run_ancestry_inference</code>
+always fits PCA jointly. To instead fit PCA on the reference only and project query (or
+later) samples onto that fixed space without recomputing it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.ancestry</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_pca</span><span class="p">,</span> <span class="n">project_samples</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">pca_result</span> <span class="o">=</span> <span class="n">compute_pca</span><span class="p">(</span><span class="n">reference_mt_filtered</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">compute_loadings</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">query_scores</span> <span class="o">=</span> <span class="n">project_samples</span><span class="p">(</span><span class="n">query_mt_filtered</span><span class="p">,</span> <span class="n">loadings</span><span class="o">=</span><span class="n">pca_result</span><span class="o">.</span><span class="n">loadings</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<p><code>project_samples</code> requires the loadings table to carry an <code>af</code> field (present when
+<code>compute_pca</code> ran with <code>variant_qc</code> annotated, which it is here); it is not called by
+<code>run_ancestry_inference</code> itself.</p>
+<h2 id="interpretation-and-caveats">Interpretation and caveats<a class="headerlink" href="#interpretation-and-caveats" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Joint PCA, not reference-fixed projection.</strong> The default pipeline's PCA axes are
+  influenced by the query cohort, not just the reference. A query batch run twice
+  (alone, and alongside a different second batch) can land at slightly different PC
+  coordinates. If you need a stable, reusable PC space across runs, use the
+  <code>compute_pca()</code> + <code>project_samples()</code> path above instead.</li>
+<li><strong><code>--save-loadings</code> saves the joint run's loadings</strong>, not a reference-only fit. Using
+  them later with <code>project_samples()</code> projects onto <em>this run's</em> combined PC space, not
+  a clean reference-only one.</li>
+<li><strong>The variant-frequency filter is on alternate-allele frequency</strong>, not minor allele
+  frequency — a variant with alt AF 0.95 passes the default <code>--max-af 0.99</code> filter even
+  though its <em>minor</em> allele frequency is 0.05.</li>
+<li><strong>Random Forest hyperparameters are mostly fixed.</strong> Only tree count (<code>--n-estimators</code>)
+  and the random seed are configurable; <code>max_features</code>, <code>min_samples_leaf</code> and
+  <code>class_weight="balanced"</code> are not exposed.</li>
+<li><strong><code>--min-prob</code> is inclusive</strong>: a probability exactly equal to the threshold is
+  assigned, not marked unassigned.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Threshold</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.50</td>
+<td>Aggressive; may misclassify admixed individuals.</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>Balanced (default).</td>
+</tr>
+<tr>
+<td>0.90</td>
+<td>Conservative; more <code>"unassigned"</code> but higher confidence.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Reference rows' <code>predicted_ancestry</code> in the output table is an in-sample
+  prediction</strong> from the model trained on all reference data, not a held-out estimate.
+  For an honest accuracy figure, use <code>result.get_accuracy()</code> or the report's confusion
+  matrix, both from cross-validation.</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>No shared variants, or too few.</strong> <code>merge_matrixtables</code> raises if query and reference
+share 0 variants (check both use the same reference genome and that variants are
+normalized the same way) or fewer than <code>--min-shared-variants</code> (default 10,000) — the
+error names the actual count. Lowering the threshold is possible but not recommended;
+a genotyping-platform mismatch is a more likely root cause than a bad threshold.</p>
+<p><strong>A population has too few samples.</strong> Training requires at least 2 populations and
+<code>min_samples_per_pop</code> (default 10, Python-only) samples in each; the error names the
+underprovisioned population(s). Merge rare populations into a broader label, or exclude
+them from the reference panel.</p>
+<p><strong><code>KeyError: 's'</code> while merging or predicting.</strong> Both MatrixTables must have their
+column key named literally <code>s</code> (Hail's <code>import_vcf</code> default). Re-key with
+<code>mt.key_cols_by("s")</code> (renaming the existing key field first if needed) before calling
+<code>run_ancestry_inference</code>.</p>
+<p><strong>Many samples <code>"unassigned"</code>.</strong> Likely admixed individuals, or a query cohort that
+does not match the reference panel's populations well. Try a lower <code>--min-prob</code>, or
+check that the panel actually covers your cohort's ancestries.</p>
+<p><strong>Cross-validation accuracy is low.</strong> Reference populations may overlap in PC space.
+Try more PCs (<code>--n-pcs-classify 15</code> or higher, up to <code>--n-pcs</code>) or a panel with better
+population separation; some populations (e.g. closely related regional groups) are
+inherently hard to separate from PCA alone.</p>
+<p><strong>Large datasets.</strong> Use <code>--checkpoint-path</code> so a failed run can resume past the
+expensive merge/filter/LD-prune/PCA steps; <code>--skip-ld-pruning</code> if variants are already
+LD-pruned; and fewer <code>--n-pcs</code> if memory-constrained.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Patterson N, Price AL, Reich D. (2006). Population structure and eigenanalysis. <em>PLoS Genet.</em> 2(12):e190.</li>
+<li>Price AL, et al. (2006). Principal components analysis corrects for stratification in genome-wide association studies. <em>Nat Genet.</em> 38(8):904-9.</li>
+<li>1000 Genomes Project Consortium. (2015). A global reference for human genetic variation. <em>Nature.</em> 526(7571):68-74.</li>
+</ol>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../examples/ancestry/">Ancestry examples</a> - runnable CLI and Python scripts, including synthetic test data.</li>
+<li><a href="https://github.com/bigbio/hvantk/tree/main/examples/1k_genome">1000 Genomes example</a> - build a reference panel MatrixTable and attach population labels.</li>
+<li><a href="../hgc/">HGC joint genotyping</a> - build a cohort MatrixTable to use as the query input.</li>
+<li><a href="../../architecture/">Architecture</a> - project architecture.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

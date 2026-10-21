@@ -1,0 +1,3269 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/hgc/">
+      
+      
+        <link rel="prev" href="../../guide/workflow-skills/">
+      
+      
+        <link rel="next" href="../ancestry/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>HGC (joint genotyping) - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hgc-joint-genotyping" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HGC (joint genotyping)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running on HPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/workflow-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-step commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step-by-step commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combine-gvcfs-into-a-vds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine gVCFs into a VDS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combine-vds-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine VDS datasets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convert-a-vds-to-a-matrixtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convert a VDS to a MatrixTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-a-matrixtable-to-vcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export a MatrixTable to VCF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-full-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the full pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qc-metrics-and-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QC metrics and filters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QC metrics and filters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compute QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generate-an-html-qc-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate an HTML QC report
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summarize-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summarize QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric names
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metric names">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sample-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adjusted-genotype-adj-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adjusted-genotype (adj) thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and sizing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qc-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QC functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene annotation matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    External cohorts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genesets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene sets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-step commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step-by-step commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combine-gvcfs-into-a-vds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine gVCFs into a VDS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combine-vds-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combine VDS datasets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convert-a-vds-to-a-matrixtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convert a VDS to a MatrixTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-a-matrixtable-to-vcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export a MatrixTable to VCF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-full-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the full pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qc-metrics-and-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QC metrics and filters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QC metrics and filters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compute QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generate-an-html-qc-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate an HTML QC report
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summarize-qc-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summarize QC metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric names
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metric names">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sample-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adjusted-genotype-adj-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adjusted-genotype (adj) thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and sizing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qc-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QC functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/bigbio/hvantk/edit/dev/docs_site/tools/hgc.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="hgc-joint-genotyping">HGC: joint genotyping<a class="headerlink" href="#hgc-joint-genotyping" title="Permanent link">&para;</a></h1>
+<p>HGC (Hail-based Genotype Combiner) joint-genotypes a cohort of per-sample gVCFs: it
+combines them into a Variant DataSet (VDS), converts that to a MatrixTable (MT), runs
+quality control, and exports a cohort VCF. It is built on <a href="https://hail.is/">Hail</a>.</p>
+<p><img alt="HGC workflow" src="../../images/hvantk-hgc-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> HGC: gVCF combining, VDS to MatrixTable conversion, sample and variant QC,
+optional filtering, and cohort VCF export.</p>
+<h2 id="entry-points">Entry points<a class="headerlink" href="#entry-points" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Entry point</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hvantk hgc pipeline</code></td>
+<td>You have a directory of gVCFs and want VDS → MT → cohort VCF with QC tables in one command; you can resume it by hand from the stage outputs.</td>
+</tr>
+<tr>
+<td>Individual commands (<code>gvcf-combine</code>, <code>vds-combine</code>, <code>vds2mt</code>, <code>mt2vcf</code>, <code>compute-qc</code>, <code>filter-qc</code>, <code>qc-report</code>, <code>qc-summary</code>)</td>
+<td>You already have a VDS or MT, want QC filter thresholds the pipeline doesn't expose (see <a href="#filter-by-qc-metrics">Filter by QC metrics</a>), or want to rerun a single stage without re-running the rest.</td>
+</tr>
+</tbody>
+</table>
+<p>Every command takes <code>-h</code>/<code>--help</code>. Every command except <code>qc-summary</code>, which reads text
+files and never starts Hail, also takes <code>--dry-run</code>: it prints what the command would
+do without starting Hail.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># 1. gVCFs -&gt; VDS -&gt; MatrixTable -&gt; cohort VCF</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/path/to/gvcfs<span class="w"> </span>-o<span class="w"> </span>/path/to/output
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># 2. QC the MatrixTable the pipeline produced, and build an HTML report.</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1">#    compute-qc's -o is an output DIRECTORY (see "Compute QC metrics" below).</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>compute-qc<span class="w"> </span>-i<span class="w"> </span>/path/to/output/cohort.mt<span class="w"> </span>-o<span class="w"> </span>/path/to/output/qc
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>qc-report<span class="w"> </span>-i<span class="w"> </span>/path/to/output/qc/qc_metrics_with_qc.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span>-o<span class="w"> </span>/path/to/output/qc/report.html
+</code></pre></div>
+<p>Preview either command's plan first with <code>--dry-run</code>. For a region-restricted run
+(a single chromosome, an exome, a gene panel), see
+<a href="#performance-and-sizing">Performance and sizing</a> before running the combine step —
+the default partitioning is sized for whole genomes and can leave most of your cores
+idle on a smaller region.</p>
+<h2 id="step-by-step-commands">Step-by-step commands<a class="headerlink" href="#step-by-step-commands" title="Permanent link">&para;</a></h2>
+<h3 id="combine-gvcfs-into-a-vds">Combine gVCFs into a VDS<a class="headerlink" href="#combine-gvcfs-into-a-vds" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span>-g<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>cohort.vds
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-g, --gvcf-dir TEXT</code></td>
+<td>Directory of <code>.g.vcf.gz</code> files, each with a <code>.tbi</code> index</td>
+<td>none (need this or <code>-v</code>)</td>
+</tr>
+<tr>
+<td><code>-v, --vds-paths TEXT</code></td>
+<td>Existing VDS to combine with the gVCFs (repeatable)</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output VDS path</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--temp-dir, --tmp TEXT</code></td>
+<td>Temporary directory for intermediate files</td>
+<td><code>$HGC_TEMP_DIR</code>, else the system temp dir</td>
+</tr>
+<tr>
+<td><code>-s, --save-path TEXT</code></td>
+<td>Where to save the combiner's execution plan (JSON)</td>
+<td><code>&lt;output&gt;.plan</code></td>
+</tr>
+<tr>
+<td><code>--import-interval-size INT</code></td>
+<td>Interval size in bp; Hail derives <strong>one partition per interval</strong></td>
+<td>Hail's genome default, 1.2 Mb</td>
+</tr>
+<tr>
+<td><code>--use-genome-default-intervals</code></td>
+<td>Explicit genome interval size (1.2 Mb)</td>
+<td>already the default</td>
+</tr>
+<tr>
+<td><code>--use-exome-default-intervals</code></td>
+<td>Hail's exome interval size (60 Mb)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--gvcf-batch-size INT</code></td>
+<td>gVCFs merged per tree-merge batch</td>
+<td>Hail default, 50</td>
+</tr>
+<tr>
+<td><code>--branch-factor INT</code></td>
+<td>Branch factor of the hierarchical merge</td>
+<td>Hail default, 100</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p><code>--import-interval-size</code>, <code>--use-genome-default-intervals</code> and
+<code>--use-exome-default-intervals</code> are mutually exclusive. See
+<a href="#performance-and-sizing">Performance and sizing</a> for when to change the interval size.</p>
+<h3 id="combine-vds-datasets">Combine VDS datasets<a class="headerlink" href="#combine-vds-datasets" title="Permanent link">&para;</a></h3>
+<p>Merge several VDS directories (for example, per-batch VDSes from incremental cohort
+building — see <a href="#worked-examples">Worked examples</a>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds-combine<span class="w"> </span>-i<span class="w"> </span>/data/vds_datasets<span class="w"> </span>-o<span class="w"> </span>merged.vds
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input-dir TEXT</code></td>
+<td>Directory containing VDS subdirectories (each ending in <code>.vds</code>)</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output path for the merged VDS</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--validate / --no-validate</code></td>
+<td>Validate the merged VDS with Hail's validator</td>
+<td>validate</td>
+</tr>
+<tr>
+<td><code>--overwrite / --no-overwrite</code></td>
+<td>Overwrite existing output</td>
+<td>no-overwrite</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<h3 id="convert-a-vds-to-a-matrixtable">Convert a VDS to a MatrixTable<a class="headerlink" href="#convert-a-vds-to-a-matrixtable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds2mt<span class="w"> </span>-i<span class="w"> </span>cohort.vds<span class="w"> </span>-o<span class="w"> </span>cohort.mt<span class="w"> </span>--adjust-genotypes
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input TEXT</code></td>
+<td>Input VDS</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output MatrixTable path</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--adjust-genotypes / --no-adjust-genotypes</code></td>
+<td>Annotate the <code>adj</code> entry field (see <a href="#adjusted-genotype-adj-thresholds">adjusted-genotype thresholds</a>)</td>
+<td>adjust</td>
+</tr>
+<tr>
+<td><code>--skip-split-multi</code></td>
+<td>Skip the VDS-level multi-allelic split</td>
+<td>off (split runs)</td>
+</tr>
+<tr>
+<td><code>--skip-validation</code></td>
+<td>Skip the biallelic audit and genotype repair (see below)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-keying-by-cols</code></td>
+<td>Keep the VDS's own column order instead of keying and sorting columns by sample ID</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--overwrite / --no-overwrite</code></td>
+<td>Overwrite existing output</td>
+<td>no-overwrite</td>
+</tr>
+<tr>
+<td><code>--n-partitions INT</code></td>
+<td>Coalesce the dense MatrixTable to this many partitions before writing (reduces only)</td>
+<td>keep the VDS's own layout</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>Two things worth knowing before you reach for <code>--skip-validation</code> or <code>--n-partitions</code>:</p>
+<ul>
+<li><strong>The densify runs exactly once.</strong> Hail is lazy and does not cache, so any eager
+  action on the dense MatrixTable (a <code>count</code>, an <code>aggregate</code>) re-executes the whole
+  densify. <code>vds2mt</code> is written so that only the final write touches the dense matrix:
+  the biallelic audit (out-of-bounds <code>GT</code> indices, <code>AD</code> length mismatches) runs on the
+  <em>sparse</em> variant data before densification, and the repair is a lazy expression that
+  fuses into the write. The audit is cheap (it scans only the sparse records), so there
+  is rarely a reason to skip it.</li>
+<li><strong><code>--n-partitions</code> matters more as your cohort grows.</strong> A VDS's on-disk layout is
+  derived from its reference-block count, which saturates as sample count grows, while
+  the dense matrix keeps growing. Past that point the VDS's partition count stops
+  tracking the size of what it partitions, and tasks get too thin to amortise overhead.
+  Size <code>--n-partitions</code> from the dense matrix you're producing, not the VDS.</li>
+</ul>
+<p>Also: VDS-level splitting already produces biallelic <code>GT</code>/<code>AD</code>, so there is no manual
+LGT→GT downcoding step to worry about. Adjusted-genotype annotation needs no extra
+dependency — <code>annotate_adj</code> is ported from gnomAD's <code>gnomad_methods</code> (MIT) into
+<code>hvantk/algorithms/hgc/adj.py</code>, with gnomAD's published thresholds kept verbatim.</p>
+<h3 id="export-a-matrixtable-to-vcf">Export a MatrixTable to VCF<a class="headerlink" href="#export-a-matrixtable-to-vcf" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>mt2vcf<span class="w"> </span>-i<span class="w"> </span>cohort.mt<span class="w"> </span>-o<span class="w"> </span>cohort.vcf.bgz<span class="w"> </span>--min-ac<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input TEXT</code></td>
+<td>Input MatrixTable</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output VCF path — use <code>.vcf.bgz</code> (block gzip), not <code>.vcf.gz</code></td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--filter-adj / --no-filter-adj</code></td>
+<td>Keep only <code>adj</code> genotypes (recommended)</td>
+<td>filter</td>
+</tr>
+<tr>
+<td><code>--min-ac INT</code></td>
+<td>Minimum alternate allele count</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>--split-multi / --no-split-multi</code></td>
+<td>Split multi-allelic variants if not already split</td>
+<td>split</td>
+</tr>
+<tr>
+<td><code>--check-adj / --no-check-adj</code></td>
+<td>Verify <code>adj</code> is not systematically MISSING before filtering</td>
+<td>check</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>.vcf.bgz</code>: block gzip is what bcftools, tabix and GATK expect, and <code>mt2vcf</code> warns
+if you give it a plain <code>.vcf.gz</code> path. Keep <code>--check-adj</code> on: Hail's <code>filter_entries</code>
+treats a MISSING <code>adj</code> as not-passing, so if <code>adj</code> were ever systematically missing
+(for example, from a MatrixTable built before a dependent field like <code>DP</code> was
+reliably populated), <code>--filter-adj</code> would silently delete genotypes instead of
+failing loudly. <code>--check-adj</code> catches that before it happens.</p>
+<p>The exported VCF carries standard INFO fields: <code>AF</code>, <code>AC</code>, <code>AN</code>, and <code>call_rate</code>
+(fraction of samples with a called genotype).</p>
+<h3 id="run-the-full-pipeline">Run the full pipeline<a class="headerlink" href="#run-the-full-pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>/data/output<span class="w"> </span>--output-prefix<span class="w"> </span>cohort
+</code></pre></div>
+<p>Stages (each can be skipped independently):</p>
+<ol>
+<li>Combine gVCFs → VDS</li>
+<li>Convert VDS → MatrixTable</li>
+<li>Compute sample QC metrics</li>
+<li>Compute variant QC metrics</li>
+<li>Export → cohort VCF</li>
+</ol>
+<p><strong>Required</strong></p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input-dir PATH</code></td>
+<td>Directory of gVCF files (must exist)</td>
+</tr>
+<tr>
+<td><code>-o, --output-dir PATH</code></td>
+<td>Output directory</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Stage control and combiner/conversion tuning</strong> (same meaning as the matching
+<code>gvcf-combine</code>/<code>vds2mt</code> options above)</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--skip-combine-gvcfs</code></td>
+<td>Skip stage 1 (needs <code>--vds-path</code>)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-vds-to-mt</code></td>
+<td>Skip stage 2 (needs <code>--mt-path</code>)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-compute-sample-qc</code></td>
+<td>Skip stage 3</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-compute-variant-qc</code></td>
+<td>Skip stage 4</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-export-pvcf</code></td>
+<td>Skip stage 5</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--skip-validation</code></td>
+<td>Skip <code>vds2mt</code>'s biallelic audit and repair</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--vds-path PATH</code></td>
+<td>Existing VDS to resume from</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--mt-path PATH</code></td>
+<td>Existing MatrixTable to resume from</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--import-interval-size</code> / <code>--use-exome-default-intervals</code> / <code>--gvcf-batch-size</code> / <code>--branch-factor</code></td>
+<td>Stage-1 combiner tuning</td>
+<td>see <code>gvcf-combine</code></td>
+</tr>
+<tr>
+<td><code>--n-partitions INT</code></td>
+<td>Stage-2 MatrixTable partition count</td>
+<td>keep the VDS's layout</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Processing and output</strong></p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--reference-genome [GRCh37\|GRCh38]</code></td>
+<td>Reference build</td>
+<td>GRCh38</td>
+</tr>
+<tr>
+<td><code>--tmp-dir PATH</code></td>
+<td>Temporary directory</td>
+<td>system default</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td>Overwrite existing output files</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--output-prefix TEXT</code></td>
+<td>Prefix for every output file</td>
+<td><code>cohort</code></td>
+</tr>
+<tr>
+<td><code>--apply-qc-filters</code></td>
+<td>Filter before exporting the cohort VCF and write <code>&lt;prefix&gt;_filtered.mt</code> (see below)</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--min-sample-call-rate FLOAT</code></td>
+<td>Sample call-rate threshold (used only with <code>--apply-qc-filters</code>)</td>
+<td>0.85</td>
+</tr>
+<tr>
+<td><code>--min-variant-call-rate FLOAT</code></td>
+<td>Variant call-rate threshold (used only with <code>--apply-qc-filters</code>)</td>
+<td>0.85</td>
+</tr>
+<tr>
+<td><code>--generate-qc-report</code></td>
+<td>Generate an HTML QC report after computing QC</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print the execution plan and stop, without creating files or starting Hail</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p><code>--apply-qc-filters</code> drops samples below <code>--min-sample-call-rate</code>, and variants below
+<code>--min-variant-call-rate</code>, with no alternate allele call (<code>AC</code> &lt; 1), or with a
+Hardy-Weinberg p-value below 1e-6. The <code>AC</code> and HWE thresholds are fixed; use
+<a href="#filter-by-qc-metrics"><code>filter-qc</code></a> to change them.</p>
+<p><code>--apply-qc-filters</code> and <code>--generate-qc-report</code> read the QC tables stages 3 and 4
+write, <code>qc/&lt;prefix&gt;_sample_qc.ht</code> and <code>qc/&lt;prefix&gt;_variant_qc.ht</code>. A table comes from
+this run, or, when its stage is skipped, from an earlier run in the same output
+directory; with <code>hvantk -v</code> the log says which. <code>--apply-qc-filters</code> needs both
+tables: when a skipped stage left no table, the run stops before any stage and names
+the missing table; to get it, run without that <code>--skip-compute-*</code> flag.
+<code>--generate-qc-report</code> uses the tables it finds, and logs a warning and writes no
+report when there are none.</p>
+<p><strong>Resuming.</strong> The pipeline does not auto-resume: it always runs every stage you
+haven't explicitly <code>--skip-*</code>'d. <code>.pipeline_state.json</code> in the output directory
+records what completed and the error, if any, purely for you to inspect — to resume,
+read it, then re-run with the matching <code>--skip-*</code> flags and <code>--vds-path</code>/<code>--mt-path</code>
+pointing at the stage outputs that already succeeded:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cat<span class="w"> </span>/data/output/.pipeline_state.json
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--skip-combine-gvcfs<span class="w"> </span>--vds-path<span class="w"> </span>/data/output/cohort.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>--overwrite
+</code></pre></div>
+<p><code>--overwrite</code> is usually needed on a resumed run, since the stage you're re-entering
+at will try to write a path that already exists.</p>
+<p>A resumed run with <code>--skip-compute-sample-qc --skip-compute-variant-qc</code> reuses the
+QC tables the earlier run left in <code>qc/</code>, for both <code>--apply-qc-filters</code> and
+<code>--generate-qc-report</code>.</p>
+<h2 id="qc-metrics-and-filters">QC metrics and filters<a class="headerlink" href="#qc-metrics-and-filters" title="Permanent link">&para;</a></h2>
+<h3 id="compute-qc-metrics">Compute QC metrics<a class="headerlink" href="#compute-qc-metrics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>compute-qc<span class="w"> </span>-i<span class="w"> </span>cohort.mt<span class="w"> </span>-o<span class="w"> </span>qc_results/
+</code></pre></div>
+<p><code>-o</code>/<code>--output-dir</code> is an <strong>output directory</strong>, not a file path — <code>compute-qc</code> writes
+<code>&lt;prefix&gt;_sample_qc.csv</code>, <code>&lt;prefix&gt;_variant_qc.tsv</code> and (unless <code>--no-save-mt</code>)
+<code>&lt;prefix&gt;_with_qc.mt</code> into it (<code>&lt;prefix&gt;</code> from <code>--prefix</code>, default <code>qc_metrics</code>). Feed
+that <code>_with_qc.mt</code> to <code>filter-qc</code> or <code>qc-report</code> — a plain <code>.mt</code> without QC
+annotations fails qc-report's "No QC annotations found" check immediately.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input TEXT</code></td>
+<td>Input MatrixTable</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output-dir TEXT</code></td>
+<td>Output directory (see above)</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--sample-qc / --no-sample-qc</code></td>
+<td>Compute sample-level metrics</td>
+<td>on</td>
+</tr>
+<tr>
+<td><code>--variant-qc / --no-variant-qc</code></td>
+<td>Compute variant-level metrics</td>
+<td>on</td>
+</tr>
+<tr>
+<td><code>--call-field TEXT</code></td>
+<td>Entry field to call genotypes from</td>
+<td><code>GT</code></td>
+</tr>
+<tr>
+<td><code>--prefix TEXT</code></td>
+<td>Output file prefix</td>
+<td><code>qc_metrics</code></td>
+</tr>
+<tr>
+<td><code>--save-mt / --no-save-mt</code></td>
+<td>Also write the QC-annotated MatrixTable</td>
+<td>save</td>
+</tr>
+<tr>
+<td><code>--adj-filter / --no-adj-filter</code></td>
+<td>Filter to <code>adj</code> genotypes before computing QC, so the metrics describe the filtered callset rather than the densified matrix</td>
+<td>off</td>
+</tr>
+<tr>
+<td><code>--remove-star-alleles / --keep-star-alleles</code></td>
+<td>Drop rows whose alt allele is the gVCF placeholder <code>&lt;*&gt;</code>/<code>&lt;NON_REF&gt;</code> or the spanning-deletion <code>*</code> — not real variants, and on a densified gVCF callset they can be around half of all rows</td>
+<td>remove</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>At least one of <code>--sample-qc</code>/<code>--variant-qc</code> must stay enabled. <code>--adj-filter</code>
+requires an <code>adj</code> entry field (from <code>vds2mt --adjust-genotypes</code>); if the MatrixTable
+has <code>adj</code> but you don't pass <code>--adj-filter</code>, <code>compute-qc</code> warns that the reported call
+rate describes the unfiltered matrix, not what you'd actually export.</p>
+<h3 id="filter-by-qc-metrics">Filter by QC metrics<a class="headerlink" href="#filter-by-qc-metrics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>filter-qc<span class="w"> </span>-i<span class="w"> </span>qc_results/qc_metrics_with_qc.mt<span class="w"> </span>-o<span class="w"> </span>cohort_filtered.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span>--min-sample-call-rate<span class="w"> </span><span class="m">0</span>.9<span class="w"> </span>--min-ac<span class="w"> </span><span class="m">5</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input TEXT</code></td>
+<td>MatrixTable with QC annotations (e.g. <code>&lt;prefix&gt;_with_qc.mt</code>)</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output filtered MatrixTable path</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--min-sample-call-rate FLOAT</code></td>
+<td></td>
+<td>0.85</td>
+</tr>
+<tr>
+<td><code>--min-variant-call-rate FLOAT</code></td>
+<td></td>
+<td>0.85</td>
+</tr>
+<tr>
+<td><code>--min-ac INT</code></td>
+<td>Minimum alt allele count</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>--max-ac INT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--min-af FLOAT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--max-af FLOAT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--hwe-threshold FLOAT</code></td>
+<td>Minimum <code>p_value_hwe</code></td>
+<td>1e-6</td>
+</tr>
+<tr>
+<td><code>--min-mean-dp FLOAT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--max-mean-dp FLOAT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--min-mean-gq FLOAT</code></td>
+<td></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--sample-qc-name TEXT</code></td>
+<td>Name of the sample QC annotation to read</td>
+<td><code>sample_qc</code></td>
+</tr>
+<tr>
+<td><code>--variant-qc-name TEXT</code></td>
+<td>Name of the variant QC annotation to read</td>
+<td><code>variant_qc</code></td>
+</tr>
+<tr>
+<td><code>--overwrite / --no-overwrite</code></td>
+<td></td>
+<td>no-overwrite</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<h3 id="generate-an-html-qc-report">Generate an HTML QC report<a class="headerlink" href="#generate-an-html-qc-report" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>qc-report<span class="w"> </span>-i<span class="w"> </span>qc_results/qc_metrics_with_qc.mt<span class="w"> </span>-o<span class="w"> </span>report.html
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-i, --input TEXT</code></td>
+<td>MatrixTable with QC annotations</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Output HTML path</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--title TEXT</code></td>
+<td>Report title</td>
+<td><code>Quality Control Report</code></td>
+</tr>
+<tr>
+<td><code>--include-plots CHOICE</code> (repeatable)</td>
+<td><code>sample_overview</code>, <code>variant_overview</code>, <code>sample_call_rates</code>, <code>variant_call_rates</code>, <code>allele_frequencies</code>, <code>hwe</code>, <code>titv</code></td>
+<td>all seven</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview without executing</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>The report is self-contained (plots embedded as base64 PNGs). There is no standalone
+plotting/dashboard CLI; for ad hoc or custom plots, export the QC metrics as pandas
+DataFrames and plot them directly (see <a href="#worked-examples">Worked examples</a>).</p>
+<h3 id="summarize-qc-metrics">Summarize QC metrics<a class="headerlink" href="#summarize-qc-metrics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>qc-summary<span class="w"> </span>-d<span class="w"> </span>qc_results/<span class="w"> </span>-o<span class="w"> </span>summary.md<span class="w"> </span>--format<span class="w"> </span>markdown
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-d, --qc-dir TEXT</code></td>
+<td>Directory containing QC metric files</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>--sample-file TEXT</code></td>
+<td>Specific sample QC file</td>
+<td>auto-detected: the first <code>*sample_qc*.csv</code> in <code>--qc-dir</code></td>
+</tr>
+<tr>
+<td><code>--variant-file TEXT</code></td>
+<td>Specific variant QC file</td>
+<td>auto-detected: <code>*variant_qc*.tsv</code>, falling back to <code>*variant_qc*.csv</code></td>
+</tr>
+<tr>
+<td><code>-o, --output TEXT</code></td>
+<td>Write the summary here, creating missing parent directories</td>
+<td>none: print only each file's name, row count and column count</td>
+</tr>
+<tr>
+<td><code>--format [csv\|json\|markdown]</code></td>
+<td>Format of the <code>-o</code> file</td>
+<td>markdown</td>
+</tr>
+</tbody>
+</table>
+<p>No <code>--dry-run</code> on this command. The statistics are in the <code>-o</code> file only:
+<code>describe()</code>-style statistics (count/mean/std/min/25%/50%/75%/max) per numeric metric
+column, not a QC pass/fail. On the pipeline's <code>qc/</code> directory the variant statistics
+cover only the 10,000 variants of its preview file (see <a href="#outputs">Outputs</a>).</p>
+<h3 id="metric-names">Metric names<a class="headerlink" href="#metric-names" title="Permanent link">&para;</a></h3>
+<h4 id="sample-metrics">Sample metrics<a class="headerlink" href="#sample-metrics" title="Permanent link">&para;</a></h4>
+<p>Field names in <code>sample_qc</code>, from Hail's <code>hl.sample_qc</code>: <code>call_rate</code>, <code>n_called</code>,
+<code>n_not_called</code>, <code>n_filtered</code>, <code>n_hom_ref</code>, <code>n_het</code>, <code>n_hom_var</code>, <code>n_non_ref</code>, <code>n_snp</code>,
+<code>n_insertion</code>, <code>n_deletion</code>, <code>n_singleton</code>, <code>n_transition</code>, <code>n_transversion</code>, <code>n_star</code>,
+<code>r_ti_tv</code>, <code>r_het_hom_var</code>, <code>r_insertion_deletion</code>, plus nested <code>dp_stats</code>/<code>gq_stats</code>
+(<code>mean</code>/<code>stdev</code>/<code>min</code>/<code>max</code>) when <code>DP</code>/<code>GQ</code> are present. hvantk additionally adds flat
+sibling columns <code>sample_qc_mean_dp</code> / <code>sample_qc_mean_gq</code> (not nested under
+<code>sample_qc</code>) — these are what <code>filter-qc</code>'s <code>--min-mean-dp</code>/<code>--max-mean-dp</code>/
+<code>--min-mean-gq</code> filter on.</p>
+<h4 id="variant-metrics">Variant metrics<a class="headerlink" href="#variant-metrics" title="Permanent link">&para;</a></h4>
+<p>Field names in <code>variant_qc</code>, from Hail's <code>hl.variant_qc</code>: <code>AF</code>, <code>AC</code>,
+<code>homozygote_count</code> (arrays, one element per allele including the reference), <code>AN</code>,
+<code>call_rate</code>, <code>n_called</code>, <code>n_not_called</code>, <code>n_filtered</code>, <code>n_het</code>, <code>n_non_ref</code>,
+<code>het_freq_hwe</code>, <code>p_value_hwe</code>, <code>p_value_excess_het</code>, plus <code>dp_stats</code>/<code>gq_stats</code> and the
+same flat <code>variant_qc_mean_dp</code> / <code>variant_qc_mean_gq</code> siblings. <code>filter-qc</code> reads the
+alt-allele element of the arrays (<code>AC[1]</code>, <code>AF[1]</code>), so it assumes biallelic data —
+run after <code>vds2mt</code>'s split, not before.</p>
+<h4 id="adjusted-genotype-adj-thresholds">Adjusted-genotype (<code>adj</code>) thresholds<a class="headerlink" href="#adjusted-genotype-adj-thresholds" title="Permanent link">&para;</a></h4>
+<p>From <code>vds2mt --adjust-genotypes</code>
+(<code>hvantk/algorithms/hgc/adj.py</code>, ported from gnomAD's <code>annotate_adj</code>, thresholds kept
+verbatim): <code>GQ &gt;= 20</code>, <code>DP &gt;= 10</code> (<code>DP &gt;= 5</code> for a haploid call), and allele balance
+<code>&gt;= 0.2</code> for each called allele on a heterozygous call (homozygous calls skip the
+allele-balance test).</p>
+<h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
+<p><strong>Data formats</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>What it is</th>
+<th>On disk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gVCF</td>
+<td>Single-sample calls plus reference blocks</td>
+<td><code>.g.vcf.gz</code> + <code>.tbi</code></td>
+</tr>
+<tr>
+<td>VDS</td>
+<td>Hail's storage-optimized format; separates reference data from variant data</td>
+<td>directory ending <code>.vds</code></td>
+</tr>
+<tr>
+<td>MatrixTable (MT)</td>
+<td>Hail's dense analysis format; rows = variants, columns = samples</td>
+<td>directory ending <code>.mt</code></td>
+</tr>
+<tr>
+<td>VCF</td>
+<td>Standard variant format, exported by <code>mt2vcf</code></td>
+<td><code>.vcf.bgz</code> (block gzip)</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>compute-qc</code> output directory</strong> (filenames use <code>--prefix</code>, default <code>qc_metrics</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>qc_results/
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>├── qc_metrics_sample_qc.csv     # comma-separated, every sample
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>├── qc_metrics_variant_qc.tsv    # TAB-separated (alleles/struct fields contain
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>│                                 # commas Hail doesn't quote); every variant,
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>│                                 # exported directly by Hail, not collected
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>└── qc_metrics_with_qc.mt         # QC-annotated MatrixTable (unless --no-save-mt)
+</code></pre></div>
+<p><strong><code>pipeline</code> output directory</strong> (filenames use <code>--output-prefix</code>, default <code>cohort</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>output_directory/
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>├── cohort.vds/                  # Stage 1
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>├── cohort.mt/                   # Stage 2
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>├── cohort_filtered.mt/          # Stage 5, only with --apply-qc-filters
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>├── cohort.vcf.bgz               # Stage 5
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>├── qc/
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>│   ├── cohort_sample_qc.ht      # Stage 3, Hail Table, every sample
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>│   ├── cohort_sample_qc.csv     # same data, comma-separated
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>│   ├── cohort_variant_qc.ht     # Stage 4, Hail Table, every variant
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>│   ├── cohort_variant_qc.tsv    # first 10,000 variants, TAB-separated
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>│   └── cohort_qc_report.html    # only with --generate-qc-report
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>├── logs/
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>│   └── pipeline_&lt;timestamp&gt;.log # the run's log, see below
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>└── .pipeline_state.json         # inspect this to resume manually, see above
+</code></pre></div>
+<p><code>cohort_filtered.mt</code> is written here even when <code>--mt-path</code> points elsewhere. It holds
+the filtered genotypes, without the QC annotations the filters used.</p>
+<p><code>cohort_sample_qc.csv</code> (every sample, comma-separated) and <code>cohort_variant_qc.tsv</code> use
+the same names, delimiters and columns as <code>compute-qc</code>'s files. The variant TSV is a
+preview of the first 10,000 variants; the full per-variant table is
+<code>cohort_variant_qc.ht</code>, and <code>compute-qc</code> exports every variant when you need the text.
+There is no <code>_with_qc.mt</code> here: unlike <code>compute-qc</code>, the pipeline never writes a
+QC-annotated copy of the MatrixTable, which would be a full extra write of the whole
+cohort on every run, since the QC stages run by default. <code>--apply-qc-filters</code>
+annotates <code>cohort.mt</code> with <code>cohort_sample_qc.ht</code> and <code>cohort_variant_qc.ht</code>, and
+<code>--generate-qc-report</code> reads only those two tables.</p>
+<p>The log holds the messages of every HGC module during the run (stages, QC, combiner,
+converters), at the level the console shows: warnings and errors by default, and the
+stage-by-stage progress with the global <code>-v</code> option (<code>hvantk -v hgc pipeline ...</code>).</p>
+<h2 id="performance-and-sizing">Performance and sizing<a class="headerlink" href="#performance-and-sizing" title="Permanent link">&para;</a></h2>
+<p><strong>Combiner parallelism (stage 1).</strong> Hail's gVCF combiner creates <strong>one partition per
+genomic interval</strong>, so the interval size caps how many cores can do useful work. The
+default — Hail's whole-genome default, 1.2 Mb — is sized for whole-genome gVCFs. For a
+region-restricted run it produces far fewer partitions than you likely have cores:</p>
+<table>
+<thead>
+<tr>
+<th>Input region</th>
+<th>Partitions at the 1.2 Mb default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>chr20 (64.4 Mb)</td>
+<td>54</td>
+</tr>
+<tr>
+<td>chr1 (249.0 Mb)</td>
+<td>208</td>
+</tr>
+<tr>
+<td>whole genome (3.1 Gb)</td>
+<td>~2,584</td>
+</tr>
+</tbody>
+</table>
+<p>Keep partitions at roughly 2-4x your core count. On a 128-core run of chr1, lower the
+interval size so partitions clear that target (600 kb -&gt; ~415 partitions on chr1,
+~3x 128 cores):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span>-g<span class="w"> </span>/data/chr1_gvcfs<span class="w"> </span>-o<span class="w"> </span>chr1.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span>--import-interval-size<span class="w"> </span><span class="m">600000</span>
+</code></pre></div>
+<p><strong>MatrixTable partitioning (stage 2).</strong> A VDS's on-disk partition count is derived
+from its reference blocks, which is a property of the genome and saturates as sample
+count grows — while the dense matrix you're producing keeps growing. Past that point
+the VDS's layout stops tracking the data it partitions, and <code>vds2mt</code>/the pipeline's
+stage 2 keeps using it unless you override it with <code>--n-partitions</code>, sized from the
+dense matrix you expect, not the VDS.</p>
+<p><strong>Memory.</strong> Set Hail's driver memory for larger cohorts:
+<code>export PYSPARK_SUBMIT_ARGS="--driver-memory 32g pyspark-shell"</code>.</p>
+<p><strong>Storage, as rough ratios of the input gVCF size</strong> (not a measured benchmark — actual
+ratios depend on cohort size, ploidy and compression): VDS ~50-70%; MatrixTable
+~100-150% of the VDS; temporary space during combine, 2-3x the input gVCFs.</p>
+<p><strong>Actual runtimes vary too much by hardware, storage and gVCF size to state here.</strong>
+<code>examples/hgc/scalability/</code> and <code>examples/hgc/cpu_scaling/</code> include benchmark scripts
+if you want numbers for your own setup.</p>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<h3 id="core-functions">Core functions<a class="headerlink" href="#core-functions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="n">combine_gvcfs</span><span class="p">,</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="n">combine_vdses</span><span class="p">,</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">convert_vds_to_mt</span><span class="p">,</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">convert_mt_to_multi_sample_vcf</span><span class="p">,</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome="GRCh38")</code></td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)</code></td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, skip_validation=False, skip_keying_by_cols=False, overwrite=False, n_partitions=None)</code></td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True, check_adj=True)</code></td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>combine_gvcfs</code>'s <code>kwargs</code> forwards to Hail's <code>hl.vds.new_combiner()</code>; its interval
+keys (<code>import_interval_size</code>, <code>use_genome_default_intervals</code>,
+<code>use_exome_default_intervals</code>, <code>intervals</code>) are mutually exclusive, same as the CLI.</p>
+<h3 id="qc-functions">QC functions<a class="headerlink" href="#qc-functions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="n">QCMetrics</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">compute_sample_qc</span><span class="p">,</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">compute_variant_qc</span><span class="p">,</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">compute_full_qc</span><span class="p">,</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">extract_qc_metrics</span><span class="p">,</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">filter_samples_by_qc</span><span class="p">,</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">filter_variants_by_qc</span><span class="p">,</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="n">get_qc_summary_stats</span><span class="p">,</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="n">prepare_qc_for_visualization</span><span class="p">,</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">save_qc_metrics</span><span class="p">,</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compute_sample_qc(mt, name="sample_qc", call_field="GT")</code></td>
+<td><code>MatrixTable</code></td>
+</tr>
+<tr>
+<td><code>compute_variant_qc(mt, name="variant_qc", call_field="GT")</code></td>
+<td><code>MatrixTable</code></td>
+</tr>
+<tr>
+<td><code>compute_full_qc(mt, sample_qc_name="sample_qc", variant_qc_name="variant_qc", call_field="GT")</code></td>
+<td><code>QCMetrics</code></td>
+</tr>
+<tr>
+<td><code>extract_qc_metrics(mt, sample_qc_name="sample_qc", variant_qc_name="variant_qc", max_variant_rows=500_000)</code></td>
+<td><code>(DataFrame, DataFrame)</code></td>
+</tr>
+<tr>
+<td><code>filter_samples_by_qc(mt, min_call_rate=0.85, min_mean_dp=None, max_mean_dp=None, min_mean_gq=None, sample_qc_name="sample_qc")</code></td>
+<td><code>MatrixTable</code></td>
+</tr>
+<tr>
+<td><code>filter_variants_by_qc(mt, min_call_rate=0.85, min_ac=1, max_ac=None, min_af=None, max_af=None, hwe_threshold=1e-6, variant_qc_name="variant_qc")</code></td>
+<td><code>MatrixTable</code></td>
+</tr>
+<tr>
+<td><code>get_qc_summary_stats(qc_df, metrics=None)</code></td>
+<td><code>DataFrame</code></td>
+</tr>
+<tr>
+<td><code>prepare_qc_for_visualization(qc_metrics, sample_metrics=None, variant_metrics=None)</code></td>
+<td><code>Dict[str, DataFrame]</code></td>
+</tr>
+<tr>
+<td><code>save_qc_metrics(qc_metrics, output_dir, prefix="qc_metrics", save_mt=True)</code></td>
+<td><code>Dict[str, str]</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>QCMetrics</code> (returned by <code>compute_full_qc</code>) holds <code>.mt</code>, <code>.sample_qc</code>, <code>.variant_qc</code>
+(<code>Optional[hl.Table]</code>), <code>.has_sample_qc</code>/<code>.has_variant_qc</code>, <code>.count_samples()</code>/
+<code>.count_variants()</code>, <code>.get_sample_metrics_df()</code>, <code>.get_variant_metrics_df(max_rows=500_000)</code>
+(subsamples above the row budget — a real dense chromosome can be ~10-11M variants,
+and collecting every row to the driver has killed real runs; the full table is always
+on disk via <code>save_qc_metrics</code>/<code>compute-qc</code>), and <code>.generate_html_report(output_path, **kwargs)</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">qc_results</span> <span class="o">=</span> <span class="n">compute_full_qc</span><span class="p">(</span><span class="n">mt</span><span class="p">)</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">report_path</span> <span class="o">=</span> <span class="n">qc_results</span><span class="o">.</span><span class="n">generate_html_report</span><span class="p">(</span><span class="s2">"qc_report.html"</span><span class="p">)</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">sample_df</span> <span class="o">=</span> <span class="n">qc_results</span><span class="o">.</span><span class="n">get_sample_metrics_df</span><span class="p">()</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">sample_df</span><span class="p">[</span><span class="s2">"sample_qc.call_rate"</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"red"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"min call rate"</span><span class="p">)</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample call rate"</span><span class="p">)</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">"call_rate.png"</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="pipeline-api">Pipeline API<a class="headerlink" href="#pipeline-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineConfig</span><span class="p">,</span> <span class="n">PipelineRunner</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="n">input_dir</span><span class="o">=</span><span class="s2">"/data/gvcfs"</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/data/output"</span><span class="p">,</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">output_prefix</span><span class="o">=</span><span class="s2">"cohort"</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">reference_genome</span><span class="o">=</span><span class="s2">"GRCh38"</span><span class="p">,</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="p">)</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="n">errors</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a><span class="n">runner</span> <span class="o">=</span> <span class="n">PipelineRunner</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="n">runner</span><span class="o">.</span><span class="n">show_plan</span><span class="p">()</span>       <span class="c1"># optional preview</span>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="n">state</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">outputs</span><span class="p">)</span>      <span class="c1"># {"vds": ..., "mt": ..., "compute_sample_qc": ..., ...}</span>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">errors</span><span class="p">)</span>
+</code></pre></div>
+<p>Constructing <code>PipelineRunner(config)</code> creates nothing and does not start Hail, so
+<code>.show_plan()</code> is a true dry run. <code>.run()</code> creates the output, <code>qc/</code> and <code>logs/</code>
+directories, writes the run's log file, and initializes Hail through the same
+idempotent <code>init_hail</code> the rest of hvantk uses, so more than one run in a process is
+safe.</p>
+<p><code>PipelineConfig</code> is a dataclass with every option the CLI exposes (see
+<a href="#run-the-full-pipeline">Run the full pipeline</a>); <code>PipelineRunner.run()</code> returns a
+<code>PipelineState</code> with <code>.completed_stages</code>, <code>.outputs</code> and <code>.errors</code>, and persists itself
+to <code>&lt;output_dir&gt;/.pipeline_state.json</code>. <code>PipelineState.load(path)</code> reads that file
+back, also one written by an older hvantk: it ignores configuration keys this version
+no longer has. Nothing in the CLI calls it automatically — see
+<a href="#run-the-full-pipeline">Resuming</a> above. <code>PipelineStage</code> is the stage-name enum
+(<code>COMBINE_GVCFS</code>, <code>VDS_TO_MT</code>, <code>COMPUTE_SAMPLE_QC</code>, <code>COMPUTE_VARIANT_QC</code>,
+<code>EXPORT_PVCF</code>).</p>
+<h3 id="utility-functions">Utility functions<a class="headerlink" href="#utility-functions" title="Permanent link">&para;</a></h3>
+<p>Imported from <code>hvantk.algorithms.hgc</code>: <code>validate_vcfs_paths(directory, pattern=None)</code>
+and <code>validate_vds_paths(vdses)</code> (both <code>-&gt; List[str]</code>),
+<code>check_path_exists_and_readable(path) -&gt; str</code>, and
+<code>sort_mts_cols(mts, ref_index=0) -&gt; List[MatrixTable]</code>.</p>
+<p>Two advanced functions need a direct import from <code>hvantk.algorithms.hgc.combiners</code>
+rather than the package root: <code>combine_matrix_table_rows(mt_paths, output_path,
+n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)</code> and
+<code>combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False,
+kwargs=None)</code> (both <code>-&gt; None</code>), for combining already-built MatrixTables by variant or
+by sample.</p>
+<h3 id="worked-examples">Worked examples<a class="headerlink" href="#worked-examples" title="Permanent link">&para;</a></h3>
+<p><strong>Incremental cohort building</strong> — combine in batches, then merge:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">combine_gvcfs</span><span class="p">,</span> <span class="n">combine_vdses</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"batch1"</span><span class="p">,</span> <span class="s2">"batch2"</span><span class="p">):</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="n">combine_gvcfs</span><span class="p">(</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>        <span class="n">gvcf_dir</span><span class="o">=</span><span class="sa">f</span><span class="s2">"data/</span><span class="si">{</span><span class="n">batch</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>        <span class="n">vds_output_path</span><span class="o">=</span><span class="sa">f</span><span class="s2">"output/</span><span class="si">{</span><span class="n">batch</span><span class="si">}</span><span class="s2">.vds"</span><span class="p">,</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>        <span class="n">tmp_path</span><span class="o">=</span><span class="s2">"tmp"</span><span class="p">,</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>        <span class="n">save_path</span><span class="o">=</span><span class="sa">f</span><span class="s2">"output/</span><span class="si">{</span><span class="n">batch</span><span class="si">}</span><span class="s2">_plan.json"</span><span class="p">,</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>        <span class="n">vdses</span><span class="o">=</span><span class="p">[],</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{},</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    <span class="p">)</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="n">combine_vdses</span><span class="p">(</span>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    <span class="n">vdses_dir</span><span class="o">=</span><span class="s2">"output"</span><span class="p">,</span>  <span class="c1"># contains batch1.vds and batch2.vds</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"output/merged.vds"</span><span class="p">,</span>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>    <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="p">)</span>
+</code></pre></div>
+<p><strong>Custom filtering with Hail expressions</strong> — when <code>filter_samples_by_qc</code>/
+<code>filter_variants_by_qc</code>'s fixed set of thresholds isn't enough, filter the
+QC-annotated MatrixTable directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"qc_metrics_with_qc.mt"</span><span class="p">)</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">(</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">variant_qc</span><span class="o">.</span><span class="n">AC</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">variant_qc</span><span class="o">.</span><span class="n">call_rate</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">)</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="p">)</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">filter_cols</span><span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">sample_qc</span><span class="o">.</span><span class="n">call_rate</span> <span class="o">&gt;</span> <span class="mf">0.90</span><span class="p">)</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="n">mt</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"cohort_filtered.mt"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong><code>ValueError: Call field 'GT' not found in MatrixTable entries</code></strong> — raised by
+<code>compute_sample_qc</code>/<code>compute_variant_qc</code> (and so by <code>compute-qc</code>) when the MatrixTable
+has no plain <code>GT</code> entry field and no split-dataset <code>LPGT</code> fallback either. This
+happens if <code>vds2mt --skip-split-multi</code> was used on data that still carries only local
+allele fields (<code>LGT</code>/<code>LA</code>). Re-run <code>vds2mt</code> without <code>--skip-split-multi</code>, or pass
+<code>--call-field LPGT</code> if the MatrixTable does carry per-split local genotypes.</p>
+<p><strong>Out of memory during gVCF combination or densify</strong> — raise the driver memory before
+running: <code>export PYSPARK_SUBMIT_ARGS="--driver-memory 64g pyspark-shell"</code>.</p>
+<p><strong>A gVCF's <code>.tbi</code> index is missing</strong> — <code>gvcf-combine</code>/<code>pipeline</code> validate every gVCF's
+companion index and raise <code>FileNotFoundError</code> for the missing one. Create it with
+<code>tabix -p vcf &lt;file&gt;.g.vcf.gz</code>.</p>
+<p><strong><code>qc-report</code> says "No QC annotations found in MatrixTable. Run compute-qc first."</strong>
+— the input MatrixTable lacks <code>sample_qc</code>/<code>variant_qc</code> columns. This is expected for
+a plain <code>vds2mt</code> output (feed it <code>compute-qc</code>'s <code>&lt;prefix&gt;_with_qc.mt</code> instead) and
+for the <code>pipeline</code>'s own <code>&lt;prefix&gt;.mt</code>, which never carries them either: the
+pipeline keeps QC separate (<code>qc/&lt;prefix&gt;_sample_qc.ht</code>/<code>variant_qc.ht</code>) rather than
+writing a QC-annotated copy of the whole MatrixTable. Pass <code>--generate-qc-report</code> to
+the pipeline itself instead of running <code>qc-report</code> against <code>&lt;prefix&gt;.mt</code> directly.</p>
+<p><strong>An exported <code>_variant_qc.tsv</code> doesn't parse downstream (numeric columns come back as
+strings or empty)</strong> — Hail's <code>Table.export</code> formats floats using the JVM's default
+locale. On a machine whose locale uses a comma decimal separator, <code>call_rate</code> is
+written <code>1,0000e+00</code> instead of <code>1.0000e+00</code>, and every numeric column reads as text.
+<code>compute-qc</code> and the pipeline's QC stages both detect this and raise instead of writing
+a silently broken file; fix it by starting the JVM with
+<code>-Duser.language=en -Duser.country=US</code> (for example via
+<code>PYSPARK_SUBMIT_ARGS="--driver-java-options='-Duser.language=en -Duser.country=US'"</code>).</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../getting-started/installation/">Installation</a> — Hail/Spark setup, the memory
+  and locale environment variables used above.</li>
+<li><a href="../../guide/hpc-migration/">Running on HPC</a> — running HGC under Slurm/Apptainer at
+  cohort scale.</li>
+<li><a href="../../examples/hgc/">HGC examples</a> — a runnable QC workflow and the scalability /
+  CPU-scaling benchmark scripts.</li>
+<li><a href="../../contributing/">Contributing</a> — development workflow.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3142 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/qtlcascade/">
+      
+      
+        <link rel="prev" href="../ptm-constraint/">
+      
+      
+        <link rel="next" href="../expression/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>QTL cascade - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#qtl-cascade" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              QTL cascade
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running on HPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/workflow-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene annotation matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    External cohorts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genesets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene sets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eqtl-and-pqtl-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eQTL and pQTL tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all-pairs-tables-for-colocalisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All-pairs tables for colocalisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlays
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gwas-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cascade-join-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cascade join (cascade)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#colocalisation-coloc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Colocalisation (coloc)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gene-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-pipeline-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full pipeline (run)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report (report)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gwas-colocalisation-gwas-coloc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS colocalisation (gwas-coloc)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GWAS colocalisation (gwas-coloc)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it downloads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options-and-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options and outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gwas-colocalisation-from-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS colocalisation from Python
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eqtl-and-pqtl-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eQTL and pQTL tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all-pairs-tables-for-colocalisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All-pairs tables for colocalisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlays
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gwas-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cascade-join-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cascade join (cascade)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#colocalisation-coloc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Colocalisation (coloc)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gene-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-pipeline-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full pipeline (run)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report (report)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gwas-colocalisation-gwas-coloc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS colocalisation (gwas-coloc)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GWAS colocalisation (gwas-coloc)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it downloads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options-and-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options and outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gwas-colocalisation-from-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GWAS colocalisation from Python
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/bigbio/hvantk/edit/dev/docs_site/tools/qtlcascade.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="qtl-cascade">QTL cascade<a class="headerlink" href="#qtl-cascade" title="Permanent link">&para;</a></h1>
+<p><code>hvantk qtlcascade</code> asks whether a variant that changes a gene's mRNA level (an eQTL)
+also changes the level of its protein (a pQTL), in the same direction, and whether the
+two signals share one causal variant. It joins eQTL and pQTL summary statistics by
+variant and gene, classifies each variant-gene pair, colocalises the two signals gene by
+gene with approximate Bayes factors (ABF), and summarises the evidence per gene,
+optionally with gnomAD constraint and a disease-gene list. A separate command,
+<code>gwas-coloc</code>, colocalises one GWAS locus with cis-eQTLs to rank candidate effector genes
+and checks the top gene with SuSiE fine-mapping.</p>
+<p>For a run on one tissue from raw files to report, see the
+<a href="../../examples/qtlcascade/">walkthrough</a>.</p>
+<p><img alt="QTL cascade workflow" src="../../images/hvantk-qtlcascade-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> The eQTL × pQTL pipeline run by <code>hvantk qtlcascade run</code>. <code>gwas-coloc</code>
+is a separate command.</p>
+<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td>Full pipeline: cascade join, colocalisation (optional), gene summary, plots, HTML report; one or several tissues</td>
+<td>Hail</td>
+</tr>
+<tr>
+<td><code>cascade</code></td>
+<td>Join and classify only; writes the cascade table</td>
+<td>Hail</td>
+</tr>
+<tr>
+<td><code>coloc</code></td>
+<td>ABF colocalisation for a list of genes; writes a TSV</td>
+<td>Hail</td>
+</tr>
+<tr>
+<td><code>report</code></td>
+<td>Rebuilds the HTML report from existing TSVs and PNGs</td>
+<td>No Hail</td>
+</tr>
+<tr>
+<td><code>gwas-coloc</code></td>
+<td>Colocalises a FinnGen GWAS locus with eQTL Catalogue cis-eQTLs, then confirms with SuSiE</td>
+<td>Network access, no Hail</td>
+</tr>
+</tbody>
+</table>
+<p>There is no gene-summary command: <code>run</code> writes the summary, or call
+<code>build_cascade_gene_summary</code> from Python.</p>
+<h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
+<h3 id="eqtl-and-pqtl-tables">eQTL and pQTL tables<a class="headerlink" href="#eqtl-and-pqtl-tables" title="Permanent link">&para;</a></h3>
+<p>The cascade reads two Hail Tables keyed by <code>(locus, alleles, gene_id)</code> with the fields
+<code>beta</code>, <code>se</code> and <code>p_value</code>, plus <code>tissue</code> when you filter by tissue. Two plugins build
+them with <code>hvantk reprocess</code> (<a href="../../guide/usage/#build-a-dataset">Building datasets</a>;
+where to get the files: <a href="../../guide/data-sources/#qtl-data">Data sources</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Raw files</th>
+<th>Plugin arguments that matter here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gtex-eqtl:eqtls</code></td>
+<td>GTEx v11 parquet (<code>source=gtex_v11</code>, the default) or v8 TSV (<code>source=gtex_v8</code>)</td>
+<td><code>tissue=&lt;name&gt;</code>; <code>p_threshold</code>, default <code>5e-8</code>, <code>0</code> keeps every pair</td>
+</tr>
+<tr>
+<td><code>pqtl:metrics</code></td>
+<td>Fang et al. (2025) cis-pQTL all-pairs files, <code>&lt;Tissue&gt;.allpairs_nobsGE72.txt.gz</code></td>
+<td><code>tissue=&lt;name&gt;</code>; <code>hgnc_ht=&lt;hgnc.ht&gt;</code> (required); <code>p_threshold</code>, default none, so every pair is kept</td>
+</tr>
+</tbody>
+</table>
+<p>Both datasets are bring-your-own: put the files in <code>--raw-dir</code> and <code>reprocess</code> skips the
+download stage. The walkthrough shows the
+<a href="../../examples/qtlcascade/#build-the-tables">build commands</a>.</p>
+<p>For the join to work:</p>
+<ul>
+<li>Gene IDs: both sides need unversioned Ensembl IDs. The eQTL builder strips the
+  version. The pQTL builder maps the Fang gene symbols to Ensembl IDs through an
+  <code>hgnc:lookup</code> table given as <code>--plugin-arg hgnc_ht=...</code>; a symbol it cannot map keeps
+  the symbol as <code>gene_id</code> and never joins (the build log counts them).</li>
+<li>Alleles: both builders read <code>alleles</code> as <code>[ref, alt]</code> from GTEx-style variant IDs
+  (<code>chr1_1000050_C_T_b38</code>), and both effect sizes are per ALT allele, so an exact
+  <code>(locus, alleles)</code> match keeps effect directions comparable. Nothing flips alleles or
+  strands: a variant coded the other way round in one table does not join.</li>
+<li>Genome build: both tables must be GRCh38. The <code>eqtlgen</code> source of <code>gtex-eqtl:eqtls</code>
+  is GRCh37 and has no <code>beta</code> or <code>se</code>, so it cannot be used here.</li>
+<li>Tissue names: the tissue filter is an exact string match on both tables, and the
+  builders take the tissue from the raw file name before the first dot. GTEx names
+  sub-tissues (<code>Heart_Left_Ventricle</code>, <code>Colon_Transverse</code>, ...) while Fang uses <code>Colon</code>,
+  <code>Heart</code>, <code>Liver</code>, <code>Lung</code> and <code>Thyroid</code>; only <code>Liver</code>, <code>Lung</code> and <code>Thyroid</code> match as
+  they are. For the others, build one table per tissue and run without a tissue filter,
+  or give the GTEx file (or a symlink to it) the Fang name.</li>
+</ul>
+<h3 id="all-pairs-tables-for-colocalisation">All-pairs tables for colocalisation<a class="headerlink" href="#all-pairs-tables-for-colocalisation" title="Permanent link">&para;</a></h3>
+<p>Colocalisation needs every tested variant-gene pair in the window, not only the
+significant ones. Build the eQTL table with <code>--plugin-arg p_threshold=0</code> from GTEx
+all-pairs files (GTEx distributes them separately from the significant pairs) and the
+pQTL table without <code>p_threshold</code> (the Fang files already hold every pair). Because
+<code>cascade</code> applies <code>--eqtl-p</code> and <code>--pqtl-p</code> itself, the same two tables can also be the
+cascade inputs. A significant-pairs table does not fail, but coloc then sees only the
+variants that passed the threshold, which hides evidence for distinct causal variants
+(H3) and overstates H4.</p>
+<h3 id="overlays">Overlays<a class="headerlink" href="#overlays" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--constraint-ht</code>: a table keyed by <code>gene_id</code> (Ensembl) with an <code>oe_lof_upper</code>
+  (LOEUF) field, such as the default <code>gnomad-metrics:metrics</code> build (gnomAD v2.1.1, by
+  gene). The v4.0 build is keyed by transcript and has no <code>oe_lof_upper</code>, so it does not
+  work here.</li>
+<li><code>--disease-genes-ht</code>: any table keyed by one <code>gene_id</code> field of Ensembl IDs; a gene
+  gets <code>is_disease_gene = true</code> when its ID is a key of that table. The ClinGen and
+  GenCC tables that hvantk builds have compound keys that start with <code>hgnc_id</code> and
+  <code>mondo_id</code>, and stop the run with a key type mismatch. Re-key one through the HGNC
+  table first (ClinGen shown):</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clingen</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s2">"data/clingen.ht"</span><span class="p">)</span>  <span class="c1"># keyed by (hgnc_id, mondo_id); hgnc_id like "1100"</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">hgnc</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s2">"data/hgnc.ht"</span><span class="p">)</span>  <span class="c1"># keyed by hgnc_id like "HGNC:1100"</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">clingen</span><span class="o">.</span><span class="n">key_by</span><span class="p">()</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">genes</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">gene_id</span><span class="o">=</span><span class="n">hgnc</span><span class="p">[</span><span class="s2">"HGNC:"</span> <span class="o">+</span> <span class="n">genes</span><span class="o">.</span><span class="n">hgnc_id</span><span class="p">]</span><span class="o">.</span><span class="n">ensembl_gene_id</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">genes</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">hl</span><span class="o">.</span><span class="n">is_defined</span><span class="p">(</span><span class="n">genes</span><span class="o">.</span><span class="n">gene_id</span><span class="p">))</span><span class="o">.</span><span class="n">key_by</span><span class="p">(</span><span class="s2">"gene_id"</span><span class="p">)</span><span class="o">.</span><span class="n">distinct</span><span class="p">()</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">genes</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"data/clingen_genes.ht"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="gwas-statistics">GWAS statistics<a class="headerlink" href="#gwas-statistics" title="Permanent link">&para;</a></h3>
+<p><code>gwas-coloc</code> does not read a local GWAS table: it streams FinnGen R10 summary statistics
+for one endpoint (<a href="#gwas-colocalisation-gwas-coloc">below</a>). The
+<code>gwas-catalog:associations</code> dataset lists published lead associations without standard
+errors, so it cannot feed coloc; use it to pick a lead variant.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>With an all-pairs eQTL table and a pQTL table for liver, built as in the walkthrough:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hvantk<span class="w"> </span>qtlcascade<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--eqtl-ht<span class="w"> </span>data/eqtl_liver_allpairs.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--pqtl-ht<span class="w"> </span>data/pqtl_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>--eqtl-allpairs<span class="w"> </span>data/eqtl_liver_allpairs.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>--pqtl-allpairs<span class="w"> </span>data/pqtl_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>--constraint-ht<span class="w"> </span>data/gnomad_metrics.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>--tissues<span class="w"> </span>Liver<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span>-o<span class="w"> </span>results/qtl_liver
+</code></pre></div>
+<p>This keeps the pairs with p ≤ 5e-8 on each side, classifies them, colocalises every
+gene that has an eQTL and a pQTL at the same variant, and writes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>results/qtl_liver/
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── per_tissue/
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│   └── Liver/                     # "all" when --tissues is not given
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│       ├── cascade.ht/            # variant-gene pairs with their class
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│       ├── gene_summary.ht/       # one row per gene
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│       ├── gene_summary.tsv       # the same table as TSV
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│       └── coloc_results.tsv      # H0-H4 per gene, when coloc ran
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── plots/
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│   ├── Liver_cascade_classes.png
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>│   ├── Liver_coloc_posteriors.png
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>│   └── cross_tissue_heatmap.png   # with two or more tissues
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>└── qtlcascade_report.html
+</code></pre></div>
+<p>Tissue names keep their case in paths; characters other than letters, digits, <code>_</code> and
+<code>-</code> become <code>_</code>.</p>
+<h2 id="cascade-join-cascade">Cascade join (<code>cascade</code>)<a class="headerlink" href="#cascade-join-cascade" title="Permanent link">&para;</a></h2>
+<ol>
+<li>If <code>--tissue</code> is given, keep only the rows of that tissue in each table (a table
+   without a <code>tissue</code> field is not filtered).</li>
+<li>Keep eQTL rows with <code>p_value &lt;= --eqtl-p</code> and pQTL rows with <code>p_value &lt;= --pqtl-p</code>.
+   A threshold of <code>0</code> keeps every row.</li>
+<li>Outer-join the two tables on <code>(locus, alleles, gene_id)</code>.</li>
+<li>
+<p>Classify each pair:</p>
+<table>
+<thead>
+<tr>
+<th><code>cascade_class</code></th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eqtl_mediated</code></td>
+<td>eQTL and pQTL, <code>eqtl_beta * pqtl_beta &gt; 0</code> (same direction)</td>
+</tr>
+<tr>
+<td><code>discordant</code></td>
+<td>eQTL and pQTL, <code>eqtl_beta * pqtl_beta &lt;= 0</code></td>
+</tr>
+<tr>
+<td><code>eqtl_only</code></td>
+<td>eQTL, and no pQTL row for this variant and gene after filtering</td>
+</tr>
+<tr>
+<td><code>pqtl_only</code></td>
+<td>pQTL, and no eQTL row for this variant and gene after filtering</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>For <code>eqtl_mediated</code> pairs, compute
+   <code>attenuation_ratio = 1 - |pqtl_beta| / |eqtl_beta|</code> (missing for the other classes):
+   0 when both effects have the same size, towards 1 when the protein effect is smaller,
+   negative when it is larger.</p>
+</li>
+</ol>
+<p>Joining on <code>gene_id</code> as well as the variant stops an eQTL for one gene and a pQTL for
+another gene at the same variant from being paired. It does not show that the eQTL and
+the pQTL share a causal variant; <code>coloc</code> tests that. Without a tissue filter, input
+tables that hold several tissues pair rows across tissues (a warning is logged).</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--eqtl-ht</code></td>
+<td>required</td>
+<td>eQTL Hail Table</td>
+</tr>
+<tr>
+<td><code>--pqtl-ht</code></td>
+<td>required</td>
+<td>pQTL Hail Table</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td>required</td>
+<td>Output cascade table (<code>.ht</code>)</td>
+</tr>
+<tr>
+<td><code>--tissue</code></td>
+<td>none</td>
+<td>Keep only this tissue in both tables</td>
+</tr>
+<tr>
+<td><code>--eqtl-p</code></td>
+<td><code>5e-8</code></td>
+<td>eQTL p-value threshold (<code>0</code> keeps every row)</td>
+</tr>
+<tr>
+<td><code>--pqtl-p</code></td>
+<td><code>5e-8</code></td>
+<td>pQTL p-value threshold (<code>0</code> keeps every row)</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td>off</td>
+<td>Replace an existing output table</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hvantk<span class="w"> </span>qtlcascade<span class="w"> </span>cascade<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--eqtl-ht<span class="w"> </span>data/eqtl_liver_allpairs.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--pqtl-ht<span class="w"> </span>data/pqtl_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--tissue<span class="w"> </span>Liver<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-o<span class="w"> </span>results/cascade_liver.ht
+</code></pre></div>
+<p>The cascade table is keyed by <code>(locus, alleles, gene_id)</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eqtl_beta</code>, <code>eqtl_se</code>, <code>eqtl_pvalue</code></td>
+<td>float64</td>
+<td>eQTL statistics (missing for <code>pqtl_only</code>)</td>
+</tr>
+<tr>
+<td><code>pqtl_beta</code>, <code>pqtl_se</code>, <code>pqtl_pvalue</code></td>
+<td>float64</td>
+<td>pQTL statistics (missing for <code>eqtl_only</code>)</td>
+</tr>
+<tr>
+<td><code>cascade_class</code></td>
+<td>str</td>
+<td>Class, as above</td>
+</tr>
+<tr>
+<td><code>attenuation_ratio</code></td>
+<td>float64</td>
+<td><code>eqtl_mediated</code> pairs only</td>
+</tr>
+<tr>
+<td><code>tissue</code></td>
+<td>str</td>
+<td>The <code>--tissue</code> value; missing without it</td>
+</tr>
+</tbody>
+</table>
+<h2 id="colocalisation-coloc">Colocalisation (<code>coloc</code>)<a class="headerlink" href="#colocalisation-coloc" title="Permanent link">&para;</a></h2>
+<p>For each requested gene, <code>coloc</code> tests whether the eQTL and the pQTL share one causal
+variant:</p>
+<ol>
+<li>Read both all-pairs tables, keep the requested genes (and <code>--tissue</code>), and inner-join
+   them on <code>(locus, alleles, gene_id)</code>: only variants present in both tables are used.</li>
+<li>Take the lead eQTL variant, the shared variant with the smallest eQTL p-value, and
+   keep the shared variants within <code>--window-kb</code> of it (default ±500 kb).</li>
+<li>Skip the gene, leaving it out of the output, if fewer than 2 variants remain.</li>
+<li>Compute a log ABF per variant and trait from <code>beta</code> and <code>se</code> (Wakefield 2009), then
+   the posterior of each hypothesis (Giambartolomei et al. 2014, the algebra of the R
+   coloc package's <code>coloc.abf</code>). Sums run over the variants in the window; the code
+   works in log space.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>per variant:  z = beta / se,   r = W / (W + se^2),   log ABF = 0.5 * (log(1 - r) + r * z^2)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>H0  no association                     L0 = 1
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>H1  eQTL only                          L1 = p1  * sum(ABF_eqtl)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>H2  pQTL only                          L2 = p2  * sum(ABF_pqtl)
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>H3  both, distinct causal variants     L3 = p1 * p2 * (sum(ABF_eqtl) * sum(ABF_pqtl) - sum(ABF_eqtl * ABF_pqtl))
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>H4  both, one shared causal variant    L4 = p12 * sum(ABF_eqtl * ABF_pqtl)
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>PP.Hk = Lk / (L0 + L1 + L2 + L3 + L4)
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p1</code></td>
+<td><code>1e-4</code></td>
+<td>Prior that a variant is causal for the eQTL only</td>
+</tr>
+<tr>
+<td><code>p2</code></td>
+<td><code>1e-4</code></td>
+<td>Prior that a variant is causal for the pQTL only</td>
+</tr>
+<tr>
+<td><code>p12</code></td>
+<td><code>1e-5</code></td>
+<td>Prior that a variant is causal for both</td>
+</tr>
+<tr>
+<td><code>W</code></td>
+<td><code>0.04</code></td>
+<td>Prior variance of the true effect (prior SD 0.2), the same for both traits</td>
+</tr>
+<tr>
+<td>Window</td>
+<td>±500 kb</td>
+<td>Around the lead eQTL variant</td>
+</tr>
+<tr>
+<td>Colocalised</td>
+<td>H4 &gt; 0.8</td>
+<td>Label used by the gene summary, the <code>run</code> printout, the report and the plots</td>
+</tr>
+</tbody>
+</table>
+<p>The CLI sets only the window and the tissue. Change the priors and <code>W</code> through
+<code>CascadeConfig</code> (<code>coloc_p1</code>, <code>coloc_p2</code>, <code>coloc_p12</code>, <code>coloc_W</code>) or
+<code>run_coloc_per_gene</code>. The 0.8 cut-off is fixed and only labels results: every tested
+gene is written.</p>
+<p>Compared with the R coloc package, this implementation:</p>
+<ul>
+<li>uses <code>beta</code> and <code>se</code> only: there is no p-value and MAF route, no sample size, no
+  <code>sdY</code> estimate and no case fraction. R coloc's default prior for a quantitative trait
+  with unit SD is W = 0.0225 (SD 0.15), which <code>gwas-coloc</code> uses for its eQTL side; the
+  cascade uses 0.04 for both traits.</li>
+<li>assumes at most one causal variant per trait in the window. With several independent
+  signals, a shared one can be missed or reported as H3; only <code>gwas-coloc</code> adds SuSiE
+  fine-mapping.</li>
+<li>needs no allele alignment for the posteriors, which depend on z² only; variants coded
+  differently in the two tables are not joined and drop out.</li>
+</ul>
+<p>H4 ignores the direction of effect, so a <code>discordant</code> gene can colocalise. Coloc collects
+every shared variant of every requested gene to the driver before applying the window,
+so memory follows the size of the all-pairs tables, not <code>--window-kb</code>.</p>
+<p><code>run</code> tests every gene with at least one <code>eqtl_mediated</code> or <code>discordant</code> pair. For the
+CLI, list the genes in a text file, one <code>gene_id</code> per line.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--eqtl-allpairs</code></td>
+<td>required</td>
+<td>All-pairs eQTL table</td>
+</tr>
+<tr>
+<td><code>--pqtl-allpairs</code></td>
+<td>required</td>
+<td>All-pairs pQTL table</td>
+</tr>
+<tr>
+<td><code>--cascade-genes</code></td>
+<td>required</td>
+<td>Text file, one <code>gene_id</code> per line</td>
+</tr>
+<tr>
+<td><code>--tissue</code></td>
+<td>none</td>
+<td>Keep only this tissue; also the output <code>tissue</code> value (<code>unknown</code> without it)</td>
+</tr>
+<tr>
+<td><code>--window-kb</code></td>
+<td><code>500</code></td>
+<td>Half-width of the window around the lead eQTL variant, in kb</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td>required</td>
+<td>Output TSV</td>
+</tr>
+</tbody>
+</table>
+<p>The TSV has one row per tested gene: <code>gene_id</code>, <code>tissue</code>, <code>H0</code> to <code>H4</code>, and
+<code>n_variants</code> (shared variants in the window). It is written even when no gene could be
+tested (header only).</p>
+<h2 id="gene-summary">Gene summary<a class="headerlink" href="#gene-summary" title="Permanent link">&para;</a></h2>
+<p><code>run</code> aggregates the cascade table per gene into <code>gene_summary.ht</code> and
+<code>gene_summary.tsv</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gene_id</code></td>
+<td>Ensembl gene ID (key)</td>
+</tr>
+<tr>
+<td><code>n_eqtl_variants</code>, <code>n_pqtl_variants</code></td>
+<td>Variants with an eQTL, and with a pQTL, for the gene</td>
+</tr>
+<tr>
+<td><code>n_concordant</code>, <code>n_discordant</code></td>
+<td><code>eqtl_mediated</code> and <code>discordant</code> pairs</td>
+</tr>
+<tr>
+<td><code>best_eqtl_pvalue</code>, <code>best_pqtl_pvalue</code></td>
+<td>Smallest p-value on each side</td>
+</tr>
+<tr>
+<td><code>tissues</code></td>
+<td>Tissue labels of the gene's pairs</td>
+</tr>
+<tr>
+<td><code>has_complete_cascade</code></td>
+<td><code>n_concordant &gt; 0</code></td>
+</tr>
+<tr>
+<td><code>oe_lof_upper</code></td>
+<td>LOEUF, with <code>--constraint-ht</code></td>
+</tr>
+<tr>
+<td><code>is_disease_gene</code></td>
+<td>With <code>--disease-genes-ht</code></td>
+</tr>
+<tr>
+<td><code>coloc_max_h4</code></td>
+<td>Highest H4 among the gene's coloc rows, when coloc ran</td>
+</tr>
+<tr>
+<td><code>coloc_n_tissues</code></td>
+<td>Number of those rows with H4 &gt; 0.8</td>
+</tr>
+</tbody>
+</table>
+<p><code>run</code> passes one tissue's coloc results at a time, so there <code>coloc_max_h4</code> is that
+tissue's H4 and <code>coloc_n_tissues</code> is 0 or 1; pass results for several tissues to
+<code>build_cascade_gene_summary</code> to count across tissues. Genes that coloc did not test have
+missing coloc columns.</p>
+<h2 id="full-pipeline-run">Full pipeline (<code>run</code>)<a class="headerlink" href="#full-pipeline-run" title="Permanent link">&para;</a></h2>
+<p><code>run</code> executes the stages in order: build the cascade, colocalise (only when both
+all-pairs tables are given), build the gene summary, then write the plots and the
+report.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--eqtl-ht</code>, <code>--pqtl-ht</code></td>
+<td>required</td>
+<td>Cascade inputs</td>
+</tr>
+<tr>
+<td><code>--eqtl-allpairs</code>, <code>--pqtl-allpairs</code></td>
+<td>none</td>
+<td>All-pairs tables: give both to run coloc, or neither</td>
+</tr>
+<tr>
+<td><code>--constraint-ht</code></td>
+<td>none</td>
+<td>LOEUF overlay</td>
+</tr>
+<tr>
+<td><code>--disease-genes-ht</code></td>
+<td>none</td>
+<td>Disease-gene overlay</td>
+</tr>
+<tr>
+<td><code>--tissues</code></td>
+<td>none</td>
+<td>Comma-separated tissues, one pass each</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output-dir</code></td>
+<td>required</td>
+<td>Output directory</td>
+</tr>
+<tr>
+<td><code>--eqtl-p</code>, <code>--pqtl-p</code></td>
+<td><code>5e-8</code></td>
+<td>Thresholds, as in <code>cascade</code></td>
+</tr>
+<tr>
+<td><code>--window-kb</code></td>
+<td><code>500</code></td>
+<td>Coloc window, as in <code>coloc</code></td>
+</tr>
+<tr>
+<td><code>--no-plots</code></td>
+<td>off</td>
+<td>Skip the PNGs</td>
+</tr>
+<tr>
+<td><code>--no-report</code></td>
+<td>off</td>
+<td>Skip the HTML report</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td>off</td>
+<td>Replace existing Hail tables</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>off</td>
+<td>Print the plan and exit</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Without <code>--tissues</code>, <code>run</code> makes one pass with no tissue filter, writes under
+  <code>per_tissue/all/</code>, and prints the number of genes in the summary and the class counts.</li>
+<li>With <code>--tissues A,B</code>, it runs the tissues one at a time in alphabetical order and
+  prints <code>&lt;tissue&gt;: &lt;n&gt; genes, &lt;m&gt; colocalised</code> for each, where <code>m</code> counts H4 &gt; 0.8. A
+  tissue that fails is skipped (the command fails only if all do). It draws
+  <code>cross_tissue_heatmap.png</code> (class counts per tissue) when at least two tissues finish,
+  and writes one combined report.</li>
+<li><code>--dry-run</code> prints the tissues, the inputs, whether coloc will run and the stages,
+  without reading any table or writing anything to <code>-o</code>.</li>
+<li>Plots need matplotlib (<code>pip install 'hvantk[viz]'</code>); without it, <code>run</code> logs a warning
+  for each plot and carries on.</li>
+<li><code>--overwrite</code> replaces the Hail tables. A rerun in which no gene has both an eQTL and
+  a pQTL still writes an empty (header-only) <code>coloc_results.tsv</code>, replacing any file
+  from an earlier run at that path.</li>
+</ul>
+<h2 id="report-report">Report (<code>report</code>)<a class="headerlink" href="#report-report" title="Permanent link">&para;</a></h2>
+<p><code>report</code> rebuilds the self-contained HTML report from files that <code>run</code> wrote: an
+overview, the top 50 genes by <code>n_concordant</code>, a coloc summary (genes tested, number and
+share with H4 &gt; 0.8, median H4), every PNG in <code>--plots-dir</code>, and a fixed methods
+paragraph. It reads no Hail tables, so its overview has no class counts; the report that
+<code>run</code> writes has them. The footer carries a timestamp, so compare the TSVs, not report
+files, when checking a rerun.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--gene-summary</code></td>
+<td>none</td>
+<td><code>gene_summary.tsv</code></td>
+</tr>
+<tr>
+<td><code>--coloc-results</code></td>
+<td>none</td>
+<td><code>coloc_results.tsv</code></td>
+</tr>
+<tr>
+<td><code>--plots-dir</code></td>
+<td>none</td>
+<td>Directory whose <code>*.png</code> files are embedded</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td>required</td>
+<td>Output HTML file</td>
+</tr>
+<tr>
+<td><code>--title</code></td>
+<td><code>QTL Cascade Analysis Report</code></td>
+<td>Page title</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hvantk<span class="w"> </span>qtlcascade<span class="w"> </span>report<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--gene-summary<span class="w"> </span>results/qtl_liver/per_tissue/Liver/gene_summary.tsv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--coloc-results<span class="w"> </span>results/qtl_liver/per_tissue/Liver/coloc_results.tsv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--plots-dir<span class="w"> </span>results/qtl_liver/plots<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>-o<span class="w"> </span>results/liver_report.html
+</code></pre></div>
+<h2 id="gwas-colocalisation-gwas-coloc">GWAS colocalisation (<code>gwas-coloc</code>)<a class="headerlink" href="#gwas-colocalisation-gwas-coloc" title="Permanent link">&para;</a></h2>
+<p><code>gwas-coloc</code> asks which cis gene at a GWAS locus is the likely effector. It colocalises
+the GWAS signal with the cis-eQTL of every gene in a window, ranks the genes by PP4, and
+confirms the top gene (or <code>--gene</code>) with SuSiE fine-mapping. It is independent of the
+eQTL × pQTL cascade and does not use Hail.</p>
+<h3 id="what-it-downloads">What it downloads<a class="headerlink" href="#what-it-downloads" title="Permanent link">&para;</a></h3>
+<p>Every run needs network access:</p>
+<ul>
+<li>FinnGen R10 summary statistics for <code>--endpoint</code> over the window, by remote tabix from
+  the public FinnGen bucket on <code>storage.googleapis.com</code>.</li>
+<li>eQTL Catalogue all-variant statistics for <code>--eqtl</code> (a dataset ID such as <code>QTD000251</code>,
+  in study <code>--eqtl-study</code>, default <code>QTS000015</code>, GTEx), by remote tabix from
+  <code>ftp.ebi.ac.uk</code>. <code>--eqtl</code> also accepts a URL, or a local bgzipped, tabix-indexed file
+  in the same column layout.</li>
+<li>For fine-mapping, the 1000 Genomes high-coverage GRCh38 phased panel from
+  <code>ftp.1000genomes.ebi.ac.uk</code>. The sample list and the chromosome's tabix index are
+  downloaded once into the LD cache (<code>--ld-cache-dir</code>, else <code>$HVANTK_LD_CACHE</code>, else
+  <code>~/.cache/hvantk/1kg</code>); the genotypes of the window are streamed on every run.
+  <code>--ld-vcf</code> replaces the panel with a local VCF (all its samples are used); the GWAS
+  and eQTL statistics are still streamed.</li>
+</ul>
+<p>pysam saves a copy of each remote tabix index (<code>.tbi</code>) in the current directory, so run
+<code>gwas-coloc</code> from a scratch directory. Everything it needs (pysam, NumPy, requests) is in
+the base install.</p>
+<h3 id="method">Method<a class="headerlink" href="#method" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Window: <code>--lead</code> ± <code>--window-kb</code> (default 500 kb) on <code>--chrom</code> (GRCh38, no <code>chr</code>
+   prefix).</li>
+<li>Match GWAS and eQTL variants by position and allele pair, in either order. No effect
+   flip is needed, because the ABF uses z².</li>
+<li>ABF screen: for each gene with at least 20 matched variants, compute PP3 and PP4 with
+   the <a href="#colocalisation-coloc"><code>coloc</code> formulas</a> but one prior variance per trait:
+   W1 = 0.04 for the GWAS (case-control log odds ratio, prior SD 0.2) and W2 = 0.0225 for
+   the eQTL (prior SD 0.15 on a unit-variance trait), with p1 = p2 = 1e-4 and
+   p12 = 1e-5. Genes are ranked by PP4.</li>
+<li>Target gene: <code>--gene</code> if given (the verdict then uses that gene's PP4, wherever it
+   ranks), otherwise the top-ranked gene.</li>
+<li>Fine-mapping (on by default): keep the variants present in the GWAS, in the target
+   gene's eQTL and in the LD panel as biallelic SNPs, orient them to the GWAS ALT allele,
+   and compute LD as the correlation of ALT dosages among unrelated founders of
+   <code>--superpop</code> (<code>EUR</code>, <code>AFR</code>, <code>EAS</code>, <code>SAS</code> or <code>AMR</code>). SuSiE-RSS (up to 10 effects, 95%
+   credible sets, minimum |r| of 0.5 within a set) fine-maps each trait from
+   z = beta / se and its sample size (<code>--gwas-n</code>, <code>--eqtl-n</code>). coloc.susie then takes
+   the highest PP4 over all pairs of GWAS and eQTL credible sets (p1 = p2 = 1e-4,
+   p12 = 5e-6), or 0 when either trait has no credible set. Both are NumPy ports of
+   susieR and the coloc package; R is not needed.</li>
+<li>
+<p>Verdict, with one cut-off of 0.5 for both the ABF PP4 and the coloc.susie PP4:</p>
+<table>
+<thead>
+<tr>
+<th>Verdict</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CONFIRMED</code></td>
+<td>ABF PP4 ≥ 0.5 and coloc.susie PP4 ≥ 0.5</td>
+</tr>
+<tr>
+<td><code>REFUTED</code></td>
+<td>ABF PP4 ≥ 0.5 but coloc.susie PP4 &lt; 0.5: a trait has no credible set (a single-variant-ABF artifact), or the credible sets point to distinct causal variants</td>
+</tr>
+<tr>
+<td><code>SUGGESTIVE</code></td>
+<td>ABF PP4 ≥ 0.5, and fine-mapping was not run (<code>--no-fine-map</code>) or the LD reference could not be built</td>
+</tr>
+<tr>
+<td><code>INCONCLUSIVE</code></td>
+<td>Fine-mapping ran but gave no PP4 (fewer than 2 usable variants, or a SuSiE error)</td>
+</tr>
+<tr>
+<td><code>NO COLOC</code></td>
+<td>No gene tested, <code>--gene</code> not among the tested genes, or its ABF PP4 &lt; 0.5</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ol>
+<p>The printed verdict adds the reason in parentheses. The cut-off is 0.5, not the 0.8 used
+for the cascade, because coloc.susie is more conservative than single-variant ABF; change
+it with <code>GwasColocConfig(pp4_threshold=...)</code> from Python. A network failure fetching the
+LD reference leaves no LD reference: an ABF hit is then reported as <code>SUGGESTIVE</code> and the
+command does not fail. <code>--superpop</code> is restricted to the five 1000 Genomes
+super-populations, so a typo there fails at once instead of silently falling back this
+way. LD comes from a reference panel, not from the GWAS or eQTL samples; for weak eQTLs
+the credible sets can then be unreliable, the documented limitation of SuSiE-RSS.</p>
+<h3 id="options-and-outputs">Options and outputs<a class="headerlink" href="#options-and-outputs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--endpoint</code></td>
+<td>required</td>
+<td>FinnGen R10 endpoint code, such as <code>I9_AF</code></td>
+</tr>
+<tr>
+<td><code>--chrom</code></td>
+<td>required</td>
+<td>Chromosome, GRCh38, without <code>chr</code></td>
+</tr>
+<tr>
+<td><code>--lead</code></td>
+<td>required</td>
+<td>Lead variant position (GRCh38)</td>
+</tr>
+<tr>
+<td><code>--eqtl</code></td>
+<td>required</td>
+<td>eQTL Catalogue dataset ID, URL or local tabix file</td>
+</tr>
+<tr>
+<td><code>--eqtl-study</code></td>
+<td><code>QTS000015</code></td>
+<td>eQTL Catalogue study ID</td>
+</tr>
+<tr>
+<td><code>--window-kb</code></td>
+<td><code>500</code></td>
+<td>Half-width of the window around the lead, in kb</td>
+</tr>
+<tr>
+<td><code>--gene</code></td>
+<td>top ABF gene</td>
+<td>Ensembl gene ID to confirm</td>
+</tr>
+<tr>
+<td><code>--fine-map</code> / <code>--no-fine-map</code></td>
+<td><code>--fine-map</code></td>
+<td>Run the SuSiE confirmation</td>
+</tr>
+<tr>
+<td><code>--gwas-n</code>, <code>--eqtl-n</code></td>
+<td>none</td>
+<td>Sample sizes; required unless <code>--no-fine-map</code></td>
+</tr>
+<tr>
+<td><code>--superpop</code></td>
+<td><code>EUR</code></td>
+<td>1000 Genomes super-population for LD: <code>EUR</code>, <code>AFR</code>, <code>EAS</code>, <code>SAS</code> or <code>AMR</code></td>
+</tr>
+<tr>
+<td><code>--ld-cache-dir</code></td>
+<td><code>$HVANTK_LD_CACHE</code>, else <code>~/.cache/hvantk/1kg</code></td>
+<td>Cache for the panel's sample list and indexes</td>
+</tr>
+<tr>
+<td><code>--ld-vcf</code></td>
+<td>none</td>
+<td>Local VCF to use as the LD reference</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output-dir</code></td>
+<td>required</td>
+<td>Output directory</td>
+</tr>
+</tbody>
+</table>
+<p>Without <code>--gwas-n</code> and <code>--eqtl-n</code>, the default <code>--fine-map</code> stops before any download
+with <code>fine-mapping requires gwas_N and eqtl_N (or pass --no-fine-map)</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hvantk<span class="w"> </span>qtlcascade<span class="w"> </span>gwas-coloc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--endpoint<span class="w"> </span>I9_AF<span class="w"> </span>--chrom<span class="w"> </span><span class="m">10</span><span class="w"> </span>--lead<span class="w"> </span><span class="m">73600000</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--eqtl<span class="w"> </span>QTD000251<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--gwas-n<span class="w"> </span><span class="m">261395</span><span class="w"> </span>--eqtl-n<span class="w"> </span><span class="m">372</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>-o<span class="w"> </span>results/af_10q22
+</code></pre></div>
+<p>It writes two files to <code>--output-dir</code>:</p>
+<ul>
+<li><code>coloc_&lt;endpoint&gt;_&lt;chrom&gt;_&lt;lead&gt;.tsv</code>: one row per tested gene, sorted by PP4, with
+  <code>gene_id</code>, <code>gene</code> (the ID again unless symbols are passed from Python), <code>n_snp</code>,
+  <code>eqtl_min_p</code>, <code>PP3</code> and <code>PP4</code>.</li>
+<li><code>report_&lt;endpoint&gt;_&lt;chrom&gt;_&lt;lead&gt;.json</code>: region and genome build, sources and sample
+  sizes, <code>coloc_params</code>, <code>results</code> (genes tested, top gene and its PP4, gene of interest
+  and its PP4), <code>fine_map</code> (credible sets per trait, <code>coloc_susie_PP4</code>, LD panel, note;
+  <code>null</code> with <code>--no-fine-map</code>), <code>verdict</code>, run date and provenance notes.</li>
+</ul>
+<p>The walkthrough runs a <a href="../../examples/qtlcascade/#colocalise-a-gwas-locus-with-gwas-coloc">confirmed and a refuted
+locus</a>.</p>
+<h2 id="interpreting-results">Interpreting results<a class="headerlink" href="#interpreting-results" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Classes depend on the thresholds and on what each study measured. <code>eqtl_only</code> means
+  that no pQTL for that variant and gene passed <code>--pqtl-p</code>: the protein effect may be
+  small, the variant untested, or the protein not measured in the pQTL study.</li>
+<li><code>eqtl_mediated</code> records a same-direction effect of one variant on both layers. The
+  class names follow Fang et al. (2025); none of them is a mediation test.</li>
+<li>High H4 means that the eQTL and the pQTL share a causal variant in the window. High H3
+  means distinct causal variants, so a cascade seen at a shared variant is an LD
+  artifact. High H1 or H2 means that only one trait has a signal in the window.</li>
+<li><code>eqtl_beta</code> and <code>pqtl_beta</code> come from different studies, each on its own scale;
+  compare attenuation ratios between genes rather than reading one value on its own.</li>
+<li>For <code>gwas-coloc</code>, trust <code>CONFIRMED</code> and <code>REFUTED</code> over the ABF ranking: a strong GWAS
+  signal next to a weak eQTL can give a high single-variant PP4 that fine-mapping does
+  not support.</li>
+</ul>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<p>The code lives in <code>hvantk/algorithms/qtlcascade/</code>; the CLI is
+<code>hvantk/tools/qtl/qtlcascade_cli.py</code>.</p>
+<h3 id="pipeline">Pipeline<a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade</span><span class="w"> </span><span class="kn">import</span> <span class="n">CascadeConfig</span><span class="p">,</span> <span class="n">CascadePipeline</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">CascadeConfig</span><span class="p">(</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">eqtl_ht</span><span class="o">=</span><span class="s2">"data/eqtl_liver_allpairs.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">pqtl_ht</span><span class="o">=</span><span class="s2">"data/pqtl_liver.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">eqtl_allpairs_ht</span><span class="o">=</span><span class="s2">"data/eqtl_liver_allpairs.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">pqtl_allpairs_ht</span><span class="o">=</span><span class="s2">"data/pqtl_liver.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">constraint_ht</span><span class="o">=</span><span class="s2">"data/gnomad_metrics.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"results/qtl_liver"</span><span class="p">,</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="p">)</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">CascadePipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># validates the config; creates no directories yet</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tissue</span><span class="o">=</span><span class="s2">"Liver"</span><span class="p">)</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">class_counts</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">n_cascade_genes</span><span class="p">)</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">coloc_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="nb">print</span><span class="p">((</span><span class="n">result</span><span class="o">.</span><span class="n">coloc_df</span><span class="p">[</span><span class="s2">"H4"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="s2">"genes with H4 &gt; 0.8"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>CascadeConfig</code> fields map to the <code>run</code> options, plus the coloc priors that the CLI does
+not expose:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>CLI option</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eqtl_ht</code>, <code>pqtl_ht</code>, <code>output_dir</code></td>
+<td>required</td>
+<td><code>--eqtl-ht</code>, <code>--pqtl-ht</code>, <code>-o</code></td>
+</tr>
+<tr>
+<td><code>eqtl_allpairs_ht</code>, <code>pqtl_allpairs_ht</code></td>
+<td><code>""</code></td>
+<td><code>--eqtl-allpairs</code>, <code>--pqtl-allpairs</code></td>
+</tr>
+<tr>
+<td><code>constraint_ht</code>, <code>disease_genes_ht</code></td>
+<td><code>""</code></td>
+<td><code>--constraint-ht</code>, <code>--disease-genes-ht</code></td>
+</tr>
+<tr>
+<td><code>tissues</code></td>
+<td><code>[]</code></td>
+<td><code>--tissues</code></td>
+</tr>
+<tr>
+<td><code>eqtl_p_threshold</code>, <code>pqtl_p_threshold</code></td>
+<td><code>5e-8</code></td>
+<td><code>--eqtl-p</code>, <code>--pqtl-p</code></td>
+</tr>
+<tr>
+<td><code>coloc_window_kb</code></td>
+<td><code>500</code></td>
+<td><code>--window-kb</code></td>
+</tr>
+<tr>
+<td><code>coloc_p1</code>, <code>coloc_p2</code>, <code>coloc_p12</code>, <code>coloc_W</code></td>
+<td><code>1e-4</code>, <code>1e-4</code>, <code>1e-5</code>, <code>0.04</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>generate_plots</code>, <code>generate_report</code></td>
+<td><code>True</code></td>
+<td><code>--no-plots</code>, <code>--no-report</code></td>
+</tr>
+<tr>
+<td><code>overwrite</code></td>
+<td><code>False</code></td>
+<td><code>--overwrite</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>CascadePipeline(config)</code> raises <code>ValueError</code> for an invalid configuration
+(<code>config.validate()</code> lists the problems) but creates no directories; <code>run()</code> and
+<code>run_collection()</code> create <code>output_dir</code>, <code>per_tissue/</code> and (unless <code>generate_plots</code> is
+<code>False</code>) <code>plots/</code> when they actually execute, so <code>show_plan()</code> writes nothing.
+<code>run(tissue=None)</code> returns a <code>CascadeResult</code> with <code>tissue</code>, <code>cascade_ht_path</code>,
+<code>gene_summary_ht_path</code>, <code>class_counts</code>, <code>n_cascade_genes</code> (genes in the summary) and
+<code>coloc_df</code>. <code>run_collection()</code> runs every tissue in <code>config.tissues</code> and returns
+<code>{tissue: CascadeResult}</code>; <code>show_plan()</code> returns the <code>--dry-run</code> text.</p>
+<h3 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">build_cascade</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">build_cascade_gene_summary</span><span class="p">,</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">run_coloc_per_gene</span><span class="p">,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">coloc_gene_ids</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.utils.hail_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_hail</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">init_hail</span><span class="p">()</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="n">cascade</span> <span class="o">=</span> <span class="n">build_cascade</span><span class="p">(</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">eqtl_ht_path</span><span class="o">=</span><span class="s2">"data/eqtl_liver_allpairs.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">pqtl_ht_path</span><span class="o">=</span><span class="s2">"data/pqtl_liver.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"results/cascade.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="n">tissue</span><span class="o">=</span><span class="s2">"Liver"</span><span class="p">,</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="p">)</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">coloc_df</span> <span class="o">=</span> <span class="n">run_coloc_per_gene</span><span class="p">(</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">eqtl_allpairs_ht_path</span><span class="o">=</span><span class="s2">"data/eqtl_liver_allpairs.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="n">pqtl_allpairs_ht_path</span><span class="o">=</span><span class="s2">"data/pqtl_liver.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    <span class="n">cascade_genes</span><span class="o">=</span><span class="n">coloc_gene_ids</span><span class="p">(</span><span class="n">cascade</span><span class="p">),</span>  <span class="c1"># genes with an eqtl_mediated or discordant pair</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    <span class="n">tissue</span><span class="o">=</span><span class="s2">"Liver"</span><span class="p">,</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    <span class="n">W</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="p">)</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">build_cascade_gene_summary</span><span class="p">(</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    <span class="n">cascade_ht_path</span><span class="o">=</span><span class="s2">"results/cascade.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"results/gene_summary.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    <span class="n">constraint_ht_path</span><span class="o">=</span><span class="s2">"data/gnomad_metrics.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    <span class="n">coloc_df</span><span class="o">=</span><span class="n">coloc_df</span><span class="p">,</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>build_cascade</code> and <code>build_cascade_gene_summary</code> return the checkpointed Hail Tables.
+<code>run_coloc_per_gene</code> returns a pandas DataFrame with the <code>coloc</code> TSV columns and also
+takes <code>window_kb</code>, <code>p1</code>, <code>p2</code> and <code>p12</code>.</p>
+<p>The ABF itself runs on NumPy arrays, without Hail:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade</span><span class="w"> </span><span class="kn">import</span> <span class="n">coloc_abf</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">res</span> <span class="o">=</span> <span class="n">coloc_abf</span><span class="p">(</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">eqtl_beta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">]),</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">eqtl_se</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">]),</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">pqtl_beta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">]),</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">pqtl_se</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">]),</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">"H4"</span><span class="p">],</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># 0.93</span>
+</code></pre></div>
+<p><code>coloc_abf</code> returns a dict with <code>H0</code> to <code>H4</code>, <code>n_variants</code> and <code>lead_snp_h4_idx</code> (the
+variant with the largest joint ABF); <code>compute_log_abf(beta, se, W)</code> returns the
+per-variant log ABFs.</p>
+<h3 id="plots">Plots<a class="headerlink" href="#plots" title="Permanent link">&para;</a></h3>
+<p><code>run</code> draws the class bar chart, the H4 histogram and the cross-tissue heatmap
+(<code>plot_cascade_classes</code>, <code>plot_coloc_posteriors</code>, <code>plot_cross_tissue_heatmap</code>). Two more
+plots take a DataFrame of variant-gene pairs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_attenuation</span><span class="p">,</span> <span class="n">plot_loeuf_by_cascade_class</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">pairs</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s2">"results/qtl_liver/per_tissue/Liver/cascade.ht"</span><span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s2">"results/qtl_liver/per_tissue/Liver/gene_summary.ht"</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># oe_lof_upper is in the gene summary only when --constraint-ht was given</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">pairs</span> <span class="o">=</span> <span class="n">pairs</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">oe_lof_upper</span><span class="o">=</span><span class="n">genes</span><span class="p">[</span><span class="n">pairs</span><span class="o">.</span><span class="n">gene_id</span><span class="p">]</span><span class="o">.</span><span class="n">oe_lof_upper</span><span class="p">)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">df</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="n">pairs</span><span class="o">.</span><span class="n">key_by</span><span class="p">()</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">"eqtl_beta"</span><span class="p">,</span> <span class="s2">"pqtl_beta"</span><span class="p">,</span> <span class="s2">"cascade_class"</span><span class="p">,</span> <span class="s2">"oe_lof_upper"</span><span class="p">)</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">)</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="n">plot_attenuation</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"results/attenuation.png"</span><span class="p">)</span>  <span class="c1"># eQTL beta against pQTL beta</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="n">plot_loeuf_by_cascade_class</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"results/loeuf_by_class.png"</span><span class="p">)</span>
+</code></pre></div>
+<p>Each plot function returns a matplotlib figure, saves it when <code>output_path</code> is given, and
+needs the <code>viz</code> extra.</p>
+<h3 id="gwas-colocalisation-from-python">GWAS colocalisation from Python<a class="headerlink" href="#gwas-colocalisation-from-python" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.qtlcascade.gwas_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">GwasColocConfig</span><span class="p">,</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">run_gwas_coloc_pipeline</span><span class="p">,</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">)</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">config</span> <span class="o">=</span> <span class="n">GwasColocConfig</span><span class="p">(</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">endpoint</span><span class="o">=</span><span class="s2">"I9_AF"</span><span class="p">,</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">chrom</span><span class="o">=</span><span class="s2">"10"</span><span class="p">,</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="n">lead</span><span class="o">=</span><span class="mi">73600000</span><span class="p">,</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="n">eqtl_dataset</span><span class="o">=</span><span class="s2">"QTD000251"</span><span class="p">,</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"results/af_10q22"</span><span class="p">,</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    <span class="n">gene_of_interest</span><span class="o">=</span><span class="s2">"ENSG00000177791"</span><span class="p">,</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    <span class="n">gwas_N</span><span class="o">=</span><span class="mi">261395</span><span class="p">,</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    <span class="n">eqtl_N</span><span class="o">=</span><span class="mi">372</span><span class="p">,</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    <span class="n">gene_symbols</span><span class="o">=</span><span class="p">{</span><span class="s2">"ENSG00000177791"</span><span class="p">:</span> <span class="s2">"MYOZ1"</span><span class="p">},</span>  <span class="c1"># fills the `gene` column</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="p">)</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="n">report</span> <span class="o">=</span> <span class="n">run_gwas_coloc_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># the JSON report, as a dict; raises ValueError</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="c1"># for an invalid config (same problems config.validate() lists) before anything runs</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">],</span> <span class="n">report</span><span class="p">[</span><span class="s2">"results"</span><span class="p">][</span><span class="s2">"goi_PP4_abf"</span><span class="p">])</span>
+</code></pre></div>
+<p><code>GwasColocConfig</code> also takes <code>min_snps</code> (20), <code>W1</code> (0.04), <code>W2</code> (0.0225), <code>p1</code>, <code>p2</code>,
+<code>p12</code> and <code>pp4_threshold</code> (0.5).</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Giambartolomei C et al. (2014). Bayesian test for colocalisation between pairs of
+  genetic association studies using summary statistics. <em>PLoS Genet</em> 10:e1004383.
+  <a href="https://doi.org/10.1371/journal.pgen.1004383">doi:10.1371/journal.pgen.1004383</a></li>
+<li>Wakefield J (2009). Bayes factors for genome-wide association studies: comparison with
+  P-values. <em>Genet Epidemiol</em> 33:79-86.
+  <a href="https://doi.org/10.1002/gepi.20359">doi:10.1002/gepi.20359</a></li>
+<li>Wang G et al. (2020). A simple new approach to variable selection in regression, with
+  application to genetic fine mapping. <em>J R Stat Soc B</em> 82:1273-1300.
+  <a href="https://doi.org/10.1111/rssb.12388">doi:10.1111/rssb.12388</a></li>
+<li>Zou Y et al. (2022). Fine-mapping from summary data with the "Sum of Single Effects"
+  model. <em>PLoS Genet</em> 18:e1010299.
+  <a href="https://doi.org/10.1371/journal.pgen.1010299">doi:10.1371/journal.pgen.1010299</a></li>
+<li>Wallace C (2021). A more accurate method for colocalisation analysis allowing for
+  multiple causal variants. <em>PLoS Genet</em> 17:e1009440.
+  <a href="https://doi.org/10.1371/journal.pgen.1009440">doi:10.1371/journal.pgen.1009440</a></li>
+<li>Fang et al. (2025). Regulation of protein abundance in normal human tissues. <em>medRxiv</em>.
+  <a href="https://doi.org/10.1101/2025.01.10.25320181">doi:10.1101/2025.01.10.25320181</a></li>
+<li>Kurki MI et al. (2023). FinnGen provides genetic insights from a well-phenotyped
+  isolated population. <em>Nature</em> 613:508-518.
+  <a href="https://doi.org/10.1038/s41586-022-05473-8">doi:10.1038/s41586-022-05473-8</a></li>
+<li>Kerimov N et al. (2021). A compendium of uniformly processed human gene expression and
+  splicing quantitative trait loci. <em>Nat Genet</em> 53:1290-1299.
+  <a href="https://doi.org/10.1038/s41588-021-00924-w">doi:10.1038/s41588-021-00924-w</a></li>
+<li>Byrska-Bishop M et al. (2022). High-coverage whole-genome sequencing of the expanded
+  1000 Genomes Project cohort including 602 trios. <em>Cell</em> 185:3426-3440.
+  <a href="https://doi.org/10.1016/j.cell.2022.08.004">doi:10.1016/j.cell.2022.08.004</a></li>
+</ul>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../examples/qtlcascade/">QTL cascade walkthrough</a>: one tissue from raw files to
+  report, and a confirmed and a refuted GWAS locus.</li>
+<li><a href="../../guide/data-sources/#qtl-data">Data sources</a>: where to get the GTEx eQTL and Fang
+  pQTL files.</li>
+<li><a href="../../guide/usage/#build-a-dataset">Building datasets</a>: <code>hvantk reprocess</code>.</li>
+<li><a href="../../guide/workflow-skills/">Workflow skills</a>: the <code>qtl-cascade</code> skill runs these
+  steps as cluster jobs.</li>
+<li><a href="../../guide/hpc-migration/">Running on HPC</a>: Hail on a Slurm cluster.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

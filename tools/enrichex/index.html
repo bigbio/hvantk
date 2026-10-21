@@ -1,0 +1,3124 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/enrichex/">
+      
+      
+        <link rel="prev" href="../rerank/">
+      
+      
+        <link rel="next" href="../genesets/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>EnrichEx (enrichment and burden) - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#enrichex-gene-set-enrichment-and-burden-testing" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              EnrichEx (enrichment and burden)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running on HPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/workflow-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene annotation matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    External cohorts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#query-gene-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query gene list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gene-set-collection-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene-set collection (JSON)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cohort-matrixtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cohort MatrixTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phenotype-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phenotype table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overlap-enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap enrichment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overlap enrichment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-overlap-test-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the overlap test works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-overlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run overlap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlap-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#burden-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden testing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Burden testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-burden-test-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the burden test works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#competitive-permutation-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Competitive permutation test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-burden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run burden
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#burden-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#burden-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reports-and-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reports and plots
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overlap-and-gene-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap and gene sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#burden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genesets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene sets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#query-gene-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query gene list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gene-set-collection-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene-set collection (JSON)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cohort-matrixtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cohort MatrixTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phenotype-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phenotype table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overlap-enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap enrichment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overlap enrichment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-overlap-test-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the overlap test works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-overlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run overlap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlap-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#burden-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden testing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Burden testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-burden-test-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the burden test works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variant-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variant classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#competitive-permutation-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Competitive permutation test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-burden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run burden
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#burden-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#burden-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reports-and-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reports and plots
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overlap-and-gene-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap and gene sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#burden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Burden
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/bigbio/hvantk/edit/dev/docs_site/tools/enrichex.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="enrichex-gene-set-enrichment-and-burden-testing">EnrichEx: gene-set enrichment and burden testing<a class="headerlink" href="#enrichex-gene-set-enrichment-and-burden-testing" title="Permanent link">&para;</a></h1>
+<p>EnrichEx tests a collection of gene sets (cell-type markers, pathways, disease panels)
+in two ways:</p>
+<ul>
+<li><strong>Overlap</strong> (<code>hvantk enrichex overlap</code>): is a gene list, such as GWAS hits or
+  differentially expressed genes, over- or under-represented in each gene set relative to
+  a background universe? One Fisher's exact test per gene set. No Hail needed.</li>
+<li><strong>Burden</strong> (<code>hvantk enrichex burden</code>): in a cohort MatrixTable, is a sample's count of
+  genes in the set that carry a qualifying variant associated with a binary or continuous
+  phenotype? One Hail logistic or linear regression per gene set, with optional
+  variant-class strata and a competitive permutation test.
+  <code>hvantk enrichex burden-pipeline</code> runs the same test over several gene-set collections
+  and variant classes in one pass.</li>
+</ul>
+<p><img alt="EnrichEx workflow" src="../../images/hvantk-enrichex-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> (A) Overlap enrichment with Fisher's exact test. (B) Burden testing with
+Hail regression, with optional variant-class strata and a competitive permutation test.</p>
+<h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
+<h3 id="query-gene-list">Query gene list<a class="headerlink" href="#query-gene-list" title="Permanent link">&para;</a></h3>
+<p>Used by <code>overlap</code>. Plain text, one gene per line. Blank lines and lines starting with <code>#</code>
+are skipped, surrounding whitespace is stripped and duplicates collapse. Matching against
+the gene sets and the background is exact and case-sensitive, so use one identifier type
+(symbols or Ensembl IDs) everywhere.</p>
+<h3 id="gene-set-collection-json">Gene-set collection (JSON)<a class="headerlink" href="#gene-set-collection-json" title="Permanent link">&para;</a></h3>
+<p>Used by all three commands:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"gene_sets"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">"Microglia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Microglia"</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"genes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"TREM2"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CD33"</span><span class="p">,</span><span class="w"> </span><span class="s2">"MS4A6A"</span><span class="p">,</span><span class="w"> </span><span class="s2">"TYROBP"</span><span class="p">],</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Lake et al. 2018"</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"tissue"</span><span class="p">:</span><span class="w"> </span><span class="s2">"brain"</span><span class="p">}</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">"Astrocytes"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Astrocytes"</span><span class="p">,</span><span class="w"> </span><span class="nt">"genes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"GFAP"</span><span class="p">,</span><span class="w"> </span><span class="s2">"AQP4"</span><span class="p">,</span><span class="w"> </span><span class="s2">"S100B"</span><span class="p">]}</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">"background_genes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"TREM2"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CD33"</span><span class="p">,</span><span class="w"> </span><span class="s2">"MS4A6A"</span><span class="p">,</span><span class="w"> </span><span class="s2">"TYROBP"</span><span class="p">,</span><span class="w"> </span><span class="s2">"GFAP"</span><span class="p">,</span><span class="w"> </span><span class="s2">"AQP4"</span><span class="p">,</span><span class="w"> </span><span class="s2">"S100B"</span><span class="p">,</span><span class="w"> </span><span class="s2">"..."</span><span class="p">],</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">"source_description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Brain cell-type markers"</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>Each set needs <code>name</code> and <code>genes</code>; <code>source</code> and <code>metadata</code> are optional. Results are
+  labelled with each set's <code>name</code> field.</li>
+<li><code>background_genes</code> is the universe for <code>overlap</code>, and <code>overlap</code> needs it: without it
+  (or with an empty list) the command logs "No query genes found in background universe!"
+  and writes no output. <code>burden</code> ignores the background.</li>
+<li>The counts that <code>GeneSetCollection.save()</code> adds (<code>n_genes</code>, <code>n_gene_sets</code>,
+  <code>n_background</code>) are ignored when the file is read.</li>
+</ul>
+<p>Build the file with the <code>hvantk genesets</code> commands (ClinGen, GenCC, COSMIC, or your own
+two-column TSV through <code>hvantk genesets prepare</code>; see <a href="../genesets/">Gene sets</a>) or from
+Python (see <a href="#python-api">Python API</a>). The CLI reads JSON only: convert a GMT file with
+<code>GeneSetCollection.load_gmt("sets.gmt").save("sets.json")</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Choose the overlap background deliberately</p>
+<p><code>hvantk genesets clingen</code>, <code>gencc</code>, <code>cosmic</code> and <code>prepare</code> (without <code>--background</code>),
+and the Python helpers <code>load_gene_sets_from_dict()</code>, <code>load_marker_genes()</code> and
+<code>GeneSetCollection.load_gmt()</code>, set the background to the union of the genes in the
+sets. With that background, query genes outside every set drop out of the test, and
+the test asks how the query is distributed among the sets rather than whether it is
+enriched genome-wide. For the genome-wide question, use the universe the query was
+drawn from (for example all protein-coding genes, or every gene tested in the GWAS):
+pass it to <code>hvantk genesets prepare</code> with <code>--background</code>.</p>
+</div>
+<h3 id="cohort-matrixtable">Cohort MatrixTable<a class="headerlink" href="#cohort-matrixtable" title="Permanent link">&para;</a></h3>
+<p>Used by <code>burden</code> and <code>burden-pipeline</code>: one row per variant, one column per sample.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Where</th>
+<th>Default name (option)</th>
+<th>Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gene</td>
+<td>row</td>
+<td><code>SYMBOL</code> (<code>--gene-field</code>)</td>
+<td>Top-level string field, one gene per row, same identifiers as the gene-set JSON. Rows with a missing gene are dropped.</td>
+</tr>
+<tr>
+<td>Allele frequency</td>
+<td>row</td>
+<td><code>gnomad_af</code> (<code>--af-field</code>)</td>
+<td>Numeric. Read only when an AF threshold is set.</td>
+</tr>
+<tr>
+<td>Prediction score</td>
+<td>row</td>
+<td><code>cadd_phred</code> (<code>--score-field</code>)</td>
+<td>Numeric, such as CADD PHRED or REVEL. Read only when <code>--min-score</code> is set.</td>
+</tr>
+<tr>
+<td>Consequence</td>
+<td>row</td>
+<td><code>consequence</code> (<code>--consequence-field</code>)</td>
+<td>One string per row (for example the most severe consequence), matched exactly. Read only when consequences or variant classes are set.</td>
+</tr>
+<tr>
+<td><code>filters</code></td>
+<td>row</td>
+<td></td>
+<td>Set of strings. Read only by <code>burden-pipeline --pass-only</code>, which skips the check when the field is absent.</td>
+</tr>
+<tr>
+<td><code>GT</code></td>
+<td>entry</td>
+<td></td>
+<td>Genotype call.</td>
+</tr>
+</tbody>
+</table>
+<p>The AF, score and consequence options accept dot paths into structs (<code>vep.CADD_PHRED</code>);
+the gene field does not.</p>
+<p>EnrichEx assumes a QC'd MatrixTable. It applies no genotype (GQ, DP), sample or variant
+QC of its own. Do that upstream: <code>hvantk hgc filter-qc</code> covers sample and variant QC
+(see <a href="../hgc/">HGC</a>), and genotype filters are one Hail call:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">filter_entries</span><span class="p">((</span><span class="n">mt</span><span class="o">.</span><span class="n">GQ</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">DP</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">))</span>
+</code></pre></div>
+<p>Filtered genotypes and no-calls count as non-carriers.</p>
+<h3 id="phenotype-table">Phenotype table<a class="headerlink" href="#phenotype-table" title="Permanent link">&para;</a></h3>
+<ul>
+<li>A Hail Table (a path ending in <code>.ht</code>) keyed by sample ID, or a TSV (any other path),
+  read with type imputation and keyed by <code>--sample-id-field</code> (default <code>sample_id</code>).</li>
+<li>The key must match the MatrixTable column key in value and type. In a TSV,
+  numeric-looking IDs are imputed as integers; if the MatrixTable keys samples by string,
+  write the phenotypes to a Hail Table with a string key first.</li>
+<li>Binary phenotype: boolean, or 0/1. Continuous phenotype: numeric. Covariates: numeric or
+  boolean, so code a categorical covariate such as sex as 0/1.</li>
+<li>MatrixTable samples without a phenotype value are dropped. Hail's regression also
+  excludes samples with any missing covariate.</li>
+</ul>
+<p><code>burden-pipeline</code> can read the phenotype and covariates from MatrixTable column fields
+instead (omit <code>-p</code>).</p>
+<h2 id="overlap-enrichment">Overlap enrichment<a class="headerlink" href="#overlap-enrichment" title="Permanent link">&para;</a></h2>
+<h3 id="how-the-overlap-test-works">How the overlap test works<a class="headerlink" href="#how-the-overlap-test-works" title="Permanent link">&para;</a></h3>
+<p>For each gene set S, with query list Q and background U:</p>
+<ol>
+<li>Q and S are intersected with U. <code>n_query</code> = |Q ∩ U|, <code>n_gene_set</code> = |S ∩ U|,
+   <code>n_background</code> = |U|. A set with no genes in U is skipped; if no query gene is in U,
+   nothing is tested.</li>
+<li>
+<p>The 2×2 table is</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>In the set</th>
+<th>Not in the set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In the query</td>
+<td>a = <code>n_overlap</code></td>
+<td>b = <code>n_query</code> − a</td>
+</tr>
+<tr>
+<td>Not in the query</td>
+<td>c = <code>n_gene_set</code> − a</td>
+<td>d = <code>n_background</code> − <code>n_query</code> − <code>n_gene_set</code> + a</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>A two-sided Fisher's exact test (<code>scipy.stats.fisher_exact</code>) gives <code>p_value</code>. A small
+   p-value means over- or under-representation; read the direction from the odds ratio.</p>
+</li>
+<li><code>odds_ratio</code> is the sample odds ratio ad/(bc): 0 when a = 0, infinite when b or c is 0.</li>
+<li>The 95% confidence interval uses Woolf's log method,
+   exp(ln OR ± 1.96 √(1/a + 1/b + 1/c + 1/d)), when all four cells are above zero, and is
+   reported as [0, inf] otherwise.</li>
+<li><code>p_adjusted</code> applies Benjamini-Hochberg (default), Bonferroni or no correction across
+   the gene sets actually tested.</li>
+<li><code>significant</code> is <code>p_adjusted &lt; --alpha</code>.</li>
+</ol>
+<h3 id="run-overlap">Run overlap<a class="headerlink" href="#run-overlap" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>results
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>overlap<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-g<span class="w"> </span>gwas_genes.txt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>-s<span class="w"> </span>brain_cell_types.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>-o<span class="w"> </span>results/overlap.tsv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--generate-report
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-g</code>, <code>--gene-list</code></td>
+<td>required</td>
+<td>Query gene list file.</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--gene-sets</code></td>
+<td>required</td>
+<td>Gene-set collection JSON with <code>background_genes</code>.</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td>required</td>
+<td>Output path (see below).</td>
+</tr>
+<tr>
+<td><code>--correction</code></td>
+<td><code>benjamini-hochberg</code></td>
+<td><code>bonferroni</code>, <code>benjamini-hochberg</code> or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>--alpha</code></td>
+<td><code>0.05</code></td>
+<td>Threshold for <code>significant</code> and the console summary.</td>
+</tr>
+<tr>
+<td><code>--output-format</code></td>
+<td><code>tsv</code></td>
+<td><code>tsv</code>, <code>json</code> or <code>both</code>.</td>
+</tr>
+<tr>
+<td><code>--generate-report</code></td>
+<td>off</td>
+<td>Write a dot plot and an HTML report (see <a href="#reports-and-plots">Reports and plots</a>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="overlap-output">Overlap output<a class="headerlink" href="#overlap-output" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>tsv</code> writes the table to <code>-o</code>, adding <code>.tsv</code> if missing; <code>json</code> writes to <code>-o</code>, adding
+  <code>.json</code> if missing. For <code>both</code>, give <code>-o</code> without an extension: <code>-o results/overlap</code>
+  writes <code>results/overlap.tsv</code> and <code>results/overlap.json</code>. The directory that holds these
+  files (<code>-o</code>'s parent) is created if it does not exist yet.</li>
+<li>With <code>--generate-report</code>, the report and its plot are written next to <code>-o</code>, in that
+  same directory. The report always reads a TSV: when <code>--output-format</code> wrote one this
+  run, it is reused; otherwise (<code>json</code> only) a copy named <code>overlap_results.tsv</code> is
+  written there for the report to read. Both are refreshed on every run, so rerunning
+  into the same <code>-o</code> never reports a previous run's results.</li>
+<li>When nothing can be tested, the command prints "No results generated" and writes no
+  file.</li>
+</ul>
+<p>One row per tested gene set, sorted by <code>p_value</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gene_set_name</code></td>
+<td>The set's <code>name</code>.</td>
+</tr>
+<tr>
+<td><code>n_query</code></td>
+<td>Query genes in the background (the same on every row).</td>
+</tr>
+<tr>
+<td><code>n_gene_set</code></td>
+<td>Set genes in the background.</td>
+</tr>
+<tr>
+<td><code>n_overlap</code></td>
+<td>Genes in both (a).</td>
+</tr>
+<tr>
+<td><code>n_background</code></td>
+<td>Background size.</td>
+</tr>
+<tr>
+<td><code>p_value</code></td>
+<td>Two-sided Fisher's exact p-value.</td>
+</tr>
+<tr>
+<td><code>odds_ratio</code></td>
+<td>ad/(bc).</td>
+</tr>
+<tr>
+<td><code>ci_lower</code>, <code>ci_upper</code></td>
+<td>95% CI (Woolf); 0 and <code>inf</code> when a cell is zero.</td>
+</tr>
+<tr>
+<td><code>overlap_genes</code></td>
+<td>Overlapping genes, sorted, comma-separated.</td>
+</tr>
+<tr>
+<td><code>p_adjusted</code></td>
+<td>Corrected p-value.</td>
+</tr>
+<tr>
+<td><code>significant</code></td>
+<td><code>p_adjusted &lt; --alpha</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The JSON output is an array of the same records; <code>overlap_genes</code> stays a comma-separated
+string and an infinite <code>ci_upper</code> becomes <code>null</code>.</p>
+<h2 id="burden-testing">Burden testing<a class="headerlink" href="#burden-testing" title="Permanent link">&para;</a></h2>
+<h3 id="how-the-burden-test-works">How the burden test works<a class="headerlink" href="#how-the-burden-test-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Select qualifying variants.</strong> With no filter option, every variant in the
+   MatrixTable counts. Each filter you set keeps a row only when its condition holds:</p>
+<ul>
+<li>allele frequency ≤ <code>--max-af</code> (no AF filter when unset or 1.0 or more);</li>
+<li>score ≥ <code>--min-score</code> (no score filter when unset, or 0 or less);</li>
+<li>consequence in <code>--consequences</code>.</li>
+</ul>
+<p>A row with a missing value for an active filter is dropped. With <code>--max-af</code>, for
+example, variants that have no gnomAD AF are excluded; fill the field with 0 upstream
+to keep them. If a filter's field does not exist, that filter is skipped and only a log
+warning says so.</p>
+</li>
+<li>
+<p><strong>Decide, per gene and sample, whether the sample qualifies</strong>
+   (<code>--genotype-aggregation</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>The sample qualifies for a gene when it has</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hets</code> (default)</td>
+<td>≥ 1 heterozygous qualifying genotype. Homozygous-alternate genotypes do not count.</td>
+</tr>
+<tr>
+<td><code>homs</code></td>
+<td>≥ 1 homozygous-alternate qualifying genotype.</td>
+</tr>
+<tr>
+<td><code>multi_het</code></td>
+<td>≥ 2 heterozygous qualifying genotypes. Genotypes are unphased, so two variants in cis also count; this approximates compound heterozygosity.</td>
+</tr>
+<tr>
+<td><code>homs_multi_het</code></td>
+<td>Either of the two above (a recessive model).</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>Sum per gene set.</strong> A sample's burden for a set is the number of genes in the set for
+   which it qualifies. With <code>--normalize-by-length</code>, each qualifying gene adds 1/L instead
+   of 1, where L is the gene length in kb from <code>--gene-lengths</code> (genes missing from that
+   file use L = 1) or, without the file, the number of qualifying variant sites in the
+   gene.</p>
+</li>
+<li>
+<p><strong>Regress the phenotype on burden</strong>, one model per gene set, over the samples with a
+   phenotype:</p>
+<ul>
+<li>binary (<code>--phenotype-type binary</code>): logistic regression with a Wald test
+  (<code>hl.logistic_regression_rows</code>, at most 25 iterations),
+  logit P(case) = β₀ + β·burden + Σ γₖ·covariateₖ.
+  <code>odds_ratio</code> = exp(β), with 95% CI exp(β ± 1.96 SE);</li>
+<li>continuous: linear regression with a t-test (<code>hl.linear_regression_rows</code>),
+  y = β₀ + β·burden + Σ γₖ·covariateₖ + ε.</li>
+</ul>
+<p>This is a self-contained test: the null hypothesis is that burden in the set is not
+associated with the phenotype.</p>
+</li>
+</ol>
+<p>Before the regression, gene sets that list fewer genes than <code>--min-gene-set-size</code> are
+dropped, and so are sets with fewer carriers (samples with burden above zero) than
+<code>--min-carriers</code>. A set in which no gene has a qualifying variant never reaches the
+regression and is absent from the output.</p>
+<p><code>p_adjusted</code> applies <code>--correction</code> with m equal to the number of gene sets in the JSON,
+including the sets dropped above (like R's <code>p.adjust(p, n = m)</code>), so pre-filtering does
+not lower the penalty. <code>significant</code> is <code>p_adjusted &lt; --alpha</code>. A gene set whose
+regression does not converge keeps a missing <code>p_value</code>, is left out of the correction,
+and gets <code>p_adjusted</code> = NaN and <code>significant</code> = false.</p>
+<h3 id="variant-classes">Variant classes<a class="headerlink" href="#variant-classes" title="Permanent link">&para;</a></h3>
+<p><code>--variant-classes</code> repeats the whole test once per class, each with its own consequence
+filter. <code>--consequences</code> is then ignored; <code>--max-af</code>, <code>--min-score</code> and the field options
+apply to every class. The presets use VEP Sequence Ontology terms:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Qualifying consequences</th>
+<th>Score filter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lof</code></td>
+<td><code>stop_gained</code>, <code>frameshift_variant</code>, <code>splice_donor_variant</code>, <code>splice_acceptor_variant</code></td>
+<td><code>--min-score</code> when set</td>
+</tr>
+<tr>
+<td><code>missense_constrained</code></td>
+<td><code>missense_variant</code></td>
+<td>Always score ≥ 25, whatever <code>--min-score</code> says</td>
+</tr>
+<tr>
+<td><code>synonymous</code></td>
+<td><code>synonymous_variant</code></td>
+<td><code>--min-score</code> when set</td>
+</tr>
+</tbody>
+</table>
+<p>Any other name is a custom class whose only qualifying consequence is the name itself,
+for a precomputed grouping field: <code>--variant-classes hcLOF,missC,syn --consequence-field csq_group</code>.</p>
+<p>Each class is corrected on its own (m = gene sets in the JSON), not across classes. The
+synonymous class is a negative control: when any gene set reaches nominal p &lt; 0.05 for
+synonymous variants, a warning is logged, because that points to confounding (gene
+length, batch, ancestry) rather than biology.</p>
+<h3 id="competitive-permutation-test">Competitive permutation test<a class="headerlink" href="#competitive-permutation-test" title="Permanent link">&para;</a></h3>
+<p>A self-contained test can flag many sets at once when cases carry more rare variants
+overall, for example after a batch or ancestry difference. <code>--permutation</code>
+(<code>--competitive</code> in <code>burden-pipeline</code>) adds a test whose null hypothesis is that the set
+is no more associated than a random set of the same size:</p>
+<ol>
+<li>Per-gene qualifying indicators, with the same filter and model as the main test, are
+   computed in Hail for every gene in the MatrixTable and collected to the driver.</li>
+<li>The observed statistic is the Wald z (binary, refitted in NumPy with the same
+   covariates) or the t statistic (continuous) of the set's burden.</li>
+<li>Each permutation draws a random set with as many genes as the set has in the
+   MatrixTable. Draws are length-matched: genes are binned into up to 10 quantile bins of
+   their carrier count, and each set gene is replaced by a random gene from its bin
+   (with replacement). With fewer than 10 genes in the MatrixTable, draws are uniform.</li>
+<li>The empirical p-value is (1 + the number of permutations whose absolute statistic is
+   at least the observed one) / (N + 1), a two-sided test. With <code>--variant-classes</code> the
+   test runs once per class.</li>
+</ol>
+<p>The smallest attainable p-value is 1/(N + 1), so choose <code>--n-permutations</code> large enough
+to pass your multiple-testing threshold. Empirical p-values are not corrected for
+multiple testing, <code>--min-carriers</code> and <code>--min-gene-set-size</code> do not apply, and run time
+grows with gene sets × permutations.</p>
+<h3 id="run-burden">Run burden<a class="headerlink" href="#run-burden" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>burden<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-m<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-p<span class="w"> </span>phenotypes.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-s<span class="w"> </span>gene_sets.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--covariates<span class="w"> </span>PC1,PC2,PC3,PC4,PC5,age,sex<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--max-af<span class="w"> </span><span class="m">0</span>.001<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--consequences<span class="w"> </span>stop_gained,frameshift_variant,splice_donor_variant,splice_acceptor_variant<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>--min-carriers<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span>-o<span class="w"> </span>results/burden/
+</code></pre></div>
+<p>Stratified by variant class, with the competitive test and a report, and phenotypes from
+a TSV:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>burden<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-m<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-p<span class="w"> </span>phenotypes.tsv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--sample-id-field<span class="w"> </span>sample_id<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>-s<span class="w"> </span>gene_sets.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>--covariates<span class="w"> </span>PC1,PC2,PC3,sex<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span>--max-af<span class="w"> </span><span class="m">0</span>.001<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span>--variant-classes<span class="w"> </span>lof,missense_constrained,synonymous<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span>--permutation<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span>--permutation-seed<span class="w"> </span><span class="m">42</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span>--generate-report<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span>-o<span class="w"> </span>results/burden_by_class/
+</code></pre></div>
+<p>A quantitative trait uses linear regression:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>burden<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-m<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>-p<span class="w"> </span>phenotypes.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>-s<span class="w"> </span>gene_sets.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--phenotype-type<span class="w"> </span>continuous<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>--phenotype-field<span class="w"> </span>ldl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span>--covariates<span class="w"> </span>PC1,PC2,PC3,age,sex<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span>--max-af<span class="w"> </span><span class="m">0</span>.001<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span>-o<span class="w"> </span>results/burden_ldl/
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-m</code>, <code>--cohort-mt</code></td>
+<td>required</td>
+<td>Cohort MatrixTable.</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--phenotypes</code></td>
+<td>required</td>
+<td>Phenotype <code>.ht</code>, or a TSV.</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--gene-sets</code></td>
+<td>required</td>
+<td>Gene-set collection JSON.</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td>required</td>
+<td>A directory, created if needed, that receives <code>burden_results.tsv</code>; or a results <code>.tsv</code> path, whose directory is created if needed.</td>
+</tr>
+<tr>
+<td><code>--phenotype-field</code></td>
+<td><code>is_case</code></td>
+<td>Phenotype field.</td>
+</tr>
+<tr>
+<td><code>--phenotype-type</code></td>
+<td><code>binary</code></td>
+<td><code>binary</code> (logistic) or <code>continuous</code> (linear).</td>
+</tr>
+<tr>
+<td><code>--covariates</code></td>
+<td>none</td>
+<td>Comma-separated covariate fields, no spaces.</td>
+</tr>
+<tr>
+<td><code>--genotype-aggregation</code></td>
+<td><code>hets</code></td>
+<td><code>hets</code>, <code>homs</code>, <code>multi_het</code> or <code>homs_multi_het</code>.</td>
+</tr>
+<tr>
+<td><code>--max-af</code></td>
+<td>none</td>
+<td>Keep variants with AF ≤ this value.</td>
+</tr>
+<tr>
+<td><code>--min-score</code></td>
+<td>none</td>
+<td>Keep variants with score ≥ this value; 0 or less disables it.</td>
+</tr>
+<tr>
+<td><code>--consequences</code></td>
+<td>none</td>
+<td>Comma-separated qualifying consequences, no spaces. Ignored with <code>--variant-classes</code>.</td>
+</tr>
+<tr>
+<td><code>--gene-field</code></td>
+<td><code>SYMBOL</code></td>
+<td>Row field holding the gene.</td>
+</tr>
+<tr>
+<td><code>--af-field</code></td>
+<td><code>gnomad_af</code></td>
+<td>Row field holding the allele frequency.</td>
+</tr>
+<tr>
+<td><code>--score-field</code></td>
+<td><code>cadd_phred</code></td>
+<td>Row field holding the prediction score.</td>
+</tr>
+<tr>
+<td><code>--consequence-field</code></td>
+<td><code>consequence</code></td>
+<td>Row field holding the consequence.</td>
+</tr>
+<tr>
+<td><code>--correction</code></td>
+<td><code>benjamini-hochberg</code></td>
+<td><code>bonferroni</code>, <code>benjamini-hochberg</code> or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>--alpha</code></td>
+<td><code>0.05</code></td>
+<td>Threshold for <code>significant</code>.</td>
+</tr>
+<tr>
+<td><code>--sample-id-field</code></td>
+<td><code>sample_id</code></td>
+<td>Sample ID column of a TSV phenotype file.</td>
+</tr>
+<tr>
+<td><code>--variant-classes</code></td>
+<td>none</td>
+<td>Comma-separated variant classes (see above).</td>
+</tr>
+<tr>
+<td><code>--permutation</code></td>
+<td>off</td>
+<td>Add the competitive permutation test.</td>
+</tr>
+<tr>
+<td><code>--n-permutations</code></td>
+<td><code>10000</code></td>
+<td>Permutations per gene set.</td>
+</tr>
+<tr>
+<td><code>--permutation-seed</code></td>
+<td>none</td>
+<td>Random seed for the permutations.</td>
+</tr>
+<tr>
+<td><code>--normalize-by-length</code></td>
+<td>off</td>
+<td>Length-normalised burden (see step 3).</td>
+</tr>
+<tr>
+<td><code>--gene-lengths</code></td>
+<td>none</td>
+<td>TSV with a header row: gene in the first column, length in bp in the second.</td>
+</tr>
+<tr>
+<td><code>--min-carriers</code></td>
+<td><code>0</code></td>
+<td>Drop gene sets with fewer carriers.</td>
+</tr>
+<tr>
+<td><code>--min-gene-set-size</code></td>
+<td><code>0</code></td>
+<td>Drop gene sets that list fewer genes.</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>off</td>
+<td>Print the inputs and settings, then exit without reading the data.</td>
+</tr>
+<tr>
+<td><code>--generate-report</code></td>
+<td>off</td>
+<td>Write a forest plot and an HTML report.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="burden-output">Burden output<a class="headerlink" href="#burden-output" title="Permanent link">&para;</a></h3>
+<p>Files go to the directory of <code>-o</code> when it ends in <code>.tsv</code>, otherwise to <code>-o</code> itself:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The <code>-o</code> file, or <code>burden_results.tsv</code></td>
+<td>Always; all classes together with <code>--variant-classes</code>.</td>
+</tr>
+<tr>
+<td><code>burden_&lt;class&gt;.tsv</code></td>
+<td>Per class, with <code>--variant-classes</code>.</td>
+</tr>
+<tr>
+<td><code>permutation_results.tsv</code>, or <code>permutation_&lt;class&gt;.tsv</code> per class</td>
+<td>With <code>--permutation</code>.</td>
+</tr>
+<tr>
+<td><code>enrichex_burden.png</code>, <code>enrichex_burden_report.html</code></td>
+<td>With <code>--generate-report</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>When no gene set is testable, the command writes an empty results file and stops there:
+no permutation test, no report.</p>
+<p>The results table has one row per tested gene set, sorted by <code>p_value</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Phenotype</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gene_set_name</code></td>
+<td>both</td>
+<td>The set's <code>name</code>.</td>
+</tr>
+<tr>
+<td><code>gene_set_size</code></td>
+<td>both</td>
+<td>Genes listed in the set.</td>
+</tr>
+<tr>
+<td><code>n_genes_found</code></td>
+<td>both</td>
+<td>Set genes with at least one qualifying variant in the MatrixTable.</td>
+</tr>
+<tr>
+<td><code>gene_coverage_pct</code></td>
+<td>both</td>
+<td><code>n_genes_found / gene_set_size × 100</code>, one decimal. A warning is logged for sets below 50%.</td>
+</tr>
+<tr>
+<td><code>beta</code>, <code>standard_error</code>, <code>p_value</code></td>
+<td>both</td>
+<td>Effect of one unit of burden, its SE and p-value.</td>
+</tr>
+<tr>
+<td><code>z_stat</code></td>
+<td>binary</td>
+<td>Wald z statistic.</td>
+</tr>
+<tr>
+<td><code>fit.n_iterations</code>, <code>fit.converged</code>, <code>fit.exploded</code></td>
+<td>binary</td>
+<td>Logistic fit diagnostics. When the fit does not converge, the statistics are missing.</td>
+</tr>
+<tr>
+<td><code>odds_ratio</code>, <code>ci_lower</code>, <code>ci_upper</code></td>
+<td>binary</td>
+<td>exp(β) and its 95% CI.</td>
+</tr>
+<tr>
+<td><code>n</code>, <code>sum_x</code>, <code>y_transpose_x</code></td>
+<td>continuous</td>
+<td>Samples used, sum of burden, and Σ y·burden.</td>
+</tr>
+<tr>
+<td><code>t_stat</code></td>
+<td>continuous</td>
+<td>t statistic.</td>
+</tr>
+<tr>
+<td><code>p_adjusted</code>, <code>significant</code></td>
+<td>both</td>
+<td>Corrected p-value, and <code>p_adjusted &lt; --alpha</code>.</td>
+</tr>
+<tr>
+<td><code>variant_class</code></td>
+<td>both</td>
+<td>With <code>--variant-classes</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The permutation tables have <code>gene_set_name</code>, <code>n_genes_tested</code> (set genes present in the
+MatrixTable), <code>observed_statistic</code>, <code>empirical_p_value</code>, <code>n_permutations</code> and
+<code>n_exceeded</code>, plus <code>variant_class</code> per class.</p>
+<h2 id="burden-pipeline">Burden pipeline<a class="headerlink" href="#burden-pipeline" title="Permanent link">&para;</a></h2>
+<p><code>hvantk enrichex burden-pipeline</code> loads the cohort once and runs the burden test for every
+pair of gene-set collection and variant class. The statistics are those of <code>burden</code>;
+inputs, defaults and outputs differ.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>burden-pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>-m<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-p<span class="w"> </span>phenotypes.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--gene-sets<span class="w"> </span>heart:gene_sets/heart.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--gene-sets<span class="w"> </span>brain:gene_sets/brain.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>--variant-classes<span class="w"> </span>lof,missense_constrained,synonymous<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span>--max-af<span class="w"> </span><span class="m">0</span>.001<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">  </span>--covariates<span class="w"> </span>PC1,PC2,PC3,sex<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span>--competitive<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span>--generate-report<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">  </span>-o<span class="w"> </span>results/celltype_burden/
+</code></pre></div>
+<p>With the phenotype and covariates stored as MatrixTable column fields, omit <code>-p</code> and use
+dot paths; the leaf names (<code>is_case</code>, <code>PC1</code>, ...) are used for the regression:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hvantk<span class="w"> </span>enrichex<span class="w"> </span>burden-pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>-m<span class="w"> </span>cohort.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--gene-sets<span class="w"> </span>heart:gene_sets/heart.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--phenotype-field<span class="w"> </span>phe.is_case<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--covariates<span class="w"> </span>phe.PC1,phe.PC2,phe.sex<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span>--variant-classes<span class="w"> </span>lof,synonymous<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span>-o<span class="w"> </span>results/burden/
+</code></pre></div>
+<p><code>--max-af</code>, <code>--min-score</code>, <code>--pass-only</code> and the three field options always apply, with
+or without <code>--variant-classes</code>: without it, the pipeline still makes one unstratified
+run per collection, named <code>all</code>, using those filters.</p>
+<p>Where it differs from <code>burden</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th><code>burden-pipeline</code></th>
+<th><code>burden</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gene sets</td>
+<td><code>--gene-sets NAME:PATH</code>, repeatable, required, no short flag</td>
+<td><code>-s PATH</code>, one file</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--phenotypes</code></td>
+<td>Optional; when omitted, read from MatrixTable column fields</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><code>-o</code></td>
+<td><code>--output-dir</code>, a directory</td>
+<td><code>--output</code>, a file or a directory</td>
+</tr>
+<tr>
+<td><code>--min-carriers</code></td>
+<td><code>5</code></td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>--max-af</code></td>
+<td><code>0.01</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>--min-score</code></td>
+<td>Applied as given; leave it unset to disable</td>
+<td>0 or less disables it</td>
+</tr>
+<tr>
+<td><code>--pass-only</code> / <code>--no-pass-only</code></td>
+<td><code>--no-pass-only</code>; <code>--pass-only</code> keeps rows whose <code>filters</code> set is empty</td>
+<td>Not available</td>
+</tr>
+<tr>
+<td>Permutation test</td>
+<td><code>--competitive</code></td>
+<td><code>--permutation</code></td>
+</tr>
+<tr>
+<td><code>--consequences</code></td>
+<td>Not available; use <code>--variant-classes</code></td>
+<td>Available</td>
+</tr>
+</tbody>
+</table>
+<p>The remaining options (<code>--phenotype-field</code>, <code>--phenotype-type</code>, <code>--covariates</code>,
+<code>--gene-field</code>, <code>--genotype-aggregation</code>, <code>--correction</code>, <code>--alpha</code>,
+<code>--min-gene-set-size</code>, <code>--n-permutations</code>, <code>--permutation-seed</code>, <code>--normalize-by-length</code>,
+<code>--gene-lengths</code>, <code>--af-field</code>, <code>--score-field</code>, <code>--consequence-field</code>,
+<code>--sample-id-field</code>, <code>--dry-run</code>, <code>--generate-report</code>) behave as in <code>burden</code>, except that
+<code>--covariates</code> tolerates spaces after commas. <code>--dry-run</code> prints the run plan without
+starting Hail or writing anything to disk, in both commands (it still checks that the
+input paths exist).</p>
+<p>Each run (one collection, one class) is corrected on its own, with m = gene sets in that
+collection. A gene set whose regression fails keeps a missing <code>p_adjusted</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>results/celltype_burden/
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>├── burden_combined.tsv                      # every run, with variant_class and collection columns
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>├── per_run/
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>│   ├── burden_&lt;collection&gt;_&lt;class&gt;.tsv      # class "all" when unstratified
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>│   └── permutation_&lt;collection&gt;_&lt;class&gt;.tsv # with --competitive
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>├── plots/                                   # created empty
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>├── enrichex_burden.png                      # with --generate-report
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>└── enrichex_burden_report.html              # with --generate-report
+</code></pre></div>
+<h2 id="reports-and-plots">Reports and plots<a class="headerlink" href="#reports-and-plots" title="Permanent link">&para;</a></h2>
+<p><code>--generate-report</code> needs matplotlib, from the <code>enrichex</code> extra
+(<code>pip install 'hvantk[enrichex]'</code>). The report is one HTML file with the plot embedded;
+the PNG is also written next to it.</p>
+<ul>
+<li><code>overlap</code> writes <code>enrichex_overlap_report.html</code> and <code>enrichex_overlap.png</code>: a table of
+  the 20 sets with the smallest <code>p_adjusted</code>, the overlapping genes of each, and a dot
+  plot of those among them with at least one overlapping gene (height −log10
+  <code>p_adjusted</code>, colour odds ratio, size <code>n_overlap</code>).</li>
+<li><code>burden</code> and <code>burden-pipeline</code> write <code>enrichex_burden_report.html</code> and
+  <code>enrichex_burden.png</code>: a forest plot of the 25 sets with the smallest <code>p_adjusted</code>
+  (odds ratio or β with 95% CI) and a table.</li>
+</ul>
+<p>Each report opens with an overview that counts the rows whose <code>significant</code> column is
+true, and ends with a short methods note. The <code>overlap</code> and <code>burden</code> reports also
+summarise the gene-set collection.</p>
+<p>The same output from Python:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.enrichex</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">generate_report</span><span class="p">,</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">plot_burden_forest</span><span class="p">,</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">plot_enrichment_dotplot</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="p">)</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">overlap</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">"results/overlap.tsv"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">"</span><span class="se">\t</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">plot_enrichment_dotplot</span><span class="p">(</span><span class="n">overlap</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"plots/overlap_dotplot.png"</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="n">burden</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">"results/burden/burden_results.tsv"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">"</span><span class="se">\t</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="n">plot_burden_forest</span><span class="p">(</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">burden</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"plots/burden_forest.pdf"</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"pdf"</span><span class="p">,</span> <span class="n">phenotype_type</span><span class="o">=</span><span class="s2">"binary"</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="p">)</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="n">generate_report</span><span class="p">(</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"report/enrichex_report.html"</span><span class="p">,</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    <span class="n">overlap_results</span><span class="o">=</span><span class="s2">"results/overlap.tsv"</span><span class="p">,</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    <span class="n">burden_results</span><span class="o">=</span><span class="s2">"results/burden/burden_results.tsv"</span><span class="p">,</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    <span class="n">gene_sets_path</span><span class="o">=</span><span class="s2">"gene_sets.json"</span><span class="p">,</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">"EnrichEx report"</span><span class="p">,</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="p">)</span>
+</code></pre></div>
+<p>Each plot function saves to <code>output_path</code> with the extension replaced by <code>format</code>
+(default <code>png</code>) and returns the matplotlib figure. <code>plot_burden_forest</code> needs <code>ci_lower</code>
+and <code>ci_upper</code>, which binary results have; for continuous results add
+<code>beta ± 1.96 × standard_error</code> yourself and pass <code>sort_by="p_value"</code>. The other plots are
+<code>plot_enrichment_barplot</code>, <code>plot_burden_volcano</code>, <code>plot_celltype_burden_heatmap</code> (one cell
+per gene set and variant class, from <code>burden_combined.tsv</code>) and <code>plot_celltype_forest</code>
+(one gene set across variant classes).</p>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<p>Everything below is importable from <code>hvantk.algorithms.enrichex</code>.</p>
+<h3 id="overlap-and-gene-sets">Overlap and gene sets<a class="headerlink" href="#overlap-and-gene-sets" title="Permanent link">&para;</a></h3>
+<p>Overlap runs on plain Python, without Hail:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.enrichex</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">GeneSetCollection</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">compute_overlap_enrichment_pandas</span><span class="p">,</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="n">gene_sets</span> <span class="o">=</span> <span class="n">GeneSetCollection</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"brain_cell_types.json"</span><span class="p">)</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">query</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"APOE"</span><span class="p">,</span> <span class="s2">"CLU"</span><span class="p">,</span> <span class="s2">"CR1"</span><span class="p">,</span> <span class="s2">"PICALM"</span><span class="p">,</span> <span class="s2">"BIN1"</span><span class="p">,</span> <span class="s2">"TREM2"</span><span class="p">,</span> <span class="s2">"CD33"</span><span class="p">,</span> <span class="s2">"MS4A6A"</span><span class="p">]</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">df</span> <span class="o">=</span> <span class="n">compute_overlap_enrichment_pandas</span><span class="p">(</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="n">query</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">correction_method</span><span class="o">=</span><span class="s2">"benjamini-hochberg"</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="p">)</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"significant"</span><span class="p">],</span> <span class="p">[</span><span class="s2">"gene_set_name"</span><span class="p">,</span> <span class="s2">"n_overlap"</span><span class="p">,</span> <span class="s2">"odds_ratio"</span><span class="p">,</span> <span class="s2">"p_adjusted"</span><span class="p">]])</span>
+</code></pre></div>
+<p><code>compute_overlap_enrichment()</code> takes the same arguments and returns a list of
+<code>OverlapResult</code> objects sorted by <code>p_value</code>. Their attributes are the table columns,
+with <code>overlap_genes</code> as a list and no <code>significant</code> attribute.</p>
+<p>To build a collection:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.enrichex</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_gene_sets_from_dict</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"protein_coding_genes.txt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">background</span> <span class="o">=</span> <span class="p">{</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fh</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()}</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">collection</span> <span class="o">=</span> <span class="n">load_gene_sets_from_dict</span><span class="p">(</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="p">{</span><span class="s2">"Microglia"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"TREM2"</span><span class="p">,</span> <span class="s2">"CD33"</span><span class="p">,</span> <span class="s2">"MS4A6A"</span><span class="p">],</span> <span class="s2">"Astrocytes"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"GFAP"</span><span class="p">,</span> <span class="s2">"AQP4"</span><span class="p">,</span> <span class="s2">"S100B"</span><span class="p">]},</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">background_genes</span><span class="o">=</span><span class="n">background</span><span class="p">,</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="p">)</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">collection</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"brain_cell_types.json"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>load_marker_genes(path, cluster_column="cluster", gene_column="gene")</code> makes one set per
+cluster from a marker TSV, such as Seurat <code>FindAllMarkers</code> output.
+<code>GeneSetCollection.load_gmt(path, background_genes=None)</code> reads GMT.
+<code>GeneSet(name, genes, source="", metadata={})</code> and
+<code>GeneSetCollection(gene_sets, background_genes, source_description="", metadata={})</code>
+build collections by hand; a collection supports <code>len()</code>, iteration over its <code>GeneSet</code>
+objects, <code>get(name)</code>, <code>names()</code>, <code>save()</code>, <code>save_gmt()</code> and <code>to_dict()</code>.</p>
+<h3 id="burden">Burden<a class="headerlink" href="#burden" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.enrichex</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">GeneSetCollection</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">VariantFilter</span><span class="p">,</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">apply_correction</span><span class="p">,</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">run_burden_analysis</span><span class="p">,</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">)</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.utils.hail_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_hail</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">init_hail</span><span class="p">()</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"cohort.mt"</span><span class="p">)</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="n">pheno</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s2">"phenotypes.ht"</span><span class="p">)</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="n">gs</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">genes</span><span class="p">)</span> <span class="k">for</span> <span class="n">gs</span> <span class="ow">in</span> <span class="n">GeneSetCollection</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"gene_sets.json"</span><span class="p">)</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="p">}</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="n">lof</span> <span class="o">=</span> <span class="n">VariantFilter</span><span class="p">(</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    <span class="n">max_af</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>    <span class="n">min_score</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>    <span class="n">consequences</span><span class="o">=</span><span class="p">[</span><span class="s2">"stop_gained"</span><span class="p">,</span> <span class="s2">"frameshift_variant"</span><span class="p">],</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>    <span class="n">pass_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="p">)</span>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="n">result</span> <span class="o">=</span> <span class="n">run_burden_analysis</span><span class="p">(</span>
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>    <span class="n">cohort_mt</span><span class="o">=</span><span class="n">mt</span><span class="p">,</span>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>    <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>    <span class="n">phenotype_ht</span><span class="o">=</span><span class="n">pheno</span><span class="p">,</span>
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>    <span class="n">phenotype_field</span><span class="o">=</span><span class="s2">"is_case"</span><span class="p">,</span>
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>    <span class="n">phenotype_type</span><span class="o">=</span><span class="s2">"binary"</span><span class="p">,</span>
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>    <span class="n">covariate_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">"PC1"</span><span class="p">,</span> <span class="s2">"PC2"</span><span class="p">,</span> <span class="s2">"PC3"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">,</span> <span class="s2">"sex"</span><span class="p">],</span>
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>    <span class="n">variant_filter</span><span class="o">=</span><span class="n">lof</span><span class="p">,</span>
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>    <span class="n">genotype_aggregation</span><span class="o">=</span><span class="s2">"hets"</span><span class="p">,</span>
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>    <span class="n">min_carriers</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a><span class="p">)</span>
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a><span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>    <span class="n">df</span><span class="p">[</span><span class="s2">"p_adjusted"</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply_correction</span><span class="p">(</span>
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>        <span class="n">df</span><span class="p">[</span><span class="s2">"p_value"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>        <span class="n">method</span><span class="o">=</span><span class="s2">"benjamini-hochberg"</span><span class="p">,</span>
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>        <span class="n">n_total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">),</span>
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>    <span class="p">)</span>
+</code></pre></div>
+<ul>
+<li><code>run_burden_analysis()</code> returns the regression table without <code>p_adjusted</code> and
+  <code>significant</code> (the CLI adds those), or <code>None</code> when nothing is testable.</li>
+<li><code>VariantFilter()</code> defaults are stricter than the CLI's: <code>max_af=0.01</code>, <code>min_score=20.0</code>
+  on <code>cadd_phred</code>, and <code>pass_only=True</code>. Pass <code>min_score=None</code> and <code>pass_only=False</code> to
+  select by consequence and AF only. Its <code>min_gq</code> and <code>min_dp</code> fields are accepted but the
+  burden functions never apply them.</li>
+<li><code>apply_correction(p_values, method, n_total=None)</code> takes a list, not a NumPy array.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Function or class</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compute_geneset_burden_mt(mt, gene_sets, ...)</code></td>
+<td>Steps 1 to 3: a MatrixTable with one row per gene set (<code>gene_set_size</code>, <code>n_genes_found</code>, <code>gene_coverage_pct</code>), one column per sample and a <code>burden</code> entry; <code>None</code> when no set gene has a qualifying variant.</td>
+</tr>
+<tr>
+<td><code>logistic_burden_test(mt_burden, phenotype_field, covariates, pass_through)</code>, <code>linear_burden_test(...)</code></td>
+<td>Step 4 on such a MatrixTable; the phenotype and covariates must already be column fields of <code>mt_burden</code>.</td>
+</tr>
+<tr>
+<td><code>compute_per_gene_burden_mt(mt, gene_field, variant_filter)</code></td>
+<td>Per-gene MatrixTable with <code>hets</code>, <code>homs</code> and <code>multi_het</code> entries.</td>
+</tr>
+<tr>
+<td><code>run_stratified_burden_analysis(..., variant_classes)</code></td>
+<td><code>run_burden_analysis</code> per class; returns a dict of class name to table (with <code>variant_class</code>).</td>
+</tr>
+<tr>
+<td><code>build_variant_classes_from_presets(names, base_filter=None)</code></td>
+<td>Dict of class name to <code>VariantFilter</code>. Without <code>base_filter</code>: no AF, PASS or score filter, except the fixed score ≥ 25 of <code>missense_constrained</code>.</td>
+</tr>
+<tr>
+<td><code>permutation_burden_test(..., n_permutations=10000, length_matched=True, seed=None)</code></td>
+<td>The competitive test; returns a pandas DataFrame.</td>
+</tr>
+<tr>
+<td><code>BurdenConfig</code>, <code>BurdenPipeline</code></td>
+<td>The <code>burden-pipeline</code> engine: <code>BurdenPipeline(config).show_plan()</code> and <code>.run()</code>, which returns the combined DataFrame. <code>BurdenConfig.generate_report</code> defaults to <code>True</code>, unlike the CLI flag.</td>
+</tr>
+<tr>
+<td><code>generate_synthetic_burden_cohort(...)</code></td>
+<td>A synthetic cohort with planted signal: returns the MatrixTable, a phenotype table with <code>is_case</code>, and the signal gene sets.</td>
+</tr>
+<tr>
+<td><code>check_type_i_error(p_values, alpha=0.05, tolerance=2.0)</code></td>
+<td>Calibration check under the null: <code>calibrated</code> is true when the rejection rate lies within [alpha/tolerance, alpha × tolerance] and a Kolmogorov-Smirnov test of uniformity gives p &gt; 0.001.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="interpreting-results">Interpreting results<a class="headerlink" href="#interpreting-results" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Overlap is two-sided.</strong> An odds ratio below 1 with a small p-value is depletion.</li>
+<li><strong>Overlap depends on the background</strong> (see the warning under
+  <a href="#gene-set-collection-json">Gene-set collection</a>). Fisher's test also treats genes as
+  exchangeable: it ignores gene length and the genes that sets share. The Woolf interval
+  is approximate and can disagree with the exact p-value at small counts.</li>
+<li><strong>The burden effect is per qualifying gene.</strong> <code>odds_ratio</code> (or β) is the effect of one
+  more gene in the set in which a sample qualifies, or of one unit of the length-normalised
+  rate with <code>--normalize-by-length</code>. An odds ratio of 1.5 means each additional qualifying
+  gene multiplies the odds of being a case by 1.5; it does not mean that cases carry 50%
+  more variants.</li>
+<li><strong>Sparse sets.</strong> With few carriers or complete separation the logistic fit fails
+  (<code>fit.converged</code> false, missing statistics) or gives unstable, wide intervals. Raise
+  <code>--min-carriers</code>, merge small sets or use broader variant classes.</li>
+<li><strong>Self-contained and competitive tests answer different questions.</strong> A significant
+  self-contained result says the set's burden tracks the phenotype; only the competitive
+  test says the set stands out from random sets. Check the synonymous class: signal there
+  points to confounding.</li>
+<li><strong>Gene length.</strong> Long genes collect more qualifying variants, so sets of long genes look
+  burdened. Use <code>--normalize-by-length</code>, or rely on the length-matched permutation null.</li>
+<li><strong>Missing annotations.</strong> Active filters drop variants with a missing value. Check
+  <code>n_genes_found</code> and <code>gene_coverage_pct</code> to see how much of each set was testable.</li>
+<li><strong>Differential QC.</strong> No-calls count as non-carriers, so a call-rate difference between
+  cases and controls biases burden. Joint-call and QC cases and controls together, and
+  include ancestry principal components among the covariates.</li>
+<li><strong>Many strata.</strong> Variant classes and collections are corrected separately. When you
+  test several, account for the total number of tests when you report.</li>
+</ul>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../genesets/">Gene sets</a>: build the gene-set JSON (<code>hvantk genesets prepare</code>, ClinGen,
+  GenCC and COSMIC sets).</li>
+<li><a href="../hgc/">HGC</a>: joint calling and sample and variant QC before burden testing.</li>
+<li><a href="../ancestry/">Ancestry inference</a>: principal components to use as covariates.</li>
+<li><a href="../cohort/">External cohorts</a>: a per-gene Fisher's exact burden test on a case-control
+  MatrixTable (<code>hvantk cohort burden</code>).</li>
+<li><a href="../../examples/enrichex/">EnrichEx examples</a> and the scripts in
+  <a href="https://github.com/bigbio/hvantk/tree/main/examples/enrichex"><code>examples/enrichex/</code></a>.</li>
+<li><a href="../../guide/hpc-migration/">Running on HPC</a>: Spark settings for large cohorts.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

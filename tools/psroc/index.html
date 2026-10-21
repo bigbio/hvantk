@@ -1,0 +1,2402 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/psroc/">
+      
+      
+        <link rel="prev" href="../genesets/">
+      
+      
+        <link rel="next" href="../ptm/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>PS-ROC (score evaluation) - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ps-roc-pathogenicity-score-evaluation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PS-ROC (score evaluation)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running on HPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/workflow-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC (joint genotyping)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene annotation matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    External cohorts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx (enrichment and burden)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genesets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gene sets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC (score evaluation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-variants-are-labelled-and-scored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How variants are labelled and scored
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How variants are labelled and scored">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#selecting-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selecting variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-status-and-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review status and labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scores-and-missingness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scores and missingness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roc-confidence-interval-and-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROC, confidence interval and threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-ps-roc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run PS-ROC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/rerank/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Re-rank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-variants-are-labelled-and-scored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How variants are labelled and scored
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How variants are labelled and scored">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#selecting-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selecting variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-status-and-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review status and labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scores-and-missingness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scores and missingness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roc-confidence-interval-and-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROC, confidence interval and threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-ps-roc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run PS-ROC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/bigbio/hvantk/edit/dev/docs_site/tools/psroc.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="ps-roc-pathogenicity-score-evaluation">PS-ROC: pathogenicity score evaluation<a class="headerlink" href="#ps-roc-pathogenicity-score-evaluation" title="Permanent link">&para;</a></h1>
+<p>PS-ROC measures how well each pathogenicity predictor in dbNSFP separates ClinVar
+pathogenic variants from benign ones, within a gene list, an explicit variant list, or each
+gene set of a collection. <code>hvantk psroc</code> joins a ClinVar table with a dbNSFP table, labels
+the variants from ClinVar and reports, for every score, the ROC AUC with a bootstrap 95%
+confidence interval, an optimal threshold with its sensitivity and specificity, and how
+often the score is missing.</p>
+<p><img alt="PS-ROC workflow" src="../../images/hvantk-psroc-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> PS-ROC stages, from loading the ClinVar and dbNSFP tables to the output
+files.</p>
+<h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>How to get it</th>
+<th>What PS-ROC reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ClinVar table</td>
+<td><code>hvantk reprocess clinvar:variants</code> (downloads the VCF)</td>
+<td><code>info.CLNSIG</code>, <code>info.CLNREVSTAT</code>, <code>info.GENEINFO</code></td>
+</tr>
+<tr>
+<td>dbNSFP table</td>
+<td><code>hvantk reprocess dbnsfp:variants</code>, from a file you download yourself</td>
+<td>the fields named in <code>--scores</code></td>
+</tr>
+<tr>
+<td>Variant scope</td>
+<td>exactly one of <code>--genes</code>, <code>--genes-file</code>, <code>--variants</code>, <code>--gene-sets</code></td>
+<td>see below</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span>--raw-dir<span class="w"> </span>data/clinvar/<span class="w"> </span>--output<span class="w"> </span>data/clinvar.ht
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># dbNSFP is bring-your-own: put the combined .bgz file in data/dbnsfp/ first</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>dbnsfp:variants<span class="w"> </span>--raw-dir<span class="w"> </span>data/dbnsfp/<span class="w"> </span>--output<span class="w"> </span>data/dbnsfp.ht
+</code></pre></div>
+<p><a href="../../guide/data-sources/">Data sources</a> covers the dbNSFP download and the step that
+combines its per-chromosome files. PS-ROC joins the two tables on <code>(locus, alleles)</code> and
+does no liftover, so build both on the same reference genome.</p>
+<p>Choose the variants with one of:</p>
+<ul>
+<li><code>--genes BRCA1,BRCA2,TP53</code> or <code>--genes-file genes.txt</code> (one symbol per line; blank
+  lines and lines starting with <code>#</code> are skipped): one run over all the genes.</li>
+<li><code>--variants variants.txt</code>: one <code>chr:pos:ref:alt</code> per line. A missing <code>chr</code> prefix is
+  added, lines starting with <code>#</code> are skipped and lines without four <code>:</code>-separated fields
+  are ignored. <code>hvantk ptm export-strata</code> writes lists in this format.</li>
+<li><code>--gene-sets collection.json</code> (or <code>.gmt</code>): one independent run per named gene set.
+  <a href="../genesets/">Gene sets</a> shows how to build a collection from ClinGen, GenCC, COSMIC or
+  your own panels, for example:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span>--ht<span class="w"> </span>data/clingen.ht<span class="w"> </span>--group-by<span class="w"> </span>gcep<span class="w"> </span>--min-genes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-o<span class="w"> </span>gene_sets/clingen_gcep.json
+</code></pre></div>
+<p>Gene symbols are matched exactly (case-sensitive) to ClinVar's. Pass <code>--hgnc data/hgnc.ht</code>
+(the table from <code>hvantk reprocess hgnc:lookup</code>) to add each symbol's HGNC aliases and
+previous symbols, and the approved symbol of any alias you list, before filtering.</p>
+<p>PS-ROC needs the <code>psroc</code> extra (scikit-learn, matplotlib); see
+<a href="../../getting-started/installation/">Installation</a>.</p>
+<h2 id="how-variants-are-labelled-and-scored">How variants are labelled and scored<a class="headerlink" href="#how-variants-are-labelled-and-scored" title="Permanent link">&para;</a></h2>
+<p>The stages run in this order: select variants → review-status filter → labels → join scores
+→ missingness → ROC → outputs.</p>
+<h3 id="selecting-variants">Selecting variants<a class="headerlink" href="#selecting-variants" title="Permanent link">&para;</a></h3>
+<p>The gene of a ClinVar variant is the first symbol in <code>GENEINFO</code> (<code>BRCA1:672|NBR2:10230</code>
+gives <code>BRCA1</code>), so a variant whose <code>GENEINFO</code> lists your gene second is not selected. With
+<code>--variants</code>, a variant is kept when its <code>contig:position:ref:alt</code> equals a line of the
+file.</p>
+<h3 id="review-status-and-labels">Review status and labels<a class="headerlink" href="#review-status-and-labels" title="Permanent link">&para;</a></h3>
+<p>With <code>--min-stars</code> above 0 (the default is 1), <code>CLNREVSTAT</code> is converted to review stars
+and variants below the minimum or without a review status are dropped. <code>--min-stars 0</code>
+turns the filter off. <code>hvantk reprocess clinvar:variants</code> stores <code>CLNREVSTAT</code> as Hail reads
+it from the VCF: an array split at commas, so <code>criteria_provided,_single_submitter</code> becomes
+<code>["criteria_provided", "_single_submitter"]</code>; PS-ROC joins it back into one string with <code>,</code>
+before the lookup below, so array- and string-typed tables are scored the same way.</p>
+<table>
+<thead>
+<tr>
+<th><code>CLNREVSTAT</code></th>
+<th>Stars</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>practice_guideline</code></td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>reviewed_by_expert_panel</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>criteria_provided,_multiple_submitters,_no_conflicts</code></td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>criteria_provided,_single_submitter</code>; <code>criteria_provided,_conflicting_classifications</code> (or <code>_interpretations</code>)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>any other value</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>The label comes from <code>CLNSIG</code> (its first element when the field is an array),
+matched exactly:</p>
+<ul>
+<li>pathogenic: <code>Pathogenic</code>, <code>Likely_pathogenic</code>, <code>Pathogenic/Likely_pathogenic</code></li>
+<li>benign: <code>Benign</code>, <code>Likely_benign</code>, <code>Benign/Likely_benign</code></li>
+</ul>
+<p>Every other value (<code>Uncertain_significance</code>, <code>Conflicting_classifications_of_pathogenicity</code>,
+<code>not_provided</code>, <code>risk_factor</code> and so on), or no value, gets the label
+<code>Uncertain/Conflicting</code>. Whatever <code>--min-stars</code> is, these variants stay in the annotated
+table and are counted as excluded, but they enter neither the missingness check nor the
+ROC.</p>
+<h3 id="scores-and-missingness">Scores and missingness<a class="headerlink" href="#scores-and-missingness" title="Permanent link">&para;</a></h3>
+<p>Each variant gets its dbNSFP row by <code>(locus, alleles)</code>. Every name in <code>--scores</code> must be a
+field of the dbNSFP table (names are case-sensitive), or the run stops and lists the
+fields it found. Any numeric field works, including the <code>*_rankscore</code> columns; common
+choices are <code>REVEL_score</code>, <code>MetaRNN_score</code>, <code>ClinPred_score</code>, <code>BayesDel_addAF_score</code>,
+<code>AlphaMissense_score</code>, <code>VEST4_score</code>, <code>PrimateAI_score</code> and <code>CADD_phred</code>.</p>
+<p>The dbNSFP plugin stores every <code>*_score</code> field and <code>CADD_phred</code> per transcript. PS-ROC
+reduces such a score to its most damaging transcript value: the maximum, or the minimum for
+a score where lower is more damaging (see <a href="#score-direction">Score direction</a>).</p>
+<p>Variants with none of the requested scores (indels, and any variant dbNSFP does not
+cover) are dropped and counted as out of scope (<code>n_out_of_scope</code> in the Python result).
+For each score, the missing rate over the remaining pathogenic and benign variants, the
+ones the ROC uses, then decides inclusion: a score missing for more than
+<code>--max-missingness</code> of them (default 0.3; a rate equal to the threshold passes) is left out
+of the ROC but still reported. <code>Uncertain/Conflicting</code> variants do not count, so a score
+missing only for them still passes.</p>
+<h3 id="roc-confidence-interval-and-threshold">ROC, confidence interval and threshold<a class="headerlink" href="#roc-confidence-interval-and-threshold" title="Permanent link">&para;</a></h3>
+<p>Only pathogenic (1) and benign (0) variants enter the ROC. If fewer than <code>--min-variants</code>
+of them remain (default 10), PS-ROC logs a warning and writes its outputs without AUCs.
+Otherwise each included score is evaluated on the variants where it is present, with
+scikit-learn's <code>roc_curve</code> and <code>roc_auc_score</code>:</p>
+<ul>
+<li>If the variants where a score is present are all pathogenic or all benign, the run
+  stops with an error.</li>
+<li>The AUC 95% confidence interval is a stratified percentile bootstrap: pathogenic and
+  benign variants are resampled separately, with replacement, <code>--n-bootstrap</code> times
+  (default 2000) from a fixed seed, so a rerun on the same data gives the same interval.</li>
+<li>The optimal threshold is a point on the ROC curve chosen by <code>--threshold-method</code>:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><code>--threshold-method</code></th>
+<th>Picks the ROC point that</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>youden</code> (default)</td>
+<td>maximises Youden's J = TPR − FPR</td>
+</tr>
+<tr>
+<td><code>closest_to_corner</code></td>
+<td>minimises the distance to the perfect classifier (FPR 0, TPR 1)</td>
+</tr>
+<tr>
+<td><code>f1</code></td>
+<td>maximises F1 with precision approximated as TPR / (TPR + FPR), which equals the real precision only when both classes are the same size</td>
+</tr>
+</tbody>
+</table>
+<p>The threshold is a value on the score's own scale: variants scoring at or above it are
+called pathogenic, or at or below it for a score where lower is more damaging.
+Sensitivity and specificity are read at that point, on the same variants that chose it.
+PS-ROC computes no p-values: there is no DeLong or permutation test for the difference
+between two AUCs, and no precision-recall curve.</p>
+<h3 id="score-direction">Score direction<a class="headerlink" href="#score-direction" title="Permanent link">&para;</a></h3>
+<p>PS-ROC knows six raw scores where lower means more damaging: <code>SIFT_score</code>,
+<code>SIFT4G_score</code>, <code>PROVEAN_score</code>, <code>FATHMM_score</code>, <code>LRT_score</code> and <code>ESM1b_score</code>. It evaluates such a score
+on its negated values, so the ROC, the AUC and its confidence interval are on the usual
+scale (above 0.5 for a useful predictor), and reports the thresholds on the score's own
+scale. Each result records the direction in <code>higher_is_pathogenic</code>: variants are called
+pathogenic at or above the threshold when it is <code>true</code>, at or below it when it is <code>false</code>.
+The console summary and the dashboard write a lower-is-damaging threshold with <code>&lt;=</code>, for
+example <code>threshold&lt;=0.050</code>.</p>
+<p>Every other score is treated as higher = more damaging. Check the direction of any other
+raw score you request: one that runs the other way comes out with 1 minus its real AUC
+unless you set it in <code>score_directions</code> (Python API, see below). The dbNSFP rank scores
+need no setting: in every <code>*_rankscore</code>, such as <code>SIFT_converted_rankscore</code>, a higher
+value is more damaging, and the plugin stores it as one value per variant. Their threshold
+is a rank between 0 and 1, not a cut-off on the predictor's own scale.</p>
+<h2 id="run-ps-roc">Run PS-ROC<a class="headerlink" href="#run-ps-roc" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># One gene list</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--genes<span class="w"> </span>BRCA1,BRCA2,TP53<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"REVEL_score,AlphaMissense_score,MetaRNN_score,SIFT_converted_rankscore"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--output-dir<span class="w"> </span>results/psroc_brca
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Every gene set of a collection, with HGNC alias expansion</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span>--gene-sets<span class="w"> </span>gene_sets/clingen_gcep.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">  </span>--hgnc<span class="w"> </span>data/hgnc.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"REVEL_score,AlphaMissense_score,MetaRNN_score,SIFT_converted_rankscore"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">  </span>--output-dir<span class="w"> </span>results/psroc_gcep
+</code></pre></div>
+<p>Add <code>--dry-run</code> to validate the inputs and print the plan without running the stages: it
+does not start Hail, create the output directory, or read the <code>--hgnc</code> table. Stage
+progress is logged at INFO level, which the CLI hides by default: add the global <code>-v</code>
+option before <code>psroc</code> (<code>hvantk -v psroc ...</code>) to see it, and <code>--log-file FILE</code> next to it
+to also write the log to a file.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--genes TEXT</code></td>
+<td></td>
+<td>Comma-separated gene symbols</td>
+</tr>
+<tr>
+<td><code>--genes-file PATH</code></td>
+<td></td>
+<td>File with one gene symbol per line</td>
+</tr>
+<tr>
+<td><code>--variants PATH</code></td>
+<td></td>
+<td>File with one <code>chr:pos:ref:alt</code> per line</td>
+</tr>
+<tr>
+<td><code>--gene-sets PATH</code></td>
+<td></td>
+<td>Gene set collection (<code>.json</code> or <code>.gmt</code>); one run per set</td>
+</tr>
+<tr>
+<td><code>--hgnc PATH</code></td>
+<td></td>
+<td>HGNC table (<code>.ht</code>) for alias expansion of gene symbols</td>
+</tr>
+<tr>
+<td><code>--clinvar-ht PATH</code></td>
+<td>required</td>
+<td>ClinVar Hail table</td>
+</tr>
+<tr>
+<td><code>--dbnsfp-ht PATH</code></td>
+<td>required</td>
+<td>dbNSFP Hail table</td>
+</tr>
+<tr>
+<td><code>--scores TEXT</code></td>
+<td>required</td>
+<td>Comma-separated dbNSFP field names</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output-dir PATH</code></td>
+<td>required</td>
+<td>Output directory</td>
+</tr>
+<tr>
+<td><code>--min-stars INTEGER</code></td>
+<td><code>1</code></td>
+<td>Minimum ClinVar review stars; <code>0</code> turns the filter off</td>
+</tr>
+<tr>
+<td><code>--max-missingness FLOAT</code></td>
+<td><code>0.3</code></td>
+<td>Leave out scores missing for more than this fraction of the pathogenic and benign variants (0 to 1)</td>
+</tr>
+<tr>
+<td><code>--threshold-method</code></td>
+<td><code>youden</code></td>
+<td><code>youden</code>, <code>closest_to_corner</code> or <code>f1</code></td>
+</tr>
+<tr>
+<td><code>--min-variants INTEGER</code></td>
+<td><code>10</code></td>
+<td>Minimum pathogenic + benign variants for the ROC step</td>
+</tr>
+<tr>
+<td><code>--n-bootstrap INTEGER</code></td>
+<td><code>2000</code></td>
+<td>Bootstrap resamples for the AUC 95% CI; <code>0</code> disables the CI</td>
+</tr>
+<tr>
+<td><code>--output-prefix TEXT</code></td>
+<td><code>psroc</code></td>
+<td>Prefix of every output file name</td>
+</tr>
+<tr>
+<td><code>--export-tsv</code></td>
+<td>off</td>
+<td>Also write the annotated variants as TSV</td>
+</tr>
+<tr>
+<td><code>--no-plots</code></td>
+<td>off</td>
+<td>Skip the plots</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>off</td>
+<td>Print the execution plan and stop</td>
+</tr>
+</tbody>
+</table>
+<h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>results/psroc_brca/
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── psroc_metrics.json        # ROC metrics per score
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── psroc_missingness.json    # missingness per requested score
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── psroc_annotated.ht/       # one row per variant: label and scores
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>├── psroc_annotated.tsv       # the same rows as TSV (--export-tsv)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>├── plots/
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>│   ├── psroc_roc_curves.png
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>│   ├── psroc_auc_comparison.png
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>│   ├── psroc_missingness.png
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>│   └── psroc_dashboard.png
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>├── logs/                     # psroc_&lt;timestamp&gt;.log: the run's log, at the console's level (INFO with -v)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>└── .pipeline_state.json      # configuration, completed stages, errors and timings
+</code></pre></div>
+<p>A rerun into the same directory with the same prefix replaces these files.</p>
+<p>With <code>--gene-sets</code>, each set gets a subdirectory named after it (characters other than
+letters, digits, <code>_</code> and <code>-</code> become <code>_</code>), and its files carry the prefix
+<code>&lt;prefix&gt;_&lt;set&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>results/psroc_gcep/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── Hereditary_Cancer/
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>│   ├── psroc_Hereditary_Cancer_metrics.json
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>│   ├── plots/psroc_Hereditary_Cancer_dashboard.png
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>│   └── ...
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── Hearing_Loss/
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>│   └── ...
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>└── plots/
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    └── psroc_collection_heatmap.png   # AUC per score (rows) and gene set (columns)
+</code></pre></div>
+<p>The heatmap is drawn when plots are on and at least two sets produced AUCs. A set whose
+run fails, for example because a score is present in only one class, is skipped with a
+warning; the command fails only when every set fails. A set with fewer than
+<code>--min-variants</code> labelled variants is kept, without AUCs.</p>
+<p><code>{prefix}_metrics.json</code> maps each score that reached the ROC to its result (values
+illustrative):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">"REVEL_score"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">"score_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REVEL_score"</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">"auc"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.998</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">"optimal_threshold"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.454</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">"higher_is_pathogenic"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="nt">"sensitivity_at_optimal"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.98</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">"specificity_at_optimal"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="nt">"n_variants_used"</span><span class="p">:</span><span class="w"> </span><span class="mi">87</span><span class="p">,</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="nt">"missingness"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">      </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">      </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">87</span><span class="p">,</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">      </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">      </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0333</span><span class="p">,</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">      </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">      </span><span class="nt">"exclusion_reason"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="nt">"auc_ci_lower"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.994</span><span class="p">,</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="nt">"auc_ci_upper"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><code>higher_is_pathogenic</code>: the score's direction (see <a href="#score-direction">Score direction</a>).
+  <code>true</code>: pathogenic at or above <code>optimal_threshold</code>; <code>false</code>: at or below it.</li>
+<li><code>n_variants_used</code>: pathogenic and benign variants where this score is present.</li>
+<li><code>missingness</code>: over the pathogenic and benign variants, as in <code>{prefix}_missingness.json</code>.</li>
+<li><code>auc_ci_lower</code>, <code>auc_ci_upper</code>: present only when <code>--n-bootstrap</code> is above 0.</li>
+</ul>
+<p><code>{prefix}_missingness.json</code> covers every requested score, computed over the pathogenic
+and benign variants in the annotated table (values from the
+<a href="../../examples/psroc/">PS-ROC example</a>, with 90 of them):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">"CADD_phred"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">90</span><span class="p">,</span><span class="w"> </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">83</span><span class="p">,</span><span class="w"> </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span><span class="w"> </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0778</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"exclusion_reason"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nt">"VEST4_score"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">90</span><span class="p">,</span><span class="w"> </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">52</span><span class="p">,</span><span class="w"> </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">38</span><span class="p">,</span><span class="w"> </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.4222</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="nt">"exclusion_reason"</span><span class="p">:</span><span class="w"> </span><span class="s2">"missingness_rate (0.42) exceeds max_missingness (0.30)"</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">}</span>
+</code></pre></div>
+<p>The annotated table (and TSV) is keyed by <code>locus</code> and <code>alleles</code> and holds <code>label</code>
+(<code>Pathogenic</code>, <code>Benign</code> or <code>Uncertain/Conflicting</code>) and one column per requested score,
+with per-transcript scores already reduced to one value. The plots are 300-dpi PNGs: ROC
+curves with the optimal points marked and AUC [CI] in the legend, AUCs with CI bars,
+missingness against the threshold, and a dashboard combining the three with the gene,
+pathogenic and benign counts. The ROC, AUC and dashboard plots need at least one AUC. A
+plot that fails is logged as a warning and does not stop the run.</p>
+<p>When reading the results:</p>
+<ul>
+<li>Compare AUCs together with their CIs and <code>n_variants_used</code>. Each score is evaluated on
+  the variants where it is present, so two scores can be measured on different variants
+  (see <a href="#caveats">Caveats</a>).</li>
+<li>The console summary of a single run prints the variant counts, each score's AUC [CI] and
+  threshold (<code>threshold&lt;=</code> for a lower-is-damaging score), and the scores left out for
+  missingness. "Excluded" counts the <code>Uncertain/Conflicting</code> variants kept in the table.</li>
+</ul>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCConfig</span><span class="p">,</span> <span class="n">PSROCPipeline</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.skills.clinvar.streamers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClinVarVariantTableStreamer</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PSROCConfig</span><span class="p">(</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">"BRCA1"</span><span class="p">,</span> <span class="s2">"BRCA2"</span><span class="p">,</span> <span class="s2">"TP53"</span><span class="p">],</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">clinvar_ht</span><span class="o">=</span><span class="s2">"data/clinvar.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">dbnsfp_ht</span><span class="o">=</span><span class="s2">"data/dbnsfp.ht"</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="s2">"REVEL_score"</span><span class="p">,</span> <span class="s2">"AlphaMissense_score"</span><span class="p">,</span> <span class="s2">"MetaRNN_score"</span><span class="p">],</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"results/psroc_brca"</span><span class="p">,</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="c1"># Required: the ClinVar label vocabulary (the CLI passes the same lists).</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">pathogenic_labels</span><span class="o">=</span><span class="n">ClinVarVariantTableStreamer</span><span class="o">.</span><span class="n">PATHOGENIC_LABELS</span><span class="p">,</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">benign_labels</span><span class="o">=</span><span class="n">ClinVarVariantTableStreamer</span><span class="o">.</span><span class="n">BENIGN_LABELS</span><span class="p">,</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">)</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">PSROCPipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># validates, creates the output dirs, starts Hail</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">roc</span><span class="o">.</span><span class="n">auc_ci_lower</span><span class="p">,</span> <span class="n">roc</span><span class="o">.</span><span class="n">auc_ci_upper</span><span class="p">)</span>
+</code></pre></div>
+<p><code>PSROCConfig</code> takes the CLI options as fields (<code>genes</code>, <code>genes_file</code>, <code>variants_path</code>,
+<code>gene_set_collection</code>, <code>clinvar_ht</code>, <code>dbnsfp_ht</code>, <code>scores</code>, <code>output_dir</code>, <code>output_prefix</code>,
+<code>min_stars</code>, <code>max_missingness</code>, <code>threshold_method</code>, <code>hgnc_path</code>, <code>export_tsv</code>,
+<code>generate_plots</code>, <code>min_variants</code>, <code>n_bootstrap</code>), with the same defaults, plus:</p>
+<ul>
+<li><code>pathogenic_labels</code>, <code>benign_labels</code>: required; without them <code>PSROCPipeline</code> raises
+  <code>Configuration validation failed</code>.</li>
+<li><code>score_directions</code>: <code>{score: bool}</code> setting a score's direction (<code>True</code> = higher is more
+  damaging, <code>False</code> = lower is), on top of the six lower-is-damaging scores PS-ROC knows.
+  The direction picks the per-transcript value and orients the ROC (see
+  <a href="#score-direction">Score direction</a>). <code>run_collection()</code> passes it on to every per-set
+  run.</li>
+</ul>
+<p>For a gene set collection, pass a dict of sets and call <code>run_collection()</code>. Alias expansion
+needs a gene catalog passed to the pipeline; <code>hgnc_path</code> alone only records the path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCConfig</span><span class="p">,</span> <span class="n">PSROCPipeline</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.skills.clinvar.streamers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClinVarVariantTableStreamer</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.skills.hgnc.streamers</span><span class="w"> </span><span class="kn">import</span> <span class="n">HGNCGeneCatalogStreamer</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PSROCConfig</span><span class="p">(</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">gene_set_collection</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s2">"cardiac"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"MYH7"</span><span class="p">,</span> <span class="s2">"TNNT2"</span><span class="p">,</span> <span class="s2">"LMNA"</span><span class="p">},</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        <span class="s2">"epilepsy"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"SCN1A"</span><span class="p">,</span> <span class="s2">"SCN2A"</span><span class="p">,</span> <span class="s2">"KCNQ2"</span><span class="p">},</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="p">},</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">clinvar_ht</span><span class="o">=</span><span class="s2">"data/clinvar.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">dbnsfp_ht</span><span class="o">=</span><span class="s2">"data/dbnsfp.ht"</span><span class="p">,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="s2">"REVEL_score"</span><span class="p">,</span> <span class="s2">"AlphaMissense_score"</span><span class="p">],</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"results/psroc_panels"</span><span class="p">,</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="n">pathogenic_labels</span><span class="o">=</span><span class="n">ClinVarVariantTableStreamer</span><span class="o">.</span><span class="n">PATHOGENIC_LABELS</span><span class="p">,</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    <span class="n">benign_labels</span><span class="o">=</span><span class="n">ClinVarVariantTableStreamer</span><span class="o">.</span><span class="n">BENIGN_LABELS</span><span class="p">,</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="p">)</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="n">catalog</span> <span class="o">=</span> <span class="n">HGNCGeneCatalogStreamer</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="s2">"data/hgnc.ht"</span><span class="p">)</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="n">results</span> <span class="o">=</span> <span class="n">PSROCPipeline</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">gene_catalog</span><span class="o">=</span><span class="n">catalog</span><span class="p">)</span><span class="o">.</span><span class="n">run_collection</span><span class="p">()</span>  <span class="c1"># {set: PSROCResult}</span>
+</code></pre></div>
+<p>A <code>PSROCResult</code> holds <code>metrics</code> (score → <code>ROCResult</code>), <code>missingness</code> (score →
+<code>ScoreMissingness</code>), <code>n_pathogenic</code>, <code>n_benign</code>, <code>n_excluded</code>, <code>n_total</code>, <code>n_out_of_scope</code>,
+<code>n_genes</code>, <code>scores_included</code>, <code>scores_excluded</code>, <code>max_missingness_threshold</code>, <code>output_dir</code>
+and <code>annotated_ht_path</code>, plus <code>summary()</code> and <code>to_dict()</code>. A <code>ROCResult</code> holds <code>fpr</code>,
+<code>tpr</code>, <code>thresholds</code>, <code>auc</code>, <code>auc_ci_lower</code>, <code>auc_ci_upper</code>, <code>optimal_threshold</code>,
+<code>higher_is_pathogenic</code>, <code>sensitivity_at_optimal</code>, <code>specificity_at_optimal</code>,
+<code>n_variants_used</code> and <code>missingness</code>; <code>thresholds</code> and <code>optimal_threshold</code> are on the
+score's own scale. <code>scores_included</code> lists the scores that passed the missingness check,
+which still get no AUC when the ROC step is skipped for too few labelled variants, so
+iterate over <code>metrics</code> for the scores that have one.</p>
+<p>The ROC functions also work on plain arrays, without Hail tables:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_roc_metrics</span><span class="p">,</span> <span class="n">plot_roc_curves</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># 1 = pathogenic, 0 = benign</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="s2">"score_a"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">]),</span>  <span class="c1"># NaN = missing</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="s2">"score_b"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]),</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="s2">"score_c"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">]),</span>  <span class="c1"># lower = more damaging</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="p">}</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">results</span> <span class="o">=</span> <span class="n">compute_roc_metrics</span><span class="p">(</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">labels</span><span class="p">,</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">scores</span><span class="p">,</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="n">threshold_method</span><span class="o">=</span><span class="s2">"youden"</span><span class="p">,</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">n_bootstrap</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    <span class="n">score_directions</span><span class="o">=</span><span class="p">{</span><span class="s2">"score_c"</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="p">)</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="p">,</span> <span class="n">roc</span><span class="o">.</span><span class="n">optimal_threshold</span><span class="p">,</span> <span class="n">roc</span><span class="o">.</span><span class="n">auc_ci_lower</span><span class="p">,</span> <span class="n">roc</span><span class="o">.</span><span class="n">auc_ci_upper</span><span class="p">)</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="n">plot_roc_curves</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"roc_curves.png"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>compute_roc_metrics</code> defaults to <code>n_bootstrap=0</code> (no CI), unlike the CLI. It treats a
+score as higher = more damaging unless <code>score_directions</code> maps it to <code>False</code>: unlike the
+pipeline, it does not know the six lower-is-damaging dbNSFP scores. The package also
+exports <code>compute_all_missingness</code>, <code>compute_score_missingness</code>,
+<code>filter_scores_by_missingness</code>, <code>find_optimal_threshold</code>, <code>plot_roc_curve_single</code>,
+<code>plot_auc_comparison</code>, <code>plot_missingness_summary</code> and <code>plot_psroc_summary_dashboard</code>; the
+collection heatmap is <code>plot_collection_heatmap</code> in <code>hvantk.algorithms.psroc.plots</code>. Each
+plot function returns the matplotlib figure and, given <code>output_path</code>, saves it as a PNG
+(the <code>.png</code> suffix is optional).</p>
+<h2 id="caveats">Caveats<a class="headerlink" href="#caveats" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Circularity.</strong> Many predictors were trained on ClinVar or HGMD variants (REVEL,
+  MetaRNN and ClinPred among them), so their AUC against ClinVar labels is optimistic and
+  favours them over predictors trained without disease labels. PS-ROC does not correct for
+  this. The <code>scores:</code> block of the
+  <a href="https://github.com/bigbio/hvantk/blob/main/hvantk/skills/dbnsfp/plugin.yaml">dbNSFP plugin manifest</a>
+  records the training data of most rank scores.</li>
+<li><strong>Different variants per score.</strong> A score that is also defined for nonsense and
+  splice-site SNVs (such as <code>CADD_phred</code>) is evaluated on a different, often easier, set
+  than a missense-only predictor. Because a variant stays when any requested score is
+  present, adding such a score also raises the other scores' missingness. For a
+  like-for-like comparison, request scores with similar coverage and check
+  <code>n_variants_used</code>.</li>
+<li><strong>Score direction.</strong> Only six raw scores are known to run lower = more damaging (see
+  <a href="#score-direction">Score direction</a>). Any other raw score that runs that way gets 1 minus
+  its real AUC, below 0.5, unless you set its direction in <code>score_directions</code> or request
+  its <code>*_rankscore</code> instead.</li>
+<li><strong>Coverage of uncertain variants.</strong> Missingness is measured on the pathogenic and benign
+  variants only, so a score that is often missing for the <code>Uncertain/Conflicting</code> variants,
+  the ones you may want it to classify, still passes. Check their scores in the annotated
+  table.</li>
+<li><strong>Label imbalance.</strong> AUC does not depend on the ratio of pathogenic to benign variants,
+  but thresholds do: the <code>f1</code> method assumes equal class sizes, and a threshold chosen in a
+  gene set dominated by one class may not transfer to another.</li>
+<li><strong>Small gene sets.</strong> <code>--min-variants</code> is the floor for running the ROC, not a sample size
+  that makes an AUC reliable. With few variants per class the bootstrap interval is wide
+  and unstable; check the class counts and the CI before ranking predictors.</li>
+<li><strong>In-sample thresholds.</strong> The optimal threshold and its sensitivity and specificity are
+  chosen and measured on the same variants; validate them on independent data before using
+  them as a cut-off.</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Meaning and fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Requested scores not found in dbNSFP table</code></td>
+<td>A <code>--scores</code> name is not a field of the table. Names are case-sensitive; the message lists the fields found.</td>
+</tr>
+<tr>
+<td><code>Score '&lt;name&gt;' has only one class after filtering missing values</code></td>
+<td>Where this score is present, every variant is pathogenic (or every one benign). Widen the gene set, lower <code>--min-stars</code>, or drop the score. With <code>--gene-sets</code>, only that set is skipped.</td>
+</tr>
+<tr>
+<td><code>Too few labeled variants (N) for ROC analysis</code></td>
+<td>Fewer than <code>--min-variants</code> pathogenic and benign variants remain; the outputs are written without AUCs.</td>
+</tr>
+<tr>
+<td><code>No scores passed the missingness threshold</code></td>
+<td>Every score is missing for more than <code>--max-missingness</code> of the pathogenic and benign variants. Check <code>{prefix}_missingness.json</code>, raise the threshold or choose scores with better coverage.</td>
+</tr>
+<tr>
+<td><code>No valid variants found in &lt;file&gt;</code></td>
+<td>The <code>--variants</code> file has no <code>chr:pos:ref:alt</code> lines.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../genesets/">Gene sets</a>: build the collections that <code>--gene-sets</code> takes.</li>
+<li><a href="../../guide/data-sources/">Data sources</a>: the ClinVar download and dbNSFP acquisition.</li>
+<li><a href="../../guide/usage/#build-a-dataset">Building datasets</a>: <code>hvantk reprocess</code>.</li>
+<li><a href="../ptm/">PTM</a>: run PS-ROC on PTM and non-PTM variant strata.</li>
+<li><a href="../../examples/psroc/">PS-ROC example</a>: a complete run on synthetic data.</li>
+<li>ClinVar <a href="https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/">review status</a> and
+  <a href="https://www.dbnsfp.org/">dbNSFP</a>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
