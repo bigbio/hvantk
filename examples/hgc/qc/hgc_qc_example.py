@@ -32,7 +32,6 @@ def create_test_mt(n_samples=100, n_variants=1000):
 def test_sample_qc():
     """Test sample QC computation."""
     try:
-        import hail as hl
         from hvantk.algorithms.hgc import compute_sample_qc
 
         logger.info("Testing sample QC computation...")
@@ -72,7 +71,6 @@ def test_sample_qc():
 def test_variant_qc():
     """Test variant QC computation."""
     try:
-        import hail as hl
         from hvantk.algorithms.hgc import compute_variant_qc
 
         logger.info("Testing variant QC computation...")
@@ -112,7 +110,6 @@ def test_variant_qc():
 def test_full_qc():
     """Test comprehensive QC computation."""
     try:
-        import hail as hl
         from hvantk.algorithms.hgc import compute_full_qc
 
         logger.info("Testing full QC computation...")
@@ -155,7 +152,6 @@ def test_full_qc():
 def test_qc_filtering():
     """Test QC-based filtering."""
     try:
-        import hail as hl
         from hvantk.algorithms.hgc import (
             compute_full_qc,
             filter_samples_by_qc,

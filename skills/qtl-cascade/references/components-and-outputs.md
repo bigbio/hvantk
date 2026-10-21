@@ -70,11 +70,15 @@ gene if fewer than 2 variants fall in that window, and run single-variant ABF
 
 Output TSV columns: `gene_id`, `tissue` (the `--tissue` value, or `"unknown"` if
 none), `H0`, `H1`, `H2`, `H3`, `H4`, `n_variants`. Unlike `cascade`, `coloc` has
-**no `--overwrite` option at all** and always overwrites `-o`'s file when it
-writes one — but if a later run finds no cascade gene to test (an empty
-`--cascade-genes` list, or none clearing the 2-shared-variant floor), it returns
-before writing anything, leaving an earlier run's file in place and now stale.
-Delete the file (or the whole output directory) before a rerun if that matters.
+**no `--overwrite` option at all** -- it does not need one, because it always
+writes `-o`'s file unconditionally, even when nothing qualifies: an empty
+`--cascade-genes` list, no overlapping variants between the two allpairs
+tables, or every gene failing the 2-shared-variant floor each still produce a
+column-only (zero-row) TSV, which silently replaces whatever was at `-o`
+before. There is no stale-file risk from `coloc` itself; the risk is the
+opposite -- a rerun that happens to find nothing to test overwrites a
+previous, non-empty result with an empty one and says so only in the
+`(N genes)` count on stdout.
 
 ## `run` — the full per-tissue pipeline
 
@@ -93,9 +97,10 @@ pqtl_allpairs_ht are required for colocalization (or omit both to skip coloc).`)
 overlays added to the gene summary. `--tissues` (comma-separated) runs one tissue at
 a time and writes a combined report; omit it to run once with no tissue filter.
 `--dry-run` prints the plan (tissues, coloc on/off, output dir, the stage list) —
-no Hail *table* is read, but the pipeline object's constructor still creates
-`per_tissue/` and (unless `--no-plots`) `plots/` under `-o` before the dry-run
-check ever runs. Without `--tissues` at all, `run` prints `Cascade genes: <n>` and
+no Hail *table* is read and nothing is written under `-o`; the pipeline object's
+constructor validates the config but creates no directories, and `run`/
+`run_collection` (which create `per_tissue/` and, unless `--no-plots`, `plots/`)
+never execute on a dry run. Without `--tissues` at all, `run` prints `Cascade genes: <n>` and
 `Class counts: <dict>`, and writes under `per_tissue/all`; given `--tissues` (even
 a single name), it instead prints `Completed: <n> tissue(s)` and, per tissue,
 `  <tissue>: <n> genes, <m> colocalised`, writing under `per_tissue/<tissue>`.

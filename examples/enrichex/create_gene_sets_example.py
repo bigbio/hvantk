@@ -338,32 +338,15 @@ HALLMARK_OXIDATIVE_PHOSPHORYLATION\thttp://www.gsea-msigdb.org/gsea/msigdb\tMT-N
 
     logger.info(f"Created example GMT file: {gmt_path}")
 
-    # Parse GMT file
-    gene_sets_dict = {}
-    all_genes = set()
-
-    with open(gmt_path) as f:
-        for line in f:
-            parts = line.strip().split("\t")
-            name = parts[0]
-            url = parts[1]
-            genes = set(parts[2:])
-
-            gene_sets_dict[name] = GeneSet(
-                name=name, genes=genes, source="MSigDB", metadata={"url": url}
-            )
-            all_genes.update(genes)
-
-    # Create collection
-    gene_sets = GeneSetCollection(
-        gene_sets=gene_sets_dict,
-        background_genes=all_genes,
-        source_description="MSigDB Hallmark Gene Sets",
-        metadata={
-            "source": "MSigDB",
-            "url": "https://www.gsea-msigdb.org/gsea/msigdb/",
-        },
-    )
+    # Parse the GMT file. The second column becomes each set's `source`.
+    # Without background_genes, the background is the union of the set genes;
+    # pass background_genes=... for a genome-wide overlap test.
+    gene_sets = GeneSetCollection.load_gmt(gmt_path)
+    gene_sets.source_description = "MSigDB Hallmark Gene Sets"
+    gene_sets.metadata = {
+        "source": "MSigDB",
+        "url": "https://www.gsea-msigdb.org/gsea/msigdb/",
+    }
 
     # Save
     json_path = output_dir / "msigdb_gene_sets.json"
@@ -553,14 +536,17 @@ gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
    - Maximum: 500 genes (avoid overly broad sets)
    - Optimal: 50-200 genes per set
 
-2. Background Definition:
-   - Use all genes expressed in your tissue/cell type
-   - Match to your variant calling strategy
-   - Typically 15,000-20,000 protein-coding genes
+2. Background Definition (used by `hvantk enrichex overlap` only):
+   - Overlap needs background_genes; a file without it gives no results
+   - The helpers above default it to the union of the set genes, which tests
+     how the query is distributed among the sets, not genome-wide enrichment
+   - For a genome-wide test use the universe the query came from, such as all
+     protein-coding genes or all genes tested in the study
 
 3. Gene Identifiers:
-   - Use consistent ID system (symbols vs Ensembl IDs)
-   - Ensure query genes and gene sets match
+   - Matching is exact and case-sensitive
+   - Use one ID system (symbols or Ensembl IDs) for queries, sets and the
+     cohort MatrixTable gene field
    - Check for gene name updates (e.g., MARCH1 → MARCHF1)
 
 4. Quality Control:

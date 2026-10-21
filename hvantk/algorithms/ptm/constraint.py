@@ -31,17 +31,8 @@ __all__ = [
     "PTMConstraintConfig",
     "PTMConstraintResult",
     "run_ptm_constraint",
+    "read_variants_tabular_file",
 ]
-
-_DEFAULT_PTM_CATEGORIES = (
-    "phosphorylation",
-    "acetylation",
-    "methylation",
-    "ubiquitination",
-    "sumoylation",
-    "glycosylation",
-    "other",
-)
 
 
 @dataclass
@@ -65,10 +56,8 @@ class PTMConstraintConfig:
     expression_metric: str = "median"
     min_cells_per_group: int = 50
     min_variants_per_group: int = 20
-    flanking_codons: int = 7
     expressed_threshold: float = 1.0
     af_observed_only: bool = True
-    overwrite: bool = False
 
     def validate(self) -> List[str]:
         errors: List[str] = []
@@ -341,7 +330,7 @@ def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
     defaults to False when absent. Gene/AF/LOEUF/label/category columns are read
     from the configured field names, with safe fallbacks.
     """
-    raw = _read_variants_tabular_file(config.variants_ht_path)
+    raw = read_variants_tabular_file(config.variants_ht_path)
     cols = set(raw.columns)
 
     if "is_ptm_proximal" not in cols:
@@ -393,7 +382,7 @@ def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
     return out
 
 
-def _read_variants_tabular_file(path: str) -> pd.DataFrame:
+def read_variants_tabular_file(path: str) -> pd.DataFrame:
     """Read a variant table from pickle/parquet/CSV/TSV (gzip/bgz transparent)."""
     from pathlib import Path
 

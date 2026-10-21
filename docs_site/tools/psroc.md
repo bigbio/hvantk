@@ -1,1072 +1,472 @@
-# PSROC: per-gene-set ROC evaluation of dbNSFP predictors against ClinVar
+# PS-ROC: pathogenicity score evaluation
 
-PSROC is a module within hvantk that evaluates variant pathogenicity prediction scores using ROC (Receiver Operating Characteristic) curve analysis. It compares prediction scores from databases like dbNSFP against ClinVar truth labels to assess their discriminative power.
+PS-ROC measures how well each pathogenicity predictor in dbNSFP separates ClinVar
+pathogenic variants from benign ones, within a gene list, an explicit variant list, or each
+gene set of a collection. `hvantk psroc` joins a ClinVar table with a dbNSFP table, labels
+the variants from ClinVar and reports, for every score, the ROC AUC with a bootstrap 95%
+confidence interval, an optimal threshold with its sensitivity and specificity, and how
+often the score is missing.
 
 ![PS-ROC workflow](../images/hvantk-psroc-workflow.svg)
 
-**Figure 1.** *PS-ROC pipeline — from ClinVar/dbNSFP table loading through label assignment, score annotation, missingness filtering, ROC computation, and output generation.*
+**Figure 1.** PS-ROC stages, from loading the ClinVar and dbNSFP tables to the output
+files.
 
-## Overview
+## Inputs
 
-The PSROC module provides an end-to-end pipeline for benchmarking variant pathogenicity prediction scores:
-
-### Primary Functionality
-
-- **ROC Analysis** - Compute AUC, optimal thresholds, and sensitivity/specificity for each score
-- **Missingness Handling** - Track and filter scores based on missing value rates
-- **Visualization** - Generate publication-quality ROC curves and comparison plots
-- **Pipeline Orchestration** - Single command runs the complete analysis workflow
-
-### Key Features
-
-- **Multi-Score Comparison** - Evaluate multiple prediction scores simultaneously
-- **Configurable Thresholds** - Youden's J, closest-to-corner, and F1 optimization methods
-- **Automatic Filtering** - Exclude scores with excessive missing values
-- **Flexible Input** - Filter by genes, gene lists, or specific variants
-- **Comprehensive Outputs** - JSON metrics, TSV exports, and visualization plots
-
-## Quick Start
-
-### Command-Line Interface
+| Input | How to get it | What PS-ROC reads |
+| --- | --- | --- |
+| ClinVar table | `hvantk reprocess clinvar:variants` (downloads the VCF) | `info.CLNSIG`, `info.CLNREVSTAT`, `info.GENEINFO` |
+| dbNSFP table | `hvantk reprocess dbnsfp:variants`, from a file you download yourself | the fields named in `--scores` |
+| Variant scope | exactly one of `--genes`, `--genes-file`, `--variants`, `--gene-sets` | see below |
 
 ```bash
-# Basic usage with specific genes
+hvantk reprocess clinvar:variants --raw-dir data/clinvar/ --output data/clinvar.ht
+# dbNSFP is bring-your-own: put the combined .bgz file in data/dbnsfp/ first
+hvantk reprocess dbnsfp:variants --raw-dir data/dbnsfp/ --output data/dbnsfp.ht
+```
+
+[Data sources](../guide/data-sources.md) covers the dbNSFP download and the step that
+combines its per-chromosome files. PS-ROC joins the two tables on `(locus, alleles)` and
+does no liftover, so build both on the same reference genome.
+
+Choose the variants with one of:
+
+- `--genes BRCA1,BRCA2,TP53` or `--genes-file genes.txt` (one symbol per line; blank
+  lines and lines starting with `#` are skipped): one run over all the genes.
+- `--variants variants.txt`: one `chr:pos:ref:alt` per line. A missing `chr` prefix is
+  added, lines starting with `#` are skipped and lines without four `:`-separated fields
+  are ignored. `hvantk ptm export-strata` writes lists in this format.
+- `--gene-sets collection.json` (or `.gmt`): one independent run per named gene set.
+  [Gene sets](genesets.md) shows how to build a collection from ClinGen, GenCC, COSMIC or
+  your own panels, for example:
+
+```bash
+hvantk genesets clingen --ht data/clingen.ht --group-by gcep --min-genes 20 \
+  -o gene_sets/clingen_gcep.json
+```
+
+Gene symbols are matched exactly (case-sensitive) to ClinVar's. Pass `--hgnc data/hgnc.ht`
+(the table from `hvantk reprocess hgnc:lookup`) to add each symbol's HGNC aliases and
+previous symbols, and the approved symbol of any alias you list, before filtering.
+
+PS-ROC needs the `psroc` extra (scikit-learn, matplotlib); see
+[Installation](../getting-started/installation.md).
+
+## How variants are labelled and scored
+
+The stages run in this order: select variants → review-status filter → labels → join scores
+→ missingness → ROC → outputs.
+
+### Selecting variants
+
+The gene of a ClinVar variant is the first symbol in `GENEINFO` (`BRCA1:672|NBR2:10230`
+gives `BRCA1`), so a variant whose `GENEINFO` lists your gene second is not selected. With
+`--variants`, a variant is kept when its `contig:position:ref:alt` equals a line of the
+file.
+
+### Review status and labels
+
+With `--min-stars` above 0 (the default is 1), `CLNREVSTAT` is converted to review stars
+and variants below the minimum or without a review status are dropped. `--min-stars 0`
+turns the filter off. `hvantk reprocess clinvar:variants` stores `CLNREVSTAT` as Hail reads
+it from the VCF: an array split at commas, so `criteria_provided,_single_submitter` becomes
+`["criteria_provided", "_single_submitter"]`; PS-ROC joins it back into one string with `,`
+before the lookup below, so array- and string-typed tables are scored the same way.
+
+| `CLNREVSTAT` | Stars |
+| --- | --- |
+| `practice_guideline` | 4 |
+| `reviewed_by_expert_panel` | 3 |
+| `criteria_provided,_multiple_submitters,_no_conflicts` | 2 |
+| `criteria_provided,_single_submitter`; `criteria_provided,_conflicting_classifications` (or `_interpretations`) | 1 |
+| any other value | 0 |
+
+The label comes from `CLNSIG` (its first element when the field is an array),
+matched exactly:
+
+- pathogenic: `Pathogenic`, `Likely_pathogenic`, `Pathogenic/Likely_pathogenic`
+- benign: `Benign`, `Likely_benign`, `Benign/Likely_benign`
+
+Every other value (`Uncertain_significance`, `Conflicting_classifications_of_pathogenicity`,
+`not_provided`, `risk_factor` and so on), or no value, gets the label
+`Uncertain/Conflicting`. Whatever `--min-stars` is, these variants stay in the annotated
+table and are counted as excluded, but they enter neither the missingness check nor the
+ROC.
+
+### Scores and missingness
+
+Each variant gets its dbNSFP row by `(locus, alleles)`. Every name in `--scores` must be a
+field of the dbNSFP table (names are case-sensitive), or the run stops and lists the
+fields it found. Any numeric field works, including the `*_rankscore` columns; common
+choices are `REVEL_score`, `MetaRNN_score`, `ClinPred_score`, `BayesDel_addAF_score`,
+`AlphaMissense_score`, `VEST4_score`, `PrimateAI_score` and `CADD_phred`.
+
+The dbNSFP plugin stores every `*_score` field and `CADD_phred` per transcript. PS-ROC
+reduces such a score to its most damaging transcript value: the maximum, or the minimum for
+a score where lower is more damaging (see [Score direction](#score-direction)).
+
+Variants with none of the requested scores (indels, and any variant dbNSFP does not
+cover) are dropped and counted as out of scope (`n_out_of_scope` in the Python result).
+For each score, the missing rate over the remaining pathogenic and benign variants, the
+ones the ROC uses, then decides inclusion: a score missing for more than
+`--max-missingness` of them (default 0.3; a rate equal to the threshold passes) is left out
+of the ROC but still reported. `Uncertain/Conflicting` variants do not count, so a score
+missing only for them still passes.
+
+### ROC, confidence interval and threshold
+
+Only pathogenic (1) and benign (0) variants enter the ROC. If fewer than `--min-variants`
+of them remain (default 10), PS-ROC logs a warning and writes its outputs without AUCs.
+Otherwise each included score is evaluated on the variants where it is present, with
+scikit-learn's `roc_curve` and `roc_auc_score`:
+
+- If the variants where a score is present are all pathogenic or all benign, the run
+  stops with an error.
+- The AUC 95% confidence interval is a stratified percentile bootstrap: pathogenic and
+  benign variants are resampled separately, with replacement, `--n-bootstrap` times
+  (default 2000) from a fixed seed, so a rerun on the same data gives the same interval.
+- The optimal threshold is a point on the ROC curve chosen by `--threshold-method`:
+
+| `--threshold-method` | Picks the ROC point that |
+| --- | --- |
+| `youden` (default) | maximises Youden's J = TPR − FPR |
+| `closest_to_corner` | minimises the distance to the perfect classifier (FPR 0, TPR 1) |
+| `f1` | maximises F1 with precision approximated as TPR / (TPR + FPR), which equals the real precision only when both classes are the same size |
+
+The threshold is a value on the score's own scale: variants scoring at or above it are
+called pathogenic, or at or below it for a score where lower is more damaging.
+Sensitivity and specificity are read at that point, on the same variants that chose it.
+PS-ROC computes no p-values: there is no DeLong or permutation test for the difference
+between two AUCs, and no precision-recall curve.
+
+### Score direction
+
+PS-ROC knows six raw scores where lower means more damaging: `SIFT_score`,
+`SIFT4G_score`, `PROVEAN_score`, `FATHMM_score`, `LRT_score` and `ESM1b_score`. It evaluates such a score
+on its negated values, so the ROC, the AUC and its confidence interval are on the usual
+scale (above 0.5 for a useful predictor), and reports the thresholds on the score's own
+scale. Each result records the direction in `higher_is_pathogenic`: variants are called
+pathogenic at or above the threshold when it is `true`, at or below it when it is `false`.
+The console summary and the dashboard write a lower-is-damaging threshold with `<=`, for
+example `threshold<=0.050`.
+
+Every other score is treated as higher = more damaging. Check the direction of any other
+raw score you request: one that runs the other way comes out with 1 minus its real AUC
+unless you set it in `score_directions` (Python API, see below). The dbNSFP rank scores
+need no setting: in every `*_rankscore`, such as `SIFT_converted_rankscore`, a higher
+value is more damaging, and the plugin stores it as one value per variant. Their threshold
+is a rank between 0 and 1, not a cut-off on the predictor's own scale.
+
+## Run PS-ROC
+
+```bash
+# One gene list
 hvantk psroc \
-  --genes BRCA1,BRCA2 \
-  --clinvar-ht /data/clinvar_grch38.ht \
-  --dbnsfp-ht /data/dbnsfp_grch38.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score" \
-  --output-dir /results/brca_psroc
+  --genes BRCA1,BRCA2,TP53 \
+  --clinvar-ht data/clinvar.ht \
+  --dbnsfp-ht data/dbnsfp.ht \
+  --scores "REVEL_score,AlphaMissense_score,MetaRNN_score,SIFT_converted_rankscore" \
+  --output-dir results/psroc_brca
 
-# View execution plan without running
+# Every gene set of a collection, with HGNC alias expansion
 hvantk psroc \
-  --genes BRCA1 \
-  --clinvar-ht /data/clinvar.ht \
-  --dbnsfp-ht /data/dbnsfp.ht \
-  --scores "CADD_phred" \
-  --output-dir /results \
-  --dry-run
+  --gene-sets gene_sets/clingen_gcep.json \
+  --hgnc data/hgnc.ht \
+  --clinvar-ht data/clinvar.ht \
+  --dbnsfp-ht data/dbnsfp.ht \
+  --scores "REVEL_score,AlphaMissense_score,MetaRNN_score,SIFT_converted_rankscore" \
+  --output-dir results/psroc_gcep
 ```
 
-### Python API
-
-```python
-from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
-
-# Configure analysis
-config = PSROCConfig(
-    genes=["BRCA1", "BRCA2"],
-    clinvar_ht="/data/clinvar_grch38.ht",
-    dbnsfp_ht="/data/dbnsfp_grch38.ht",
-    scores=["CADD_phred", "REVEL_score", "MetaLR_score"],
-    output_dir="/results/brca_psroc",
-    max_missingness=0.3,
-)
-
-# Run pipeline
-pipeline = PSROCPipeline(config)
-result = pipeline.run()
-
-# View results
-print(result.summary())
-for score_name, roc in result.metrics.items():
-    print(f"{score_name}: AUC={roc.auc:.3f}")
-```
-
-## Example with Synthetic Data
-
-The PSROC module includes synthetic test data for learning and testing. This data
-allows you to run the complete pipeline without needing real ClinVar or dbNSFP tables.
-
-### Running the Example
-
-```bash
-# Run the example script (builds Hail Tables from synthetic TSVs and runs full pipeline)
-python examples/psroc/run_psroc_example.py --output-dir /tmp/psroc_example
-```
-
-### Synthetic Dataset Characteristics
-
-The synthetic dataset contains:
-
-| Component | Description |
-|-----------|-------------|
-| **Variants** | 100 variants across BRCA1, BRCA2, and TP53 |
-| **Labels** | 50 pathogenic, 40 benign, 10 VUS (excluded) |
-| **Scores** | 4 prediction scores with varying performance |
-
-### Expected Results
-
-The synthetic scores are designed to demonstrate different discriminative capabilities:
-
-| Score | Expected AUC | Missingness | Status |
-|-------|-------------|-------------|--------|
-| REVEL_score | ~0.95 | ~2% | Included |
-| CADD_phred | ~0.90 | ~5% | Included |
-| MetaLR_score | ~0.75 | ~10% | Included |
-| VEST4_score | N/A | ~40% | Excluded |
-
-The VEST4_score is intentionally designed with high missingness to demonstrate
-the automatic score exclusion feature when missingness exceeds the threshold.
-
-### Test Data Files
-
-Located in `hvantk/tests/testdata/psroc/`:
-
-- `synthetic_clinvar.tsv` - ClinVar-like variant annotations
-- `synthetic_dbnsfp.tsv` - dbNSFP-like prediction scores
-- `test_genes.txt` - Gene list for `--genes-file` testing
-- `test_variants.txt` - Variant list for `--variants` testing
-
-## Detailed Usage
-
-### Input Sources
-
-PSROC requires exactly one input source to select variants for analysis:
-
-#### Option 1: Gene Symbols
-
-```bash
-# Comma-separated gene symbols
-hvantk psroc --genes BRCA1,BRCA2,TP53 ...
-
-# From a file (one gene per line)
-hvantk psroc --genes-file /data/cardiac_genes.txt ...
-```
-
-#### Option 2: Variant List
-
-```bash
-# Variant file format: chr:pos:ref:alt (one per line)
-hvantk psroc --variants /data/my_variants.txt ...
-```
-
-Example variant file:
-```
-chr1:12345:A:T
-chr2:67890:G:C
-chr17:41245466:G:A
-```
-
-#### Option 3: Named Gene Set Collection (Multi-Group Analysis)
-
-Run PSROC independently for each named gene set in a collection. Each group
-gets its own output subdirectory with per-group metrics and plots.
-
-```bash
-# From a JSON gene set collection
-hvantk psroc --gene-sets /data/disease_gene_sets.json ...
-
-# From a GMT file (e.g., MSigDB pathways)
-hvantk psroc --gene-sets /data/pathways.gmt ...
-```
-
-Gene set collections can be prepared from various sources using hvantk's
-streamer layer. See [Preparing Gene Set Collections](#preparing-gene-set-collections)
-and the CLI commands below:
-
-```bash
-# Prepare gene sets from ClinGen
-hvantk genesets clingen --ht /data/clingen.ht --group-by gcep -o gene_sets.json
-
-# From COSMIC Cancer Gene Census
-hvantk genesets cosmic --ht /data/cosmic_cgc.ht -o cosmic_gene_sets.json
-
-# Or from custom panels
-hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
-```
-
-### Required Tables
-
-PSROC requires pre-built Hail Tables for ClinVar and dbNSFP:
-
-```bash
-# Build ClinVar table (clinvar plugin has a built-in downloader; raw-dir
-# holds clinvar.vcf.gz + .tbi).
-hvantk reprocess clinvar:variants \
-  --raw-dir /data/clinvar/ \
-  --output /data/clinvar_grch38.ht
-
-# Build dbNSFP table from the concatenated BGZF (see Deployment Guide).
-# dbNSFP has no plugin downloader; --skip-download is required.
-hvantk reprocess dbnsfp:variants \
-  --raw-dir /data/dbnsfp/ \
-  --output /data/dbnsfp_grch38.ht \
-  --skip-download
-```
-
-### Score Selection
-
-Specify dbNSFP score fields to evaluate:
-
-```bash
---scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,ClinPred_score"
-```
-
-#### dbNSFP Score Reference
-
-The table below lists commonly used prediction scores available in dbNSFP 4.x.
-Field names are case-sensitive and must match the dbNSFP column names exactly.
-
-> **Important:** PSROC assumes **higher score = more pathogenic**. Scores marked
-> with inverted directionality (lower = pathogenic) will produce AUC < 0.5 and
-> should not be used directly. Use `_rankscore` variants instead (see note below).
-
-**Ensemble / meta-predictor scores** (recommended — combine multiple signals):
-
-| Field name | Description | Range | Direction |
-|------------|-------------|-------|-----------|
-| `REVEL_score` | Rare Exome Variant Ensemble Learner | 0–1 | Higher = pathogenic |
-| `MetaLR_score` | Meta-analytic logistic regression | 0–1 | Higher = pathogenic |
-| `MetaSVM_score` | Meta-analytic support vector machine | unbounded | Higher = pathogenic |
-| `MetaRNN_score` | Meta-analytic recurrent neural network | 0–1 | Higher = pathogenic |
-| `ClinPred_score` | Clinical pathogenicity prediction | 0–1 | Higher = pathogenic |
-| `BayesDel_addAF_score` | BayesDel with allele frequency features | -1 to 1 | Higher = pathogenic |
-| `BayesDel_noAF_score` | BayesDel without allele frequency | -1 to 1 | Higher = pathogenic |
-| `CADD_phred` | CADD Phred-scaled C-score | 0–60+ | Higher = pathogenic |
-
-**Individual predictor scores** (higher = pathogenic):
-
-| Field name | Description | Range | Direction |
-|------------|-------------|-------|-----------|
-| `VEST4_score` | Variant Effect Scoring Tool v4 | 0–1 | Higher = pathogenic |
-| `MVP_score` | Missense Variant Pathogenicity | 0–1 | Higher = pathogenic |
-| `gMVP_score` | Generalized MVP | 0–1 | Higher = pathogenic |
-| `MPC_score` | Missense badness, PolyPhen-2, Constraint | 0–5 | Higher = pathogenic |
-| `PrimateAI_score` | Primate AI deep learning | 0–1 | Higher = pathogenic |
-| `DEOGEN2_score` | DEOGEN2 pathogenicity prediction | 0–1 | Higher = pathogenic |
-| `DANN_score` | Deep Annotation Neural Network | 0–1 | Higher = pathogenic |
-| `M-CAP_score` | Mendelian Clinically Applicable Pathogenicity | 0–1 | Higher = pathogenic |
-| `LIST-S2_score` | LIST variant-specific score | 0–1 | Higher = pathogenic |
-| `AlphaMissense_score` | AlphaMissense deep learning | 0–1 | Higher = pathogenic |
-| `EVE_score` | Evolutionary model of Variant Effect | 0–1 | Higher = pathogenic |
-| `VARITY_R_score` | VARITY regular | 0–1 | Higher = pathogenic |
-| `VARITY_ER_score` | VARITY extended regular | 0–1 | Higher = pathogenic |
-| `Polyphen2_HDIV_score` | PolyPhen-2 HumDiv | 0–1 | Higher = pathogenic |
-| `Polyphen2_HVAR_score` | PolyPhen-2 HumVar | 0–1 | Higher = pathogenic |
-| `MutationAssessor_score` | Mutation Assessor functional impact | -5.5 to 6.5 | Higher = pathogenic |
-
-**Scores with inverted directionality** (do NOT use directly with PSROC):
-
-| Field name | Description | Range | Direction |
-|------------|-------------|-------|-----------|
-| `SIFT_score` | Sorting Intolerant From Tolerant | 0–1 | **Lower** = pathogenic |
-| `PROVEAN_score` | Protein Variation Effect Analyzer | unbounded | **More negative** = pathogenic |
-| `FATHMM_score` | Functional Analysis Through HMMs | unbounded | **More negative** = pathogenic |
-| `LRT_score` | Likelihood Ratio Test | 0–1 | **Lower** = pathogenic |
-
-> **Tip — using `_rankscore` variants:** dbNSFP provides normalized rank scores
-> (e.g., `SIFT_converted_rankscore`, `FATHMM_converted_rankscore`) where
-> higher = more damaging for all scores. These work directly with PSROC and are
-> a good alternative when you want to include scores with inverted directionality.
->
-> Rank scores are valid for ROC analysis: AUC values and score comparisons are
-> correct because the monotonic ranking is preserved. However, the optimal
-> threshold reported by PSROC will be in **rank space** (e.g., 0.85) rather than
-> the original score units (e.g., SIFT 0.05). This means rank-score thresholds
-> are useful for benchmarking which scores discriminate best, but cannot be used
-> directly as clinical cutoffs in the native score scale.
-
-**Conservation scores** (measure evolutionary constraint, not variant-specific):
-
-| Field name | Description | Range | Direction |
-|------------|-------------|-------|-----------|
-| `GERP++_RS` | GERP rejected substitutions | -12 to 6.2 | Higher = conserved |
-| `phyloP100way_vertebrate` | phyloP 100-way vertebrate | -20 to 11.2 | Higher = conserved |
-| `phastCons100way_vertebrate` | phastCons 100-way vertebrate | 0–1 | Higher = conserved |
-
-The exact set of available scores depends on the dbNSFP version used to build
-the Hail Table. To list all score fields in your table, run:
-
-```python
-import hail as hl
-ht = hl.read_table('/path/to/dbnsfp.ht')
-score_fields = sorted(f for f in ht.row if f.endswith('_score') or f.endswith('_phred'))
-print(score_fields)
-```
-
-### Missingness Handling
-
-Scores with high rates of missing values can bias ROC analysis. PSROC automatically:
-
-1. Computes missingness statistics for each score
-2. Excludes scores exceeding the threshold from ROC analysis
-3. Reports all missingness statistics in the output
-
-```bash
-# Default: exclude scores with >30% missing values
-hvantk psroc ... --max-missingness 0.3
-
-# Stricter threshold for high-quality analysis
-hvantk psroc ... --max-missingness 0.1
-
-# Relaxed threshold for exploratory analysis
-hvantk psroc ... --max-missingness 0.5
-```
-
-### ClinVar Review Status Filtering
-
-Filter variants by ClinVar review status (star rating):
-
-```bash
-# Require at least 1 star (default)
-hvantk psroc ... --min-stars 1
-
-# Require expert panel review (3+ stars)
-hvantk psroc ... --min-stars 3
-```
-
-Star ratings:
-- 0 stars: No assertion criteria provided
-- 1 star: Single submitter with criteria
-- 2 stars: Multiple submitters, no conflicts
-- 3 stars: Reviewed by expert panel
-- 4 stars: Practice guideline
-
-### Threshold Optimization Methods
-
-PSROC supports three methods for finding optimal classification thresholds:
-
-```bash
-# Youden's J statistic (default) - maximizes (sensitivity + specificity - 1)
-hvantk psroc ... --threshold-method youden
-
-# Closest to corner - minimizes distance to perfect classifier (0,1)
-hvantk psroc ... --threshold-method closest_to_corner
-
-# F1 score approximation
-hvantk psroc ... --threshold-method f1
-```
-
-## Pipeline Stages
-
-The PSROC pipeline executes seven stages:
-
-| Stage | Description |
-|-------|-------------|
-| 1. Load Tables | Read ClinVar and dbNSFP Hail Tables |
-| 2. Filter ClinVar | Filter to target genes or variants |
-| 3. Assign Labels | Convert CLNSIG to binary P/B labels |
-| 4. Annotate Scores | Join with dbNSFP prediction scores |
-| 5. Compute Missingness | Calculate per-score missingness statistics |
-| 6. Compute ROC | Compute ROC metrics for qualifying scores |
-| 7. Generate Outputs | Create plots, metrics JSON, and reports |
-
-### Label Assignment
-
-ClinVar clinical significance values are mapped to binary labels:
-
-**Pathogenic (label=1):**
-- Pathogenic
-- Likely_pathogenic
-- Pathogenic/Likely_pathogenic
-
-**Benign (label=0):**
-- Benign
-- Likely_benign
-- Benign/Likely_benign
-
-**Excluded:**
-- Uncertain_significance
-- Conflicting_interpretations_of_pathogenicity
-- All other values
-
-## Output Files
-
-PSROC generates the following outputs:
-
-```
-output_dir/
-├── psroc_metrics.json           # ROC metrics (AUC, thresholds, etc.)
-├── psroc_missingness.json       # Per-score missingness statistics
-├── psroc_annotated.ht/          # Hail Table with labels and scores
-├── psroc_annotated.tsv          # TSV export (if --export-tsv)
+Add `--dry-run` to validate the inputs and print the plan without running the stages: it
+does not start Hail, create the output directory, or read the `--hgnc` table. Stage
+progress is logged at INFO level, which the CLI hides by default: add the global `-v`
+option before `psroc` (`hvantk -v psroc ...`) to see it, and `--log-file FILE` next to it
+to also write the log to a file.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--genes TEXT` | | Comma-separated gene symbols |
+| `--genes-file PATH` | | File with one gene symbol per line |
+| `--variants PATH` | | File with one `chr:pos:ref:alt` per line |
+| `--gene-sets PATH` | | Gene set collection (`.json` or `.gmt`); one run per set |
+| `--hgnc PATH` | | HGNC table (`.ht`) for alias expansion of gene symbols |
+| `--clinvar-ht PATH` | required | ClinVar Hail table |
+| `--dbnsfp-ht PATH` | required | dbNSFP Hail table |
+| `--scores TEXT` | required | Comma-separated dbNSFP field names |
+| `-o`, `--output-dir PATH` | required | Output directory |
+| `--min-stars INTEGER` | `1` | Minimum ClinVar review stars; `0` turns the filter off |
+| `--max-missingness FLOAT` | `0.3` | Leave out scores missing for more than this fraction of the pathogenic and benign variants (0 to 1) |
+| `--threshold-method` | `youden` | `youden`, `closest_to_corner` or `f1` |
+| `--min-variants INTEGER` | `10` | Minimum pathogenic + benign variants for the ROC step |
+| `--n-bootstrap INTEGER` | `2000` | Bootstrap resamples for the AUC 95% CI; `0` disables the CI |
+| `--output-prefix TEXT` | `psroc` | Prefix of every output file name |
+| `--export-tsv` | off | Also write the annotated variants as TSV |
+| `--no-plots` | off | Skip the plots |
+| `--dry-run` | off | Print the execution plan and stop |
+
+## Outputs
+
+```text
+results/psroc_brca/
+├── psroc_metrics.json        # ROC metrics per score
+├── psroc_missingness.json    # missingness per requested score
+├── psroc_annotated.ht/       # one row per variant: label and scores
+├── psroc_annotated.tsv       # the same rows as TSV (--export-tsv)
 ├── plots/
-│   ├── psroc_roc_curves.png     # Multi-score ROC overlay
-│   ├── psroc_auc_comparison.png # AUC bar chart
-│   ├── psroc_missingness.png    # Missingness summary
-│   └── psroc_dashboard.png      # Summary dashboard
-├── logs/
-│   └── psroc_*.log              # Execution log
-└── .pipeline_state.json         # State for recovery
+│   ├── psroc_roc_curves.png
+│   ├── psroc_auc_comparison.png
+│   ├── psroc_missingness.png
+│   └── psroc_dashboard.png
+├── logs/                     # psroc_<timestamp>.log: the run's log, at the console's level (INFO with -v)
+└── .pipeline_state.json      # configuration, completed stages, errors and timings
 ```
 
-### Metrics JSON Format
+A rerun into the same directory with the same prefix replaces these files.
+
+With `--gene-sets`, each set gets a subdirectory named after it (characters other than
+letters, digits, `_` and `-` become `_`), and its files carry the prefix
+`<prefix>_<set>`:
+
+```text
+results/psroc_gcep/
+├── Hereditary_Cancer/
+│   ├── psroc_Hereditary_Cancer_metrics.json
+│   ├── plots/psroc_Hereditary_Cancer_dashboard.png
+│   └── ...
+├── Hearing_Loss/
+│   └── ...
+└── plots/
+    └── psroc_collection_heatmap.png   # AUC per score (rows) and gene set (columns)
+```
+
+The heatmap is drawn when plots are on and at least two sets produced AUCs. A set whose
+run fails, for example because a score is present in only one class, is skipped with a
+warning; the command fails only when every set fails. A set with fewer than
+`--min-variants` labelled variants is kept, without AUCs.
+
+`{prefix}_metrics.json` maps each score that reached the ROC to its result (values
+illustrative):
 
 ```json
 {
-  "total_variants": 1250,
-  "n_pathogenic": 620,
-  "n_benign": 580,
-  "n_excluded": 50,
-  "scores_included": ["CADD_phred", "REVEL_score"],
-  "scores_excluded": ["MetaLR_score"],
-  "max_missingness_threshold": 0.3,
-  "metrics": {
-    "CADD_phred": {
-      "score_name": "CADD_phred",
-      "auc": 0.892,
-      "optimal_threshold": 22.5,
-      "sensitivity_at_optimal": 0.85,
-      "specificity_at_optimal": 0.82,
-      "n_variants_used": 1180,
-      "missingness": {
-        "n_total": 1200,
-        "n_present": 1180,
-        "n_missing": 20,
-        "missingness_rate": 0.017,
-        "included_in_analysis": true
-      }
-    }
-  }
-}
-```
-
-### Missingness Report Format
-
-```json
-{
-  "total_variants": 1200,
-  "max_missingness_threshold": 0.3,
-  "scores_included": ["CADD_phred", "REVEL_score"],
-  "scores_excluded": ["MetaLR_score"],
-  "scores": {
-    "CADD_phred": {
-      "n_total": 1200,
-      "n_present": 1180,
-      "n_missing": 20,
-      "missingness_rate": 0.017,
+  "REVEL_score": {
+    "score_name": "REVEL_score",
+    "auc": 0.998,
+    "optimal_threshold": 0.454,
+    "higher_is_pathogenic": true,
+    "sensitivity_at_optimal": 0.98,
+    "specificity_at_optimal": 1.0,
+    "n_variants_used": 87,
+    "missingness": {
+      "n_total": 90,
+      "n_present": 87,
+      "n_missing": 3,
+      "missingness_rate": 0.0333,
       "included_in_analysis": true,
       "exclusion_reason": null
     },
-    "MetaLR_score": {
-      "n_total": 1200,
-      "n_present": 720,
-      "n_missing": 480,
-      "missingness_rate": 0.4,
-      "included_in_analysis": false,
-      "exclusion_reason": "missingness_rate (0.40) exceeds max_missingness (0.30)"
-    }
+    "auc_ci_lower": 0.994,
+    "auc_ci_upper": 1.0
   }
 }
 ```
 
-## CLI Reference
+- `higher_is_pathogenic`: the score's direction (see [Score direction](#score-direction)).
+  `true`: pathogenic at or above `optimal_threshold`; `false`: at or below it.
+- `n_variants_used`: pathogenic and benign variants where this score is present.
+- `missingness`: over the pathogenic and benign variants, as in `{prefix}_missingness.json`.
+- `auc_ci_lower`, `auc_ci_upper`: present only when `--n-bootstrap` is above 0.
 
-### Command Options
+`{prefix}_missingness.json` covers every requested score, computed over the pathogenic
+and benign variants in the annotated table (values from the
+[PS-ROC example](../examples/psroc.md), with 90 of them):
 
-```
-hvantk psroc [OPTIONS]
-
-Input Sources (exactly one required):
-  --genes TEXT              Comma-separated gene symbols
-  --genes-file PATH         File with gene symbols (one per line)
-  --variants PATH           Variant list (chr:pos:ref:alt format)
-  --gene-sets PATH          Gene set collection (JSON/GMT) for multi-group analysis
-
-Required:
-  --clinvar-ht PATH         Path to ClinVar Hail Table
-  --dbnsfp-ht PATH          Path to dbNSFP Hail Table
-  --scores TEXT             Comma-separated score field names
-  -o, --output-dir PATH     Output directory
-
-Optional:
-  --reference-genome        GRCh37 or GRCh38 [default: GRCh38]
-  --min-stars INTEGER       Minimum ClinVar stars [default: 1]
-  --max-missingness FLOAT   Max missingness rate [default: 0.3]
-  --threshold-method        youden|closest_to_corner|f1 [default: youden]
-  --output-prefix TEXT      Output filename prefix [default: psroc]
-  --export-tsv              Export annotated variants as TSV
-  --no-plots                Skip plot generation
-  --overwrite               Overwrite existing files
-  --dry-run                 Show plan without running
-  --log-level               DEBUG|INFO|WARNING|ERROR [default: INFO]
+```json
+{
+  "CADD_phred": {
+    "n_total": 90, "n_present": 83, "n_missing": 7, "missingness_rate": 0.0778,
+    "included_in_analysis": true, "exclusion_reason": null
+  },
+  "VEST4_score": {
+    "n_total": 90, "n_present": 52, "n_missing": 38, "missingness_rate": 0.4222,
+    "included_in_analysis": false,
+    "exclusion_reason": "missingness_rate (0.42) exceeds max_missingness (0.30)"
+  }
+}
 ```
 
-### Examples
+The annotated table (and TSV) is keyed by `locus` and `alleles` and holds `label`
+(`Pathogenic`, `Benign` or `Uncertain/Conflicting`) and one column per requested score,
+with per-transcript scores already reduced to one value. The plots are 300-dpi PNGs: ROC
+curves with the optimal points marked and AUC [CI] in the legend, AUCs with CI bars,
+missingness against the threshold, and a dashboard combining the three with the gene,
+pathogenic and benign counts. The ROC, AUC and dashboard plots need at least one AUC. A
+plot that fails is logged as a warning and does not stop the run.
 
-```bash
-# Evaluate scores for BRCA genes with stricter criteria
-hvantk psroc \
-  --genes BRCA1,BRCA2 \
-  --clinvar-ht /data/clinvar.ht \
-  --dbnsfp-ht /data/dbnsfp.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score" \
-  --output-dir /results/brca \
-  --min-stars 2 \
-  --max-missingness 0.1
+When reading the results:
 
-# Use genes from file with TSV export
-hvantk psroc \
-  --genes-file /data/cardiac_genes.txt \
-  --clinvar-ht /data/clinvar.ht \
-  --dbnsfp-ht /data/dbnsfp.ht \
-  --scores "REVEL_score,ClinPred_score" \
-  --output-dir /results/cardiac \
-  --export-tsv
+- Compare AUCs together with their CIs and `n_variants_used`. Each score is evaluated on
+  the variants where it is present, so two scores can be measured on different variants
+  (see [Caveats](#caveats)).
+- The console summary of a single run prints the variant counts, each score's AUC [CI] and
+  threshold (`threshold<=` for a lower-is-damaging score), and the scores left out for
+  missingness. "Excluded" counts the `Uncertain/Conflicting` variants kept in the table.
 
-# Analyze specific variants
-hvantk psroc \
-  --variants /data/candidate_variants.txt \
-  --clinvar-ht /data/clinvar.ht \
-  --dbnsfp-ht /data/dbnsfp.ht \
-  --scores "CADD_phred,DANN_score,PrimateAI_score" \
-  --output-dir /results/candidates
-
-# Exploratory analysis with relaxed missingness
-hvantk psroc \
-  --genes TP53 \
-  --clinvar-ht /data/clinvar.ht \
-  --dbnsfp-ht /data/dbnsfp.ht \
-  --scores "CADD_phred,REVEL_score,VEST4_score" \
-  --output-dir /results/tp53 \
-  --max-missingness 0.5 \
-  --no-plots
-```
-
-## Python API Reference
-
-### Core Classes
-
-#### PSROCConfig
-
-Configuration dataclass for the pipeline:
+## Python API
 
 ```python
-from hvantk.algorithms.psroc import PSROCConfig
+from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
+from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
 
 config = PSROCConfig(
-    # Input sources (exactly one required)
-    genes=["BRCA1", "BRCA2"],        # Gene symbols
-    genes_file=None,                  # Path to gene file
-    variants_path=None,               # Path to variant file
-    gene_set_collection=None,         # Dict[str, Set[str]] for multi-group
-
-    # Required paths
-    clinvar_ht="/data/clinvar.ht",
-    dbnsfp_ht="/data/dbnsfp.ht",
-
-    # Score configuration
-    scores=["CADD_phred", "REVEL_score"],
-
-    # Output
-    output_dir="/results/psroc",
-    output_prefix="psroc",
-
-    # Processing options
-    reference_genome="GRCh38",
-    min_stars=1,
-    max_missingness=0.3,
-    threshold_method="youden",
-
-    # Output options
-    export_tsv=False,
-    overwrite=False,
-    generate_plots=True,
+    genes=["BRCA1", "BRCA2", "TP53"],
+    clinvar_ht="data/clinvar.ht",
+    dbnsfp_ht="data/dbnsfp.ht",
+    scores=["REVEL_score", "AlphaMissense_score", "MetaRNN_score"],
+    output_dir="results/psroc_brca",
+    # Required: the ClinVar label vocabulary (the CLI passes the same lists).
+    pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+    benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
 )
-
-# Validate configuration
-errors = config.validate()
-if errors:
-    for e in errors:
-        print(f"Error: {e}")
+pipeline = PSROCPipeline(config)  # validates, creates the output dirs, starts Hail
+result = pipeline.run()
+print(result.summary())
+for name, roc in result.metrics.items():
+    print(name, round(roc.auc, 3), roc.auc_ci_lower, roc.auc_ci_upper)
 ```
 
-#### PSROCPipeline
+`PSROCConfig` takes the CLI options as fields (`genes`, `genes_file`, `variants_path`,
+`gene_set_collection`, `clinvar_ht`, `dbnsfp_ht`, `scores`, `output_dir`, `output_prefix`,
+`min_stars`, `max_missingness`, `threshold_method`, `hgnc_path`, `export_tsv`,
+`generate_plots`, `min_variants`, `n_bootstrap`), with the same defaults, plus:
 
-Main pipeline orchestrator:
+- `pathogenic_labels`, `benign_labels`: required; without them `PSROCPipeline` raises
+  `Configuration validation failed`.
+- `score_directions`: `{score: bool}` setting a score's direction (`True` = higher is more
+  damaging, `False` = lower is), on top of the six lower-is-damaging scores PS-ROC knows.
+  The direction picks the per-transcript value and orients the ROC (see
+  [Score direction](#score-direction)). `run_collection()` passes it on to every per-set
+  run.
+
+For a gene set collection, pass a dict of sets and call `run_collection()`. Alias expansion
+needs a gene catalog passed to the pipeline; `hgnc_path` alone only records the path:
 
 ```python
-from hvantk.algorithms.psroc import PSROCPipeline
-
-pipeline = PSROCPipeline(config)
-
-# Preview execution plan
-pipeline.show_plan()
-
-# Run single gene set pipeline
-result = pipeline.run()
-
-# --- Multi-group analysis ---
 from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
+from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
+from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-collection_config = PSROCConfig(
+config = PSROCConfig(
     gene_set_collection={
         "cardiac": {"MYH7", "TNNT2", "LMNA"},
-        "neuro": {"SCN1A", "SCN2A", "KCNQ2"},
+        "epilepsy": {"SCN1A", "SCN2A", "KCNQ2"},
     },
-    clinvar_ht="/data/clinvar.ht",
-    dbnsfp_ht="/data/dbnsfp.ht",
-    scores=["CADD_phred", "REVEL_score"],
-    output_dir="/results/multi_group",
+    clinvar_ht="data/clinvar.ht",
+    dbnsfp_ht="data/dbnsfp.ht",
+    scores=["REVEL_score", "AlphaMissense_score"],
+    output_dir="results/psroc_panels",
+    pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+    benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
 )
-
-pipeline = PSROCPipeline(collection_config)
-results = pipeline.run_collection()  # Dict[str, PSROCResult]
-
-for group_name, result in results.items():
-    print(f"{group_name}: {result.n_total} variants")
-    for name, roc in result.metrics.items():
-        print(f"  {name}: AUC={roc.auc:.3f}")
+catalog = HGNCGeneCatalogStreamer.from_path("data/hgnc.ht")
+results = PSROCPipeline(config, gene_catalog=catalog).run_collection()  # {set: PSROCResult}
 ```
 
-#### PSROCResult
+A `PSROCResult` holds `metrics` (score → `ROCResult`), `missingness` (score →
+`ScoreMissingness`), `n_pathogenic`, `n_benign`, `n_excluded`, `n_total`, `n_out_of_scope`,
+`n_genes`, `scores_included`, `scores_excluded`, `max_missingness_threshold`, `output_dir`
+and `annotated_ht_path`, plus `summary()` and `to_dict()`. A `ROCResult` holds `fpr`,
+`tpr`, `thresholds`, `auc`, `auc_ci_lower`, `auc_ci_upper`, `optimal_threshold`,
+`higher_is_pathogenic`, `sensitivity_at_optimal`, `specificity_at_optimal`,
+`n_variants_used` and `missingness`; `thresholds` and `optimal_threshold` are on the
+score's own scale. `scores_included` lists the scores that passed the missingness check,
+which still get no AUC when the ROC step is skipped for too few labelled variants, so
+iterate over `metrics` for the scores that have one.
 
-Results from pipeline execution:
-
-```python
-# Access results
-print(f"Variants: {result.n_total}")
-print(f"Pathogenic: {result.n_pathogenic}")
-print(f"Benign: {result.n_benign}")
-print(f"Excluded: {result.n_excluded}")
-
-# ROC metrics (only for included scores)
-for name, roc in result.metrics.items():
-    print(f"{name}: AUC={roc.auc:.3f}, threshold={roc.optimal_threshold:.3f}")
-
-# Missingness stats (all scores)
-for name, miss in result.missingness.items():
-    status = "included" if miss.included_in_analysis else "EXCLUDED"
-    print(f"{name}: {miss.missingness_rate:.1%} missing [{status}]")
-
-# Generate summary
-print(result.summary())
-
-# Serialize to dict
-result_dict = result.to_dict()
-```
-
-### ROC Analysis Functions
-
-For direct use without the pipeline:
+The ROC functions also work on plain arrays, without Hail tables:
 
 ```python
-from hvantk.algorithms.psroc import (
-    compute_roc_metrics,
-    compute_all_missingness,
-    filter_scores_by_missingness,
-)
 import numpy as np
+from hvantk.algorithms.psroc import compute_roc_metrics, plot_roc_curves
 
-# Prepare data
-labels = np.array([0, 0, 0, 1, 1, 1])  # 0=benign, 1=pathogenic
+labels = np.array([0, 0, 0, 1, 1, 1])  # 1 = pathogenic, 0 = benign
 scores = {
-    "CADD_phred": np.array([10, 12, 15, 25, 28, 30]),
-    "REVEL_score": np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9]),
+    "score_a": np.array([0.1, 0.4, 0.35, 0.8, 0.3, np.nan]),  # NaN = missing
+    "score_b": np.array([2.0, 1.0, 3.0, 4.0, 5.0, 2.5]),
+    "score_c": np.array([0.9, 0.6, 0.7, 0.02, 0.1, 0.3]),  # lower = more damaging
 }
-
-# Compute ROC metrics
 results = compute_roc_metrics(
-    labels=labels,
-    scores=scores,
-    max_missingness=0.3,
+    labels,
+    scores,
     threshold_method="youden",
+    n_bootstrap=1000,
+    score_directions={"score_c": False},
 )
-
 for name, roc in results.items():
-    print(f"{name}: AUC={roc.auc:.3f}")
+    print(name, roc.auc, roc.optimal_threshold, roc.auc_ci_lower, roc.auc_ci_upper)
+plot_roc_curves(results, output_path="roc_curves.png")
 ```
 
-### Plotting Functions
-
-```python
-from hvantk.algorithms.psroc import (
-    plot_roc_curves,
-    plot_auc_comparison,
-    plot_missingness_summary,
-    plot_psroc_summary_dashboard,
-)
-
-# Multi-score ROC overlay
-fig = plot_roc_curves(
-    result.metrics,
-    output_path="roc_curves.png",
-    title="Pathogenicity Score Comparison",
-    show_optimal=True,
-)
-
-# AUC bar chart comparison
-fig = plot_auc_comparison(
-    result.metrics,
-    output_path="auc_comparison.png",
-    horizontal=True,
-)
-
-# Missingness summary
-fig = plot_missingness_summary(
-    result.missingness,
-    output_path="missingness.png",
-    max_missingness_threshold=0.3,
-)
-
-# Summary dashboard
-fig = plot_psroc_summary_dashboard(
-    result.metrics,
-    result.missingness,
-    output_path="dashboard.png",
-    max_missingness_threshold=0.3,
-)
-```
-
-## End-to-End Deployment Guide
-
-This section walks through running the full PSROC pipeline on a fresh host,
-from installation through results.
-
-### Prerequisites
-
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Python | >= 3.10 | |
-| Java | 11 | Required by Hail/Spark |
-| HTSlib / bgzip | >= 1.10 | Required for BGZF compression in Step 2 |
-| Disk space | ~50 GB | dbNSFP (~45 GB) + intermediate tables |
-
-Verify Java is available:
-
-```bash
-java -version   # Should show 11
-```
-
-### Step 1: Install hvantk
-
-```bash
-pip install hvantk
-# or from source:
-git clone https://github.com/bigbio/hvantk
-cd hvantk && poetry install
-```
-
-### Step 2: Download Data (Layer 1 — Downloaders)
-
-**ClinVar** (automated):
-
-```bash
-hvantk download clinvar --output-dir /data/clinvar
-# Downloads clinvar.vcf.gz (~80 MB) + .tbi index
-```
-
-**dbNSFP** (manual — ~45 GB, license-gated):
-
-1. Visit https://sites.google.com/site/jpaboreno/dbNSFP
-2. Download the `dbNSFP4.x` archive and extract the per-chromosome `.gz` files
-3. Concatenate into a single BGZF file (the builder expects one file):
-   ```bash
-   head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
-   (cat /tmp/dbnsfp_header.txt && for f in dbNSFP4.9a_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
-     | bgzip -@ 4 > /data/dbnsfp/dbNSFP4.9a_variant.bgz
-   ```
-
-**ClinGen** (automated, for gene set extraction):
-
-```bash
-hvantk download clingen --output-dir /data/clingen
-# Downloads Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
-```
-
-### Step 3: Build Hail Tables (Layer 1 — Builders)
-
-```bash
-# Build ClinVar table from the already-downloaded VCF in /data/clinvar/.
-# Note: ClinVar distributes standard gzip (.vcf.gz), which Hail reads
-# single-threaded. For parallel reads, recompress as BGZF first:
-#   hvantk utils convert-bgz /data/clinvar/clinvar.vcf.gz
-hvantk reprocess clinvar:variants \
-  --raw-dir /data/clinvar/ \
-  --output /data/tables/clinvar_grch38.ht \
-  --skip-download
-
-# Build dbNSFP table from the concatenated BGZF file prepared in Step 2.
-hvantk reprocess dbnsfp:variants \
-  --raw-dir /data/dbnsfp/ \
-  --output /data/tables/dbnsfp_grch38.ht \
-  --skip-download
-
-# Build ClinGen table (for gene set extraction). raw-dir contains the
-# Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv downloaded in Step 2.
-hvantk reprocess clingen:gene-disease \
-  --raw-dir /data/clingen/ \
-  --output /data/tables/clingen.ht \
-  --skip-download
-```
-
-### Step 4: Prepare Gene Sets
-
-Extract named gene set collections from ClinGen or other sources. See
-[Preparing Gene Set Collections](#preparing-gene-set-collections) below.
-
-```bash
-# GCEP-based gene sets (recommended — broader, biologically coherent panels)
-hvantk genesets clingen \
-  --ht /data/tables/clingen.ht \
-  --group-by gcep \
-  --min-classification Moderate \
-  --min-genes 20 \
-  -o /data/gene_sets/clingen_gcep.json
-
-# Or keyword-based disease categories
-hvantk genesets clingen \
-  --ht /data/tables/clingen.ht \
-  --group-by keyword \
-  --categories-json /data/my_categories.json \
-  -o /data/gene_sets/clingen_keywords.json
-```
-
-### Step 5: Run PSROC (Layer 3 — Pipeline)
-
-```bash
-# Single gene set
-hvantk psroc \
-  --genes BRCA1,BRCA2,TP53 \
-  --clinvar-ht /data/tables/clinvar_grch38.ht \
-  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,AlphaMissense_score" \
-  --output-dir /results/psroc \
-  --min-stars 1
-
-# Multi-group analysis with gene set collection
-hvantk psroc \
-  --gene-sets /data/gene_sets/disease_categories.json \
-  --clinvar-ht /data/tables/clinvar_grch38.ht \
-  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score,AlphaMissense_score" \
-  --output-dir /results/psroc_multi
-```
-
-### Step 6: Review Results
-
-```text
-/results/psroc_multi/
-├── cardiac/
-│   ├── psroc_cardiac_metrics.json
-│   ├── plots/
-│   │   ├── psroc_cardiac_roc_curves.png
-│   │   └── psroc_cardiac_dashboard.png
-│   └── ...
-├── neurological/
-│   └── ...
-└── ...
-```
-
----
-
-## Preparing Gene Set Collections
-
-Gene set collections are `Dict[str, Set[str]]` mappings from a group name to
-a set of gene symbols. They can be loaded from JSON or GMT files.
-
-### From Custom Gene Panels
-
-If you have gene panels as text files or spreadsheet exports, use
-`hvantk genesets prepare` to convert them:
-
-1. Format your panels as a headerless two-column TSV
-   (gene_set_name<TAB>gene_symbol), one gene per line:
-
-   ```
-   cardiac	MYH7
-   cardiac	TNNT2
-   cardiac	LMNA
-   epilepsy	SCN1A
-   epilepsy	SCN2A
-   ```
-
-2. Convert to gene set JSON:
-
-   ```bash
-   # Basic conversion
-   hvantk genesets prepare -i panels.tsv -o panels.json
-
-   # With HGNC validation (recommended)
-   hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
-   ```
-
-3. Run PSROC:
-
-   ```bash
-   hvantk psroc --gene-sets panels.json \
-     --clinvar-ht /data/clinvar.ht \
-     --dbnsfp-ht /data/dbnsfp.ht \
-     --scores "CADD_phred,REVEL_score" \
-     -o /results/psroc
-   ```
-
-**Gene identifier requirements:**
-- Use HGNC-approved human gene symbols (e.g., BRCA1, TP53, SCN1A).
-- Ensembl IDs, mouse symbols, and Entrez IDs are not accepted.
-- Use `--hgnc` to automatically resolve outdated aliases (e.g., FANCD1 → BRCA2).
-
-### From ClinGen (CLI)
-
-The `hvantk genesets clingen` command extracts gene sets from ClinGen data:
-
-```bash
-# GCEP-based gene sets (recommended — broader panels, 20-300 genes each)
-hvantk genesets clingen \
-  --ht /data/tables/clingen.ht \
-  --group-by gcep \
-  --min-classification Moderate \
-  --min-genes 20 \
-  -o /data/gene_sets/clingen_gcep.json
-
-# Keyword-based disease categories
-hvantk genesets clingen \
-  --ht /data/tables/clingen.ht \
-  --group-by keyword \
-  --categories-json /data/my_categories.json \
-  -o /data/gene_sets/clingen_keywords.json
-
-# Disease-level grouping (fine-grained — most have 1-3 genes)
-hvantk genesets clingen \
-  --ht /data/tables/clingen.ht \
-  --group-by disease \
-  --min-genes 5 \
-  -o /data/gene_sets/clingen_diseases.json
-```
-
-### From ClinGen (Python API)
-
-```python
-from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
-
-streamer = ClinGenGeneDiseaseTableStreamer(table_path="/data/tables/clingen.ht")
-streamer.setup()
-
-# GCEP-based (recommended)
-gene_sets = streamer.get_geneset_per_gcep(
-    min_classification="Moderate", min_genes=20
-)
-
-# Keyword-based
-gene_sets = streamer.aggregate_by_disease_category({
-    "cardiac": ["cardiomyopathy", "arrhythmia", "long_qt"],
-    "neurological": ["epilepsy", "neuropathy", "ataxia"],
-    "cancer": ["cancer", "tumor", "neoplasm"],
-})
-
-# MONDO ontology-based
-result = streamer.categorize_by_ontology(ontology="/data/mondo.obo")
-gene_sets = {
-    cat: data["genes"] for cat, data in result.items()
-}
-```
-
-### From GMT Files
-
-Standard GMT files (e.g., MSigDB pathways) can be loaded directly:
-
-```python
-from hvantk.core.utils.gene_sets import load_gene_sets
-
-collection = load_gene_sets("/data/pathways.gmt")
-gene_set_dict = {gs.name: gs.genes for gs in collection}
-```
-
-### Saving for CLI Use
-
-```python
-from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
-
-collection = load_gene_sets_from_dict(gene_sets)
-collection.save("/data/gene_sets/my_collection.json")
-# Then: hvantk psroc --gene-sets /data/gene_sets/my_collection.json ...
-```
-
----
-
-## Interpreting Results
-
-### AUC Values
-
-The Area Under the ROC Curve (AUC) ranges from 0 to 1:
-
-| AUC Range | Interpretation |
-|-----------|----------------|
-| 0.9 - 1.0 | Excellent discrimination |
-| 0.8 - 0.9 | Good discrimination |
-| 0.7 - 0.8 | Acceptable discrimination |
-| 0.6 - 0.7 | Poor discrimination |
-| 0.5 - 0.6 | Near random (uninformative) |
-| < 0.5 | Worse than random (inverse predictor) |
-
-### Optimal Threshold
-
-The optimal threshold represents the score value that best separates pathogenic from benign variants. Use this value for binary classification:
-
-```python
-# Classify new variants
-threshold = result.metrics["CADD_phred"].optimal_threshold
-prediction = "pathogenic" if score >= threshold else "benign"
-```
-
-### Sensitivity vs Specificity Trade-off
-
-- **Sensitivity** (True Positive Rate): Proportion of pathogenic variants correctly identified
-- **Specificity** (True Negative Rate): Proportion of benign variants correctly identified
-
-Choose your operating point based on clinical context:
-- **High sensitivity**: For screening (minimize false negatives)
-- **High specificity**: For confirmatory testing (minimize false positives)
-
-## Best Practices
-
-### Data Quality
-
-1. **Use sufficient sample size**: At least 30 variants per class for reliable AUC estimates
-2. **Filter by review status**: Use `--min-stars 2` for higher-confidence labels
-3. **Check class balance**: Large imbalances may bias results
-
-### Score Selection
-
-1. **Start broad**: Include multiple scores to identify best performers
-2. **Check missingness**: Scores with high missingness may be unreliable
-3. **Consider ensembles**: Combine top performers for better predictions
-
-### Threshold Selection
-
-1. **Match clinical context**: Choose threshold method based on use case
-2. **Validate externally**: Test thresholds on independent datasets
-3. **Report confidence**: Include variant counts and confidence intervals
+`compute_roc_metrics` defaults to `n_bootstrap=0` (no CI), unlike the CLI. It treats a
+score as higher = more damaging unless `score_directions` maps it to `False`: unlike the
+pipeline, it does not know the six lower-is-damaging dbNSFP scores. The package also
+exports `compute_all_missingness`, `compute_score_missingness`,
+`filter_scores_by_missingness`, `find_optimal_threshold`, `plot_roc_curve_single`,
+`plot_auc_comparison`, `plot_missingness_summary` and `plot_psroc_summary_dashboard`; the
+collection heatmap is `plot_collection_heatmap` in `hvantk.algorithms.psroc.plots`. Each
+plot function returns the matplotlib figure and, given `output_path`, saves it as a PNG
+(the `.png` suffix is optional).
+
+## Caveats
+
+- **Circularity.** Many predictors were trained on ClinVar or HGMD variants (REVEL,
+  MetaRNN and ClinPred among them), so their AUC against ClinVar labels is optimistic and
+  favours them over predictors trained without disease labels. PS-ROC does not correct for
+  this. The `scores:` block of the
+  [dbNSFP plugin manifest](https://github.com/bigbio/hvantk/blob/main/hvantk/skills/dbnsfp/plugin.yaml)
+  records the training data of most rank scores.
+- **Different variants per score.** A score that is also defined for nonsense and
+  splice-site SNVs (such as `CADD_phred`) is evaluated on a different, often easier, set
+  than a missense-only predictor. Because a variant stays when any requested score is
+  present, adding such a score also raises the other scores' missingness. For a
+  like-for-like comparison, request scores with similar coverage and check
+  `n_variants_used`.
+- **Score direction.** Only six raw scores are known to run lower = more damaging (see
+  [Score direction](#score-direction)). Any other raw score that runs that way gets 1 minus
+  its real AUC, below 0.5, unless you set its direction in `score_directions` or request
+  its `*_rankscore` instead.
+- **Coverage of uncertain variants.** Missingness is measured on the pathogenic and benign
+  variants only, so a score that is often missing for the `Uncertain/Conflicting` variants,
+  the ones you may want it to classify, still passes. Check their scores in the annotated
+  table.
+- **Label imbalance.** AUC does not depend on the ratio of pathogenic to benign variants,
+  but thresholds do: the `f1` method assumes equal class sizes, and a threshold chosen in a
+  gene set dominated by one class may not transfer to another.
+- **Small gene sets.** `--min-variants` is the floor for running the ROC, not a sample size
+  that makes an AUC reliable. With few variants per class the bootstrap interval is wide
+  and unstable; check the class counts and the CI before ranking predictors.
+- **In-sample thresholds.** The optimal threshold and its sensitivity and specificity are
+  chosen and measured on the same variants; validate them on independent data before using
+  them as a cut-off.
 
 ## Troubleshooting
 
-### Common Issues
+| Message | Meaning and fix |
+| --- | --- |
+| `Requested scores not found in dbNSFP table` | A `--scores` name is not a field of the table. Names are case-sensitive; the message lists the fields found. |
+| `Score '<name>' has only one class after filtering missing values` | Where this score is present, every variant is pathogenic (or every one benign). Widen the gene set, lower `--min-stars`, or drop the score. With `--gene-sets`, only that set is skipped. |
+| `Too few labeled variants (N) for ROC analysis` | Fewer than `--min-variants` pathogenic and benign variants remain; the outputs are written without AUCs. |
+| `No scores passed the missingness threshold` | Every score is missing for more than `--max-missingness` of the pathogenic and benign variants. Check `{prefix}_missingness.json`, raise the threshold or choose scores with better coverage. |
+| `No valid variants found in <file>` | The `--variants` file has no `chr:pos:ref:alt` lines. |
 
-**Issue: "All scores were excluded due to high missingness"**
-```
-Solution: Increase --max-missingness threshold or use scores with better coverage:
-hvantk psroc ... --max-missingness 0.5
-```
+## See also
 
-**Issue: "Need both pathogenic and benign variants"**
-```
-Solution: Expand gene list or use variant file with both classes:
-hvantk psroc --genes-file larger_gene_list.txt ...
-```
-
-**Issue: "Low pathogenic/benign count may affect ROC reliability"**
-```
-Solution: This is a warning. Consider:
-1. Adding more genes to increase variant count
-2. Relaxing ClinVar review status filter (--min-stars 0)
-3. Interpreting results with caution
-```
-
-**Issue: "Score not found in dbNSFP table"**
-```
-Solution: Check score field names match dbNSFP column names:
-- Use exact field names from dbNSFP (case-sensitive)
-- Verify dbNSFP table version includes the score
-```
-
-## References
-
-- [ClinVar Database](https://www.ncbi.nlm.nih.gov/clinvar/)
-- [dbNSFP Database](https://sites.google.com/site/jpaboreno/dbNSFP)
-- [ROC Analysis in Clinical Research](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3755824/)
-- [ACMG/AMP Guidelines for Variant Classification](https://www.acmg.net/ACMG/Medical-Genetics-Practice-Resources/Practice-Guidelines.aspx)
-
----
-
-See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.
+- [Gene sets](genesets.md): build the collections that `--gene-sets` takes.
+- [Data sources](../guide/data-sources.md): the ClinVar download and dbNSFP acquisition.
+- [Building datasets](../guide/usage.md#build-a-dataset): `hvantk reprocess`.
+- [PTM](ptm.md): run PS-ROC on PTM and non-PTM variant strata.
+- [PS-ROC example](../examples/psroc.md): a complete run on synthetic data.
+- ClinVar [review status](https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/) and
+  [dbNSFP](https://www.dbnsfp.org/).

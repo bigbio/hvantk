@@ -63,9 +63,11 @@ Each dataset's output (a `.ht`/`.mt` directory on a parallel filesystem is many 
 files, like any Hail table; a `.h5ad`/`.parquet` output is a single file). Keep the
 dated raw file that produced it and the output's `.provenance.json` sidecar next to the
 output, or at least discoverable from it: the sidecar is the only record of which
-plugin version and commit built it (`references/verification.md` lists its actual
-fields -- it does not record the raw file's path), and it does not live inside the
-output directory (moving one without the other loses that link).
+plugin version built it (`references/verification.md` lists its actual fields --
+`builder_commit` records the commit of the checkout the task ran, or `hvantk <version>`
+when git cannot answer on its node, and the sidecar does not record the raw file's
+path), and it does not live inside the output directory (moving one without the other
+loses that link).
 
 ## Re-running only failed indices
 

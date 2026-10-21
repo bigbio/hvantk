@@ -9,6 +9,8 @@ from hvantk.core.models.backends import algorithm, Backend
 # unconditional now: no optional dependency, so no availability guard.
 from hvantk.algorithms.hgc.adj import annotate_adj
 
+logger = logging.getLogger(__name__)
+
 
 def _split_vds(
     vds: hl.vds.VariantDataset, skip_split: bool = False
@@ -27,10 +29,10 @@ def _split_vds(
         Split (or unchanged) VariantDataset
     """
     if skip_split:
-        logging.info("Skipping VDS-level multi-allelic split as requested.")
+        logger.info("Skipping VDS-level multi-allelic split as requested.")
         return vds
 
-    logging.info("Splitting multi-allelic variants at VDS level (sparse split)…")
+    logger.info("Splitting multi-allelic variants at VDS level (sparse split)…")
     return hl.vds.split_multi(vds)
 
 
@@ -112,14 +114,14 @@ def _audit_split_variant_data(vds: hl.vds.VariantDataset) -> None:
     has_gt, has_ad = "GT" in vd.entry, "AD" in vd.entry
 
     if not (has_gt or has_ad):
-        logging.warning(
+        logger.warning(
             "Skipping biallelic audit: variant data has neither 'GT' nor 'AD' "
             f"(entries: {list(vd.entry.keys())}). This is expected when the VDS-level "
             "multi-allelic split was skipped, which leaves local alleles (LGT/LAD) in place."
         )
         return
 
-    logging.info(
+    logger.info(
         "Auditing biallelic entries on variant data (GT indices and AD lengths)…"
     )
 
@@ -145,18 +147,18 @@ def _audit_split_variant_data(vds: hl.vds.VariantDataset) -> None:
     n_ad = audit.n_invalid_ad if has_ad else 0
 
     if n_gt == 0 and n_ad == 0:
-        logging.info("✓ All entries valid (GT indices and AD lengths correct)")
+        logger.info("✓ All entries valid (GT indices and AD lengths correct)")
         return
 
     if n_gt > 0:
-        logging.warning(
+        logger.warning(
             f"Found {n_gt} entries with out-of-bounds GT indices; they will be set to missing. "
             f"Examples: {audit.gt_examples}"
         )
     if n_ad > 0:
         # Reported only -- an AD of the wrong length is a caller/pipeline bug upstream, and
         # silently rewriting depths would hide it.
-        logging.warning(
+        logger.warning(
             f"Found {n_ad} entries with AD length mismatch. Examples: {audit.ad_examples}"
         )
 
@@ -248,7 +250,7 @@ def convert_vds_to_mt(
         # -- measured on a ~1,000-sample chr1 cohort, where partitions shrank to under a
         # MiB each, and densify and QC sped up less than 2x going from 16 to 128 cores
         # (8x) while the well-sized stages scaled nearly linearly. See #207.
-        logging.info(f"Reading VDS from {vds_path}...")
+        logger.info(f"Reading VDS from {vds_path}...")
         if n_partitions is not None and n_partitions < 1:
             raise ValueError(f"n_partitions must be >= 1, got {n_partitions}")
         vds = hl.vds.read_vds(vds_path)
@@ -258,12 +260,12 @@ def convert_vds_to_mt(
         # dense MatrixTable re-runs the densify from scratch (Hail is lazy and does not cache), so
         # a validation aggregate there would double the cost of this whole stage.
         if skip_validation:
-            logging.info("Skipping biallelic audit (skip_validation=True)")
+            logger.info("Skipping biallelic audit (skip_validation=True)")
         else:
             _audit_split_variant_data(vds)
 
         # Step 3: Densify to MatrixTable
-        logging.info("Converting VDS to dense MatrixTable…")
+        logger.info("Converting VDS to dense MatrixTable…")
         mt = hl.vds.to_dense_mt(vds)
 
         # Step 3b: Coalesce to the requested partition count.
@@ -290,7 +292,7 @@ def convert_vds_to_mt(
         # metadata probe here is a needless risk for a check Hail already does --
         # `naive_coalesce` is a documented no-op when the current count is already lower.
         if n_partitions is not None:
-            logging.info(f"Coalescing dense MatrixTable to {n_partitions} partitions.")
+            logger.info(f"Coalescing dense MatrixTable to {n_partitions} partitions.")
             mt = mt.naive_coalesce(n_partitions)
 
         # Step 4: Repair out-of-bounds genotypes. A lazy expression: it costs no extra pass,
@@ -307,22 +309,22 @@ def convert_vds_to_mt(
 
         # Step 5: Annotate adjusted genotypes (optional)
         if adjust_genotypes:
-            logging.info("Annotating MatrixTable with adjusted genotypes...")
+            logger.info("Annotating MatrixTable with adjusted genotypes...")
             required_fields = {"GQ", "DP", "AD", "GT"}
             missing_fields = required_fields - set(mt.entry.keys())
 
             if missing_fields:
-                logging.warning(
+                logger.warning(
                     f"Cannot annotate adjusted genotypes: missing {missing_fields}. "
                     f"Available: {list(mt.entry.keys())}"
                 )
             else:
                 mt = annotate_adj(mt)
-                logging.info("Adjusted genotype annotation completed.")
+                logger.info("Adjusted genotype annotation completed.")
 
         # Step 6: Key by sample and put the columns in sample order (optional)
         if not skip_keying_by_cols:
-            logging.info(
+            logger.info(
                 "Keying MatrixTable by sample column 's' and sorting columns..."
             )
             mt = mt.key_cols_by(mt["s"])
@@ -341,12 +343,12 @@ def convert_vds_to_mt(
             mt = mt.choose_cols(sorted(range(len(samples)), key=samples.__getitem__))
 
         # Step 7: Write output -- the ONLY action that executes the densify
-        logging.info(f"Writing MatrixTable to {output_path}...")
+        logger.info(f"Writing MatrixTable to {output_path}...")
         mt.write(output_path, overwrite=overwrite)
-        logging.info("✓ MatrixTable successfully written.")
+        logger.info("✓ MatrixTable successfully written.")
 
     except Exception:
-        logging.exception("An error occurred during VDS to MT conversion.")
+        logger.exception("An error occurred during VDS to MT conversion.")
         raise
 
 
@@ -391,12 +393,12 @@ def _assert_adj_is_computable(
     )
 
     if stats.total == 0:
-        logging.warning("adj guard: no entries in the sampled rows; skipping check.")
+        logger.warning("adj guard: no entries in the sampled rows; skipping check.")
         return
 
     frac_missing = stats.missing / stats.total
     frac_retained = stats.retained / stats.total
-    logging.info(
+    logger.info(
         f"adj guard (first {sample_rows} rows): {frac_retained:.1%} of entries would be "
         f"retained, {frac_missing:.1%} have a MISSING adj."
     )
@@ -513,18 +515,18 @@ def convert_mt_to_multi_sample_vcf(
     try:
         # Validate VCF path
         if vcf_path.endswith(".vcf.gz"):
-            logging.warning(
+            logger.warning(
                 f"VCF path ends in .vcf.gz - consider using {VCF_EXTENSION} for block gzip compression. "
                 f"Block gzip is the VCF standard and ensures compatibility with bcftools, tabix, GATK."
             )
 
-        logging.info(f"Reading MatrixTable from {mt_path}...")
+        logger.info(f"Reading MatrixTable from {mt_path}...")
         mt = hl.read_matrix_table(mt_path)
 
         if filter_adj_genotypes:
             # check if adj field is present
             if ADJ_GT_FIELD not in mt.entry:
-                logging.warning(
+                logger.warning(
                     f"Cannot filter by adjusted genotypes: '{ADJ_GT_FIELD}' field not found in MatrixTable. "
                     f"This usually happens when AD field was missing during VDS→MT conversion. "
                     f"Proceeding without adj filtering. Available entry fields: {list(mt.entry.keys())}"
@@ -533,59 +535,59 @@ def convert_mt_to_multi_sample_vcf(
                 # Check BEFORE filtering -- the filter is what removes the evidence.
                 if check_adj:
                     _assert_adj_is_computable(mt)
-                logging.info("Filtering entries to adjusted genotypes...")
+                logger.info("Filtering entries to adjusted genotypes...")
                 mt = mt.filter_entries(mt.adj, keep=True)
         else:
-            logging.info("Skipping filtering for adjusted genotypes.")
+            logger.info("Skipping filtering for adjusted genotypes.")
 
         # Check current state of variants
         has_was_split = "was_split" in mt.row.keys()
         has_lpgt = "LPGT" in mt.entry.keys()
 
-        logging.info(
+        logger.info(
             f"Pre-split check: was_split={has_was_split}, LPGT={has_lpgt}, split_multi param={split_multi}"
         )
 
         if not split_multi:
-            logging.info("Skipping splitting multi-allelic variants: option disabled.")
+            logger.info("Skipping splitting multi-allelic variants: option disabled.")
         elif has_was_split:
-            logging.info(
+            logger.info(
                 "Skipping splitting multi-allelic variants: already split in previous step."
             )
         else:
-            logging.info("Splitting multi-allelic variants now...")
+            logger.info("Splitting multi-allelic variants now...")
             mt = hl.split_multi_hts(mt)
-            logging.info("Split completed. Updating field availability check...")
+            logger.info("Split completed. Updating field availability check...")
             has_was_split = True
             has_lpgt = "LPGT" in mt.entry.keys()
 
         # CRITICAL FIX: Replace GT with LPGT BEFORE variant_qc to ensure correct computation
         # This must happen before variant_qc() because variant_qc uses GT to compute AC/AF
         if has_was_split and has_lpgt:
-            logging.info(
+            logger.info(
                 "Detected split variants - replacing GT with LPGT BEFORE QC for correct allele indices"
             )
             mt = mt.annotate_entries(GT=mt.LPGT)
 
             # Also replace AD and PL for consistency (update to local versions for split variants)
             if "LAD" in mt.entry:
-                logging.info(
+                logger.info(
                     "Updating AD with LAD (local allele depths) for split variants"
                 )
                 mt = mt.annotate_entries(AD=mt.LAD)
             if "LPL" in mt.entry:
-                logging.info(
+                logger.info(
                     "Updating PL with LPL (local phred likelihoods) for split variants"
                 )
                 mt = mt.annotate_entries(PL=mt.LPL)
 
-        logging.info("Computing variant QC metrics...")
+        logger.info("Computing variant QC metrics...")
         # compute variant QC metrics and annotate/update (e.g., AC/AF) into info field
         # this recommended after filtering (e.g., adj genotypes)
         # NOW uses the correct GT (LPGT for split variants)
         mt = hl.variant_qc(mt)
 
-        logging.info(
+        logger.info(
             "Annotating rows with VCF-compatible info fields (AF, AC, AN, call_rate)..."
         )
         mt = mt.annotate_rows(
@@ -598,18 +600,18 @@ def convert_mt_to_multi_sample_vcf(
         )
 
         if min_ac >= 1:
-            logging.info(f"Filtering rows with AC >= {min_ac}...")
+            logger.info(f"Filtering rows with AC >= {min_ac}...")
             mt = mt.filter_rows(mt.info.AC >= min_ac, keep=True)
         else:
-            logging.info("Skipping filtering rows based on AC: option disabled.")
+            logger.info("Skipping filtering rows based on AC: option disabled.")
 
-        logging.info("Preparing MatrixTable for VCF export...")
+        logger.info("Preparing MatrixTable for VCF export...")
         # Get existing entry and row fields directly from the MatrixTable
         existing_entry_fields = set(mt.entry.keys())
         existing_row_fields = set(mt.row.keys())
 
         # CHECKPOINT 1: Validate variant structure
-        logging.info("CHECKPOINT 1: Validating variant structure before VCF export...")
+        logger.info("CHECKPOINT 1: Validating variant structure before VCF export...")
         n_variants_before = mt.count_rows()
 
         # Check allele structure
@@ -620,7 +622,7 @@ def convert_mt_to_multi_sample_vcf(
                 n_multiallelic=hl.agg.count_where(hl.len(mt.alleles) > 2),
             )
         )
-        logging.info(
+        logger.info(
             f"  Allele structure: min={allele_stats.min_alleles}, max={allele_stats.max_alleles}, "
             f"multi-allelic={allele_stats.n_multiallelic}/{n_variants_before}"
         )
@@ -628,33 +630,31 @@ def convert_mt_to_multi_sample_vcf(
         # CRITICAL: Filter to only biallelic variants
         # Even after split_multi_hts, variant_qc might have created multi-allelic entries
         if allele_stats.max_alleles > 2:
-            logging.warning(
+            logger.warning(
                 f"Found {allele_stats.n_multiallelic} multi-allelic variants after split! Filtering to biallelic only..."
             )
             mt = mt.filter_rows(hl.len(mt.alleles) == 2)
             n_variants_after = mt.count_rows()
-            logging.info(
+            logger.info(
                 f"  Filtered: {n_variants_before} → {n_variants_after} variants (removed {n_variants_before - n_variants_after})"
             )
 
         # CHECKPOINT 2: Verify split variant field replacements
-        logging.info("CHECKPOINT 2: Verifying split variant field replacements...")
+        logger.info("CHECKPOINT 2: Verifying split variant field replacements...")
         if "was_split" in existing_row_fields:
-            logging.info("  Split variants detected (was_split flag present)")
+            logger.info("  Split variants detected (was_split flag present)")
             # Check if GT has been replaced with LPGT (should have happened before variant_qc)
             if "LPGT" in existing_entry_fields:
-                logging.info(
-                    "  ✓ GT was replaced with LPGT before variant_qc (correct)"
-                )
+                logger.info("  ✓ GT was replaced with LPGT before variant_qc (correct)")
             else:
-                logging.warning(
+                logger.warning(
                     "  WARNING: was_split present but LPGT not found - this may cause issues"
                 )
         else:
-            logging.info("  No split variants detected (was_split flag not present)")
+            logger.info("  No split variants detected (was_split flag not present)")
 
         # CHECKPOINT 3: Validate genotype indices
-        logging.info("CHECKPOINT 3: Validating genotype allele indices...")
+        logger.info("CHECKPOINT 3: Validating genotype allele indices...")
         # Check if any GT has alleles > 1 (should only be 0 or 1 for biallelic)
         # Use hl.call.unphased_diploid_gt_index_call to properly extract allele indices
         gt_validation = mt.aggregate_entries(
@@ -675,21 +675,21 @@ def convert_mt_to_multi_sample_vcf(
             )
         )
 
-        logging.info(
+        logger.info(
             f"  GT validation: {gt_validation.n_defined} defined genotypes, {gt_validation.n_invalid} invalid"
         )
 
         if gt_validation.n_invalid > 0:
-            logging.error(
+            logger.error(
                 f"  ERROR: Found {gt_validation.n_invalid} genotypes with invalid allele indices!"
             )
-            logging.error(
+            logger.error(
                 f"  Example invalid genotypes: {gt_validation.example_invalid}"
             )
-            logging.error(
+            logger.error(
                 "  These genotypes reference allele indices that don't exist in biallelic variants"
             )
-            logging.error("  Setting these genotypes to missing...")
+            logger.error("  Setting these genotypes to missing...")
 
             # Set invalid genotypes to missing
             # A valid biallelic genotype should have GT index 0 (0/0), 1 (0/1), or 2 (1/1)
@@ -707,14 +707,14 @@ def convert_mt_to_multi_sample_vcf(
                     hl.is_defined(mt.GT) & (mt.GT.unphased_diploid_gt_index() >= 3)
                 )
             )
-            logging.info(
+            logger.info(
                 f"  After filtering: {remaining_invalid} invalid genotypes remaining"
             )
         else:
-            logging.info("  ✓ All genotypes have valid allele indices")
+            logger.info("  ✓ All genotypes have valid allele indices")
 
         # CHECKPOINT 4: Select VCF-compatible fields
-        logging.info("CHECKPOINT 4: Selecting VCF-compatible entry fields...")
+        logger.info("CHECKPOINT 4: Selecting VCF-compatible entry fields...")
         # In the metadata's (conventional) order, so the FORMAT column is the same on
         # every run. This used to iterate a `set`, which hash-randomizes per process:
         # three exports of the same MatrixTable gave three different FORMAT orders.
@@ -723,25 +723,25 @@ def convert_mt_to_multi_sample_vcf(
         ]
 
         if entry_fields_to_keep:
-            logging.info(
+            logger.info(
                 f"  Keeping entry fields: {', '.join(sorted(entry_fields_to_keep))}"
             )
             mt = mt.select_entries(*entry_fields_to_keep)
         else:
-            logging.warning("  No standard VCF entry fields found")
+            logger.warning("  No standard VCF entry fields found")
 
         # CHECKPOINT 5: Drop incompatible row fields
-        logging.info("CHECKPOINT 5: Dropping VCF-incompatible row fields...")
+        logger.info("CHECKPOINT 5: Dropping VCF-incompatible row fields...")
         row_fields_to_drop = {"variant_qc", "a_index", "was_split"}
         row_fields_present = [f for f in row_fields_to_drop if f in mt.row.keys()]
         if row_fields_present:
-            logging.info(f"  Dropping row fields: {', '.join(row_fields_present)}")
+            logger.info(f"  Dropping row fields: {', '.join(row_fields_present)}")
             mt = mt.drop(*row_fields_present)
 
         # CHECKPOINT 6: Final validation before export
-        logging.info("CHECKPOINT 6: Final validation before VCF export...")
+        logger.info("CHECKPOINT 6: Final validation before VCF export...")
         final_counts = mt.count()
-        logging.info(
+        logger.info(
             f"  Final MatrixTable: {final_counts[0]} variants × {final_counts[1]} samples"
         )
 
@@ -753,7 +753,7 @@ def convert_mt_to_multi_sample_vcf(
                 total=hl.agg.count(),
             )
         )
-        logging.info(
+        logger.info(
             f"  Variants: biallelic={final_stats.n_biallelic}, multi-allelic={final_stats.n_multiallelic}"
         )
 
@@ -763,12 +763,12 @@ def convert_mt_to_multi_sample_vcf(
                 "VCF export requires all variants to be biallelic."
             )
 
-        logging.info("  ✓ All validations passed")
+        logger.info("  ✓ All validations passed")
 
-        logging.info(f"Exporting VCF to {vcf_path}...")
+        logger.info(f"Exporting VCF to {vcf_path}...")
         hl.export_vcf(mt, vcf_path, metadata=VCF_EXPORT_METADATA)
-        logging.info("VCF successfully written.")
+        logger.info("VCF successfully written.")
 
     except Exception:
-        logging.exception("An error occurred during conversion to VCF.")
+        logger.exception("An error occurred during conversion to VCF.")
         raise

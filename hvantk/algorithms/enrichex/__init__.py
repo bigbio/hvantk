@@ -94,6 +94,7 @@ install_lazy_exports(
         "linear_burden_test": "hvantk.algorithms.enrichex.burden",
         "run_burden_analysis": "hvantk.algorithms.enrichex.burden",
         "run_stratified_burden_analysis": "hvantk.algorithms.enrichex.burden",
+        "apply_correction_and_flag_significance": "hvantk.algorithms.enrichex.burden",
         # Multiple testing correction
         "apply_correction": "hvantk.algorithms.statistics.correction",
         "fdr_threshold": "hvantk.algorithms.statistics.correction",
@@ -138,6 +139,7 @@ __all__ = [
     "linear_burden_test",
     "run_burden_analysis",
     "run_stratified_burden_analysis",
+    "apply_correction_and_flag_significance",
     # Multiple testing correction
     "apply_correction",
     "fdr_threshold",

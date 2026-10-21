@@ -45,8 +45,10 @@ def build_cascade_gene_summary(
         Expected field: ``oe_lof_upper`` (LOEUF).
     disease_genes_ht_path : str, optional
         Path to a disease-gene table keyed by ``gene_id`` (Ensembl gene ID).
-        Must match the cascade table's gene_id key.  ClinGen/GenCC tables
-        are typically keyed by gene_symbol — transform them before passing.
+        Must match the cascade table's gene_id key. The ClinGen and GenCC
+        tables hvantk builds are keyed by ``(hgnc_id, mondo_id)`` (GenCC adds
+        ``submitter``), not ``gene_id`` — re-key through an HGNC lookup table
+        before passing.
     coloc_df : pd.DataFrame, optional
         Coloc results with columns ``gene_id``, ``H4``, ``tissue``.
     overwrite : bool

@@ -60,6 +60,7 @@ from hvantk.algorithms.ancestry.filter import (
 from hvantk.algorithms.ancestry.merge import merge_matrixtables
 from hvantk.algorithms.ancestry.pca import PCAResult, compute_pca
 from hvantk.core.models.backends import Backend, algorithm
+from hvantk.core.utils.dataclass_utils import dataclass_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ class PipelineConfig:
         PipelineConfig
             New config instance.
         """
-        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+        return dataclass_from_dict(cls, d)
 
 
 @dataclass

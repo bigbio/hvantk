@@ -155,6 +155,10 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
 
     report_path = report or f"{output}.report.json"
 
+    from pathlib import Path
+
+    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+
     import hail as hl
 
     from hvantk.algorithms.cohort.attach import attach
@@ -268,6 +272,10 @@ def burden_cmd(
     manifest_path,
 ):
     """Originate a cohort's gene-level prior via a Fisher-exact burden test."""
+    from pathlib import Path
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
     import hail as hl
 
     from hvantk.algorithms.burden.pipeline import run_from_mt
@@ -292,8 +300,6 @@ def burden_cmd(
     df.to_csv(output_path, sep="\t", index=False)
     click.echo(f"Wrote {len(df)} genes to {output_path}")
     if manifest_path:
-        from pathlib import Path
-
         from hvantk.algorithms.burden.manifest import render_cohort_manifest
         from hvantk.algorithms.cohort.spec import load_cohort
 

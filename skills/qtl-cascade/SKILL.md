@@ -101,9 +101,7 @@ SuSiE confirmation only; `references/gwas-coloc.md`).
        --plugin-arg tissue=<Tissue> --plugin-arg hgnc_ht=<hgnc>.ht
    ```
 4. **Dry-run the cascade plan** on the login node, through `run-in-image.sh` (no Hail
-   table is read; it only prints the plan — though it DOES create `per_tissue/` and
-   `plots/` under `-o` as a side effect, since the pipeline object's constructor
-   runs before the dry-run check):
+   table is read and nothing is written under `-o`; it only prints the plan):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
      hvantk qtlcascade run --eqtl-ht <eqtl>.ht --pqtl-ht <pqtl>.ht \
@@ -223,11 +221,15 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
   `--fine-map` is the default and needs both sample sizes to run SuSiE. Fix: pass
   `--gwas-n`/`--eqtl-n`, or `--no-fine-map` to keep only the single-variant ABF
   ranking.
-- A rerun's `coloc_results.tsv` is stale even though `--overwrite` was passed and
-  the run otherwise succeeded. Cause: `coloc` has no `--overwrite` of its own, and a
-  rerun that finds no gene to test returns before writing it
-  (`references/components-and-outputs.md`). Fix: delete the output directory before
-  a rerun rather than relying on `--overwrite` alone.
+- A rerun silently REPLACES a tissue's `coloc_results.tsv` with an empty
+  (header-only) one, with no error. Cause: `run`'s coloc stage always writes the
+  file once it runs at all (both allpairs tables were given), whether no cascade
+  gene has BOTH eQTL and pQTL evidence for the tissue -- a cascade-level
+  emptiness, checked before coloc runs (`references/components-and-outputs.md`)
+  -- or every candidate gene then fails the per-gene window floor. Either way, a
+  good previous result at that path is gone, not left in place. Fix: read the
+  gene count the stage logs, not just whether the file exists, to tell a real
+  empty result from one you did not expect.
 - `All tissues failed: <tissues>`, with `'Table.aggregate': source mismatch` in the
   job's log. Cause: a defect in `CascadePipeline._stage_coloc` in hvantk 0.5.0 and
   earlier (it aggregated a gene-id expression from an unfiltered table over a
@@ -241,8 +243,8 @@ table checkpoints; see Traps for why that alone is not enough for a clean rerun.
   in the ABF sums. Fix: fixed in 0.6.0; update to 0.6.0 or later.
 - An existing output directory. Cause: `qtlcascade run` and `cascade` refuse to
   overwrite their Hail table checkpoint by default (`coloc` has no such flag at
-  all — see the stale-TSV trap above). Fix: `--overwrite` for `run`/`cascade`;
-  delete the directory for a clean `coloc` rerun.
+  all — see the coloc-results-replacement trap above). Fix: `--overwrite` for
+  `run`/`cascade`; delete the directory for a clean `coloc` rerun.
 
 ## 6. Verification
 

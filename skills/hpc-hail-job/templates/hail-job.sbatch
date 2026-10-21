@@ -65,6 +65,18 @@ bind_outside_work "$HVANTK_REPO"
 [[ -n "${HVANTK_BIND:-}" ]] && BINDS+=(-B "$HVANTK_BIND")
 
 [[ -d "$HVANTK_REPO/hvantk" ]] || { echo "ERROR: checkout $HVANTK_REPO is not visible on $(hostname); the job would silently run the image's own copy" >&2; exit 2; }
+# The checkout's commit, for the builder_commit a build records: the image has no git.
+# Same rule as hvantk's own resolver: HEAD, only when HVANTK_REPO is the top of its own
+# git checkout, with -dirty for uncommitted edits under hvantk/. Empty when git cannot
+# answer on this node; the build then records the hvantk version.
+COMMIT=""
+if command -v git >/dev/null 2>&1 \
+  && [[ "$(git -C "$HVANTK_REPO" rev-parse --show-toplevel 2>/dev/null)" -ef "$HVANTK_REPO" ]]; then
+  COMMIT="$(git -C "$HVANTK_REPO" rev-parse HEAD 2>/dev/null)" || COMMIT=""
+  if [[ -n "$COMMIT" && -n "$(git -C "$HVANTK_REPO" status --porcelain --untracked-files=no -- hvantk 2>/dev/null)" ]]; then
+    COMMIT="$COMMIT-dirty"
+  fi
+fi
 cd "$HAIL_DIR"
 echo "== hvantk hail job =="
 echo "date:      $(date -Is)"
@@ -72,6 +84,7 @@ echo "host:      $(hostname)"
 echo "job:       ${SLURM_JOB_ID:-?}  cpus=$CPUS mem_mb=$MEM_MB driver_mb=$DRIVER_MB"
 echo "image:     $(readlink -f "$HVANTK_SIF")"
 echo "repo:      $HVANTK_REPO"
+echo "commit:    ${COMMIT:-unknown (no git answer on this node)}"
 echo "scratch:   $SCRATCH"
 echo "logs:      $HAIL_DIR"
 echo "command:   $*"
@@ -83,7 +96,8 @@ echo "====================="
   --env SPARK_LOCAL_DIRS="$SCRATCH" --env TMPDIR="$SCRATCH" --env HAIL_TMPDIR="$SCRATCH" \
   --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
   --env JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
-  --env PYTHONPATH="$HVANTK_REPO" --env HAIL_LOG_DIR="$HAIL_DIR" \
+  --env PYTHONPATH="$HVANTK_REPO" --env HVANTK_BUILDER_COMMIT="$COMMIT" \
+  --env HAIL_LOG_DIR="$HAIL_DIR" \
   --env OMP_NUM_THREADS="$CPUS" --env OPENBLAS_NUM_THREADS="$CPUS" \
   --env MKL_NUM_THREADS="$CPUS" --env NUMEXPR_NUM_THREADS="$CPUS" \
   "$HVANTK_SIF" "$@"

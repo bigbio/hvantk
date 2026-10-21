@@ -122,6 +122,21 @@ class TestApplyCorrection:
         with pytest.raises(ValueError, match="n_total"):
             apply_correction([0.01, 0.02, 0.03], method="bonferroni", n_total=2)
 
+    def test_bonferroni_keeps_nan(self):
+        """A missing p-value (non-convergent fit) must stay NaN, not become 1.0.
+
+        ``min(1.0, nan)`` silently returns ``1.0`` because every NaN
+        comparison is False, so the old code reported a non-convergent test
+        as "definitely not significant" instead of "unknown". BH already
+        propagates NaN correctly; Bonferroni must match.
+        """
+        p_values = [0.01, float("nan"), 0.2]
+        adjusted = apply_correction(p_values, method="bonferroni")
+
+        assert np.isnan(adjusted[1])
+        assert adjusted[0] == pytest.approx(0.03)
+        assert adjusted[2] == pytest.approx(0.6)
+
 
 class TestFDRThreshold:
     """Tests for fdr_threshold function."""

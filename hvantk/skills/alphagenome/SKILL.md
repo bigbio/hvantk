@@ -119,7 +119,7 @@ The parquet is read with Spark (`SparkSession.builder.getOrCreate()` → `spark.
 - Constants: `SCORER_FIELDS` and `OUTPUT_TYPES` in `hvantk/skills/alphagenome/shared/constants.py`.
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/alphagenome/drift_probe.py`, run by `hvantk drift alphagenome:predictions`. It fingerprints the SDK's PyPI release stream, the event that can change the `tidy_scores()` columns or the scorer strings.
 - Tests: `hvantk/skills/alphagenome/tests/` -- `test_builder.py` (round trip on the real-subset fixture, `hail`-marked), `test_builder_guards.py` (every check that fails the build, missing-score handling, files of different float types, string-valued filters, the listing of a `gs://` directory against a stubbed Hadoop filesystem; `hail`-marked), `test_alphagenome.py` (registration), `test_drift_probe.py` (offline, `requests_mock`). Run with the `command` in § 9.
-- Build with: `python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>`. No `lifecycle` or `cli:` block is declared.
+- Build with: `hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>`. No `lifecycle` or `cli:` block is declared.
 
 ## 7. Workflow steps
 
@@ -129,7 +129,7 @@ The parquet is read with Spark (`SparkSession.builder.getOrCreate()` → `spark.
 4. **Build.** `--skip-download` is not needed: the manifest declares `acquisition.mode: byo`.
 
 ```bash
-python -m hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>
+hvantk reprocess alphagenome:predictions --raw-dir <dir-with-parquet> --output <out.ht>
 ```
 
 ## 8. Update playbook

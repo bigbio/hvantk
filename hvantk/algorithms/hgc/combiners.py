@@ -8,6 +8,8 @@ from hvantk.algorithms.hgc.file_utils import validate_vcfs_paths, validate_vds_p
 from hvantk.algorithms.hgc.constants import HG38_GENOME_REFERENCE
 from hvantk.core.models.backends import algorithm, Backend
 
+logger = logging.getLogger(__name__)
+
 
 @algorithm(name="combine_gvcfs", backends=[Backend.HAIL])
 def combine_gvcfs(
@@ -74,12 +76,12 @@ def combine_gvcfs(
         if gvcf_dir:
             # Validate and retrieve GVCF file paths.
             validated_gvcfs = validate_vcfs_paths(gvcf_dir)
-            logging.info(f"Validated {len(validated_gvcfs)} GVCF file paths.")
+            logger.info(f"Validated {len(validated_gvcfs)} GVCF file paths.")
 
         if vdses:
             # Validate and retrieve VDS file paths.
             validated_vdses = validate_vds_paths(vdses)
-            logging.info(f"Validated {len(validated_vdses)} VDS file paths.")
+            logger.info(f"Validated {len(validated_vdses)} VDS file paths.")
 
         # Handle interval-related parameters from kwargs
         intervals = kwargs.pop("intervals", None)
@@ -120,23 +122,23 @@ def combine_gvcfs(
         # Set default to genome intervals if none specified
         if interval_params_set == 0:
             use_genome_default = True
-            logging.info(
+            logger.info(
                 "No interval method specified, defaulting to use_genome_default_intervals=True"
             )
 
         # Log diagnostic information before combining
-        logging.info("Creating combiner with:")
-        logging.info(f"  - Output VDS: {vds_output_path}")
-        logging.info(f"  - Temp path: {tmp_path}")
-        logging.info(f"  - Number of GVCFs: {len(validated_gvcfs)}")
-        logging.info(f"  - Reference genome: {reference_genome}")
-        logging.info(f"  - Use genome intervals: {use_genome_default}")
-        logging.info(f"  - Use exome intervals: {use_exome_default}")
-        logging.info(f"  - Import interval size: {import_interval_size}")
+        logger.info("Creating combiner with:")
+        logger.info(f"  - Output VDS: {vds_output_path}")
+        logger.info(f"  - Temp path: {tmp_path}")
+        logger.info(f"  - Number of GVCFs: {len(validated_gvcfs)}")
+        logger.info(f"  - Reference genome: {reference_genome}")
+        logger.info(f"  - Use genome intervals: {use_genome_default}")
+        logger.info(f"  - Use exome intervals: {use_exome_default}")
+        logger.info(f"  - Import interval size: {import_interval_size}")
         if intervals is not None:
-            logging.info(f"  - Explicit intervals: {len(intervals)}")
+            logger.info(f"  - Explicit intervals: {len(intervals)}")
         if validated_gvcfs:
-            logging.info(f"  - First GVCF: {validated_gvcfs[0]}")
+            logger.info(f"  - First GVCF: {validated_gvcfs[0]}")
 
         # Set up and run the Hail GVCF combiner
         try:
@@ -154,26 +156,26 @@ def combine_gvcfs(
                 **kwargs,
             )
         except Exception as e:
-            logging.error(f"Failed to create combiner: {e}")
-            logging.error("This error often indicates:")
-            logging.error("  1. Hail/Spark version mismatch (check warnings above)")
-            logging.error("  2. Invalid GVCF file format or corruption")
-            logging.error("  3. Reference genome mismatch in VCF headers")
-            logging.error("  4. Backend communication issues")
-            logging.error("")
-            logging.error("Troubleshooting steps:")
-            logging.error("  - Verify GVCF files are valid and readable")
-            logging.error("  - Check Spark/Hail version compatibility")
-            logging.error(
+            logger.error(f"Failed to create combiner: {e}")
+            logger.error("This error often indicates:")
+            logger.error("  1. Hail/Spark version mismatch (check warnings above)")
+            logger.error("  2. Invalid GVCF file format or corruption")
+            logger.error("  3. Reference genome mismatch in VCF headers")
+            logger.error("  4. Backend communication issues")
+            logger.error("")
+            logger.error("Troubleshooting steps:")
+            logger.error("  - Verify GVCF files are valid and readable")
+            logger.error("  - Check Spark/Hail version compatibility")
+            logger.error(
                 f"  - Try importing first GVCF manually: hl.import_vcf('{validated_gvcfs[0] if validated_gvcfs else 'N/A'}')"
             )
             raise
 
         combiner.run()
-        logging.info("GVCF combination completed successfully.")
+        logger.info("GVCF combination completed successfully.")
 
     except Exception:
-        logging.exception("An error occurred during GVCF combination.")
+        logger.exception("An error occurred during GVCF combination.")
         raise
 
 
@@ -214,24 +216,24 @@ def combine_vdses(
         vdses_paths: List[str] = validate_vds_paths(vdses_dir)
         if not vdses_paths:
             raise ValueError(f"No valid VDS directories found in '{vdses_dir}'.")
-        logging.info(f"Validated {len(vdses_paths)} VDS directories.")
+        logger.info(f"Validated {len(vdses_paths)} VDS directories.")
 
         # Combine the VDS directories using Hail's union_rows function.
         vdses = [(hl.vds.read_vds(path)) for path in vdses_paths]
         combined_vds = hl.vds.VariantDataset.union_rows(*vdses)
-        logging.info("Successfully combined VDS directories.")
+        logger.info("Successfully combined VDS directories.")
 
         # Optionally validate the combined VDS.
         if validate:
             hl.vds.VariantDataset.validate(combined_vds)
-            logging.info("Combined VDS validated successfully.")
+            logger.info("Combined VDS validated successfully.")
 
         # Write the combined VDS to the output path.
         combined_vds.write(output_path, overwrite=overwrite)
-        logging.info(f"Combined VDS written to {output_path}")
+        logger.info(f"Combined VDS written to {output_path}")
 
     except Exception:
-        logging.exception("An error occurred during VDS combination.")
+        logger.exception("An error occurred during VDS combination.")
         raise
 
 
@@ -273,25 +275,25 @@ def combine_matrix_table_rows(
         mts = [hl.read_matrix_table(path) for path in mt_paths]
 
         if force_sort_cols:
-            logging.info("Sorting columns of MatrixTables before combining.")
+            logger.info("Sorting columns of MatrixTables before combining.")
             mts = sort_mts_cols(mts)
 
-        logging.info("Combining MatrixTables rows...")
+        logger.info("Combining MatrixTables rows...")
         combined_mt = hl.MatrixTable.union_rows(*mts, **kwargs)
 
         # Repartition the combined MatrixTable and write it to the output path.
         if n_partitions:
-            logging.info(
+            logger.info(
                 f"Repartitioning the combined MatrixTable into {n_partitions} partitions."
             )
             combined_mt = combined_mt.repartition(n_partitions)
 
         # Write the combined MatrixTable to the output path.
         combined_mt.write(output_path, overwrite=overwrite)
-        logging.info(f"Combined MatrixTable written to {output_path}")
+        logger.info(f"Combined MatrixTable written to {output_path}")
 
     except Exception:
-        logging.exception("An error occurred during MatrixTable combination.")
+        logger.exception("An error occurred during MatrixTable combination.")
         raise
 
 
@@ -330,20 +332,20 @@ def combine_matrix_table_cols(
         # Combine the MatrixTables using Hail's union_cols function.
         mts = [hl.read_matrix_table(path) for path in mt_paths]
 
-        logging.info("Combining MatrixTables columns...")
+        logger.info("Combining MatrixTables columns...")
         combined_mt = hl.MatrixTable.union_cols(*mts, **kwargs)
 
         # Repartition the combined MatrixTable and write it to the output path.
         if n_partitions:
-            logging.info(
+            logger.info(
                 f"Repartitioning the combined MatrixTable into {n_partitions} partitions."
             )
             combined_mt = combined_mt.repartition(n_partitions)
 
         # Write the combined MatrixTable to the output path.
         combined_mt.write(output_path, overwrite=overwrite)
-        logging.info(f"Combined MatrixTable written to {output_path}")
+        logger.info(f"Combined MatrixTable written to {output_path}")
 
     except Exception:
-        logging.exception("An error occurred during MatrixTable combination.")
+        logger.exception("An error occurred during MatrixTable combination.")
         raise

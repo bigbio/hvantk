@@ -1,5 +1,163 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The documentation was checked against the code and reorganised.** Every page in
+  `docs_site/`, the README, the example READMEs and the per-provider and workflow
+  `SKILL.md` files were verified against the code: commands, options, defaults, outputs,
+  Python snippets and method descriptions. What did not match was fixed.
+  - The usage guide is now "Building datasets" (`reprocess`, the registries, drift, the
+    catalog, utilities). `annotate`, `cohort`, `expression` and `genesets` have their own
+    tool pages, and the re-rank example has a walk-through page.
+  - The home page and the quick start were rewritten; the quick start builds two public
+    datasets and runs an enrichment test end to end.
+  - The EnrichEx, PS-ROC, QTL cascade, PTM, ancestry and HGC pages were rewritten around
+    what each command computes. Among the corrections: the overlap test is two-sided; the
+    burden odds ratio is per qualifying gene, not per variant; ancestry PCA is fitted on
+    query and reference together, not projected; `qtlcascade run` colocalises before it
+    builds the gene summary.
+  - Data sources opens with a table of all 26 datasets, how each is acquired and its
+    terms. A bring-your-own dataset does not need `--skip-download`.
+  - `docs_site/contributing.md` is the full contributor guide and `CONTRIBUTING.md` a
+    short entry point. The HPC guide is now "Running on HPC".
+  - Six workflow figures were corrected and the unused pre-plugin architecture figure was
+    removed (#479).
+- **Example scripts run again.** The ClinVar streamer example uses the current streamer
+  API, the ClinGen scripts import the right class and no longer download with TLS checks
+  off, the EnrichEx burden example passes valid arguments, both HGC benchmarks call
+  `n_partitions()`, and the 1000 Genomes build scripts look for the phased VCF names the
+  release uses, including chrX's separately phased file, and stop when a requested
+  chromosome has no file (#479).
+- `CITATION.cff` lets GitHub offer "Cite this repository" (#479).
+- The docs-claims test's floor on commands found in fenced blocks is 150 (was 200): the
+  rewrite moved repeated command blocks into option tables (#479).
+- Help text, docstrings and messages that disagreed with the code were corrected: the root
+  `hvantk --help` line, `annotate` ("datasets"), `reprocess --intermediate` (it has a
+  default) and `--plugin-arg` (a comma makes a list), `psroc --hgnc` and
+  `genesets prepare --hgnc` (`.ht` only), the
+  `ptm constraint` example, the PTM report's methods text, the ancestry report's
+  validation hint, and the QTL cascade's Wakefield 2009 citation (Genet Epidemiol).
+  The GWAS Catalog catalog entry names the EBI Terms of Use, not CC0, and the Ensembl one
+  Ensembl's data terms, not its code licence (#479).
+- `hvantk download expression-atlas` and `hvantk download ucsc` take hyphenated options
+  (`--download-path`, `--list-datasets`, `--base-url`, ...). The underscore spellings
+  still work (#479).
+- The container image is stamped with the commit it was built from
+  (`--build-arg HVANTK_COMMIT=<sha>`, which the hpc-container skill's build passes; this
+  needs SingularityCE 4.0+ or Apptainer 1.2+). The hpc-hail-job templates pass the commit
+  of the checkout they run inside the image (#479).
+- **Fewer passes over the data.** PS-ROC evaluates the ClinVar × dbNSFP join once per run
+  (it ran about six times). `hgc pipeline` computes sample QC once (it computed it twice)
+  and no longer scans the filtered MatrixTable just to count it; `hgc filter-qc` counts
+  the written MatrixTable instead. `burden-pipeline` no longer counts the filtered
+  variants once per gene-set collection (#479).
+- The EnrichEx burden and HGC QC sample outputs under `examples/` were regenerated with the
+  current code; the EnrichEx README seeds its synthetic cohort with
+  `hl.init(global_seed=42)`, since `hl.set_global_seed` has no effect in current Hail. The
+  PS-ROC dashboards made before the review-star fix and the retired HGC QC dashboard
+  image were removed (#479).
+
+### Deprecated
+
+- The `interactive` and `duckdb` extras, and plotly in the `viz` and `psroc` extras, are
+  imported by no command. They will be removed in the next release (#479).
+
+### Removed
+
+Options and fields that were accepted but did nothing:
+
+- `hvantk psroc --overwrite` and `--reference-genome`, and `PSROCConfig.overwrite` and
+  `.reference_genome`. Outputs are always replaced (#479).
+- `hvantk hgc qc-report --style` and `hvantk hgc pipeline --keep-intermediates`, and the
+  pipeline's `keep_intermediates` field (#479).
+- `hvantk ptm constraint --flanking-codons` and `--overwrite`, and the matching
+  `PTMConstraintConfig` fields (#479).
+- The PTM glycosylation, SUMOylation and ubiquitination categories: `uniprot-ptm` fetches
+  only modified-residue features, so they could never occur (#479).
+
+### Fixed
+
+Found by the documentation review. Each fix has a regression test.
+
+- **PS-ROC review stars.** Tables built by `hvantk reprocess clinvar:variants` store
+  `CLNREVSTAT` as an array split at commas, and PS-ROC looked up only its first element,
+  so every 1- and 2-star status scored 0 and the default `--min-stars 1` kept only 3- and
+  4-star variants. PS-ROC now joins the array before the lookup. **Results change** for
+  runs with `--min-stars` 1 or 2 on such tables. `run_collection()` now passes
+  `score_directions` to each set; the run log is written to `logs/`, with the warnings of
+  the ROC and plotting modules too; and `--dry-run` no longer starts Hail, creates the
+  output directory or reads `--hgnc` (#479).
+- **PS-ROC score direction and missingness.** The ROC treated every score as higher =
+  more damaging, so the raw scores that run the other way (`SIFT_score`, `SIFT4G_score`,
+  `PROVEAN_score`, `FATHMM_score`, `LRT_score`, `ESM1b_score`) got 1 minus their AUC and a
+  meaningless threshold. They are now evaluated on negated values and their thresholds are
+  reported on the score's own scale, with their direction (`>=` or `<=`); each result
+  records `higher_is_pathogenic`. Uncertain/Conflicting variants now always stay in the
+  annotated table as excluded, and the missingness that decides whether a score reaches
+  the ROC is computed over the pathogenic and benign variants only. **Results change**: the AUCs, CIs and thresholds of
+  those six scores, and the missingness rates (a score can now pass where it failed
+  before). State files written before the removed options below still load (#479).
+- **`hgc pipeline --apply-qc-filters` and `--generate-qc-report`** failed (the first
+  raised, the second wrote nothing). Both now read the QC stages' saved tables, from this
+  run or, on a resumed run, from the earlier run in the same output directory;
+  `--apply-qc-filters` stops before any stage when a table it needs is missing, and
+  writes `<prefix>_filtered.mt` in the output directory. Its fixed `AC` >= 1 and HWE
+  p >= 1e-6 variant filters are documented. The sample QC file is a real comma CSV, and
+  the variant QC preview is named `.tsv`. The pipeline writes its log file,
+  `--dry-run` creates nothing and starts no Hail, and `PipelineState.load` reads state
+  files written by earlier versions (#479).
+- **EnrichEx.** A logistic fit that did not converge crashed the multiple-testing
+  correction in `burden` and `burden-pipeline`; it is now left out with a missing
+  `p_adjusted`. `burden-pipeline` ignored `--max-af`, `--min-score`, `--pass-only` and the
+  field options unless `--variant-classes` was given; **results change** for such runs,
+  which now apply the defaults (`--max-af 0.01` on `gnomad_af`). `overlap` applies
+  `--alpha` to the `significant` column and to the report's dot plot (both were fixed at
+  0.05), no longer crashes with a `.json` output and `--generate-report`, and builds the
+  report from this run's results (a rerun into the same output could show the previous
+  run's); the report is written next to `-o`. Both commands create the output directory.
+  Bonferroni keeps a missing p-value missing instead of turning it into 1.0,
+  `burden --dry-run` no longer starts Hail, and `burden-pipeline --dry-run` creates no
+  directories. The competitive permutation test's gene-length proxy
+  (`--normalize-by-length` without `--gene-lengths`) counted every variant site while the
+  main test counted the filtered ones; both now count the filtered sites, so
+  **permutation results change** for such runs (#479).
+- **QTL cascade.** The colocalisation window ignored the chromosome, so a variant of the
+  same gene on another contig at a nearby position could enter it. An empty
+  colocalisation stage left an earlier run's `coloc_results.tsv` in place; it is now
+  replaced by an empty table. `run --dry-run` creates no directories, and
+  `run_gwas_coloc_pipeline` validates its config. `gwas-coloc --superpop`, and
+  `GwasColocConfig.validate()` for Python callers, accept only AFR, AMR, EAS, EUR or SAS:
+  an unknown value used to drop the LD reference silently and weaken the verdict.
+  Fine-mapping a chrX locus fetches the 1000 Genomes chrX file, which that release names
+  differently from the autosomes (#479).
+- **ClinVar and gene-disease streamers.** `label_training_set(disease_terms=...)` raised
+  a type error on plugin-built ClinVar tables, whose `CLNDN` Hail splits into an array at
+  every comma; it now matches whole disease names, including names with a comma.
+  `CosmicCGCGeneDiseaseTableStreamer.mutation_context_summary()` and the COSMIC
+  `--group-by keyword` path crashed on the default gene_symbol-keyed build, and the
+  keyword path ignored `--mutation-context`. `HGNCGeneCatalogStreamer.annotate_table()`
+  crashed with its own default fields, and now leaves `hgnc_<key>` missing for a row
+  HGNC does not know (#479).
+- **Builder `fields` option.** `--plugin-arg fields=...` crashed in the cosmic-cgc,
+  gnomad-metrics, gevir, gencc, clingen, gtex-eqtl, uniprot-ptm, pqtl and hgnc builders
+  when the list named the table's key, and a single name without a comma was split into
+  letters. The key is now always kept (#479).
+- **Gene sets and output directories.** `genesets prepare -o x.gmt` writes GMT (it wrote
+  JSON). `cohort burden --output`, `cohort attach --report`, `annotate compose
+  --manifest` and `hgc qc-summary -o` create the output's directory instead of failing
+  after the computation (#479).
+- **Provenance.** Every plugin build (`hvantk reprocess`, `hvantk ptm build`,
+  `run_builder_for_spec`) now records `builder_commit`, the hvantk code that ran it: the
+  commit of hvantk's own git checkout (`-dirty` for uncommitted edits under `hvantk/`),
+  else the commit stamped into the container image's own copy of hvantk, else the
+  `HVANTK_BUILDER_COMMIT` the hpc-hail-job templates set for the checkout they run, else
+  `hvantk <version>`. It was always `null` (#479).
+- **PTM.** `ptm test` reads `.bgz` input (it shares `ptm constraint`'s reader),
+  `ptm population` no longer crashes on variants with a missing allele frequency, and
+  `ptm report` names the `viz` extra when matplotlib is missing (#479).
+
 ## 0.6.0 — 2026-10-17
 
 Twelve workflow skills let a coding agent drive hvantk: run any Hail-backed command on a

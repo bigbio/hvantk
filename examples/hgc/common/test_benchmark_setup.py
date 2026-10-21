@@ -27,10 +27,10 @@ def check_hvantk_hgc() -> bool:
     """Check if hvantk.hgc functions are available."""
     try:
         from hvantk.algorithms.hgc import (
-            combine_gvcfs,
-            convert_vds_to_mt,
-            compute_full_qc,
-            convert_mt_to_multi_sample_vcf,
+            combine_gvcfs,  # noqa: F401
+            convert_vds_to_mt,  # noqa: F401
+            compute_full_qc,  # noqa: F401
+            convert_mt_to_multi_sample_vcf,  # noqa: F401
         )
 
         print("✓ hvantk.hgc functions are available")

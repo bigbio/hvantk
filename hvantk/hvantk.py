@@ -33,7 +33,7 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "annotate": (
         "hvantk.tools.annotation.annotate_cli",
         "annotate_group",
-        "Build gene- and cohort-level annotation artifacts.",
+        "Build gene- and cohort-level annotation datasets.",
     ),
     "catalog": (
         "hvantk.tools.infra.catalog_cli",
@@ -256,7 +256,7 @@ def setup_logging(verbosity: int = 0, log_file: str | None = None):
 @click.group(
     "hvantk",
     cls=LazyGroup,
-    help="A python package for gene and variant annotation with joint genotyping capabilities.",
+    help="Hail-based toolkit for multi-omics variant annotation and analysis.",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option(

@@ -92,7 +92,7 @@ fi
 
 echo ""
 echo "To run CPU scaling benchmark with this list:"
-echo "  bash hgc_cpu_scaling_benchmark.sh \\"
+echo "  bash ../cpu_scaling/benchmark.sh \\"
 echo "    --gvcf-list $OUTPUT_FILE \\"
 echo "    --output-dir ./cpu_scaling_$NUM_SAMPLES \\"
 echo "    --sample-size $NUM_SAMPLES \\"

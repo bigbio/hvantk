@@ -155,7 +155,11 @@ def _default_intermediate(dataset, raw_dir):
     required=False,
     type=click.Path(),
     default=None,
-    help="Path for parsed intermediate (required when the plugin declares lifecycle.parse)",
+    help=(
+        "Path for parsed intermediate (defaults to "
+        "<raw-dir>/<provider>_<dataset>.intermediate when the plugin declares "
+        "lifecycle.parse and this is omitted)"
+    ),
 )
 @click.option(
     "--output",
@@ -176,7 +180,9 @@ def _default_intermediate(dataset, raw_dir):
         "and build stages (e.g. --plugin-arg cancer_type=brca for "
         "cptac:phospho, --plugin-arg reference_genome=GRCh38 for clinvar). "
         "Repeatable. Values are coerced: 'true'/'false' -> bool, integer "
-        "strings -> int, decimal/scientific -> float, otherwise str."
+        "strings -> int, decimal/scientific -> float, otherwise str; a value "
+        "containing a comma becomes a list of coerced elements (e.g. "
+        "chr1,chr2,chrX)."
     ),
 )
 @click.option(
@@ -337,8 +343,8 @@ def reprocess_cmd(
             # directly to disk. No provenance / artifact_type validation.
             spec.builder(parsed_path, output)
         else:
-            # Plugin builder contract: orchestrator handles BuildContext, validation,
-            # and save. Returns the stamped Provenance.
+            # Plugin builder contract: orchestrator handles BuildContext (including
+            # builder_commit), validation, and save. Returns the stamped Provenance.
             #
             # Interface separation (#121): builders receive a GeneCatalogStreamer
             # ABC, never construct the concrete HGNC streamer themselves (skills

@@ -2,7 +2,7 @@
 
 Examples:
     hvantk download ucsc --dataset adultPancreas -o data/ucsc/
-    hvantk download ucsc --list_datasets --search heart
+    hvantk download ucsc --list-datasets --search heart
 """
 
 import click
@@ -150,14 +150,18 @@ def _is_valid_url(url: str) -> bool:
     help="Output directory for downloaded files.",
 )
 @click.option(
+    "--base-url",
     "--base_url",
+    "base_url",
     default=UCSC_CELL_BROWSER_BASE_URL,
     type=str,
     required=False,
     help="URL to download the data from.",
 )
 @click.option(
+    "--list-datasets",
     "--list_datasets",
+    "list_datasets",
     is_flag=True,
     required=False,
     help="List all available datasets in the UCSC collection.",
@@ -166,14 +170,14 @@ def _is_valid_url(url: str) -> bool:
     "--search",
     type=str,
     default=None,
-    help="Filter dataset names and labels by search term (case-insensitive). Use with --list_datasets.",
+    help="Filter dataset names and labels by search term (case-insensitive). Use with --list-datasets.",
 )
 @click.pass_context
 def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets, search):
     """
     Downloads expression matrix and metadata files for a specified UCSC Cell Browser dataset.
 
-    If the --list_datasets flag is provided, lists all available datasets instead of downloading.
+    If the --list-datasets flag is provided, lists all available datasets instead of downloading.
     Checks for the existence of required files at the specified URLs before downloading.
     Prompts for confirmation if the target dataset directory exists and contains files.
     Downloaded files are saved in a dataset-specific subdirectory within the output directory.
@@ -209,7 +213,7 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets, search):
                 f'Warning: "{dataset}" is a collection with {child_count} child datasets.\n'
                 f"Collections have no expression matrix at the top level.\n"
                 f'Try a child dataset path instead (e.g., "{dataset}/<child-name>").\n'
-                f"Use --list_datasets --search {dataset} to find children."
+                f"Use --list-datasets --search {dataset} to find children."
             )
             logger.warning(
                 f"Dataset '{dataset}' is a collection with {child_count} children"

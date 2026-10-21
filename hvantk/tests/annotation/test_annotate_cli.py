@@ -208,6 +208,51 @@ def test_compose_cmd_writes_a_gene_id_keyed_matrix_and_manifest(hail_session, tm
 
 
 @pytest.mark.hail
+def test_compose_cmd_creates_missing_manifest_parent_dir(hail_session, tmp_path):
+    """--manifest under a directory that doesn't exist yet used to run the whole
+    compose and then crash writing the manifest JSON (plain ``open()`` doesn't
+    create parent dirs). The parent must be created before the compute."""
+    spec_path = tmp_path / "spec.yaml"
+    _write_spec(spec_path)
+
+    spine_path = str(tmp_path / "spine.ht")
+    _write_spine(spine_path)
+
+    constraint_path = str(tmp_path / "constraint.ht")
+    _write_constraint_axis(constraint_path)
+
+    gevir_path = str(tmp_path / "gevir.ht")
+    _write_gevir_axis(gevir_path)
+
+    output_path = str(tmp_path / "matrix.ht")
+    manifest_path = tmp_path / "new" / "dir" / "m.json"
+    assert not manifest_path.parent.exists()
+
+    runner = CliRunner()
+    result = runner.invoke(
+        annotate_group,
+        [
+            "compose",
+            "--spec",
+            str(spec_path),
+            "--spine",
+            spine_path,
+            "--prepared",
+            f"constraint={constraint_path}",
+            "--prepared",
+            f"gevir={gevir_path}",
+            "--output",
+            output_path,
+            "--manifest",
+            str(manifest_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert manifest_path.exists()
+
+
+@pytest.mark.hail
 def test_compose_cmd_defaults_manifest_path_alongside_output(hail_session, tmp_path):
     spec_path = tmp_path / "spec.yaml"
     _write_spec(spec_path)

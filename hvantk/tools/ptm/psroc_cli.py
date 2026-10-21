@@ -55,7 +55,8 @@ def _display_single_result(result, pipeline) -> None:
                 if roc.auc_ci_lower is not None:
                     auc_str += f" [{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
                 click.echo(
-                    f"    {name}: {auc_str}, threshold={roc.optimal_threshold:.3f}"
+                    f"    {name}: {auc_str}, "
+                    f"threshold{roc.threshold_op}{roc.optimal_threshold:.3f}"
                 )
 
         if result.scores_excluded:
@@ -124,7 +125,7 @@ def _display_collection_results(results, output_dir) -> None:
     "--hgnc",
     type=click.Path(exists=True),
     default=None,
-    help="Path to HGNC data file (TSV or .ht) for gene alias resolution. "
+    help="Path to a built HGNC Hail Table (.ht) for gene alias resolution. "
     "When provided, the gene set is expanded to include known aliases "
     "and previous symbols.",
 )
@@ -155,12 +156,6 @@ def _display_collection_results(results, output_dir) -> None:
     help="Output directory for results",
 )
 @click.option(
-    "--reference-genome",
-    type=click.Choice(["GRCh37", "GRCh38"]),
-    default="GRCh38",
-    help="Reference genome build [default: GRCh38]",
-)
-@click.option(
     "--min-stars",
     type=int,
     default=1,
@@ -170,8 +165,9 @@ def _display_collection_results(results, output_dir) -> None:
     "--max-missingness",
     type=float,
     default=0.3,
-    help="Maximum allowed missingness rate per score (0.0-1.0). "
-    "Scores exceeding this threshold are excluded [default: 0.3]",
+    help="Maximum allowed missingness rate per score (0.0-1.0), over the "
+    "pathogenic and benign variants. Scores exceeding this threshold are "
+    "excluded [default: 0.3]",
 )
 @click.option(
     "--threshold-method",
@@ -198,23 +194,18 @@ def _display_collection_results(results, output_dir) -> None:
     help="Skip generating visualization plots",
 )
 @click.option(
-    "--overwrite",
-    is_flag=True,
-    default=False,
-    help="Overwrite existing output files",
-)
-@click.option(
     "--min-variants",
     type=int,
     default=10,
     help="Minimum labeled (P+B) variants required for ROC analysis. "
-    "Groups below this threshold are skipped [default: 10]",
+    "Below this threshold, outputs are still written but without ROC "
+    "metrics (not skipped) [default: 10]",
 )
 @click.option(
     "--n-bootstrap",
     type=int,
     default=2000,
-    help="Number of bootstrap resamples for AUC 95%% confidence intervals. "
+    help="Number of bootstrap resamples for AUC 95% confidence intervals. "
     "Set to 0 to disable [default: 2000]",
 )
 @click.option(
@@ -235,14 +226,12 @@ def psroc_cmd(
     dbnsfp_ht,
     scores,
     output_dir,
-    reference_genome,
     min_stars,
     max_missingness,
     threshold_method,
     output_prefix,
     export_tsv,
     no_plots,
-    overwrite,
     min_variants,
     n_bootstrap,
     dry_run,
@@ -371,13 +360,11 @@ def psroc_cmd(
             scores=scores_list,
             output_dir=output_dir,
             output_prefix=output_prefix,
-            reference_genome=reference_genome,
             min_stars=min_stars,
             max_missingness=max_missingness,
             threshold_method=threshold_method,
             hgnc_path=hgnc,
             export_tsv=export_tsv,
-            overwrite=overwrite,
             generate_plots=not no_plots,
             min_variants=min_variants,
             n_bootstrap=n_bootstrap,
@@ -393,22 +380,24 @@ def psroc_cmd(
                 click.echo(f"  - {error}", err=True)
             ctx.exit(1)
 
+        # Create pipeline. Construction is side-effect free (no directories,
+        # no Hail), so a dry run can show the plan without touching either.
+        pipeline = PSROCPipeline(config)
+
+        # Show plan if dry-run, before the HGNC read below or anything run()
+        # would do.
+        if dry_run:
+            pipeline.show_plan()
+            return
+
         # Construct the gene catalog in tools/ (the only layer allowed to import skills/).
         from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-        gene_catalog = (
+        pipeline.gene_catalog = (
             HGNCGeneCatalogStreamer.from_path(config.hgnc_path)
             if config.hgnc_path
             else None
         )
-
-        # Create pipeline
-        pipeline = PSROCPipeline(config, gene_catalog=gene_catalog)
-
-        # Show plan if dry-run
-        if dry_run:
-            pipeline.show_plan()
-            return
 
         # Display starting message
         click.echo("\n" + "=" * 70)

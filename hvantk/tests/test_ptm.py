@@ -286,3 +286,27 @@ def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatc
     )
     assert alone.source_counts == {"UniProt": 1}
     assert alone.mapped_tsv_path.endswith("ptm_sites_mapped.tsv.bgz")
+
+
+# ---------- Test 6: `ptm test`'s reader accepts compressed input ----------
+
+
+def test_read_variants_table_accepts_bgz_compressed_tsv(tmp_path):
+    """``ptm test``'s reader (``read_variants_tabular_file``, shared with
+    ``ptm constraint``) relied on pandas' compression='infer' alone, which
+    does not recognise the '.bgz' extension: pandas fell back to reading it
+    as plain text and choked on the first gzip byte with UnicodeDecodeError.
+    """
+    import gzip
+
+    from hvantk.algorithms.ptm.constraint import read_variants_tabular_file
+
+    path = tmp_path / "variants.tsv.bgz"
+    with gzip.open(path, "wt") as f:
+        f.write("gene\taf\tis_ptm\tstratum\n")
+        f.write("G1\t0.1\tTrue\tA\n")
+        f.write("G2\t0.2\tFalse\tA\n")
+
+    df = read_variants_tabular_file(str(path))
+    assert list(df.columns) == ["gene", "af", "is_ptm", "stratum"]
+    assert len(df) == 2

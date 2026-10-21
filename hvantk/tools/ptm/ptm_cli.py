@@ -377,9 +377,11 @@ def ptm_population_cmd(
     """Population-level PTM-variant allele frequency analysis.
 
     \b
-    Compares allele frequency distributions at PTM sites vs non-PTM coding
-    positions in gnomAD. Identifies PTM sites under purifying selection
-    (zero or near-zero AF).
+    Compares allele frequency distributions between PTM-site, PTM-proximal,
+    and non-PTM variants in the gnomAD table (no coding filter is applied;
+    the comparison covers whatever --gnomad-ht contains). Reports per-group
+    counts and AF summary statistics; whether low AF at PTM sites reflects
+    purifying selection is left for the caller to judge.
 
     \b
     Output:
@@ -579,7 +581,6 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     show_default=True,
     help="Skip groups with fewer than N variants across PTM + non-PTM.",
 )
-@click.option("--flanking-codons", type=int, default=7, show_default=True)
 @click.option(
     "--expressed-threshold",
     type=float,
@@ -594,7 +595,6 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     help="Restrict the depletion comparison to variants observed in gnomAD "
     "(AF > 0); --include-zero-af also keeps unobserved (AF = 0) variants.",
 )
-@click.option("--overwrite", is_flag=True)
 @click.pass_context
 def ptm_constraint(
     ctx,
@@ -614,19 +614,17 @@ def ptm_constraint(
     expression_metric,
     min_cells_per_group,
     min_variants_per_group,
-    flanking_codons,
     expressed_threshold,
     af_observed_only,
-    overwrite,
 ):
     """Stratified PTM constraint analysis across groups (tissue / cell type).
 
     \b
     Compares gnomAD allele-frequency distributions between PTM-proximal and
     non-PTM variants, stratified by a metadata field from the expression
-    dataset. Runs five tests (per-group ranking, tau quartile, LOEUF x group
-    factorial, PTM category x group heatmap, within-gene Wilcoxon) and emits
-    TSVs, four PNG panels, and one self-contained HTML report.
+    dataset. Runs five tests (per-group ranking, tau quartile, tau bin x
+    LOEUF bin factorial, PTM category x group heatmap, within-gene Wilcoxon)
+    and emits TSVs, four PNG panels, and one self-contained HTML report.
 
     \b
     Note: this is a stratified DEPLETION analysis — not a per-variant scorer.
@@ -639,14 +637,15 @@ def ptm_constraint(
           --expression-source hail-mt \\
           --expression-path /data/GTEX_v7.mt \\
           --grouping SMTSD \\
+          --expression-metric mean \\
           --output-dir results/ptm-gtex/
 
       hvantk ptm constraint \\
           --variants-ht clinvar_ptm.ht \\
           --expression-source anndata \\
-          --expression-path /data/farah_2024.h5ad \\
+          --expression-path /data/celltype_atlas.h5ad \\
           --grouping major_cell_class \\
-          --output-dir results/ptm-farah/
+          --output-dir results/ptm-atlas/
     """
     try:
         from hvantk.algorithms.ptm.constraint import (
@@ -671,10 +670,8 @@ def ptm_constraint(
             expression_metric=expression_metric.lower(),
             min_cells_per_group=min_cells_per_group,
             min_variants_per_group=min_variants_per_group,
-            flanking_codons=flanking_codons,
             expressed_threshold=expressed_threshold,
             af_observed_only=af_observed_only,
-            overwrite=overwrite,
         )
 
         errors = config.validate()
@@ -699,32 +696,6 @@ def ptm_constraint(
 # ---------------------------------------------------------------------------
 # PTM subcommands: test (LMM runners)
 # ---------------------------------------------------------------------------
-
-
-def _read_variants_table(path: str):
-    """Load a variant table from CSV/TSV with transparent gzip/bgz support."""
-    import pandas as _pd
-    from pathlib import Path
-
-    p = str(path)
-    # Derive the delimiter from the last non-compression suffix so inputs like
-    # ``variants.csv.bgz`` are parsed as CSV, not TSV.
-    compression_suffixes = {".gz", ".bgz", ".bz2"}
-    base_suffix = next(
-        (
-            s.lower()
-            for s in reversed(Path(p).suffixes)
-            if s.lower() not in compression_suffixes
-        ),
-        "",
-    )
-    if base_suffix in {".tsv", ".tab"}:
-        sep = "\t"
-    elif base_suffix == ".csv":
-        sep = ","
-    else:
-        sep = "\t"
-    return _pd.read_csv(p, sep=sep, low_memory=False)
 
 
 def _read_expression_wide(pkl_path, tsv_path):
@@ -847,7 +818,9 @@ def ptm_test(
 
         import pandas as _pd
 
-        df = _read_variants_table(input_path)
+        from hvantk.algorithms.ptm.constraint import read_variants_tabular_file
+
+        df = read_variants_tabular_file(input_path)
         if stratum_col not in df.columns:
             click.echo(f"Error: stratum column '{stratum_col}' not in input.", err=True)
             ctx.exit(1)

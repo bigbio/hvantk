@@ -29,7 +29,7 @@ This document lists third-party datasets committed to this repository as test fi
 
 **Source**: AlphaGenome (Google DeepMind) variant-effect predictions for 411 ClinVar canonical-splice variants, from an AlphaGenome SDK `score_variant` → `variant_scorers.tidy_scores()` run on 2026-06-24 (RECOMMENDED scorers, 1 Mb interval, organism human, API backend).
 
-**Version**: the AlphaGenome SDK and hosted model as of that run; the exact SDK version was not recorded (the run's manifest records the backend, scorer set, interval and organism, but no SDK version). Source shard `scores.shard-00000-of-00001.parquet`, 16,642,316 rows, sha256 `261cf87273f1b36d20db640305f414b2e9bdc55824cddff9e4cc4bcc4c6745a1`.
+**Version**: the AlphaGenome SDK and hosted model as of that run; the exact SDK version was not recorded (the run's manifest records only the backend, scorer set, interval and organism). Source shard `scores.shard-00000-of-00001.parquet`, 16,642,316 rows, sha256 `261cf87273f1b36d20db640305f414b2e9bdc55824cddff9e4cc4bcc4c6745a1`.
 
 **Files**:
 - `clinvar-subset.parquet`: AlphaGenome scores in the `tidy_scores()` long format

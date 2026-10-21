@@ -11,6 +11,7 @@ import logging
 import hail as hl
 
 from hvantk.core.utils.raw_inputs import resolve_raw_file
+from hvantk.core.utils.table_utils import select_fields
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def build_gnomad_metrics_metrics(
     # 2. Optional field selection
     if fields is not None:
         logger.info("Selecting fields: %s", fields)
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     # 3. Wrap with provenance
     return AnnotationTable.from_hail(

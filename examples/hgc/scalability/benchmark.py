@@ -163,7 +163,7 @@ def setup_hail(
 
         logger.info("✓ Hail initialized successfully")
         logger.info(f"  Hail version: {hl.__version__}")
-        logger.info(f"  Spark master: local[144]")
+        logger.info("  Spark master: local[144]")
         logger.info(f"  tmp_dir: {tmp_dir}")
         logger.info(f"  log_file: {log_file}")
 
@@ -317,9 +317,9 @@ def run_hgc_workflow(
     logger.info(f"[{sample_size}] Step 2.1: Recording MatrixTable partition count...")
     try:
         mt = hl.read_matrix_table(mt_path)
-        timings["mt_partitions"] = mt.n_partitions
+        timings["mt_partitions"] = mt.n_partitions()
         logger.info(
-            f"[{sample_size}]   → MatrixTable has {mt.n_partitions} partitions (natural, not forced)"
+            f"[{sample_size}]   → MatrixTable has {timings['mt_partitions']} partitions (natural, not forced)"
         )
     except Exception as e:
         logger.error(f"[{sample_size}] Step 2.1 FAILED: {e}")
@@ -458,7 +458,7 @@ def main():
     )
     logger.addHandler(file_handler)
 
-    logger.info(f"HGC Scalability Benchmark - Weak Scaling Test")
+    logger.info("HGC Scalability Benchmark - Weak Scaling Test")
     logger.info(f"  Sample Size: {args.sample_size} (VARIABLE)")
     logger.info(f"  Driver Memory: {args.driver_memory}GB (FIXED)")
     logger.info(f"  Max Partition Bytes: {args.max_partition_bytes}MB (FIXED)")

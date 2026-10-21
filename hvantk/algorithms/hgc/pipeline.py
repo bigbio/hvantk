@@ -22,6 +22,7 @@ from datetime import datetime
 
 # hail_context applies the NumPy ``np.bool`` compatibility shim before it
 # imports Hail, so it must be imported before ``import hail`` below.
+from hvantk.core.utils.dataclass_utils import dataclass_from_dict
 from hvantk.core.utils.hail_context import init_hail
 import hail as hl
 
@@ -34,9 +35,17 @@ from hvantk.algorithms.hgc import (
     filter_samples_by_qc,
     filter_variants_by_qc,
     QCMetrics,
+    save_qc_metrics,
 )
 
 logger = logging.getLogger(__name__)
+
+# run() attaches its log file here, so qc, the combiners and the converters write to it.
+_HGC_LOGGER = logging.getLogger("hvantk.algorithms.hgc")
+
+# The variant thresholds --apply-qc-filters applies besides the call rate.
+_QC_FILTER_MIN_AC = 1
+_QC_FILTER_HWE_THRESHOLD = 1e-6
 
 
 def _shown_partitions(n: Optional[int], *, skipped: bool = False) -> str:
@@ -129,7 +138,6 @@ class PipelineConfig:
     apply_qc_filters: bool = False
 
     # Output options
-    keep_intermediates: bool = True
     generate_qc_report: bool = False
 
     def validate(self) -> List[str]:
@@ -259,8 +267,8 @@ class PipelineState:
         with open(path, "r") as f:
             state_dict = json.load(f)
 
-        # Reconstruct config
-        config = PipelineConfig(**state_dict["config"])
+        # Reconstruct config; a 0.6.0 state file still carries keep_intermediates
+        config = dataclass_from_dict(PipelineConfig, state_dict["config"])
 
         # Reconstruct state
         state = cls(
@@ -306,7 +314,8 @@ class PipelineRunner:
 
     def __init__(self, config: PipelineConfig):
         """
-        Initialize pipeline runner.
+        Initialize pipeline runner. Creates nothing and does not start Hail, so
+        ``show_plan()`` is safe for a dry run; ``run()`` does both.
 
         Args:
             config: Pipeline configuration
@@ -315,32 +324,27 @@ class PipelineRunner:
         self.state = PipelineState(config=config)
         self.logger = logging.getLogger(__name__)
         self._setup_output_paths()
-        self._initialize_hail()
 
     def _setup_output_paths(self):
-        """Initialize output paths based on configuration."""
+        """Compute the output paths; ``run()`` creates the directories."""
         output_dir = Path(self.config.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         prefix = self.config.output_prefix
         qc_dir = output_dir / "qc"
-        qc_dir.mkdir(exist_ok=True)
-
-        logs_dir = output_dir / "logs"
-        logs_dir.mkdir(exist_ok=True)
 
         self.paths = {
             "vds": self.config.vds_path or str(output_dir / f"{prefix}.vds"),
             "mt": self.config.mt_path or str(output_dir / f"{prefix}.mt"),
+            "filtered_mt": str(output_dir / f"{prefix}_filtered.mt"),
+            "qc_dir": str(qc_dir),
             "sample_qc": str(qc_dir / f"{prefix}_sample_qc.ht"),
             "variant_qc": str(qc_dir / f"{prefix}_variant_qc.ht"),
-            "sample_qc_csv": str(qc_dir / f"{prefix}_sample_qc.csv"),
-            "variant_qc_csv": str(qc_dir / f"{prefix}_variant_qc.csv"),
             "pvcf": str(output_dir / f"{prefix}.vcf.bgz"),
             "qc_report": str(qc_dir / f"{prefix}_qc_report.html"),
             "state": str(output_dir / ".pipeline_state.json"),
             "log": str(
-                logs_dir / f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+                output_dir
+                / "logs"
+                / f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
             ),
         }
 
@@ -425,6 +429,13 @@ class PipelineRunner:
                 print(
                     f"        Min variant call rate: {self.config.min_variant_call_rate}"
                 )
+                print(
+                    f"        Min variant AC: {_QC_FILTER_MIN_AC}, "
+                    f"min HWE p-value: {_QC_FILTER_HWE_THRESHOLD}"
+                )
+                print(f"        Filtered MT: {self.paths['filtered_mt']}")
+                for problem in self._missing_qc_tables():
+                    print(f"      ❌ {problem}")
             stage_num += 1
         else:
             print("  [SKIP] Export pVCF")
@@ -442,10 +453,29 @@ class PipelineRunner:
         Returns:
             PipelineState object with execution results
         """
+        Path(self.paths["qc_dir"]).mkdir(parents=True, exist_ok=True)
+        Path(self.paths["log"]).parent.mkdir(exist_ok=True)
+
+        # This run's log file; removed in the `finally` block below.
+        log_handler = logging.FileHandler(self.paths["log"])
+        log_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(name)s [%(levelname)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
+        _HGC_LOGGER.addHandler(log_handler)
+
         self.state.start_time = datetime.now().isoformat()
         self.logger.info("Starting HGC pipeline execution")
 
         try:
+            missing = self._missing_qc_tables()
+            if missing:
+                raise FileNotFoundError("; ".join(missing))
+
+            self._initialize_hail()
+
             # Stage 1: Combine gVCFs
             if not self.config.skip_combine_gvcfs:
                 self._run_stage(PipelineStage.COMBINE_GVCFS)
@@ -494,8 +524,29 @@ class PipelineRunner:
         finally:
             # Save final state
             self.state.save(Path(self.paths["state"]))
+            _HGC_LOGGER.removeHandler(log_handler)
+            log_handler.close()
 
         return self.state
+
+    def _missing_qc_tables(self) -> List[str]:
+        """Name each QC table ``--apply-qc-filters`` needs and cannot find.
+
+        A table comes from this run unless its compute stage is skipped; then it must
+        be one an earlier run left in the same output directory.
+        """
+        if not self.config.apply_qc_filters or self.config.skip_export_pvcf:
+            return []
+        needed = (
+            ("sample_qc", self.config.skip_compute_sample_qc, "sample"),
+            ("variant_qc", self.config.skip_compute_variant_qc, "variant"),
+        )
+        return [
+            f"--apply-qc-filters needs {self.paths[key]}, which no earlier run left in "
+            f"this output directory; run without --skip-compute-{kind}-qc to compute it"
+            for key, skipped, kind in needed
+            if skipped and not Path(self.paths[key]).exists()
+        ]
 
     def _run_stage(self, stage: PipelineStage) -> bool:
         """
@@ -588,15 +639,24 @@ class PipelineRunner:
         # Compute sample QC
         mt_qc = compute_sample_qc(mt)
 
-        # Extract and save sample QC table
-        sample_qc_ht = mt_qc.cols().select("sample_qc")
-        sample_qc_ht.write(self.paths["sample_qc"], overwrite=self.config.overwrite)
+        # Checkpointed, so the CSV below reads the written table instead of computing
+        # sample QC over every entry of the cohort a second time.
+        sample_qc_ht = (
+            mt_qc.cols()
+            .select("sample_qc")
+            .checkpoint(self.paths["sample_qc"], overwrite=self.config.overwrite)
+        )
 
-        # Export to CSV for easy inspection
-        sample_qc_ht.export(self.paths["sample_qc_csv"])
+        # save_mt=False: no QC-annotated MatrixTable copy (see _read_qc_table).
+        saved = save_qc_metrics(
+            QCMetrics(mt_qc, sample_qc=sample_qc_ht),
+            output_dir=self.paths["qc_dir"],
+            prefix=self.config.output_prefix,
+            save_mt=False,
+        )
 
         self.logger.info(f"   ✓ Sample QC saved: {self.paths['sample_qc']}")
-        self.logger.info(f"   ✓ Sample QC CSV: {self.paths['sample_qc_csv']}")
+        self.logger.info(f"   ✓ Sample QC CSV: {saved['sample_qc']}")
 
         return self.paths["sample_qc"]
 
@@ -610,20 +670,50 @@ class PipelineRunner:
         # Compute variant QC
         mt_qc = compute_variant_qc(mt)
 
-        # Extract and save variant QC table
-        variant_qc_ht = mt_qc.rows().select("variant_qc")
-        variant_qc_ht.write(self.paths["variant_qc"], overwrite=self.config.overwrite)
+        # Checkpointed, so the preview below reads the written table.
+        variant_qc_ht = (
+            mt_qc.rows()
+            .select("variant_qc")
+            .checkpoint(self.paths["variant_qc"], overwrite=self.config.overwrite)
+        )
 
-        # Export sample to CSV (limit rows for large datasets)
-        variant_qc_sample = variant_qc_ht.head(10000)
-        variant_qc_sample.export(self.paths["variant_qc_csv"])
+        # A text preview of the first 10,000 variants; the full table is the one above.
+        # Exporting every variant would add a WGS-scale text write to every run.
+        saved = save_qc_metrics(
+            QCMetrics(mt_qc, variant_qc=variant_qc_ht.head(10000)),
+            output_dir=self.paths["qc_dir"],
+            prefix=self.config.output_prefix,
+            save_mt=False,
+        )
 
         self.logger.info(f"   ✓ Variant QC saved: {self.paths['variant_qc']}")
         self.logger.info(
-            f"   ✓ Variant QC CSV (sample): {self.paths['variant_qc_csv']}"
+            f"   ✓ Variant QC TSV (first 10,000 variants): {saved['variant_qc']}"
         )
 
         return self.paths["variant_qc"]
+
+    def _read_qc_table(self, key: str, stage: PipelineStage) -> Optional[hl.Table]:
+        """Read a QC table written by this run, or left by an earlier run.
+
+        The QC stages write two small Hail Tables, ``qc/<prefix>_sample_qc.ht`` and
+        ``qc/<prefix>_variant_qc.ht``, and never a QC-annotated copy of the
+        MatrixTable: QC runs by default, and that copy would be a full extra write of
+        the cohort on every run. ``--apply-qc-filters`` annotates the plain
+        MatrixTable with these tables instead, and ``--generate-qc-report`` reads only
+        the tables. A resumed run does not load the earlier run's state file, so it
+        finds the earlier run's table by its path in the same output directory.
+
+        Returns None when there is no such table.
+        """
+        path = self.paths[key]
+        if self.state.is_stage_complete(stage):
+            self.logger.info(f"   Using this run's {key} table: {path}")
+        elif Path(path).exists():
+            self.logger.info(f"   Using an earlier run's {key} table at {path}")
+        else:
+            return None
+        return hl.read_table(path)
 
     def _run_export_pvcf(self) -> str:
         """Stage 5: Export to project VCF."""
@@ -631,48 +721,48 @@ class PipelineRunner:
 
         mt_path = self.state.outputs.get("mt") or self.config.mt_path
 
-        # Apply QC filters if requested
         if self.config.apply_qc_filters:
             self.logger.info("   Applying QC filters...")
-
-            # Load the MT
-            mt = hl.read_matrix_table(mt_path)
-
-            # Filter samples
-            if not self.config.skip_compute_sample_qc:
-                mt = filter_samples_by_qc(
-                    mt, min_call_rate=self.config.min_sample_call_rate
-                )
-                self.logger.info(
-                    f"   ✓ Filtered samples by call rate >= {self.config.min_sample_call_rate}"
-                )
-
-            # Filter variants
-            if not self.config.skip_compute_variant_qc:
-                mt = filter_variants_by_qc(
-                    mt, min_call_rate=self.config.min_variant_call_rate
-                )
-                self.logger.info(
-                    f"   ✓ Filtered variants by call rate >= {self.config.min_variant_call_rate}"
-                )
-
-            # Save filtered MT
-            filtered_mt_path = str(
-                Path(self.paths["mt"]).parent
-                / f"{self.config.output_prefix}_filtered.mt"
+            # Both tables exist: run() stops before any stage when one is missing.
+            sample_qc_ht = self._read_qc_table(
+                "sample_qc", PipelineStage.COMPUTE_SAMPLE_QC
             )
-            mt.write(filtered_mt_path, overwrite=self.config.overwrite)
-            self.logger.info(f"   ✓ Filtered MT saved: {filtered_mt_path}")
+            variant_qc_ht = self._read_qc_table(
+                "variant_qc", PipelineStage.COMPUTE_VARIANT_QC
+            )
 
-            # Use the filtered MT for export
-            mt_path_to_export = filtered_mt_path
-        else:
-            # Use the original MT
-            mt_path_to_export = mt_path
+            mt = hl.read_matrix_table(mt_path)
+            n_variants_in, n_samples_in = mt.count()
+            mt = mt.annotate_cols(sample_qc=sample_qc_ht[mt.col_key].sample_qc)
+            mt = filter_samples_by_qc(
+                mt, min_call_rate=self.config.min_sample_call_rate
+            )
+            mt = mt.annotate_rows(variant_qc=variant_qc_ht[mt.row_key].variant_qc)
+            mt = filter_variants_by_qc(
+                mt,
+                min_call_rate=self.config.min_variant_call_rate,
+                min_ac=_QC_FILTER_MIN_AC,
+                hwe_threshold=_QC_FILTER_HWE_THRESHOLD,
+            )
+            # The VCF export recomputes variant QC; the joined structs are dead weight.
+            mt = mt.drop("sample_qc", "variant_qc")
+            mt.write(self.paths["filtered_mt"], overwrite=self.config.overwrite)
+
+            # From the written MatrixTable's metadata: counting the filter itself
+            # would scan the cohort once more.
+            n_variants, n_samples = hl.read_matrix_table(
+                self.paths["filtered_mt"]
+            ).count()
+            self.logger.info(
+                f"   ✓ Filtered MT saved: {self.paths['filtered_mt']} "
+                f"({n_samples:,} of {n_samples_in:,} samples, "
+                f"{n_variants:,} of {n_variants_in:,} variants kept)"
+            )
+            mt_path = self.paths["filtered_mt"]
 
         # Export to VCF
         convert_mt_to_multi_sample_vcf(
-            mt_path=mt_path_to_export,
+            mt_path=mt_path,
             vcf_path=self.paths["pvcf"],
             filter_adj_genotypes=True,
             min_ac=1,
@@ -686,22 +776,22 @@ class PipelineRunner:
         """Generate HTML QC report."""
         self.logger.info("📝 Generating HTML QC report...")
 
+        # The report reads only the QC tables (see _read_qc_table).
+        sample_qc_ht = self._read_qc_table("sample_qc", PipelineStage.COMPUTE_SAMPLE_QC)
+        variant_qc_ht = self._read_qc_table(
+            "variant_qc", PipelineStage.COMPUTE_VARIANT_QC
+        )
+
+        if sample_qc_ht is None and variant_qc_ht is None:
+            self.logger.warning(
+                f"No QC tables in {self.paths['qc_dir']}, skipping report generation"
+            )
+            return
+
         mt_path = self.state.outputs.get("mt") or self.config.mt_path
         mt = hl.read_matrix_table(mt_path)
 
-        # Check for QC annotations
-        has_sample_qc = "sample_qc" in mt.col
-        has_variant_qc = "variant_qc" in mt.row
-
-        if not has_sample_qc and not has_variant_qc:
-            self.logger.warning("No QC annotations found, skipping report generation")
-            return
-
-        # Create QCMetrics object
-        sample_qc = mt.cols().select("sample_qc") if has_sample_qc else None
-        variant_qc = mt.rows().select("variant_qc") if has_variant_qc else None
-
-        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc, variant_qc=variant_qc)
+        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc_ht, variant_qc=variant_qc_ht)
 
         # Generate report
         report_path = qc_results.generate_html_report(

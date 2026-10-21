@@ -111,19 +111,25 @@ class TestGoldenDatasets:
         """Golden test: Verify missingness filtering at threshold boundary."""
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
 
-        # Score with exactly 30% missing (should be excluded at 0.3 threshold)
+        # A rate equal to the threshold passes: exactly 30% missing is kept at 0.3.
         scores_at_threshold = {
             "score_30pct": np.array(
                 [0.1, 0.2, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0]
             )
         }
+        assert "score_30pct" in compute_roc_metrics(
+            labels, scores_at_threshold, max_missingness=0.3
+        )
 
-        # Score with exactly 30% missing should be excluded (>= threshold)
-        # This should raise ValueError because all scores are excluded
-        with pytest.raises(
-            ValueError, match="All scores were excluded due to high missingness"
-        ):
-            compute_roc_metrics(labels, scores_at_threshold, max_missingness=0.3)
+        # Above the threshold the score is left out (no exception, no metrics).
+        scores_above_threshold = {
+            "score_40pct": np.array(
+                [0.1, np.nan, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0]
+            )
+        }
+        assert "score_40pct" not in compute_roc_metrics(
+            labels, scores_above_threshold, max_missingness=0.3
+        )
 
         # Score with 20% missing (should be included, below 30% threshold)
         scores_below_threshold = {
@@ -361,10 +367,19 @@ class TestResultSummary:
             missingness=missingness,
         )
 
+        revel_missingness = ScoreMissingness(
+            score_name="REVEL_score",
+            n_total=100,
+            n_present=40,
+            n_missing=60,
+            missingness_rate=0.6,
+            included_in_analysis=False,
+        )
+
         result = PSROCResult(
             annotated_ht_path="/test/annotated.ht",
             metrics={"CADD_phred": roc_result},
-            missingness={"CADD_phred": missingness},
+            missingness={"CADD_phred": missingness, "REVEL_score": revel_missingness},
             n_pathogenic=50,
             n_benign=45,
             n_excluded=5,

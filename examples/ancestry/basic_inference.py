@@ -289,7 +289,6 @@ def main():
     output_dir = Path(args.output_dir)
 
     # Initialize Hail
-    import hail as hl
     from hvantk.core.utils.hail_context import init_hail
 
     logger.info("Initializing Hail...")

@@ -17,10 +17,11 @@ Main entry points:
 
 CLI commands::
 
-    hvantk qtlcascade cascade   — build the cascade join
-    hvantk qtlcascade coloc     — run colocalization
-    hvantk qtlcascade run       — full pipeline
-    hvantk qtlcascade report    — generate HTML report
+    hvantk qtlcascade cascade     — build the cascade join
+    hvantk qtlcascade coloc       — run colocalization
+    hvantk qtlcascade run         — full pipeline
+    hvantk qtlcascade report      — generate HTML report
+    hvantk qtlcascade gwas-coloc  — GWAS locus -> effector colocalization
 """
 
 from __future__ import annotations

@@ -6,6 +6,7 @@ gene list is enriched in gene sets.
 """
 
 import logging
+from pathlib import Path
 
 import click
 
@@ -139,42 +140,50 @@ def overlap_test(
     click.echo(f"  Correction method: {correction}")
     click.echo(f"  Significance threshold: {alpha}")
 
-    df = compute_overlap_enrichment_pandas(query_genes, gene_set_collection, correction)
+    df = compute_overlap_enrichment_pandas(
+        query_genes, gene_set_collection, correction, alpha=alpha
+    )
 
     if df.empty:
         click.echo("\nNo results generated (check gene ID matching)")
         return
 
-    # Output results
+    # Resolve the output directory and the TSV/JSON paths once, up front, so
+    # the primary output and the report below always agree on where things
+    # live: -o is a file (prefix when it has no .tsv/.json suffix), never a
+    # directory, so the directory that holds it is always its parent.
+    output_path = Path(output)
+    output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    tsv_path = output if output.endswith(".tsv") else f"{output}.tsv"
+    json_path = output if output.endswith(".json") else f"{output}.json"
+    tsv_written = False
+
     if output_format in ("tsv", "both"):
-        tsv_path = output if output.endswith(".tsv") else f"{output}.tsv"
         df.to_csv(tsv_path, sep="\t", index=False)
         click.echo(f"\nTSV results written to: {tsv_path}")
+        tsv_written = True
 
     if output_format in ("json", "both"):
-        json_path = output if output.endswith(".json") else f"{output}.json"
         df.to_json(json_path, orient="records", indent=2)
         click.echo(f"JSON results written to: {json_path}")
 
     # Generate report if requested
     if generate_report:
-        from pathlib import Path
-
         from hvantk.algorithms.enrichex.report import generate_report
 
         click.echo("\nGenerating report...")
 
-        # Determine output directory and file paths
-        output_path = Path(output)
-        if output_path.suffix in [".tsv", ".json"]:
-            output_dir = output_path.parent
-            results_path = output_path
+        # The report reader (_load_results) always expects TSV. Reuse the
+        # TSV this run just wrote; otherwise (json-only output) stage a
+        # dedicated copy, written unconditionally so a rerun into the same
+        # -o can never report a previous run's results.
+        if tsv_written:
+            results_path = Path(tsv_path)
         else:
-            output_dir = output_path
-            output_dir.mkdir(parents=True, exist_ok=True)
             results_path = output_dir / "overlap_results.tsv"
-            if not results_path.exists():
-                df.to_csv(results_path, sep="\t", index=False)
+            df.to_csv(results_path, sep="\t", index=False)
 
         report_path = output_dir / "enrichex_overlap_report.html"
 
@@ -185,6 +194,7 @@ def overlap_test(
             title="EnrichEx Overlap Enrichment Report",
             description=f"Fisher's exact test for gene list enrichment in gene sets. Correction: {correction}, alpha: {alpha}",
             top_n=20,
+            alpha=alpha,
             include_methods=True,
             include_gene_lists=True,
             embed_static_plots=True,
@@ -194,7 +204,7 @@ def overlap_test(
         click.echo(f"  Plots saved in: {output_dir}")
 
     # Summary statistics
-    n_significant = (df["p_adjusted"] < alpha).sum()
+    n_significant = df["significant"].sum()
     click.echo(f"\n{'=' * 60}")
     click.echo("ENRICHMENT SUMMARY")
     click.echo(f"{'=' * 60}")

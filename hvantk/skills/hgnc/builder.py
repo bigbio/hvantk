@@ -15,7 +15,7 @@ from hvantk.skills.hgnc.shared.constants import (
     HGNC_PIPE_SEPARATED_FIELDS,
 )
 from hvantk.core.utils.raw_inputs import resolve_raw_file
-from hvantk.core.utils.table_utils import get_row_fields
+from hvantk.core.utils.table_utils import get_row_fields, select_fields
 
 # hgnc declares no lifecycle.parse, so `hvantk reprocess` hands the builder the raw
 # download directory (see resolve_raw_file). The real downloader writes
@@ -147,10 +147,10 @@ def build_hgnc_gene_lookup(
             )
         )
 
-    if fields is not None:
-        ht = ht.select(*fields)
-
+    # Key by hgnc_id before selecting, so hgnc_id is kept automatically even
+    # when `fields` does not list it (select_fields always keeps key fields).
     ht = ht.key_by("hgnc_id")
+    ht = select_fields(ht, fields)
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="hgnc-lookup-v1")
     )

@@ -490,6 +490,130 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     assert output.with_name(output.name + ".provenance.json").exists()
 
 
+def test_reprocess_records_a_builder_commit(tmp_path: Path, monkeypatch):
+    """`reprocess` must record a builder_commit in the sidecar.
+
+    Regression test: every sidecar .provenance.json that reprocess wrote recorded
+    `null` for a field run_builder_for_spec has supported since BuildContext
+    gained it.
+    """
+    import json
+
+    import pandas as pd
+    from hvantk.core.models import AnnotationTable, BuildContext
+
+    captured_ctx: dict = {}
+
+    def phase_b_builder(parsed, ctx, **params):
+        captured_ctx["ctx"] = ctx
+        df = pd.DataFrame({"x": [1, 2, 3]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="test-rows-v1")
+        )
+
+    spec = _make_spec(builder=phase_b_builder)
+    object.__setattr__(spec, "artifact_type", AnnotationTable)
+    object.__setattr__(spec, "schema_id", "test-rows-v1")
+    object.__setattr__(spec, "plugin_version", "0.1.0")
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "v1"})
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    output = tmp_path / "out.parquet"
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--skip-download",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    import re
+
+    ctx: BuildContext = captured_ctx["ctx"]
+    # A 40-hex SHA (optionally "-dirty", since this repo checkout may have
+    # uncommitted changes while the suite runs), or the version fallback.
+    assert re.fullmatch(
+        r"[0-9a-f]{40}(-dirty)?", ctx.builder_commit or ""
+    ) or ctx.builder_commit.startswith("hvantk ")
+
+    manifest_path = output.with_name(output.name + ".provenance.json")
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["builder_commit"] == ctx.builder_commit
+
+
+def test_builder_commit_falls_back_to_env_var_when_git_check_fails(monkeypatch):
+    """The resolver must use HVANTK_BUILDER_COMMIT once git is unavailable.
+
+    Regression test: the Apptainer/Singularity image has no git, so the
+    git-checkout path never fires there for a checkout run inside it;
+    HVANTK_BUILDER_COMMIT, which the job templates set from the checkout they
+    run, is the only way such a run can still record the commit instead of
+    silently falling all the way back to the package version.
+    """
+    import subprocess
+
+    from hvantk.core.plugin.run_builder import resolve_builder_commit
+
+    def _no_git(*args, **kwargs):
+        raise FileNotFoundError("git not found")
+
+    monkeypatch.setattr(subprocess, "run", _no_git)
+    monkeypatch.setenv("HVANTK_BUILDER_COMMIT", "abc1234-dirty")
+
+    assert resolve_builder_commit() == "abc1234-dirty"
+
+
+def test_builder_commit_reads_the_build_stamp_only_from_the_running_package(
+    tmp_path: Path, monkeypatch
+):
+    """The image's build stamp names the image's commit, never a checkout's.
+
+    Regression test: the job templates run a checkout's code inside the image
+    (PYTHONPATH), where git is absent and only the image's own copy of hvantk
+    carries the stamp. Reading the image's commit there recorded it for code from
+    another commit. A def file built by a tool that never substituted its template
+    leaves the literal, which is no commit either.
+    """
+    import subprocess
+
+    from hvantk.core.plugin import run_builder
+
+    def _no_git(*args, **kwargs):
+        raise FileNotFoundError("git not found")
+
+    monkeypatch.setattr(subprocess, "run", _no_git)
+    # The image's own install, stamped: on sys.path and the working directory too.
+    image_root = tmp_path / "image"
+    (image_root / "hvantk").mkdir(parents=True)
+    stamp = image_root / "hvantk" / "_build_commit.txt"
+    stamp.write_text("image-sha\n")
+    monkeypatch.syspath_prepend(str(image_root))
+    monkeypatch.chdir(image_root)
+    checkout_package = tmp_path / "checkout" / "hvantk"
+    checkout_package.mkdir(parents=True)
+    monkeypatch.setenv("HVANTK_BUILDER_COMMIT", "checkout-sha")
+
+    # A checkout runs inside the image: the image's stamp is not its own.
+    monkeypatch.setattr(run_builder, "_PACKAGE_DIR", str(checkout_package))
+    assert run_builder.resolve_builder_commit() == "checkout-sha"
+    # The image's own copy runs: its stamp.
+    monkeypatch.setattr(run_builder, "_PACKAGE_DIR", str(image_root / "hvantk"))
+    assert run_builder.resolve_builder_commit() == "image-sha"
+
+    stamp.write_text("{{ HVANTK_COMMIT }}\n")
+    monkeypatch.setenv("HVANTK_BUILDER_COMMIT", "{{ HVANTK_COMMIT }}")
+    assert run_builder.resolve_builder_commit().startswith("hvantk ")
+
+
 # ---------------------------------------------------------------------------
 # Regression tests for issue #119: comma-list coercion in _coerce_plugin_arg_value
 # ---------------------------------------------------------------------------

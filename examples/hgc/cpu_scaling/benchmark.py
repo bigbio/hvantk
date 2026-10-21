@@ -322,7 +322,7 @@ def run_hgc_workflow(
     start = time.time()
     try:
         mt = hl.read_matrix_table(mt_path)
-        logger.info(f"[{num_cpus} CPUs]   Current partitions: {mt.n_partitions}")
+        logger.info(f"[{num_cpus} CPUs]   Current partitions: {mt.n_partitions()}")
         mt = mt.repartition(shuffle_partitions, shuffle=True)
         mt = mt.checkpoint(mt_checkpoint_path, overwrite=True)
         mt_path = mt_checkpoint_path  # use checkpointed MT downstream
@@ -331,7 +331,7 @@ def run_hgc_workflow(
             f"[{num_cpus} CPUs] Step 2.1 completed in {timings['mt_repartition_checkpoint']:.1f}s"
         )
         logger.info(
-            f"[{num_cpus} CPUs]   → Repartitioned MT: {mt.n_partitions} partitions"
+            f"[{num_cpus} CPUs]   → Repartitioned MT: {mt.n_partitions()} partitions"
         )
         logger.info(f"[{num_cpus} CPUs]   → Checkpointed MT: {mt_path}")
     except Exception as e:
@@ -500,7 +500,7 @@ def main():
     )
     logger.addHandler(file_handler)
 
-    logger.info(f"HGC CPU Scaling Benchmark")
+    logger.info("HGC CPU Scaling Benchmark")
     logger.info(f"  Sample Size: {args.sample_size} (FIXED)")
     logger.info(f"  CPU Count: {args.num_cpus} (VARIABLE)")
     logger.info(f"  Driver Memory: {args.driver_memory}GB (FIXED)")

@@ -22,6 +22,7 @@ from hvantk.core.utils.qtl_helpers import (
     strip_ensembl_version,
 )
 from hvantk.core.utils.raw_inputs import resolve_raw_file
+from hvantk.core.utils.table_utils import select_fields
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +202,7 @@ def build_eqtl_associations(
     ht = ht.key_by("locus", "alleles", "gene_id")
 
     if fields is not None:
-        ht = ht.select(*fields)
+        ht = select_fields(ht, fields)
 
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="gtex-eqtl-eqtls-v1")

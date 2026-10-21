@@ -192,7 +192,7 @@ def _render_burden_summary(result_df, alpha, phenotype_type: str) -> None:
     "--max-af",
     type=float,
     default=None,
-    help="Maximum allele frequency (deprecated, use VariantFilter API instead)",
+    help="Maximum allele frequency threshold (field: --af-field). None to disable.",
 )
 @click.option(
     "--min-score",
@@ -426,12 +426,7 @@ def burden_test(
 
         gene_sets.json: JSON file created by GeneSetCollection.save()
     """
-    from hvantk.core.utils.hail_context import init_hail
-
-    # Initialize Hail
-    init_hail()
-
-    # Show plan if dry-run
+    # Show plan if dry-run (no Hail needed)
     if dry_run:
         click.echo("\n" + "=" * 60)
         click.echo("ENRICHEX BURDEN ANALYSIS PLAN (Hail-Native)")
@@ -475,11 +470,19 @@ def burden_test(
         click.echo("=" * 60 + "\n")
         return
 
+    from hvantk.core.utils.hail_context import init_hail
+
+    # Initialize Hail
+    init_hail()
+
     import hail as hl
     import pandas as pd
 
-    from hvantk.algorithms.enrichex.burden import VariantFilter, run_burden_analysis
-    from hvantk.algorithms.statistics.correction import apply_correction
+    from hvantk.algorithms.enrichex.burden import (
+        VariantFilter,
+        apply_correction_and_flag_significance,
+        run_burden_analysis,
+    )
     from hvantk.core.utils.gene_sets import GeneSetCollection
 
     # Load inputs
@@ -528,8 +531,9 @@ def burden_test(
         results_path = output_path
     else:
         output_dir = output_path
-        output_dir.mkdir(parents=True, exist_ok=True)
         results_path = output_dir / "burden_results.tsv"
+    # -o's directory may not exist yet (e.g. a fresh results/ tree).
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # --- Stratified analysis ---
     if variant_classes:
@@ -613,14 +617,9 @@ def burden_test(
         all_dfs = []
         for class_name, result_ht in stratified_results.items():
             df = result_ht.to_pandas()
-            p_values = df["p_value"].tolist()
-            p_adjusted = apply_correction(
-                p_values,
-                method=correction,
-                n_total=n_gene_sets_total,
+            df = apply_correction_and_flag_significance(
+                df, correction, alpha, n_gene_sets_total
             )
-            df["p_adjusted"] = p_adjusted
-            df["significant"] = df["p_adjusted"] < alpha
             df = df.sort_values("p_value")
 
             class_path = output_dir / f"burden_{class_name}.tsv"
@@ -712,14 +711,9 @@ def burden_test(
         # the multiple testing penalty.
         click.echo(f"Applying {correction} correction...")
         n_gene_sets_total = len(gene_sets_dict)
-        p_values = result_df["p_value"].tolist()
-        p_adjusted = apply_correction(
-            p_values,
-            method=correction,
-            n_total=n_gene_sets_total,
+        result_df = apply_correction_and_flag_significance(
+            result_df, correction, alpha, n_gene_sets_total
         )
-        result_df["p_adjusted"] = p_adjusted
-        result_df["significant"] = result_df["p_adjusted"] < alpha
 
         # Sort by p-value
         result_df = result_df.sort_values("p_value")
@@ -1092,29 +1086,33 @@ def burden_pipeline_cmd(
         name, path = pair.split(":", 1)
         collections[name.strip()] = path.strip()
 
-    # Parse variant classes
-    vc_dict = {}
-    if variant_classes:
-        from hvantk.algorithms.enrichex.burden import (
-            VariantFilter,
-            build_variant_classes_from_presets,
-        )
+    # Parse variant classes. The AF/score/pass-only/field options always
+    # apply, whether or not --variant-classes stratifies the run: without
+    # it, the single unstratified run still needs the requested filter
+    # (previously it silently fell back to no filtering at all).
+    from hvantk.algorithms.enrichex.burden import (
+        VariantFilter,
+        build_variant_classes_from_presets,
+    )
 
+    base_filter = VariantFilter(
+        max_af=max_af,
+        min_score=min_score,
+        consequences=None,
+        pass_only=pass_only,
+        min_gq=0,
+        min_dp=0,
+        af_field=af_field,
+        score_field=score_field,
+        consequence_field=consequence_field,
+    )
+    if variant_classes:
         class_names = [c.strip() for c in variant_classes.split(",")]
-        base_filter = VariantFilter(
-            max_af=max_af,
-            min_score=min_score,
-            consequences=None,
-            pass_only=pass_only,
-            min_gq=0,
-            min_dp=0,
-            af_field=af_field,
-            score_field=score_field,
-            consequence_field=consequence_field,
-        )
         vc_dict = build_variant_classes_from_presets(
             class_names, base_filter=base_filter
         )
+    else:
+        vc_dict = {"all": base_filter}
 
     covar_list = [c.strip() for c in covariates.split(",")] if covariates else []
 

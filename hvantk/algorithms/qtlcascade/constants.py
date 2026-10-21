@@ -5,7 +5,7 @@ Moved from hvantk/core/qtl_constants.py per issue #122 (clean-core principle).
 References
 ----------
 - Giambartolomei et al. (2014) PLoS Genet 10(5):e1004383 — coloc priors
-- Wakefield (2009) Am J Hum Genet 84(1):60-71 — ABF W parameter
+- Wakefield (2009) Genet Epidemiol 33(1):79-86 — ABF W parameter
 - Fang et al. (2025) — tissue-matched eQTL/pQTL data (eGTEx)
 """
 
@@ -45,8 +45,10 @@ DEFAULT_COLOC_P1 = 1e-4  # P(variant causal for trait 1 only)
 DEFAULT_COLOC_P2 = 1e-4  # P(variant causal for trait 2 only)
 DEFAULT_COLOC_P12 = 1e-5  # P(variant causal for both traits)
 
-# Prior variance on true effect size — Wakefield (2009)
-# 0.04 is appropriate for quantitative-trait QTLs
+# Prior variance on true effect size — Wakefield (2009). 0.04 (prior SD 0.2) is
+# coloc's case-control default; used here for both the eQTL and the pQTL side
+# (see DEFAULT_EQTL_W_QUANT below for the 0.0225 quantitative-trait default
+# that gwas-coloc uses instead).
 DEFAULT_COLOC_W = 0.04
 
 # Posterior threshold for declaring colocalization
@@ -92,12 +94,25 @@ KG_PHASED_VCF_URL = (
     "CCDG_14151_B01_GRM_WGS_2020-08-05_chr{chrom}."
     "filtered.shapeit2-duohmm-phased.vcf.gz"
 )
+# chrX in this release is phased separately (eagle2, not shapeit2-duohmm) under
+# a fixed filename with no per-chromosome token to format.
+KG_PHASED_VCF_URL_CHRX = (
+    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
+    "1000G_2504_high_coverage/working/20201028_3202_phased/"
+    "CCDG_14151_B01_GRM_WGS_2020-08-05_chrX.filtered.eagle2-phased.v2.vcf.gz"
+)
 KG_PANEL_URL = (
     "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
     "1000G_2504_high_coverage/20130606_g1k_3202_samples_ped_population.txt"
 )
 # Default fine-map super-population for the LD reference.
 DEFAULT_FINEMAP_SUPERPOP = "EUR"
+# The 1000 Genomes 3202-sample panel's five super-populations, exactly as they
+# appear in its "Superpopulation" column (_unrelated_samples in finemap.py
+# matches this case exactly). A --superpop outside this set can never find
+# founders; gating it at the CLI catches a typo immediately instead of
+# letting it fail deep inside the LD reference build.
+FINEMAP_SUPERPOPS = ("AFR", "AMR", "EAS", "EUR", "SAS")
 
 # ---------------------------------------------------------------------------
 # SuSiE-RSS + coloc.susie (susie.py) — pure-Python fine-mapping (issue #193).

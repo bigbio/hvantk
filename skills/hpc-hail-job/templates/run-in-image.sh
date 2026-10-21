@@ -42,7 +42,20 @@ bind_outside_work "$HVANTK_REPO"
 [[ -n "${HVANTK_EVAL_DATA:-}" ]] && bind_outside_work "$HVANTK_EVAL_DATA"
 [[ -n "${HVANTK_BIND:-}" ]] && BINDS+=(-B "$HVANTK_BIND")
 
+# The checkout's commit, for the builder_commit a build records: the image has no git.
+# Same rule as hvantk's own resolver: HEAD, only when HVANTK_REPO is the top of its own
+# git checkout, with -dirty for uncommitted edits under hvantk/. Empty when git cannot
+# answer here; the build then records the hvantk version.
+COMMIT=""
+if command -v git >/dev/null 2>&1 \
+  && [[ "$(git -C "$HVANTK_REPO" rev-parse --show-toplevel 2>/dev/null)" -ef "$HVANTK_REPO" ]]; then
+  COMMIT="$(git -C "$HVANTK_REPO" rev-parse HEAD 2>/dev/null)" || COMMIT=""
+  if [[ -n "$COMMIT" && -n "$(git -C "$HVANTK_REPO" status --porcelain --untracked-files=no -- hvantk 2>/dev/null)" ]]; then
+    COMMIT="$COMMIT-dirty"
+  fi
+fi
+
 exec "$CONTAINER_BIN" exec "${BINDS[@]}" \
-  --env PYTHONPATH="$HVANTK_REPO" \
+  --env PYTHONPATH="$HVANTK_REPO" --env HVANTK_BUILDER_COMMIT="$COMMIT" \
   --env JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US" \
   "$SIF" "$@"

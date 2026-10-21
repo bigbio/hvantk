@@ -159,21 +159,21 @@ hvantk ancestry-inference \
   --generate-report \
   --export-tsv \
   --save-model \
-  --save-loadings \
-  --log-level INFO
+  --save-loadings
 
 # ==============================================================================
 # Example 10: Debug Mode
 # ==============================================================================
+# ancestry-inference has no --log-level option; verbosity is the top-level
+# `hvantk` flag, which must come BEFORE the subcommand.
 echo ""
 echo "=== Example 10: Debug Mode ==="
 
-hvantk ancestry-inference \
+hvantk -vv ancestry-inference \
   -q "$QUERY_MT" \
   -r "$REFERENCE_MT" \
   --ancestry-col super_pop \
-  -o "${OUTPUT_DIR}/debug/predictions.ht" \
-  --log-level DEBUG
+  -o "${OUTPUT_DIR}/debug/predictions.ht"
 
 # ==============================================================================
 # Summary

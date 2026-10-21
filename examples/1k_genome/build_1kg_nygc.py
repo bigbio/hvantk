@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Build a Hail MatrixTable from the NYGC/CCDG 1000 Genomes (2020) VCF files.
+"""Build a Hail MatrixTable from the NYGC/CCDG 1000 Genomes high-coverage VCF files.
 
-The VCF directory should contain the CCDG per-chromosome recalibrated genotype
-VCFs.  Annotated VCFs (*.annotated.*) and "others" contig files are excluded
-automatically.  Only ``*_chr*.recalibrated_variants.vcf.gz`` files are staged.
+The VCF directory should contain the per-chromosome phased genotype VCFs from the
+high-coverage NYGC/CCDG release (see
+`data-sources.md <https://bigbio.github.io/hvantk/guide/data-sources/#1000-genomes-nygcccdg-high-coverage-callset>`_
+for the mirror). Autosomes (and most other contigs) ship as
+``*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz``; chrX is phased separately and
+ships as ``*_chrX.filtered.eagle2-phased.v2.vcf.gz``. Both name forms are staged;
+any ``*.annotated.*`` or ``*_others.*`` companion files present alongside them
+are excluded.
 
 Example usage::
 
@@ -25,6 +30,7 @@ from __future__ import annotations
 import glob
 import logging
 import os
+import re
 import shutil
 import tempfile
 from datetime import datetime
@@ -38,15 +44,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
-    """Symlink recalibrated genotype VCFs into *stage_dir*.
+# Two name forms ship in the NYGC/CCDG release: autosomes (and most other
+# contigs) as shapeit2-duohmm-phased, chrX separately as eagle2-phased.
+_VCF_GLOB_PATTERNS = (
+    "*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz",
+    "*_chrX.filtered.eagle2-phased*.vcf.gz",
+)
 
-    Excludes ``*.annotated.*`` and ``*_others.*`` files.
-    Returns the number of staged VCFs.
+# Mirrors the builder's own chromosome-token regex (hvantk/skills/onek_genomes/
+# builder.py's _CHROM_PATTERN) so "is chrX staged?" agrees with how the plugin
+# itself will read these symlinked files.
+_CHROM_TOKEN_RE = re.compile(r"(?i)chr[_]?(\d+|X|Y|M|MT)\b")
+
+
+def _chrom_token(name: str) -> str | None:
+    """Extract the chromosome token (e.g. "1", "X") from a filename or a
+    --chromosomes entry, so staged files and requests compare equal."""
+    match = _CHROM_TOKEN_RE.search(name)
+    return match.group(1).upper() if match else None
+
+
+def _stage_vcfs(vcf_dir: str, stage_dir: str) -> tuple[int, set[str]]:
+    """Symlink phased genotype VCFs into *stage_dir*.
+
+    Excludes ``*.annotated.*`` and ``*_others.*`` files, if present.
+    Returns the number of staged VCFs and the set of chromosome tokens found.
     """
-    pattern = os.path.join(vcf_dir, "*_chr*.recalibrated_variants.vcf.gz")
+    vcfs: set[str] = set()
+    for pattern in _VCF_GLOB_PATTERNS:
+        vcfs.update(glob.glob(os.path.join(vcf_dir, pattern)))
+
     count = 0
-    for vcf in sorted(glob.glob(pattern)):
+    staged_chroms: set[str] = set()
+    for vcf in sorted(vcfs):
         basename = os.path.basename(vcf)
         if ".annotated." in basename or "_others." in basename:
             continue
@@ -61,7 +91,10 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
         else:
             logger.warning("Missing tabix index for %s", basename)
         count += 1
-    return count
+        token = _chrom_token(basename)
+        if token:
+            staged_chroms.add(token)
+    return count, staged_chroms
 
 
 @click.command()
@@ -138,9 +171,10 @@ def main(
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCF files.
 
     \b
-    Stages only recalibrated genotype VCFs (*_chr*.recalibrated_variants.vcf.gz)
-    into a temporary directory, excluding annotated and "others" contig files,
-    then invokes the hvantk builder.
+    Stages phased genotype VCFs (*_chr*.filtered.shapeit2-duohmm-phased.vcf.gz,
+    plus chrX's separately-named *_chrX.filtered.eagle2-phased.v2.vcf.gz) into a
+    temporary directory, excluding any annotated or "others" contig files, then
+    invokes the hvantk builder.
     """
     # Resolve sample annotations: absolute path used as-is, otherwise relative to vcf_dir
     sample_annotations_path = None
@@ -170,14 +204,24 @@ def main(
     # -- Stage VCFs --
     stage_dir = tempfile.mkdtemp(prefix="1kg_stage_")
     try:
-        logger.info("Staging recalibrated genotype VCFs into %s ...", stage_dir)
-        count = _stage_vcfs(vcf_dir, stage_dir)
+        logger.info("Staging phased genotype VCFs into %s ...", stage_dir)
+        count, staged_chroms = _stage_vcfs(vcf_dir, stage_dir)
         logger.info("Staged %d VCF file(s).", count)
 
         if count == 0:
-            raise click.ClickException(
-                f"No recalibrated genotype VCFs found in {vcf_dir}"
+            raise click.ClickException(f"No phased genotype VCFs found in {vcf_dir}")
+
+        if chrom_list:
+            missing = sorted(
+                {c for c in chrom_list if _chrom_token(c) not in staged_chroms}
             )
+            if missing:
+                raise click.ClickException(
+                    "Requested --chromosomes not found among staged VCFs in "
+                    f"{vcf_dir}: {', '.join(missing)}. Check the file naming "
+                    "against the module docstring (chrX ships under a "
+                    "different name than the autosomes)."
+                )
 
         # -- Build via hvantk reprocess onek-genomes:variants --
         # The legacy `build_1k_genome_mt` Python helper was retired in #116;

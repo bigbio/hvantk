@@ -3,6 +3,7 @@ Unified CLI for gene set extraction and preparation.
 
 Subcommands:
   hvantk genesets clingen  -- Extract from ClinGen Hail Table (by GCEP/disease/keyword)
+  hvantk genesets cosmic   -- Extract from COSMIC CGC Hail Table (by tumour-type/role/tissue/keyword)
   hvantk genesets gencc    -- Extract from GenCC Hail Table (by submitter/disease/keyword)
   hvantk genesets prepare  -- Convert a plain TSV into a GeneSetCollection
 
@@ -110,6 +111,7 @@ def genesets_group():
     \b
     Subcommands:
       clingen   Extract gene sets from ClinGen Hail Table
+      cosmic    Extract gene sets from COSMIC CGC Hail Table
       gencc     Extract gene sets from GenCC Hail Table
       prepare   Convert a plain TSV into a GeneSetCollection
     """
@@ -510,6 +512,7 @@ def genesets_cosmic(
             gene_sets = streamer.aggregate_by_disease_category(
                 categories=categories,
                 min_classification=min_classification,
+                mutation_context=mutation_context,
             )
             if min_genes > 0:
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
@@ -560,7 +563,8 @@ def genesets_cosmic(
     "--hgnc",
     type=click.Path(exists=True),
     default=None,
-    help="Path to HGNC data (.ht or .tsv) for symbol validation and alias resolution.",
+    help="Path to a built HGNC Hail Table (.ht) for symbol validation and alias "
+    "resolution.",
 )
 @click.option(
     "--min-genes",
@@ -728,7 +732,6 @@ def genesets_prepare(
 
     # Attach metadata.
     input_basename = os.path.basename(input_path)
-    collection.source_description = f"Custom gene sets from {input_basename}"
     collection.metadata = {
         "created_by": "hvantk genesets prepare",
         "input_file": input_basename,
@@ -743,7 +746,10 @@ def genesets_prepare(
 
     # 6. Save outputs.
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    collection.save(output_path)
+    if output_path.suffix.lower() == ".gmt":
+        collection.save_gmt(output_path)
+    else:
+        collection.save(output_path)
     click.echo(f"\nSaved to {output}", err=True)
 
     if export_gmt:

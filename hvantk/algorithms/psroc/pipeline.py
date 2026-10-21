@@ -10,11 +10,15 @@ prediction scores (e.g., CADD, REVEL, MetaLR) against ClinVar truth labels.
 
 Example:
     >>> from hvantk.algorithms.psroc.pipeline import PSROCConfig, PSROCPipeline
+    >>> from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
     >>> config = PSROCConfig(
+    ...     genes=["BRCA1", "BRCA2"],
     ...     clinvar_ht="/data/clinvar.ht",
     ...     dbnsfp_ht="/data/dbnsfp.ht",
     ...     scores=["CADD_phred", "REVEL_score"],
     ...     output_dir="/results/psroc",
+    ...     pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+    ...     benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
     ... )
     >>> pipeline = PSROCPipeline(config)
     >>> result = pipeline.run()
@@ -22,7 +26,7 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Dict, Any, List, Set
 from enum import Enum
@@ -52,6 +56,7 @@ from hvantk.algorithms.psroc.plots import (
     plot_psroc_summary_dashboard,
     plot_collection_heatmap,
 )
+from hvantk.core.utils.dataclass_utils import dataclass_from_dict
 from hvantk.core.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
@@ -102,6 +107,8 @@ SCORE_DIRECTIONALITY: Dict[str, bool] = {
     "PROVEAN_score": False,
     "FATHMM_score": False,
     "LRT_score": False,
+    # ESM1b log-likelihood ratio: dbNSFP calls a variant deleterious below -7.5
+    "ESM1b_score": False,
 }
 
 # ClinVar CLNREVSTAT string → review-star mapping
@@ -145,14 +152,15 @@ class PSROCConfig:
         clinvar_ht: Path to pre-built ClinVar Hail Table.
         dbnsfp_ht: Path to pre-built dbNSFP Hail Table.
         scores: List of dbNSFP score field names to evaluate.
+        score_directions: Per-score direction overrides (True = higher is more
+            damaging), applied on top of SCORE_DIRECTIONALITY. The direction picks
+            the per-transcript value and orients the ROC.
         output_dir: Directory for output files.
-        reference_genome: Reference genome (default: GRCh38).
         min_stars: Minimum ClinVar review status stars (default: 1).
         max_missingness: Maximum allowed missingness rate per score (default: 0.3).
         threshold_method: Method for finding optimal threshold (default: "youden").
-        hgnc_path: Path to HGNC data (TSV or .ht) for gene alias resolution.
+        hgnc_path: Path to a built HGNC Hail Table (.ht) for gene alias resolution.
         export_tsv: Whether to export annotated variants as TSV.
-        overwrite: Whether to overwrite existing output files.
         generate_plots: Whether to generate visualization plots.
         output_prefix: Prefix for output file names.
     """
@@ -178,7 +186,6 @@ class PSROCConfig:
     output_prefix: str = "psroc"
 
     # Processing options
-    reference_genome: str = "GRCh38"
     min_stars: int = 1
     max_missingness: float = 0.3
     threshold_method: str = "youden"
@@ -186,7 +193,6 @@ class PSROCConfig:
 
     # Output options
     export_tsv: bool = False
-    overwrite: bool = False
     generate_plots: bool = True
     group_name: Optional[str] = None
 
@@ -385,7 +391,9 @@ class PSROCState:
         with open(path, "r") as f:
             state_dict = json.load(f)
 
-        config = PSROCConfig(**state_dict["config"])
+        # A state file from before --overwrite and --reference-genome were removed
+        # still carries them.
+        config = dataclass_from_dict(PSROCConfig, state_dict["config"])
 
         state = cls(
             config=config,
@@ -507,7 +515,7 @@ class PSROCResult:
             for name, roc in sorted_metrics:
                 lines.append(
                     f"  {name}: AUC={roc.auc:.3f}, "
-                    f"threshold={roc.optimal_threshold:.3f}, "
+                    f"threshold{roc.threshold_op}{roc.optimal_threshold:.3f}, "
                     f"sens={roc.sensitivity_at_optimal:.3f}, "
                     f"spec={roc.specificity_at_optimal:.3f}"
                 )
@@ -558,12 +566,15 @@ class PSROCPipeline:
         8. Generate plots, metrics, and missingness reports
 
     Example:
+        >>> from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
         >>> config = PSROCConfig(
         ...     genes=["BRCA1", "BRCA2"],
         ...     clinvar_ht="/data/clinvar.ht",
         ...     dbnsfp_ht="/data/dbnsfp.ht",
         ...     scores=["CADD_phred", "REVEL_score"],
         ...     output_dir="/results/psroc",
+        ...     pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+        ...     benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
         ... )
         >>> pipeline = PSROCPipeline(config)
         >>> result = pipeline.run()
@@ -575,6 +586,10 @@ class PSROCPipeline:
         gene_catalog: GeneCatalogStreamer | None = None,
     ):
         """Initialize PSROC pipeline.
+
+        Side-effect free: no directories are created and Hail is not
+        touched here, so a dry run can construct a pipeline just to call
+        ``show_plan()``. Both happen in ``run()``.
 
         Args:
             config: Pipeline configuration.
@@ -594,8 +609,6 @@ class PSROCPipeline:
             )
 
         self.state = PSROCState(config=config)
-        self._setup_output_paths()
-        self._initialize_hail()
 
         # Internal state
         self._clinvar_ht: Optional[hl.Table] = None
@@ -668,7 +681,6 @@ class PSROCPipeline:
 
         print("\n🔧 Configuration:")
         print(f"  Scores: {', '.join(self.config.scores)}")
-        print(f"  Reference genome: {self.config.reference_genome}")
         print(f"  Min review stars: {self.config.min_stars}")
         print(f"  Max missingness: {self.config.max_missingness:.0%}")
         print(f"  Threshold method: {self.config.threshold_method}")
@@ -718,8 +730,27 @@ class PSROCPipeline:
                 "Use run_collection() for multi-group execution."
             )
 
+        # Directories and Hail are touched here, not in __init__, so
+        # show_plan() (and --dry-run) never creates output_dir or starts Hail.
+        self._setup_output_paths()
+        self._initialize_hail()
+
         self.state.start_time = datetime.now().isoformat()
         logger.info("Starting PSROC pipeline execution")
+
+        # Attach a file handler for this run so `logs/` is not left empty;
+        # removed in the `finally` block below once the run finishes. It
+        # sits on the package logger, not this module's, so warnings logged
+        # by sibling modules (roc.py, plots.py) reach the run log too.
+        package_logger = logging.getLogger("hvantk.algorithms.psroc")
+        log_handler = logging.FileHandler(self.paths["log"])
+        log_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(name)s [%(levelname)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
+        package_logger.addHandler(log_handler)
 
         try:
             # Stage 1: Load tables
@@ -756,6 +787,8 @@ class PSROCPipeline:
 
         finally:
             self.state.save(Path(self.paths["state"]))
+            package_logger.removeHandler(log_handler)
+            log_handler.close()
 
     def run_collection(self) -> Dict[str, PSROCResult]:
         """Execute PSROC pipeline independently for each named gene set.
@@ -765,8 +798,11 @@ class PSROCPipeline:
         and a dedicated output subdirectory, then the standard ``run()``
         pipeline is executed.
 
-        Groups that yield zero ClinVar variants (or otherwise fail) are
-        skipped with a warning.
+        A group whose run raises (for example a score present in only one
+        class) is skipped with a warning and omitted from the returned dict.
+        A group with zero matching ClinVar variants, or fewer labeled
+        variants than ``min_variants``, is NOT skipped: it still completes
+        and is included, with empty metrics.
 
         Returns:
             Dictionary mapping group names to their PSROCResult.
@@ -803,15 +839,14 @@ class PSROCPipeline:
                 clinvar_ht=self.config.clinvar_ht,
                 dbnsfp_ht=self.config.dbnsfp_ht,
                 scores=list(self.config.scores),
+                score_directions=self.config.score_directions,
                 output_dir=str(Path(self.config.output_dir) / safe_name),
                 output_prefix=f"{self.config.output_prefix}_{safe_name}",
-                reference_genome=self.config.reference_genome,
                 min_stars=self.config.min_stars,
                 max_missingness=self.config.max_missingness,
                 threshold_method=self.config.threshold_method,
                 hgnc_path=self.config.hgnc_path,
                 export_tsv=self.config.export_tsv,
-                overwrite=self.config.overwrite,
                 generate_plots=self.config.generate_plots,
                 group_name=group_name,
                 min_variants=self.config.min_variants,
@@ -1069,12 +1104,16 @@ class PSROCPipeline:
 
         star_map = hl.literal(CLNREVSTAT_STAR_MAP)
 
-        # Normalize CLNREVSTAT: extract string from array if needed
+        # Normalize CLNREVSTAT: VCF import with Number=. splits it into an
+        # array at each comma (e.g. "criteria_provided,_single_submitter" ->
+        # ["criteria_provided", "_single_submitter"]); re-join with "," so
+        # the lookup sees the same string CLNREVSTAT_STAR_MAP is keyed on,
+        # instead of just its first element.
         clnrevstat_dtype = ht.info.CLNREVSTAT.dtype
         if isinstance(clnrevstat_dtype, hl.tarray):
             clnrevstat_str = hl.or_missing(
                 hl.is_defined(ht.info.CLNREVSTAT) & (hl.len(ht.info.CLNREVSTAT) > 0),
-                ht.info.CLNREVSTAT[0],
+                hl.delimit(ht.info.CLNREVSTAT, ","),
             )
         else:
             clnrevstat_str = ht.info.CLNREVSTAT
@@ -1113,7 +1152,9 @@ class PSROCPipeline:
         else:
             clnsig = ht.info.CLNSIG
 
-        # Assign labels based on CLNSIG values
+        # Assign labels based on CLNSIG values. Uncertain/Conflicting variants
+        # stay in the table, counted as excluded, whatever min_stars is; only
+        # pathogenic and benign variants enter the missingness gate and the ROC.
         ht = ht.annotate(
             label=hl.case()
             .when(
@@ -1131,10 +1172,6 @@ class PSROCPipeline:
             .default("Uncertain/Conflicting"),
         )
 
-        # Filter out uncertain/conflicting variants by default
-        if self.config.min_stars <= 0:
-            ht = ht.filter(ht.label != "Uncertain/Conflicting")
-
         logger.info(
             f"   ✓ Assigned labels: {len(ht.aggregate(hl.agg.collect_as_set(ht.label)))} classes"
         )
@@ -1142,6 +1179,14 @@ class PSROCPipeline:
         # Update instance variable so downstream stages see the labeled table
         self._labeled_ht = ht
         return ht
+
+    def _score_directions(self) -> Dict[str, bool]:
+        """Effective score directions (True = higher is more damaging):
+        SCORE_DIRECTIONALITY updated by ``config.score_directions``."""
+        directions = dict(SCORE_DIRECTIONALITY)
+        if self.config.score_directions:
+            directions.update(self.config.score_directions)
+        return directions
 
     def _annotate_scores(self) -> hl.Table:
         """Stage 4: Annotate ClinVar variants with dbNSFP scores."""
@@ -1175,9 +1220,7 @@ class PSROCPipeline:
 
         # Resolve dict-typed transcript scores to scalar, respecting directionality.
         # Higher-is-pathogenic scores use max(); lower-is-pathogenic use min().
-        directions = dict(SCORE_DIRECTIONALITY)
-        if self.config.score_directions:
-            directions.update(self.config.score_directions)
+        directions = self._score_directions()
 
         resolve_ann = {}
         for sf in score_fields:
@@ -1202,6 +1245,12 @@ class PSROCPipeline:
         # Keep only label and score fields
         ht = ht.select("label", *score_fields)
 
+        # Checkpoint the join here, once: every action below (both these
+        # counts, the missingness and ROC ``to_pandas`` calls in stages 5-6,
+        # the write and the label-count aggregate in stage 7) would otherwise
+        # re-run the ClinVar x dbNSFP join from scratch, once per action.
+        ht = ht.checkpoint(hl.utils.new_temp_file(extension="ht"), overwrite=True)
+
         # Drop variants outside dbNSFP domain (all scores null)
         n_before = ht.count()
         score_defined = [hl.is_defined(ht[sf]) for sf in score_fields]
@@ -1222,6 +1271,15 @@ class PSROCPipeline:
         self._annotated_ht = ht
         return ht
 
+    def _labelled_ht(self) -> hl.Table:
+        """Pathogenic/Benign slice of the annotated table.
+
+        Stages 5 and 6 both gate on exactly this filter, so sharing it
+        means they provably see the same variants.
+        """
+        ht = self._annotated_ht
+        return ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
+
     def _compute_missingness(self) -> Dict[str, ScoreMissingness]:
         """Stage 5: Compute missingness statistics for each score."""
         logger.info("🔄 [5/7] Computing missingness statistics...")
@@ -1229,7 +1287,8 @@ class PSROCPipeline:
         if self._annotated_ht is None:
             raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
-        ht = self._annotated_ht
+        # Over the variants the ROC uses: pathogenic and benign only
+        ht = self._labelled_ht()
 
         # Identify score fields from config that are present in the table
         score_fields = [s for s in self.config.scores if s in ht.row]
@@ -1267,10 +1326,8 @@ class PSROCPipeline:
         if self._annotated_ht is None:
             raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
-        ht = self._annotated_ht
-
         # Filter to pathogenic/benign only (exclude uncertain/conflicting)
-        ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
+        ht = self._labelled_ht()
 
         n_labeled = ht.count()
         if n_labeled < self.config.min_variants:
@@ -1311,7 +1368,8 @@ class PSROCPipeline:
                 dtype=float, na_value=np.nan
             )
 
-        # Compute ROC metrics for all scores at once
+        # Compute ROC metrics for all scores at once, lower-is-damaging scores
+        # oriented by the same direction map that resolved their transcripts
         roc_results = compute_roc_metrics(
             labels=labels,
             scores=scores_dict,
@@ -1319,6 +1377,7 @@ class PSROCPipeline:
             pos_label=1,
             threshold_method=self.config.threshold_method,
             n_bootstrap=self.config.n_bootstrap,
+            score_directions=self._score_directions(),
         )
 
         if roc_results:

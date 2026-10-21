@@ -2,7 +2,7 @@
 """
 Extract timing data from JSON file and format as CSV row.
 
-This script is called by hgc_scalability_benchmark.sh to extract timing data
+This script is called by scalability/benchmark.sh to extract timing data
 from individual run JSON files and append them to the timings.csv file.
 
 Usage:
@@ -88,7 +88,7 @@ def main():
         sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"ERROR: Invalid JSON in {timing_file}: {e}", file=sys.stderr)
-        print(f"File contents:", file=sys.stderr)
+        print("File contents:", file=sys.stderr)
         try:
             with open(timing_file, "r") as f:
                 print(f.read()[:500], file=sys.stderr)  # Show first 500 chars

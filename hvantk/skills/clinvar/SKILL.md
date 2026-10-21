@@ -74,7 +74,7 @@ When invoked to build or update:
 
 When ClinVar releases a new monthly version:
 
-1. Fetch the new release: `hvantk download clinvar --output-dir /tmp/clinvar`.
+1. Fetch the new release: `hvantk download clinvar --output-dir data/clinvar`.
 2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
 3. Run snapshot regeneration: `pytest hvantk/skills/clinvar/tests -m hail --regenerate-snapshots`.
 4. Inspect the snapshot diff:

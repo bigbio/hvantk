@@ -156,7 +156,6 @@ def _build_header(title: str, date: str, config: "PTMConstraintConfig") -> str:
         ("min variants/group", getattr(config, "min_variants_per_group", "")),
         ("min cells/group", getattr(config, "min_cells_per_group", "")),
         ("expressed threshold", getattr(config, "expressed_threshold", "")),
-        ("flanking codons", getattr(config, "flanking_codons", "")),
     ]
     config_lines = "<br/>".join(
         f"<span class='k'>{html.escape(str(k))}</span>: "
@@ -201,12 +200,12 @@ def _build_key_findings(result: "PTMConstraintResult") -> str:
 
 
 def _build_per_group_section(result: "PTMConstraintResult", plots_dir: Path) -> str:
-    rows = list(getattr(result, "top_groups", []) or [])[:20]
+    rows = list(getattr(result, "top_groups", []) or [])[:10]
     return _build_table_section(
         heading="Per-group ranking",
         note=(
             "Mann-Whitney U per group, sorted by log2 depletion ratio "
-            "(non-PTM mean AF / PTM mean AF). Top 20 rows shown."
+            "(non-PTM median AF / PTM median AF). Top 10 rows shown."
         ),
         rows=rows,
         columns=_COLS_GROUP,

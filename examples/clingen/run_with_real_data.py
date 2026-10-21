@@ -1,14 +1,14 @@
 """
 Run ClinGen geneset extraction with real (downloaded) data.
 
-This script uses the downloaded ClinGen Gene-Disease Validity CSV file
-instead of the test data.
+It reads the ClinGen Hail Table built by `hvantk reprocess clingen:gene-disease`
+(see README.md).
 """
 
-import logging
 import json
+import logging
+import sys
 from pathlib import Path
-from typing import Dict, Set
 
 import pandas as pd
 
@@ -22,13 +22,12 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR / "data"
 OUTPUT_DIR = SCRIPT_DIR / "results"
-INPUT_CSV = DATA_DIR / "clingen_gene_disease.csv"
 
 
 def main():
     """Main workflow with real ClinGen data."""
     import hail as hl
-    from hvantk.skills.clingen.streamer import ClinGenStreamer
+    from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
     # Initialize Hail
     logger.info("Initializing Hail...")
@@ -38,16 +37,7 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Paths
-    input_csv = str(INPUT_CSV)
     output_ht = str(OUTPUT_DIR / "clingen_full.ht")
-
-    if not INPUT_CSV.exists():
-        print(f"ERROR: ClinGen data file not found at {INPUT_CSV}")
-        print("Please download it first with:")
-        print(
-            '  curl -L -k "https://search.clinicalgenome.org/kb/gene-validity/download" -o examples/clingen/data/clingen_gene_disease.csv'
-        )
-        return
 
     # Step 1: Ensure the ClinGen Hail Table exists.
     # Builds go through the plugin system; this example focuses on the
@@ -59,17 +49,17 @@ def main():
         print(f"ERROR: ClinGen Hail Table not found at {output_ht}")
         print("Build it first with:")
         print(
-            f"  hvantk reprocess clingen:gene_disease "
-            f"--raw-dir {DATA_DIR} --output {output_ht} --skip-download"
+            f"  hvantk reprocess clingen:gene-disease "
+            f"--raw-dir {DATA_DIR} --output {output_ht}"
         )
-        return
+        sys.exit(1)
     logger.info(f"Using ClinGen Hail Table at: {output_ht}")
 
-    # Step 2: Extract genesets per disease using ClinGenStreamer
+    # Step 2: Extract genesets per disease using ClinGenGeneDiseaseTableStreamer
     print("\n" + "=" * 70)
     print("Step 2: Extracting genesets per disease")
     print("=" * 70)
-    streamer = ClinGenStreamer(output_ht, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(output_ht, init_hail=False)
     streamer.setup()
 
     genesets_per_disease = streamer.get_geneset_per_disease()
@@ -211,7 +201,7 @@ def main():
     for genes in genesets_per_disease.values():
         total_genes.update(genes)
     print(f"Total unique genes: {len(total_genes)}")
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"  - {genesets_path}")
     print(f"  - {summary_path}")
     print(f"  - {class_path}")

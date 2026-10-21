@@ -289,13 +289,11 @@ class BurdenPipeline:
             )
         self.config = config
 
-        # Set up output paths (no Hail needed)
+        # Output paths (construction only -- no filesystem writes here, so
+        # building a pipeline for --dry-run / show_plan() touches no disk).
         self._output_dir = Path(config.output_dir)
         self._per_run_dir = self._output_dir / "per_run"
         self._plots_dir = self._output_dir / "plots"
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-        self._per_run_dir.mkdir(exist_ok=True)
-        self._plots_dir.mkdir(exist_ok=True)
 
         # Internal state (populated during run)
         self._mt: Any = None
@@ -397,6 +395,10 @@ class BurdenPipeline:
         logger.info("=" * 70)
         logger.info("BURDEN PIPELINE — START")
         logger.info("=" * 70)
+
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+        self._per_run_dir.mkdir(exist_ok=True)
+        self._plots_dir.mkdir(exist_ok=True)
 
         self._initialize_hail()
 
@@ -571,10 +573,10 @@ class BurdenPipeline:
         gene_sets_dict: Dict[str, List[str]],
     ) -> None:
         from hvantk.algorithms.enrichex.burden import (
+            apply_correction_and_flag_significance,
             permutation_burden_test,
             run_burden_analysis,
         )
-        from hvantk.algorithms.statistics.correction import apply_correction
 
         t_run = time.time()
 
@@ -617,23 +619,15 @@ class BurdenPipeline:
 
         df = result_ht.to_pandas()
 
-        # Coerce p_value to float (Hail may produce pandas NA)
-        df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
-
-        # Apply correction only to non-NaN p-values.
         # Use n_gene_sets_total so the correction accounts for all gene sets
         # that were candidates (before min_gene_set_size / min_carriers
         # filtering), matching R's p.adjust(p, method, n) behaviour.
-        valid_mask = df["p_value"].notna()
-        df["p_adjusted"] = float("nan")
-        if valid_mask.any():
-            p_adjusted = apply_correction(
-                df.loc[valid_mask, "p_value"].tolist(),
-                method=self.config.correction_method,
-                n_total=n_gene_sets_total,
-            )
-            df.loc[valid_mask, "p_adjusted"] = p_adjusted
-        df["significant"] = df["p_adjusted"] < self.config.alpha
+        df = apply_correction_and_flag_significance(
+            df,
+            correction=self.config.correction_method,
+            alpha=self.config.alpha,
+            n_total=n_gene_sets_total,
+        )
         df["variant_class"] = vc_name
         df["collection"] = coll_name
         df = df.sort_values("p_value")

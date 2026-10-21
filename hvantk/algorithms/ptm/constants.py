@@ -11,7 +11,10 @@ from hvantk.resources.ensembl_release import (  # noqa: F401
     ENSEMBL_RELEASE,
 )
 
-# PTM type categories (UniProt MOD_RES description prefixes)
+# PTM type categories (UniProt MOD_RES description prefixes). Glycosylation,
+# SUMOylation and ubiquitination are not mapped here: UniProt records those under the
+# CARBOHYD and CROSSLNK feature types, which the uniprot-ptm download never fetches (it
+# queries MOD_RES only), so a description prefix for them could never match.
 PTM_TYPE_CATEGORIES = {
     "Phosphoserine": "phosphorylation",
     "Phosphothreonine": "phosphorylation",
@@ -23,12 +26,6 @@ PTM_TYPE_CATEGORIES = {
     "Asymmetric dimethylarginine": "methylation",
     "Symmetric dimethylarginine": "methylation",
     "Omega-N-methylarginine": "methylation",
-    "N-linked (GlcNAc...) asparagine": "n_glycosylation",
-    "O-linked (GalNAc...) threonine": "o_glycosylation",
-    "O-linked (GalNAc...) serine": "o_glycosylation",
-    "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO)": "sumoylation",
-    "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO2)": "sumoylation",
-    "Glycyl lysine isopeptide (Lys-Gly)": "ubiquitination",
 }
 
 # Default flanking window sizes to test (in residues)

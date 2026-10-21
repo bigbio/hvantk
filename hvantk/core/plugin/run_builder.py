@@ -15,6 +15,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,108 @@ from hvantk.core.plugin.api import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: The directory of the hvantk package this process runs: a checkout, or the
+#: container image's own copy.
+_PACKAGE_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+#: containers/hvantk.def writes this into the image's own copy of the package; a
+#: checkout never has one (it is gitignored).
+_BUILD_STAMP = "_build_commit.txt"
+
+
+def _usable_commit(value: str | None) -> str | None:
+    """``value`` stripped, or None when it is empty, the def file's "unknown"
+    default, or a ``{{ ... }}`` template the container tool never substituted."""
+    value = (value or "").strip()
+    if not value or value == "unknown" or "{{" in value:
+        return None
+    return value
+
+
+def resolve_builder_commit() -> str:
+    """Identify the hvantk code this process runs, for a dataset's builder_commit.
+
+    The first usable answer wins:
+
+    1. git, when the running package directory is hvantk's *own* checkout --
+       confirmed by requiring the repository's toplevel to be the package
+       directory's parent, so a wheel install dropped into some unrelated
+       project's .venv does not record that project's HEAD. "-dirty" is appended
+       when the package's tracked files have uncommitted changes, since a bare
+       commit then misdescribes what ran.
+    2. The build stamp in the running package directory, which
+       containers/hvantk.def writes into the image's own copy: the commit the
+       image was built from. Only the running package's own stamp counts, so a
+       checkout run inside the image (through PYTHONPATH) never records the
+       image's commit.
+    3. The HVANTK_BUILDER_COMMIT environment variable. The image has no git, so
+       the hpc-hail-job templates pass the commit of the checkout they run.
+    4. ``hvantk <version>``.
+
+    Any failure falls through to the next source: a traceability nice-to-have
+    must never break a build.
+    """
+    package_dir = _PACKAGE_DIR
+    try:
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=package_dir,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        expected_root = os.path.realpath(os.path.dirname(package_dir))
+        actual_root = os.path.realpath(toplevel.stdout.strip())
+        if toplevel.returncode == 0 and actual_root == expected_root:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=package_dir,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            commit = result.stdout.strip()
+            if result.returncode == 0 and commit:
+                dirty = subprocess.run(
+                    [
+                        "git",
+                        "status",
+                        "--porcelain",
+                        "--untracked-files=no",
+                        "--",
+                        package_dir,
+                    ],
+                    cwd=package_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if dirty.returncode == 0 and dirty.stdout.strip():
+                    commit += "-dirty"
+                return commit
+    except Exception:
+        pass
+
+    try:
+        with open(os.path.join(package_dir, _BUILD_STAMP)) as fh:
+            stamped = _usable_commit(fh.read())
+    except OSError:
+        stamped = None
+    if stamped:
+        return stamped
+
+    env_commit = _usable_commit(os.environ.get("HVANTK_BUILDER_COMMIT"))
+    if env_commit:
+        return env_commit
+
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return f"hvantk {version('hvantk')}"
+    except PackageNotFoundError:
+        return "hvantk <unknown>"
 
 
 class BuilderContractError(RuntimeError):
@@ -84,7 +188,8 @@ def run_builder_for_spec(
         parsed_input: Whatever spec.parse_fn returned, or None if the plugin has none.
         output_path: Where to write the produced artifact.
         plugin_version: The plugin's declared version (from plugin.yaml top-level `version:`).
-        builder_commit: Optional hvantk commit/version string for traceability.
+        builder_commit: The hvantk commit or version to record; None (the default)
+            records what :func:`resolve_builder_commit` finds.
         **params: Additional kwargs forwarded to the builder.
 
     Returns:
@@ -132,7 +237,9 @@ def run_builder_for_spec(
         dataset=spec.name,
         plugin_version=plugin_version,
         source_fingerprint=fingerprint,
-        builder_commit=builder_commit,
+        builder_commit=(
+            builder_commit if builder_commit is not None else resolve_builder_commit()
+        ),
     )
 
     artifact = spec.builder(parsed_input, ctx, **params)
