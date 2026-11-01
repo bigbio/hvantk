@@ -1,19 +1,19 @@
 {
   "probe_version": 1,
-  "source_version": "2026.1.Mm",
+  "source_version": "2026.2.Mm",
   "headers": {
     "index.jsp": [
       "release_version"
     ]
   },
   "checksums": {
-    "index.jsp": "b8725e3ca29c67945c82c49e03948bd12a8d7dc41be8d57fc735c9f25f5a614c"
+    "index.jsp": "f9ea0732a8d123c8de9f56bbd7aad30a1580fa905ad585e21c763d1d2d606bec"
   },
-  "fetched_at": "2026-05-18T10:21:22.472826+00:00",
+  "fetched_at": "2026-11-01T12:22:11.346829+00:00",
   "extras": {
     "versions_found": [
-      "2026.1.Hs",
-      "2026.1.Mm"
+      "2026.2.Hs",
+      "2026.2.Mm"
     ]
   }
 }
