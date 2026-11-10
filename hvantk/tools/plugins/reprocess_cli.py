@@ -100,7 +100,9 @@ def _expected_extensions(spec):
     """
     at_name = getattr(getattr(spec, "artifact_type", None), "__name__", None)
     if at_name == "AnnotationTable":
-        return (".parquet",) if getattr(spec, "backend", None) == "pandas" else (".ht",)
+        native = ".parquet" if getattr(spec, "backend", None) == "pandas" else ".ht"
+        # .tsv.gz is an export (core/io.save only); the native format stays first
+        return (native, ".tsv.gz")
     if at_name == "VariantMatrix":
         return (".mt",)
     if at_name == "ExpressionMatrix":

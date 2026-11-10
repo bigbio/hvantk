@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **`AnnotationTable` exports as gzipped TSV.** `core.io.save` and `reprocess --output` accept
+  `.tsv.gz` for either backend: header in field order, rows sorted by key (every field for a
+  pandas table), arrays joined with `|`, missing as an empty cell, booleans `true`/`false`,
+  byte-identical across saves, and a cell holding a tab or newline is refused. Save only;
+  `load` refuses `.tsv.gz`. `.ht` and `.parquet` are unchanged.
+
 ### Changed
 
 - **The documentation was checked against the code and reorganised.** Every page in

@@ -257,7 +257,7 @@ Every data product is one of four dataset types in
 
 | Dataset type | Backends | On-disk format | Used for |
 |---|---|---|---|
-| `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
+| `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` (also exports to `.tsv.gz`) | variants, gene-disease pairs, eQTLs, PTM sites |
 | `ExpressionMatrix` | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
 | `VariantMatrix` | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |

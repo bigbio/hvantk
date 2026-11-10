@@ -3,6 +3,7 @@
 Dispatch:
   *.parquet            -> AnnotationTable (pandas backend)
   *.ht/                -> AnnotationTable (hail backend)
+  *.tsv.gz             -> AnnotationTable, save only (export; load refuses it)
   *.h5ad               -> ExpressionMatrix (anndata backend)
   *.mt/                -> VariantMatrix
   *.geneset.json       -> GeneSet
@@ -26,6 +27,7 @@ from hvantk.core.io._formats import (
     load_variant_matrix_mt,
     save_annotation_table_ht,
     save_annotation_table_parquet,
+    save_annotation_table_tsv,
     save_expression_matrix_h5ad,
     save_gene_set_json,
     save_variant_matrix_mt,
@@ -44,6 +46,8 @@ def save(artifact: Any, path: str | Path) -> None:
             save_annotation_table_parquet(artifact, path)
         elif path.suffix == ".ht" or path.name.endswith(".ht/"):
             save_annotation_table_ht(artifact, path)
+        elif path.name.endswith(".tsv.gz"):
+            save_annotation_table_tsv(artifact, path)
         else:
             raise ArtifactTypeError(
                 f"AnnotationTable save: unrecognized extension for {path}"
@@ -94,6 +98,11 @@ def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
         raise SchemaIdMismatchError(
             f"schema_id mismatch at {path}: manifest has {provenance.schema_id!r}, "
             f"caller expected {expected_schema_id!r}"
+        )
+    if path.name.endswith(".tsv.gz"):
+        raise ArtifactTypeError(
+            f"load: {path} is a TSV export; .tsv.gz is an export format and "
+            "cannot be loaded back (load the .parquet or .ht it came from)"
         )
     if path.name.endswith(".geneset.json"):
         return load_gene_set_json(path, provenance)

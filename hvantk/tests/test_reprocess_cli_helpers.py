@@ -22,9 +22,13 @@ def test_expected_extensions_keys_on_artifact_type():
 
     # artifact_type is authoritative — distinguishes a hail AnnotationTable (.ht)
     # from a hail VariantMatrix (.mt), which backend alone cannot.
-    assert _expected_extensions(_fake_spec("hail", "AnnotationTable")) == (".ht",)
+    assert _expected_extensions(_fake_spec("hail", "AnnotationTable")) == (
+        ".ht",
+        ".tsv.gz",
+    )
     assert _expected_extensions(_fake_spec("pandas", "AnnotationTable")) == (
         ".parquet",
+        ".tsv.gz",
     )
     assert _expected_extensions(_fake_spec("hail", "VariantMatrix")) == (".mt",)
     assert _expected_extensions(_fake_spec("anndata", "ExpressionMatrix")) == (".h5ad",)
