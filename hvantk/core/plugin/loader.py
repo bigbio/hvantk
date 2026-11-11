@@ -234,6 +234,15 @@ class PluginRegistry:
     def get_provider(self, name: str) -> Provider:
         return self._providers[name]
 
+    def get_manifest(self, name: str) -> DatasetManifest:
+        """Return the descriptive manifest of one dataset (no callables resolved)."""
+        if name not in self._manifests:
+            raise KeyError(
+                f"unknown dataset {name!r}; known datasets: "
+                + ", ".join(sorted(self._manifests))
+            )
+        return self._manifests[name]
+
     def get_dataset(self, name: str) -> DatasetSpec:
         """Return the executable spec, resolving callables lazily on first call.
 
@@ -573,6 +582,10 @@ class PluginRegistry:
             has_download_fn="download" in lifecycle,
             has_parse_fn="parse" in lifecycle,
             acquisition=_acquisition_of(ds_manifest, lifecycle, compound),
+            score_provenance={
+                score: tuple(decl["trained_on"])
+                for score, decl in (ds_manifest.get("scores") or {}).items()
+            },
         )
 
     def _resolve_spec(self, dm: DatasetManifest) -> DatasetSpec:
