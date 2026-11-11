@@ -15,6 +15,8 @@ import logging
 
 import click
 
+from hvantk.tools._cli_utils import parse_named_paths
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,21 +139,7 @@ def _parse_prepared_option(values: tuple[str, ...]) -> dict[str, str]:
 
     Pure Python -- no Hail, no spec -- so it is unit-testable without a Hail session.
     """
-    prepared_paths: dict[str, str] = {}
-    for value in values:
-        axis, sep, path = value.partition("=")
-        axis, path = axis.strip(), path.strip()
-        if not sep or not axis or not path:
-            raise click.UsageError(
-                f"--prepared value {value!r} is malformed; expected axis=path"
-            )
-        if axis in prepared_paths:
-            raise click.UsageError(
-                f"--prepared given twice for axis {axis!r} "
-                f"({prepared_paths[axis]!r} then {path!r}); pass each axis once"
-            )
-        prepared_paths[axis] = path
-    return prepared_paths
+    return parse_named_paths(values, "--prepared")
 
 
 def _validate_prepared_axes(spec, prepared_paths: dict[str, str]) -> None:

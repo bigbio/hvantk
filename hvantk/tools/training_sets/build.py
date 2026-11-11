@@ -364,7 +364,8 @@ def write_training_set(result: TrainingSetResult, prefix: str) -> dict[str, str]
     export of :func:`hvantk.core.io.save`. The intermediate table is removed afterwards.
     Returns the written paths by kind.
     """
-    from hvantk.core.io import save_native
+    from hvantk.core.io import save
+    from hvantk.core.models.annotation_table import AnnotationTable
 
     paths = {
         "table": f"{prefix}.ht",
@@ -373,9 +374,15 @@ def write_training_set(result: TrainingSetResult, prefix: str) -> dict[str, str]
         "manifest": f"{prefix}.manifest.json",
     }
     Path(prefix).parent.mkdir(parents=True, exist_ok=True)
-    save_native(result.table, paths["table"], provenance=result.provenance)
-    save_native(
-        hl.read_table(paths["table"]), paths["tsv"], provenance=result.provenance
+    save(
+        AnnotationTable.from_hail(result.table, provenance=result.provenance),
+        paths["table"],
+    )
+    save(
+        AnnotationTable.from_hail(
+            hl.read_table(paths["table"]), provenance=result.provenance
+        ),
+        paths["tsv"],
     )
     result.dictionary.to_csv(
         paths["dictionary"], sep="\t", index=False, lineterminator="\n"

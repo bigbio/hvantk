@@ -1,0 +1,24 @@
+api_version: 1
+name: training-set
+domain: annotation
+type: command_group
+description: Build ML training datasets (labelled, tiered feature tables).
+cli:
+  module: hvantk.tools.training_sets.training_set_cli
+  function: training_set_group
+purpose:
+  short: Turn ClinVar labels, variant scores and the gene annotation matrix into an ML dataset.
+  long: |
+    `hvantk training-set build` labels ClinVar variants 1/0 from the primary classification
+    (with review stars), joins the variant-level columns a feature spec declares (dbNSFP
+    rankscores and allele frequencies, interval and codon flags), assigns each variant a
+    gene and takes that gene's columns from an `annotate compose` matrix built from the same
+    spec. Every feature column gets a leakage tier (L1-L4) derived from declared training
+    provenance. Writes a Hail table, a deterministic gzipped TSV, a feature dictionary and a
+    manifest.
+subcommands:
+  - name: build
+    description: Build a labelled, tiered training dataset from a feature spec
+requires:
+  hail: true
+  network: false
