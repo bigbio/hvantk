@@ -38,14 +38,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      # Hail needs Java 11. ubuntu-latest moved to 26.04 (2026-10), whose default JDK
-      # is not 11, so the Spark-backed tests in the default selection died with
-      # JAVA_GATEWAY_EXITED; pin the JDK instead of relying on the runner image.
-      - name: Set up Java 11
+      # Pin the JDK instead of relying on the runner image: on ubuntu-26.04 (ubuntu-latest
+      # since 2026-10) the default JDK broke the Spark-backed tests in the default
+      # selection with JAVA_GATEWAY_EXITED. 17, not 11: requirements.txt floats hail, and
+      # on Python 3.12 pip resolves hail 0.2.140 with pyspark 4.1, which needs Java 17;
+      # 3.10/3.11 resolve hail 0.2.139 with pyspark 3.5, which also runs on 17 (the
+      # ubuntu-24.04 default these jobs were green on). The conda jobs pin hail and
+      # openjdk=11 through environment.yml instead.
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
