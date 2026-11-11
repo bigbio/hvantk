@@ -53,9 +53,12 @@ class TierInput:
 def resolve_tiers(
     inputs: Sequence[TierInput],
     label_sources: Iterable[str],
-    equivalence: Mapping[str, list[str]] = DEFAULT_EQUIVALENCE,
+    equivalence: Mapping[str, list[str]] | None = None,
 ) -> dict[str, str | None]:
     """Return column -> tier (``"L1"``..``"L4"``), or ``None`` for an excluded column.
+
+    ``equivalence`` groups label sources into classes (default
+    :data:`~hvantk.algorithms.rerank.provenance.DEFAULT_EQUIVALENCE`).
 
     Raises
     ------
@@ -73,6 +76,8 @@ def resolve_tiers(
     declared_sources = {
         item.column: item.trained_on for item in inputs if item.trained_on is not None
     }
+    if equivalence is None:
+        equivalence = DEFAULT_EQUIVALENCE
     conflicted = set(
         resolve_arms(declared_sources, frozenset(label_sources), equivalence).conflicted
     )

@@ -61,8 +61,8 @@ hvantk training-set build --spec clinvar_heart.yaml \
     --output out/clinvar_heart
 ```
 
-`--legacy-names columns.tsv` takes a two-column TSV with the header
-`column	legacy_name`. It fills the dictionary's `legacy_name` column, for mapping to an
+`--legacy-names columns.tsv` takes a two-column TSV whose header row is `column` and
+`legacy_name`, separated by a tab. It fills the dictionary's `legacy_name` column, for mapping to an
 older dataset's column names.
 
 ## Outputs

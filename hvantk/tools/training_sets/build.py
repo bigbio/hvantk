@@ -125,6 +125,10 @@ def build_training_set(
         Per input name, the input's provenance (``None`` when it has none).
     checkpoint
         Where the intermediate table is written (removed by :func:`write_training_set`).
+    spec_sha256
+        Hash of the spec file, recorded in the manifest and the output's provenance.
+    legacy_names
+        Optional column -> legacy name map for the dictionary's ``legacy_name``.
 
     Raises
     ------
