@@ -27,13 +27,15 @@ Format
   struct or dict.
 
 Neither backend materialises the table a second time: a hail table is sorted and
-JSON-encoded by Hail into a temporary text file that is streamed back row by row, and
-the output is written to ``<path>.partial`` and renamed into place only once complete.
+JSON-encoded by Hail into a temporary UTF-8 text file that is streamed back row by
+row, and the output is written to ``<path>.partial`` and renamed into place only once
+complete.
 """
 
 from __future__ import annotations
 
 import gzip
+import io
 import json
 import math
 import numbers
@@ -277,7 +279,9 @@ def _hail_rows(
     """Stream the JSON-encoded export back as rendered rows, in Hail's order."""
     import hail as hl
 
-    with hl.hadoop_open(tmp, "r") as fh:
+    # Hail writes the export as UTF-8 but its text mode decodes ISO-8859-1, which
+    # double-encodes every non-ASCII character ("RORα" became "RORÎ±").
+    with io.TextIOWrapper(hl.hadoop_open(tmp, "rb"), encoding="utf-8") as fh:
         for line in fh:
             values = [json.loads(t) for t in line.rstrip("\n").split("\t")]
             for j, kind in enumerate(kinds):

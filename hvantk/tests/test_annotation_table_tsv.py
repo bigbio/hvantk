@@ -207,7 +207,7 @@ def test_tsv_hail_table_sorts_loci_genomically_without_to_pandas(tmp_path, monke
         ),
         row("chr1", 1000000, ["G", "C"], [], float("nan"), None, 2**60 + 1),
         row("chr1", 20, ["C", "G"], None, None, 1.5, None),
-        row("chr2", 7, ["T", "A"], ["50%", "x"], 1e-5, 0.25, 3),
+        row("chr2", 7, ["T", "A"], ["50%", "RORα"], 1e-5, 0.25, 3),
     ]
     ht = hl.Table.parallelize(
         rows, schema=schema, key=["locus", "alleles"], n_partitions=2
@@ -218,13 +218,15 @@ def test_tsv_hail_table_sorts_loci_genomically_without_to_pandas(tmp_path, monke
     core_io.save(ann, second)
     assert first.read_bytes() == second.read_bytes()
     # genomic order (not chr1:1000000 < chr1:20 < chr10 < chr2); "|" and "%"
-    # percent-encoded inside an element; NaN empty; float32 at float32 precision;
-    # the struct flattened to info.n with every digit of an int64 kept; the array of
-    # structs split into lnk.name / lnk.url arrays whose elements line up
+    # percent-encoded inside an element; non-ASCII text kept as UTF-8 (Hail's
+    # text mode reads ISO-8859-1, which wrote "RORα" as "RORÎ±"); NaN empty;
+    # float32 at float32 precision; the struct flattened to info.n with every digit
+    # of an int64 kept; the array of structs split into lnk.name / lnk.url arrays
+    # whose elements line up
     assert _text(first) == (
         "locus\talleles\tmc\taf\tf32\tinfo.n\tlnk.name\tlnk.url\n"
         "chr1:20\tC|G\t\t\t1.5\t\t\t\n"
         "chr1:1000000\tG|C\t\t\t\t1152921504606846977\t\t\n"
-        "chr2:7\tT|A\t50%25|x\t1e-05\t0.25\t3\t\t\n"
+        "chr2:7\tT|A\t50%25|RORα\t1e-05\t0.25\t3\t\t\n"
         "chr10:5\tA|T\tSO:1%7Csyn\t0.5\t0.1\t1\ta|b\tu%7C1|\n"
     )
