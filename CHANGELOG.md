@@ -5,13 +5,17 @@
 ### Added
 
 - **`AnnotationTable` exports as gzipped TSV.** `core.io.save` and `reprocess --output` accept
-  `.tsv.gz` for either backend: header in field order, rows sorted by the key fields and then
-  the remaining fields (every field for a pandas table), arrays joined with `|`, booleans
-  `true`/`false`, byte-identical across saves. A cell holding a tab, newline or carriage return
-  is refused, and so is an array element containing `|`, a nested array, or a struct or dict
-  value (alone or in an array; `hgnc:lookup`'s `lsdb` is one, so select the fields to export).
-  An empty array, a missing value and `[""]` all write an empty cell. Save only; `load` refuses
-  `.tsv.gz`. `.ht` and `.parquet` are unchanged.
+  `.tsv.gz` for either backend: header in field order (structs flattened to `a.b`; in a hail
+  table an array of structs becomes one aligned array column per struct field, so
+  `hgnc:lookup`'s `lsdb` is written as `lsdb.name` and `lsdb.url`), rows sorted by the key
+  fields and then the remaining fields (loci in genomic order; every field for a pandas table),
+  byte-identical across saves. A hail table is sorted and encoded by Hail and
+  streamed to the file, never collected through `to_pandas()`. Arrays are joined with `|`, and
+  inside an element `%` and `|` are percent-encoded (`%25`, `%7C`); booleans are `true`/`false`,
+  float32 keeps float32 precision, missing values and NaN are empty cells. Nothing is quoted. A
+  tab, newline or carriage return in a value or field name, a dict or struct value, or an array
+  nested in an array is refused before anything is written. Save only; `load` refuses `.tsv.gz`.
+  `.ht` and `.parquet` are unchanged. (#482)
 
 ### Changed
 
