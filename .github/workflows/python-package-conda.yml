@@ -142,7 +142,7 @@ jobs:
       # explicitly and build the environment from environment.yml; the job's login shell
       # (defaults.run.shell) activates it for every later step.
       - name: Set up conda from environment.yml
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3.3.0
         with:
           miniforge-version: latest
           activate-environment: hvantk
@@ -201,7 +201,7 @@ jobs:
       # explicitly and build the environment from environment.yml; the job's login shell
       # (defaults.run.shell) activates it for every later step.
       - name: Set up conda from environment.yml
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3.3.0
         with:
           miniforge-version: latest
           activate-environment: hvantk
@@ -258,7 +258,7 @@ jobs:
       # explicitly and build the environment from environment.yml; the job's login shell
       # (defaults.run.shell) activates it for every later step.
       - name: Set up conda from environment.yml
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3.3.0
         with:
           miniforge-version: latest
           activate-environment: hvantk
