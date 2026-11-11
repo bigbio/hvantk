@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "hvantk feature spec",
-  "description": "Declares the per-source feature entries composed into a per-gene matrix.",
+  "description": "Declares the per-source feature entries composed into a per-gene matrix and, for an ML training set, the label, variant and gene sections.",
   "type": "object",
   "required": [
     "name",
@@ -36,6 +36,32 @@
             "type": "string"
           },
           "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "label": {
+      "$ref": "#/$defs/labelSpec"
+    },
+    "variant": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/variantSource"
+      }
+    },
+    "gene": {
+      "$ref": "#/$defs/geneSpec"
+    },
+    "gene_lists": {
+      "type": "object",
+      "description": "Boolean gene-membership columns; each gets its gene list from `training-set build --gene-list <column>=<file>`.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
             "type": "string"
           }
         }
@@ -104,6 +130,9 @@
             "mean",
             "sum"
           ]
+        },
+        "tier": {
+          "$ref": "#/$defs/tier"
         }
       },
       "if": {
@@ -271,6 +300,180 @@
                     }
                   ]
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+      ],
+      "description": "Leakage tier: L1 no label exposure, L2 trained on the label's sources, L3 population-AF trained or constraint, L4 an allele frequency or a score taking one as input."
+    },
+    "labelSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "source",
+        "provenance",
+        "pathogenic",
+        "benign"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Sources the label derives from (e.g. [ClinVar]); a column trained on any of them is L2."
+        },
+        "pathogenic": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "benign": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "min_review_stars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "consequence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snv_only": {
+          "type": "boolean"
+        }
+      }
+    },
+    "variantColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "cast": {
+          "type": "string",
+          "enum": [
+            "float64"
+          ]
+        },
+        "reduce": {
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        "tier": {
+          "$ref": "#/$defs/tier"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "variantSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "source",
+        "join",
+        "columns"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "join": {
+          "type": "string",
+          "enum": [
+            "allele",
+            "interval",
+            "codon"
+          ]
+        },
+        "gene_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "columns": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/variantColumn"
+          }
+        }
+      }
+    },
+    "geneSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hgnc_input"
+      ],
+      "properties": {
+        "hgnc_input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spine_columns": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tier"
+            ],
+            "properties": {
+              "tier": {
+                "$ref": "#/$defs/tier"
+              },
+              "description": {
+                "type": "string"
               }
             }
           }
