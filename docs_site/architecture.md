@@ -42,8 +42,7 @@ hvantk/
 ├── core/                     # L1: shared infrastructure (no domain logic)
 │   ├── config.py                 # Configuration management
 │   ├── io/                       # Dataset load/save (Hail, AnnData) + load_native/save_native
-│   │   ├── anndata_io.py            # AnnData on-disk I/O
-│   │   └── legacy_artifacts.py      # Legacy loader for pre-plugin Hail Tables
+│   │   └── anndata_io.py            # AnnData on-disk I/O
 │   ├── tool/                     # Tool-manifest system (hvantk tools list/describe; metadata only)
 │   │   ├── api.py                   # Stable tool contracts
 │   │   └── loader.py                # Tool manifest discovery
@@ -125,7 +124,7 @@ hvantk/
 │   ├── infra/                     # Installation check, BGZF validation, utils
 │   ├── hgc/                       # HGC CLI subcommands
 │   ├── genesets/                  # Gene set extraction/preparation
-│   ├── training_sets/             # Training-set construction (library; no CLI command yet)
+│   ├── training_sets/             # hvantk training-set build (ML training datasets)
 │   ├── ancestry/                  # Ancestry CLI subcommands
 │   ├── annotation/                # Annotation CLI subcommands
 │   ├── cohort/                    # Cohort validate / burden / attach
@@ -185,7 +184,7 @@ Top-level CLI command implementations.
   `hvantk tools list/describe/errors/validate`
 - `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
 - `genesets/` - Gene set extraction/preparation
-- `training_sets/` - Training-set construction (library only; no CLI command yet)
+- `training_sets/` - `hvantk training-set build`: labelled, tiered ML training datasets
 - `ancestry/`, `annotation/`, `cohort/`, `enrichex/`, `expression/`, `ptm/`, `qtl/`, `rerank/` -
   Per-pipeline CLI subcommands
 - `infra/` - Installation check, BGZF validation, utils

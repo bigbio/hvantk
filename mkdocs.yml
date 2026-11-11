@@ -76,6 +76,7 @@ nav:
     - HGC (joint genotyping): tools/hgc.md
     - Ancestry inference: tools/ancestry.md
     - Gene annotation matrix: tools/annotate.md
+    - ML training sets: tools/training-set.md
     - External cohorts: tools/cohort.md
     - Re-rank: tools/rerank.md
     - EnrichEx (enrichment and burden): tools/enrichex.md

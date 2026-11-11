@@ -16,9 +16,33 @@
   tab, newline or carriage return in a value or field name, a dict or struct value, or an array
   nested in an array is refused before anything is written. Save only; `load` refuses `.tsv.gz`.
   `.ht` and `.parquet` are unchanged. (#482)
+- **`hvantk training-set build`: ML training datasets.** One feature spec declares a
+  labelled dataset: ClinVar missense SNVs labelled 1/0 from the primary CLNSIG with review
+  stars, variant columns from allele-keyed sources (dbNSFP rankscores and allele
+  frequencies), interval and codon flags (INSIDER interfaces, UniProt PTM sites), a gene
+  chosen per variant, gene columns from the `annotate compose` matrix built from the same
+  spec, and gene-list flags. Every feature column gets a leakage tier (L1-L4) derived from
+  the plugins' `trained_on` declarations and the spec's `tier:` declarations; a column with
+  neither is left out and listed in the manifest. Writes `<prefix>.ht`, a deterministic
+  `<prefix>.tsv.gz`, a feature dictionary and a manifest. `examples/training_sets/` builds a
+  ClinVar x heart dataset.
+- **Feature spec: training-set sections.** `label`, `variant`, `gene`, `gene_lists`, and a
+  `tier` per `layer1` axis; all optional, so existing specs are unchanged.
+- **Matrix sources keyed by Ensembl id.** An `annotate prepare` matrix entry may declare
+  `key: gene_id` (version suffixes dropped, no `--hgnc` needed) as well as `key: symbol`.
+- **Declared training provenance in Python.** `DatasetManifest.score_provenance` carries a
+  plugin's `scores: trained_on` block; `PluginRegistry.get_manifest` returns one dataset's
+  manifest.
 
 ### Changed
 
+- **ClinVar training labels are 1/0 with review stars.** `label_training_set` (and the new
+  `label_clinvar_variants`) label missense SNVs 1 or 0 from the primary CLNSIG (the text
+  before the first `|`), add `clinvar_review_stars` from the comma-re-joined CLNREVSTAT,
+  and keep the GENEINFO genes in order. The `rf_label` TP/TN column and the `gene_set`,
+  `disease_terms` and `label_column` options are gone with the builder they served;
+  `ptm constraint --label-field` still reads a TP/TN column (its page shows how to derive
+  it).
 - **The documentation was checked against the code and reorganised.** Every page in
   `docs_site/`, the README, the example READMEs and the per-provider and workflow
   `SKILL.md` files were verified against the code: commands, options, defaults, outputs,
@@ -80,6 +104,11 @@
   imported by no command. They will be removed in the next release (#479).
 
 ### Removed
+
+- The library-only training-set path: `TrainingSetBuilder`, `build_clinvar_training_set`,
+  the annotators in `algorithms/annotation/annotator.py` (with their hand-weighted
+  composite scores) and `core/io/legacy_artifacts.py`, which read pre-plugin tables by
+  path. `hvantk training-set build` replaces them.
 
 Options and fields that were accepted but did nothing:
 

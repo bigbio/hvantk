@@ -35,7 +35,7 @@ turn, have no page on this site:
 | Example | What it runs | Needs |
 |---------|--------------|-------|
 | [1k_genome](https://github.com/bigbio/hvantk/tree/main/examples/1k_genome) | Building a Hail MatrixTable from 1000 Genomes NYGC high-coverage data, for use as an ancestry reference panel | Hail/Spark; large download |
-| [training_sets](https://github.com/bigbio/hvantk/tree/main/examples/training_sets) | Composing a pre-built ClinVar table with algorithm-level annotators (prediction scores, expression, constraint, population frequency) into an enhanced training set | Hail/Spark; a pre-built ClinVar table (`hvantk reprocess clinvar:variants`); has no `README.md` of its own |
+| [training_sets](https://github.com/bigbio/hvantk/tree/main/examples/training_sets) | A ClinVar x heart ML training set: the feature spec and the commands that build it with `hvantk training-set build` | Hail/Spark; built ClinVar, dbNSFP, INSIDER, UniProt PTM and HGNC tables, the gene spine and the expression summaries |
 
 Note that the runnable examples need more than the base install:
 
