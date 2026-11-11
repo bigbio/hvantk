@@ -1,8 +1,9 @@
-"""Reduce an expression summary (groups x genes) to a symbol-keyed per-gene feature table.
+"""Reduce an expression summary (groups x genes) to a per-gene feature table keyed by gene id.
 
 Layering: pandas/numpy/anndata + stdlib only, plus sibling ``hvantk.algorithms`` modules; never
 ``hvantk.skills``/``hvantk.tools``. The atlas arrives as data (an AnnData handed in by the caller).
-The reduced table then rides the existing ``key: symbol`` path onto the spine.
+The reduced table then rides the existing ``key: symbol`` or ``key: gene_id`` path onto
+the spine.
 
 The per-group means this reducer consumes are produced by ``scanpy.get.aggregate`` (wrapped in
 ``hvantk.algorithms.expression.matrix_utils.summarize``) -- i.e. the pseudobulk aggregation is a
@@ -61,10 +62,11 @@ def _layer_genes_by_group(adata, name, keep_idx, groups):
     )
 
 
-def reduce_matrix_to_gene(adata, mspec):
-    """Reduce a summary AnnData to a symbol-keyed per-gene feature table.
+def reduce_matrix_to_gene(adata, mspec, *, id_column="symbol"):
+    """Reduce a summary AnnData to a per-gene feature table keyed by the atlas's gene ids.
 
-    Returns a DataFrame with a ``symbol`` column and the feature columns, one row per gene.
+    Returns a DataFrame with an ``id_column`` column (the atlas's ``var`` index: symbols or
+    Ensembl gene ids) and the feature columns, one row per gene.
     """
     import pandas as pd
 
@@ -151,7 +153,7 @@ def reduce_matrix_to_gene(adata, mspec):
             cols[key] = combined
 
     out = pd.DataFrame(cols)
-    out.index.name = "symbol"
+    out.index.name = id_column
     out = out.groupby(
         level=0
     ).max()  # one row per gene; duplicate symbols collapse to max

@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 # advertises it. Keep the three in step -- they drifted once already.
 _GENE_KEY_SPACES = ("gene_id", "hgnc_id", "symbol", "uniprot_id")
 
+# Name of the gene-id column of a reduced matrix, whichever key space it holds.
+_MATRIX_ID = "_source_key"
+
 
 def _collapse_reducers():
     """Reductions available to a spec's ``collapse:`` key, built lazily (needs Hail).
@@ -206,9 +209,10 @@ def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
     """Reduce an expression-matrix AnnData to per-gene features, then reconcile onto the spine.
 
     ``entry.matrix`` declares the reduction (group axis, per-group stats, EWCE specificity). The
-    reduced table is symbol-keyed; it rides the existing symbol resolve step onto gene_id, then
-    collapses symbol-collisions (two symbols -> one gene) by max rather than raising, because a
-    matrix is a matrix->gene reduction (see :func:`_collapse_matrix_onto_gene_id`).
+    reduced table is keyed by the atlas's gene ids -- symbols (``key: symbol``, resolved through
+    HGNC) or Ensembl gene ids (``key: gene_id``, version suffix dropped) -- then mapped onto
+    gene_id, collapsing collisions (two source ids -> one gene) by max rather than raising,
+    because a matrix is a matrix->gene reduction (see :func:`_collapse_matrix_onto_gene_id`).
     """
     import hail as hl
 
@@ -218,21 +222,28 @@ def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
         raise ValueError(
             f"entry {entry.source!r} prepared as matrix but has no matrix block"
         )
-    if hgnc is None:
+    if entry.key != "gene_id" and hgnc is None:
         raise ValueError(
             f"entry {entry.source!r} is a symbol-keyed matrix source; needs the HGNC streamer"
         )
 
+    # The id column is named apart from both key spaces: a table keyed `gene_id` could
+    # not be annotated with the resolved `gene_id` further down.
     df = matrix_mod.reduce_matrix_to_gene(
-        matrix_ad, entry.matrix
-    )  # 'symbol' + feature cols
+        matrix_ad, entry.matrix, id_column=_MATRIX_ID
+    )  # _MATRIX_ID + feature cols
+    if entry.key == "gene_id":
+        # Atlases often carry versioned Ensembl ids (ENSG...15); the spine does not.
+        df[_MATRIX_ID] = df[_MATRIX_ID].astype(str).str.replace(
+            r"\.\d+$", "", regex=True
+        )
     # A matrix source's column set is decided at RUNTIME by the atlas's groups -- with
     # specificity emit="vector" (the default) there is one column per surviving group,
     # whose names come from _san() over labels the spec author cannot enumerate ahead of
     # time. So carry everything the reducer produced, rather than the static
     # entry.columns: restricting to the declared list here silently dropped the whole
     # vector on the floor, leaving emit="vector" a no-op through the real pipeline.
-    produced = [c for c in df.columns if c != "symbol"]
+    produced = [c for c in df.columns if c != _MATRIX_ID]
     # entry.columns stays meaningful as an assertion: whatever the spec explicitly names
     # MUST be produced. That catches a typo, a renamed group, or an atlas swapped under
     # the spec -- all of which would otherwise surface as a silently absent feature.
@@ -243,13 +254,13 @@ def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
             f"reducer did not produce; it emitted {produced}. Check the spec's "
             f"specificity.name / stats against the atlas's group labels"
         )
-    grouped = hl.Table.from_pandas(df, key=["symbol"])
+    grouped = hl.Table.from_pandas(df, key=[_MATRIX_ID])
     mapper = GeneIdMapper(hgnc, set(spine_gene_ids))
     resolved, report = _resolve_to_gene_id(
-        grouped.symbol.collect(), "symbol", entry.source, mapper
+        grouped[_MATRIX_ID].collect(), entry.key, entry.source, mapper
     )
     prepared = _collapse_matrix_onto_gene_id(
-        grouped, "symbol", resolved, produced, entry.source
+        grouped, _MATRIX_ID, resolved, produced, entry.source
     )
     logger.info(report.summary())
     return prepared, report

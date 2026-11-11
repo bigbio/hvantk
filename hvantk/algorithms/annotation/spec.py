@@ -207,8 +207,8 @@ def load_spec(path: str | Path) -> FeatureSpec:
     ValueError
         If two layer1 entries share an axis label, an entry's ``key`` and ``aggregate``
         presence disagree (``key == "variant"`` requires ``aggregate`` and vice versa), or an
-        entry has a ``matrix`` block with ``key`` other than ``"symbol"`` (the reduced table
-        the matrix reducer produces is symbol-keyed).
+        entry has a ``matrix`` block with ``key`` other than ``"symbol"`` or ``"gene_id"``
+        (the reduced table is keyed by the atlas's gene identifiers).
     """
     doc = yaml.safe_load(Path(path).read_text())
     jsonschema.validate(doc, _schema())  # raises ValidationError on failure
@@ -240,10 +240,11 @@ def load_spec(path: str | Path) -> FeatureSpec:
                 f"entry {e.source!r}: key 'variant' requires an aggregate block and vice versa"
             )
     for e in entries:
-        if e.matrix is not None and e.key != "symbol":
+        if e.matrix is not None and e.key not in ("symbol", "gene_id"):
             raise ValueError(
                 f"entry {e.source!r} has a matrix block, which requires key: symbol "
-                f"(the reduced table is symbol-keyed); got key {e.key!r}"
+                f"or key: gene_id (the atlas's genes are keyed by symbol or by "
+                f"Ensembl gene id); got key {e.key!r}"
             )
     # Matrix vector columns are named {atlas}_{sanitized_group} with no axis component
     # (matrix.reduce_matrix_to_gene), so two matrix entries over the SAME atlas emit the

@@ -118,8 +118,9 @@ own:
   the aggregated id the rest of the way onto `gene_id`.
 - `key: variant` aggregating straight to `gene_id`, or a plain `key: gene_id` entry --
   does not need it.
-- A `matrix` block (expression-atlas-shaped sources) is always `key: symbol` (the schema
-  enforces this when loading the spec), so it always needs `--hgnc`.
+- A `matrix` block (expression-atlas-shaped sources) is `key: symbol` or `key: gene_id`
+  (enforced when loading the spec): `key: symbol` needs `--hgnc`; `key: gene_id` (an atlas
+  whose genes are Ensembl ids, version suffixes dropped) does not.
 
 `hvantk annotate prepare --help` states the rule in its own words; the logic lives in
 `needs_hgnc` in `hvantk/tools/annotation/annotate_cli.py`.
@@ -140,7 +141,7 @@ Two keys are functional: `name` and `layer1` (a non-empty list). Each `layer1` e
 | `collapse` | no | One of `max`, `min`, `mean`, `sum`. Required whenever a source maps many-to-one onto a `gene_id` (e.g. several UniProt accessions for one gene); omitting it is an error, not a silent drop. |
 | `origin`, `ablate_separately` | no | Accepted by the schema and stored on the parsed entry; nothing in `prepare` or `compose` currently reads either one. |
 | `aggregate` | required iff `key: variant` | See below. |
-| `matrix` | only for an expression-atlas-shaped source | Requires `key: symbol`. `group_axis`, `atlas` required; `tissue_tag`, `stats` (`mean`/`fraction_expressed`/`frac`), `drop_groups`, `specificity` optional. |
+| `matrix` | only for an expression-atlas-shaped source | Requires `key: symbol` or `key: gene_id`. `group_axis`, `atlas` required; `tissue_tag`, `stats` (`mean`/`fraction_expressed`/`frac`), `drop_groups`, `specificity` optional. |
 
 A `variant` entry's `aggregate` block (`by`, `to`, `scores` required): groups rows by
 `by` (a `;`-delimited gene-string column, dbNSFP's shape -- a single value still works),
