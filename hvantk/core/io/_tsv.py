@@ -282,8 +282,12 @@ def _local_export(tmp: str, workdir: str) -> str:
     0.2 MB/s (an hour for a 210,000 x 312 table) and could stall for good.
     """
     parsed = urllib.parse.urlparse(tmp)
-    if parsed.scheme in ("", "file"):
-        return parsed.path if parsed.scheme else tmp
+    if parsed.scheme == "file":
+        return parsed.path
+    # A path with no scheme is resolved by Hadoop's default filesystem, which is HDFS on
+    # some clusters: it is local only if it is actually on this disk.
+    if parsed.scheme == "" and os.path.exists(tmp):
+        return tmp
     import hail as hl
 
     local = os.path.join(workdir, "export.tsv")

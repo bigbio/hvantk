@@ -162,20 +162,22 @@ def build_cmd(
     from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
     from hvantk.tools.training_sets.build import build_training_set, write_training_set
 
+    # Declared training provenance of every source whose columns are scores: the variant
+    # sources and the layer1 axes that aggregate per-variant scores (key: variant).
     registry = get_registry()
+    scored = [v.source for v in spec.variant]
+    scored += [e.source for e in spec.layer1 if e.aggregate is not None]
     score_provenance = {}
-    for v in spec.variant:
+    for source in dict.fromkeys(scored):
         try:
-            score_provenance[v.source] = registry.get_manifest(
-                v.source
-            ).score_provenance
+            score_provenance[source] = registry.get_manifest(source).score_provenance
         except KeyError:
             logger.warning(
-                "variant source %r is not a registered dataset; its columns need a "
-                "tier in the spec",
-                v.source,
+                "source %r is not a registered dataset; its columns need a tier in "
+                "the spec",
+                source,
             )
-            score_provenance[v.source] = {}
+            score_provenance[source] = {}
     input_provenance = {
         name: read_manifest(Path(path)) for name, path in input_paths.items()
     }

@@ -32,6 +32,7 @@ import pandas as pd
 from hvantk.algorithms.annotation.mapping import GeneIdMapper
 from hvantk.algorithms.annotation.spec import METADATA_COLUMNS, FeatureSpec
 from hvantk.algorithms.annotation.tiers import TierInput, resolve_tiers
+from hvantk.algorithms.annotation.transforms import output_name
 from hvantk.algorithms.annotation.variant import (
     choose_candidate,
     codon_sites,
@@ -237,14 +238,10 @@ def build_training_set(
     gene_list_report = {}
     for gl in spec.gene_lists:
         symbols = list(gene_lists[gl.column])
-        mapping, report = mapper.from_symbols(symbols, source=gl.column)
-        ids = sorted({g for g in mapping.values() if g})
-        gene_list_report[gl.column] = {
-            "n_symbols": len(symbols),
-            "n_mapped": len(ids),
-            "unmapped": list(report.unmapped),
-        }
-        members = hl.literal(set(ids), hl.tset(hl.tstr))
+        mapping, _ = mapper.from_symbols(symbols, source=gl.column)
+        gene_list_report[gl.column] = _gene_list_report(symbols, mapping)
+        ids = {g for g in mapping.values() if g}
+        members = hl.literal(ids, hl.tset(hl.tstr))
         ht = ht.annotate(**{gl.column: hl.or_else(members.contains(ht.gene_id), False)})
 
     # --- select, checkpoint, measure -----------------------------------------------------
@@ -495,7 +492,8 @@ def _plan_columns(spec, gene_axes, score_provenance, input_provenance) -> list[_
     for v in spec.variant:
         declared_scores = score_provenance.get(v.source, {})
         for c in v.columns:
-            trained = declared_scores.get(c.field) if c.field is not None else None
+            fields = c.fields or ((c.field,) if c.field is not None else ())
+            trained = _trained_on(declared_scores, fields)
             columns.append(
                 _Column(
                     name=c.name,
@@ -505,7 +503,7 @@ def _plan_columns(spec, gene_axes, score_provenance, input_provenance) -> list[_
                     description=c.description
                     or f"{v.source} {c.field or ', '.join(c.fields) or v.join}",
                     input=v.input,
-                    trained_on=None if trained is None else frozenset(trained),
+                    trained_on=trained,
                     declared=c.tier,
                 )
             )
@@ -525,6 +523,17 @@ def _plan_columns(spec, gene_axes, score_provenance, input_provenance) -> list[_
             what = f"per-{entry.matrix.group_axis} {'/'.join(entry.matrix.stats) or 'value'}"
         else:
             what = "value"
+        # An axis aggregating per-variant scores (key: variant) carries those scores'
+        # training provenance into its per-gene columns, so a declared tier cannot hide
+        # circularity there either; its row-count column has none and keeps the axis tier.
+        score_fields = {}
+        if entry.aggregate is not None:
+            score_fields = {
+                output_name(sc.name, stat): sc.column
+                for sc in entry.aggregate.scores
+                for stat in sc.stats
+            }
+        declared_scores = score_provenance.get(entry.source, {})
         for col in gene_axes[entry.axis]:
             columns.append(
                 _Column(
@@ -533,6 +542,9 @@ def _plan_columns(spec, gene_axes, score_provenance, input_provenance) -> list[_
                     "gene",
                     entry.source,
                     f"{entry.source} {what}: {col}",
+                    trained_on=_trained_on(declared_scores, (score_fields[col],))
+                    if col in score_fields
+                    else None,
                     declared=entry.tier,
                 )
             )
@@ -548,6 +560,43 @@ def _plan_columns(spec, gene_axes, score_provenance, input_provenance) -> list[_
             )
         )
     return columns
+
+
+def _gene_list_report(
+    symbols: Sequence[str], mapping: Mapping[str, str | None]
+) -> dict:
+    """How a gene list mapped onto the spine: counts that reconcile, every unmapped symbol.
+
+    ``n_symbols`` distinct symbols = ``n_symbols_mapped`` + ``n_unmapped``; ``n_genes`` is
+    the distinct gene ids they map to (two symbols can name one gene). The mapper's own
+    report names at most 20 unmapped symbols, so the list is rebuilt from the mapping.
+    """
+    unmapped = sorted({s for s in symbols if mapping.get(s) is None})
+    mapped = {s for s in symbols if mapping.get(s) is not None}
+    return {
+        "n_symbols": len(set(symbols)),
+        "n_symbols_mapped": len(mapped),
+        "n_genes": len({mapping[s] for s in mapped}),
+        "n_unmapped": len(unmapped),
+        "unmapped": unmapped,
+    }
+
+
+def _trained_on(declared_scores, fields) -> frozenset[str] | None:
+    """Union of the declared ``trained_on`` of ``fields``; ``None`` if any is undeclared.
+
+    A column built from several scores (``fields`` + ``reduce``) is as circular as its
+    most circular input, and one undeclared input makes the whole column undeclared.
+    """
+    if not fields:
+        return None
+    sources: set[str] = set()
+    for f in fields:
+        declared = declared_scores.get(f)
+        if declared is None:
+            return None
+        sources.update(declared)
+    return frozenset(sources)
 
 
 def _preferring_source(spec: FeatureSpec):

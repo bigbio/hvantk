@@ -123,7 +123,10 @@ Tiers are derived per column, first matching rule wins:
 5. Otherwise the column is **left out** and listed under `excluded` in the manifest.
 
 A declaration cannot hide circularity: a column trained on ClinVar is L2 even when the
-spec says L1. `{axis}_present` flags are L1. Nested training arms are `L1`, `<= L2`,
+spec says L1. A column built from several scores (`fields` + `reduce`) takes the union of
+their `trained_on`, and the score columns of a `layer1` axis that aggregates per-variant
+scores (`key: variant`) take their source scores' `trained_on`; one undeclared input makes
+the column undeclared. `{axis}_present` flags are L1. Nested training arms are `L1`, `<= L2`,
 `<= L3` and all.
 
 ## Options reference
@@ -148,7 +151,7 @@ that lacks a declared column all stop the command before Hail runs any job.
 | `<prefix>.ht` | The dataset, keyed by `locus`, `alleles`, with a provenance sidecar |
 | `<prefix>.tsv.gz` | The same rows as a [deterministic gzipped TSV](../guide/usage.md#output-extension-by-dataset-type) |
 | `<prefix>.dictionary.tsv` | Per column: `column`, `legacy_name`, `training_feature`, `tier`, `level` (`variant`/`protein`/`gene`), `source`, `source_version`, `description`, `non_null_rate`, `true_rate` (booleans) |
-| `<prefix>.manifest.json` | Counts at each filter, label balance overall and per gene list, review stars, rows per input, how each gene was chosen, tier counts, excluded columns, gene-list mapping (unmapped symbols listed), inputs and their provenance |
+| `<prefix>.manifest.json` | Counts at each filter, label balance overall and per gene list, review stars, rows per input, how each gene was chosen, tier counts, excluded columns, gene-list mapping (symbols in, symbols mapped, genes, every unmapped symbol), inputs and their provenance |
 
 ## Caveats
 
