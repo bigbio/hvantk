@@ -134,7 +134,7 @@ def build_training_set(
     KeyError
         When a spec field path does not exist in its source table.
     """
-    _check_inputs(spec, inputs, gene_matrix, gene_axes, gene_lists)
+    check_inputs(spec, inputs, gene_matrix, gene_axes, gene_lists)
     columns = _plan_columns(spec, gene_axes, score_provenance, input_provenance)
     tiers = resolve_tiers(
         [TierInput(c.name, c.trained_on, c.declared) for c in columns if c.feature],
@@ -397,8 +397,19 @@ def write_training_set(result: TrainingSetResult, prefix: str) -> dict[str, str]
 # --- helpers ---------------------------------------------------------------------------
 
 
-def _check_inputs(spec, inputs, gene_matrix, gene_axes, gene_lists) -> None:
-    """Every disagreement between spec, inputs and gene matrix, before any Hail job."""
+def check_inputs(spec, inputs, gene_matrix, gene_axes, gene_lists) -> None:
+    """Every disagreement between spec, inputs and gene matrix, before any Hail job.
+
+    Reads only table schemas. ``build_training_set`` runs it first; the CLI runs it on
+    its own before loading anything, to report a mistake as a usage error.
+
+    Raises
+    ------
+    ValueError
+        Naming the disagreement.
+    KeyError
+        When a field path the spec or the builder relies on is not in its table.
+    """
     if spec.label is None or spec.gene is None:
         raise ValueError(
             f"spec {spec.name!r} needs a label: and a gene: section to build a training set"
@@ -413,6 +424,8 @@ def _check_inputs(spec, inputs, gene_matrix, gene_axes, gene_lists) -> None:
     for column, symbols in gene_lists.items():
         if not list(symbols):
             raise ValueError(f"gene list {column!r} is empty")
+    for field in ("entrez_id", "ensembl_gene_id"):
+        field_expr(inputs[spec.gene.hgnc_input], field)
     _check_gene_matrix(spec, gene_matrix, gene_axes)
     _check_variant_sources(spec, inputs)
 
@@ -466,6 +479,9 @@ def _check_variant_sources(spec, inputs) -> None:
                     f"variant source {v.input!r} joins on intervals but is keyed by "
                     f"{key}, not one interval field"
                 )
+        else:  # codon: the fields codon_sites reads
+            for field in ("chrom", "codon_start", "codon_end"):
+                field_expr(src, field)
 
 
 def _same_names(what: str, expected: Sequence[str], given: Mapping) -> None:
@@ -628,7 +644,7 @@ def _metadata_column(name: str, spec: FeatureSpec) -> _Column:
         "consequence": ("variant", "MC consequence terms"),
         "label": (
             "variant",
-            f"1 = {'/'.join(label.pathogenic)}; 0 = {'/'.join(label.benign)} "
+            f"1 = {', '.join(label.pathogenic)}; 0 = {', '.join(label.benign)} "
             "(primary CLNSIG)",
         ),
     }

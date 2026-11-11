@@ -109,25 +109,27 @@ set. The full schema is `hvantk/resources/schemas/feature_spec.schema.json`.
 
 ## The tier rule
 
-Tiers are derived per column, first matching rule wins:
+Nested training arms are `L1`, `<= L2`, `<= L3` and all, so a higher tier keeps a column
+out of more arms. Each column's tier is the **higher** of two:
 
-1. **L4**: the spec declares `tier: L4`, for a population allele frequency or a score
-   that takes one as input.
-2. **L2**: the spec declares `tier: L2`, or the column's `trained_on` overlaps the
-   label's `provenance`. Curated disease databases (ClinVar, ClinGen, GenCC, HGMD, OMIM)
-   count as one source here, the same equivalence `hvantk rerank` uses.
-3. **L3**: the spec declares `tier: L3` (e.g. gene constraint), or `trained_on` contains
-   `population_af`.
-4. **L1**: the spec declares `tier: L1`, or any `trained_on` is declared (including an
-   empty one).
-5. Otherwise the column is **left out** and listed under `excluded` in the manifest.
+- **Derived from its declared `trained_on`** (the plugin's `scores:` block): **L2** if it
+  overlaps the label's `provenance`, **L3** if it contains `population_af` (the higher one
+  when both apply), otherwise **L1**, including for an empty `trained_on`. Curated disease
+  databases (ClinVar, ClinGen, GenCC, HGMD, OMIM) count as one source here, the same
+  equivalence `hvantk rerank` uses.
+- **Declared in the spec** with `tier:`: **L4** for a population allele frequency or a
+  score that takes one as input (`trained_on` describes training data, not inputs),
+  **L3** for gene constraint, **L2** for e.g. predictors trained on simulated vs observed
+  alleles, **L1** for expression, structure and protein context.
 
-A declaration cannot hide circularity: a column trained on ClinVar is L2 even when the
-spec says L1. A column built from several scores (`fields` + `reduce`) takes the union of
-their `trained_on`, and the score columns of a `layer1` axis that aggregates per-variant
-scores (`key: variant`) take their source scores' `trained_on`; one undeclared input makes
-the column undeclared. `{axis}_present` flags are L1. Nested training arms are `L1`, `<= L2`,
-`<= L3` and all.
+A column with neither is **left out** and listed under `excluded` in the manifest.
+
+A declaration can raise a tier but never lower it, so it cannot hide circularity: a column
+trained on ClinVar is at least L2 whatever the spec says. A column built from several
+scores (`fields` + `reduce`) takes the union of their `trained_on`, and the score columns
+of a `layer1` axis that aggregates per-variant scores (`key: variant`) take their source
+scores' `trained_on`; one undeclared input makes the column undeclared. `{axis}_present`
+flags are L1.
 
 ## Options reference
 
@@ -141,8 +143,10 @@ the column undeclared. `{axis}_present` flags are L1. Nested training arms are `
 | `--legacy-names` | no | TSV with header `column`, `legacy_name` |
 | `--output` | yes | Output prefix |
 
-Name mismatches with the spec, an empty gene list, a missing field path, or a gene matrix
-that lacks a declared column all stop the command before Hail runs any job.
+Name mismatches with the spec, an empty gene list, a missing field path (in a spec column,
+the `gene_field`, a codon source's `chrom`/`codon_start`/`codon_end` or HGNC's
+`entrez_id`/`ensembl_gene_id`), or a gene matrix that lacks a declared column all stop the
+command with a usage error before Hail runs any job.
 
 ## Outputs
 

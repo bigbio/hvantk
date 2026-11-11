@@ -160,7 +160,11 @@ def build_cmd(
     from hvantk.core.plugin.loader import get_registry
     from hvantk.core.utils.hail_context import init_hail
     from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-    from hvantk.tools.training_sets.build import build_training_set, write_training_set
+    from hvantk.tools.training_sets.build import (
+        build_training_set,
+        check_inputs,
+        write_training_set,
+    )
 
     # Declared training provenance of every source whose columns are scores: the variant
     # sources and the layer1 axes that aggregate per-variant scores (key: variant).
@@ -183,10 +187,19 @@ def build_cmd(
     }
 
     init_hail()
+    tables = {name: hl.read_table(path) for name, path in input_paths.items()}
+    gene_matrix = hl.read_table(gene_matrix_path)
+    # Schemas only: a mistake in the spec or the inputs is reported before any Hail job,
+    # as a usage error rather than a traceback.
+    try:
+        check_inputs(spec, tables, gene_matrix, gene_axes, gene_lists)
+    except (ValueError, KeyError) as exc:
+        message = exc.args[0] if isinstance(exc, KeyError) and exc.args else str(exc)
+        raise click.UsageError(message) from exc
     result = build_training_set(
         spec,
-        {name: hl.read_table(path) for name, path in input_paths.items()},
-        hl.read_table(gene_matrix_path),
+        tables,
+        gene_matrix,
         gene_axes,
         gene_lists,
         HGNCGeneCatalogStreamer.from_path(input_paths[spec.gene.hgnc_input]),

@@ -10,18 +10,20 @@ A tier says how much a column can leak the label or allele frequency into a mode
   built from population depletion.
 - **L4** -- a population allele frequency, or a score that takes one as an input.
 
-Nested benchmark arms are L1, <= L2, <= L3 and all. Tiers are derived, not hand-assigned:
-from each column's declared ``trained_on`` (plugin manifests) and the spec's explicit
-declarations, first matching rule wins:
+Nested benchmark arms are L1, <= L2, <= L3 and all, so a higher tier keeps a column out of
+more arms. Tiers are derived, not hand-assigned. From a column's declared ``trained_on``
+(plugin manifests):
 
-1. declared ``L4`` -> L4 (``trained_on`` describes training data, not inputs);
-2. declared ``L2``, or ``trained_on`` conflicts with the label's sources -> L2;
-3. declared ``L3``, or ``trained_on`` contains ``population_af`` -> L3;
-4. declared ``L1``, or any declared ``trained_on`` -> L1;
-5. otherwise the column is undeclared: excluded (``None``).
+- ``trained_on`` conflicts with the label's sources -> at least L2;
+- ``trained_on`` contains ``population_af`` -> at least L3;
+- any other declared ``trained_on`` (including an empty one) -> L1.
 
-A declaration can therefore never hide circularity: a column trained on ClinVar is L2
-even when the spec says L1. Pure Python, no Hail.
+The column's tier is the higher of that and the spec's ``tier:`` declaration, so a
+declaration can raise a tier but never lower it: a column trained on ClinVar is at least L2
+whatever the spec says, and a declared L4 (an allele frequency, or a score taking one as
+input; ``trained_on`` describes training data, not inputs) stays L4. A column with neither
+a declared ``trained_on`` nor a ``tier:`` is undeclared: excluded (``None``). Pure Python,
+no Hail.
 """
 
 from __future__ import annotations
@@ -67,7 +69,7 @@ def resolve_tiers(
                 f"expected one of {', '.join(TIERS)}"
             )
     # Only declared columns go to resolve_arms: it reads None as "conflicted", which
-    # here must mean "undeclared" (rule 5), not L2.
+    # here must mean "undeclared" (excluded), not L2.
     declared_sources = {
         item.column: item.trained_on for item in inputs if item.trained_on is not None
     }
@@ -78,17 +80,12 @@ def resolve_tiers(
     tiers: dict[str, str | None] = {}
     for item in inputs:
         sources = item.trained_on
-        if item.declared == "L4":
-            tier = "L4"
-        elif item.declared == "L2" or item.column in conflicted:
-            tier = "L2"
-        elif item.declared == "L3" or (
-            sources is not None and POPULATION_AF in sources
-        ):
-            tier = "L3"
-        elif item.declared == "L1" or sources is not None:
-            tier = "L1"
-        else:
-            tier = None
-        tiers[item.column] = tier
+        candidates = [item.declared] if item.declared is not None else []
+        if sources is not None:
+            candidates.append("L1")
+            if item.column in conflicted:
+                candidates.append("L2")
+            if POPULATION_AF in sources:
+                candidates.append("L3")
+        tiers[item.column] = max(candidates, key=TIERS.index) if candidates else None
     return tiers
