@@ -87,9 +87,9 @@ of its comma-separated parts, each coerced the same way; anything else stays `st
 
 ### Output extension by dataset type
 
-`reprocess` writes each dataset in its own native format -- there is no cross-format
-conversion -- so `--output`'s extension must match the dataset's declared
-`artifact_type` and `backend`:
+`reprocess` writes each dataset in its own native format, so `--output`'s extension must
+match the dataset's declared `artifact_type` and `backend`. The one other format on offer is
+the `.tsv.gz` export of an `AnnotationTable` (either backend), described below the table:
 
 | Dataset type | Backend | Extension | Example |
 | --- | --- | --- | --- |
@@ -98,6 +98,20 @@ conversion -- so `--output`'s extension must match the dataset's declared
 | `ExpressionMatrix` | `anndata` | `.h5ad` | `cptac:phospho` |
 | `VariantMatrix` | `hail` | `.mt` | `onek-genomes:variants` |
 | `GeneSet` | -- | `.geneset.json` | none built by an in-tree plugin yet |
+
+`--output <name>.tsv.gz` exports an `AnnotationTable` as gzipped, tab-separated text for
+readers without Java. It is save-only: `load` refuses it, so keep the `.ht` or `.parquet`
+if you need the dataset back. Two exports of the same table are byte-identical. Rows are
+sorted by the key fields (loci in genomic order), then by the remaining fields; a pandas
+table, which has no key, is sorted by every field. Struct fields are flattened to `a.b`, and
+in a hail table an array of structs becomes one array column per struct field whose elements
+line up (`hgnc:lookup`'s `lsdb` is written as `lsdb.name` and `lsdb.url`).
+Missing values are empty cells, booleans `true`/`false`, loci `chr1:100`. Array cells join
+their elements with `|`, and inside an element `%` is written `%25` and `|` is written
+`%7C`, so split on `|` and percent-decode each element. Nothing is quoted, so read the file
+with quoting off (polars `quote_char=None`, pandas `quoting=csv.QUOTE_NONE`). A tab,
+newline or carriage return in a value or field name, a dict or struct value, and an array
+nested in an array are refused before anything is written.
 
 ### Existing output and provenance
 

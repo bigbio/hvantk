@@ -89,18 +89,21 @@ _BACKEND_EXPECTED_EXT = {
 
 
 def _expected_extensions(spec):
-    """Output extension(s) reprocess writes for a spec's native artifact format.
+    """Output extension(s) reprocess accepts for a spec's artifact.
 
-    reprocess emits each dataset in its native format (no cross-format
-    conversion). Keyed on ``artifact_type`` when known, which — unlike backend
-    alone — distinguishes a hail AnnotationTable (.ht) from a VariantMatrix (.mt);
-    ``core/io.save`` only accepts .mt for VariantMatrix. Falls back to the backend
-    map for legacy specs with no ``artifact_type``. Returns None when it can't be
-    determined, so the caller skips the check rather than guessing.
+    The first entry is the dataset's native format. An AnnotationTable also
+    accepts ``.tsv.gz``, a save-only export (``core/io._tsv``); no other
+    cross-format conversion is offered. Keyed on ``artifact_type`` when known,
+    which — unlike backend alone — distinguishes a hail AnnotationTable (.ht)
+    from a VariantMatrix (.mt); ``core/io.save`` only accepts .mt for
+    VariantMatrix. Falls back to the backend map for legacy specs with no
+    ``artifact_type``. Returns None when it can't be determined, so the caller
+    skips the check rather than guessing.
     """
     at_name = getattr(getattr(spec, "artifact_type", None), "__name__", None)
     if at_name == "AnnotationTable":
-        return (".parquet",) if getattr(spec, "backend", None) == "pandas" else (".ht",)
+        native = ".parquet" if getattr(spec, "backend", None) == "pandas" else ".ht"
+        return (native, ".tsv.gz")
     if at_name == "VariantMatrix":
         return (".mt",)
     if at_name == "ExpressionMatrix":
@@ -113,11 +116,12 @@ def _expected_extensions(spec):
 def _check_output_extension(spec, output):
     """Fail fast when --output's extension can't hold the dataset's artifact.
 
-    ``reprocess`` writes each dataset in its native format; ``core/io.save``
-    dispatches by artifact type + extension, so a mismatch would either fail at
-    save (e.g. ``.mt`` for an AnnotationTable) or silently trigger a backend
-    conversion (e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()``,
-    needing a JVM) and fail confusingly deep in the build. Catch it up front.
+    ``reprocess`` writes each dataset in its native format (or, for an
+    AnnotationTable, the ``.tsv.gz`` export); ``core/io.save`` dispatches by
+    artifact type + extension, so a mismatch would either fail at save (e.g.
+    ``.mt`` for an AnnotationTable) or silently trigger a backend conversion
+    (e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()``, needing a
+    JVM) and fail confusingly deep in the build. Catch it up front.
     ``Path.name`` normalizes trailing slashes, so ``.ht/`` / ``.mt/`` dir forms
     match too.
     """
@@ -128,8 +132,10 @@ def _check_output_extension(spec, output):
         return
     if any(Path(output).name.endswith(ext) for ext in expected):
         return
+    native, *exports = expected
+    also = f" or the {' / '.join(exports)} export" if exports else ""
     raise click.UsageError(
-        f"{spec.name} writes {' or '.join(expected)} (its native format); got "
+        f"{spec.name} writes {native} (its native format){also}; got "
         f"--output {output!r}. A mismatched extension would fail at save or force a "
         "backend conversion."
     )

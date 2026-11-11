@@ -3,6 +3,7 @@
 Dispatch:
   *.parquet            -> AnnotationTable (pandas backend)
   *.ht/                -> AnnotationTable (hail backend)
+  *.tsv.gz             -> AnnotationTable, save only (export; load refuses it)
   *.h5ad               -> ExpressionMatrix (anndata backend)
   *.mt/                -> VariantMatrix
   *.geneset.json       -> GeneSet
@@ -30,6 +31,7 @@ from hvantk.core.io._formats import (
     save_gene_set_json,
     save_variant_matrix_mt,
 )
+from hvantk.core.io._tsv import save_annotation_table_tsv
 from hvantk.core.io._manifest import read_manifest, write_manifest
 from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
@@ -37,17 +39,23 @@ from hvantk.core.models.gene_set import GeneSet
 from hvantk.core.models.variant_matrix import VariantMatrix
 
 
+def _save_annotation_table(ann: AnnotationTable, path: Path) -> None:
+    if path.suffix == ".parquet":
+        save_annotation_table_parquet(ann, path)
+    elif path.suffix == ".ht" or path.name.endswith(".ht/"):
+        save_annotation_table_ht(ann, path)
+    elif path.name.endswith(".tsv.gz"):
+        save_annotation_table_tsv(ann, path)
+    else:
+        raise ArtifactTypeError(
+            f"AnnotationTable save: unrecognized extension for {path}"
+        )
+
+
 def save(artifact: Any, path: str | Path) -> None:
     path = Path(path)
     if isinstance(artifact, AnnotationTable):
-        if path.suffix == ".parquet":
-            save_annotation_table_parquet(artifact, path)
-        elif path.suffix == ".ht" or path.name.endswith(".ht/"):
-            save_annotation_table_ht(artifact, path)
-        else:
-            raise ArtifactTypeError(
-                f"AnnotationTable save: unrecognized extension for {path}"
-            )
+        _save_annotation_table(artifact, path)
         write_manifest(artifact.provenance, path)
         return
     if isinstance(artifact, ExpressionMatrix):
@@ -85,6 +93,11 @@ def save(artifact: Any, path: str | Path) -> None:
 
 def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
     path = Path(path)
+    if path.name.endswith(".tsv.gz"):
+        raise ArtifactTypeError(
+            f"load: {path} is a TSV export; .tsv.gz is an export format and "
+            "cannot be loaded back (load the .parquet or .ht it came from)"
+        )
     provenance = read_manifest(path)
     if provenance is None:
         from hvantk.core.io._legacy import unknown_provenance_for
