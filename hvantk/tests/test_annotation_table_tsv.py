@@ -168,7 +168,13 @@ def test_tsv_float32_nan_is_a_missing_cell(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "bad, why", [(["a|b"], r"contains '\|'"), ([["a"], "b"], "nested array")]
+    "bad, why",
+    [
+        (["a|b"], r"contains '\|'"),
+        ([["a"], "b"], "nested array"),
+        ({"name": "x"}, "struct or dict"),
+        ([{"name": "x", "url": "u"}], "struct or dict"),
+    ],
 )
 def test_tsv_refuses_ambiguous_array_cells(tmp_path, bad, why):
     ann = _table(pd.DataFrame({"gene": ["G1", "G2"], "tags": [["ok"], bad]}))

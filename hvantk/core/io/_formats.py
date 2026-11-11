@@ -6,6 +6,7 @@ import gzip
 import json as _json
 import math
 import numbers
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -49,8 +50,12 @@ def _tsv_cell(v: Any, dtype: str) -> str:
     """Render one value as a TSV cell (see ``save_annotation_table_tsv``).
 
     Raises ValueError for an array element that is itself an array or contains
-    ``|`` (the joined cell would be ambiguous); the caller adds column and key.
+    ``|`` (the joined cell would be ambiguous), and for a struct or dict value,
+    alone or inside an array (``str`` would write a Python repr); the caller
+    adds column and key.
     """
+    if isinstance(v, Mapping):  # dict, and hail's Struct
+        raise ValueError("struct or dict value")
     if hasattr(v, "tolist") and getattr(v, "ndim", 0) > 0:
         v = v.tolist()  # numpy array -> list
     if isinstance(v, _TSV_ARRAY_TYPES):
@@ -137,9 +142,9 @@ def save_annotation_table_tsv(ann: AnnotationTable, path: Path) -> None:
     value is an empty cell; booleans are ``true``/``false``; integers print as
     plain decimals; floats as ``repr``. An empty array, a missing value and
     ``[""]`` all write the same empty cell. A cell containing a tab, newline or
-    carriage return, an array element containing ``|``, or a nested array is
-    refused (ValueError naming the column and row key) before anything is
-    written. Two saves of one table are byte-identical (UTF-8, LF line ends,
+    carriage return, an array element containing ``|``, a nested array, or a
+    struct or dict value (alone or in an array) is refused (ValueError naming
+    the column and row key) before anything is written. Two saves of one table are byte-identical (UTF-8, LF line ends,
     gzip ``mtime=0`` and no filename in the header).
     """
     df = ann.to_pandas()

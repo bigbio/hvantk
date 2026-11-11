@@ -8,9 +8,10 @@
   `.tsv.gz` for either backend: header in field order, rows sorted by the key fields and then
   the remaining fields (every field for a pandas table), arrays joined with `|`, booleans
   `true`/`false`, byte-identical across saves. A cell holding a tab, newline or carriage return
-  is refused, and so is an array element containing `|` or a nested array. An empty array, a
-  missing value and `[""]` all write an empty cell. Save only; `load` refuses `.tsv.gz`. `.ht`
-  and `.parquet` are unchanged.
+  is refused, and so is an array element containing `|`, a nested array, or a struct or dict
+  value (alone or in an array; `hgnc:lookup`'s `lsdb` is one, so select the fields to export).
+  An empty array, a missing value and `[""]` all write an empty cell. Save only; `load` refuses
+  `.tsv.gz`. `.ht` and `.parquet` are unchanged.
 
 ### Changed
 
