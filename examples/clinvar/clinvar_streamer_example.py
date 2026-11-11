@@ -46,18 +46,16 @@ def main(table_path: str = DEFAULT_TABLE_PATH) -> None:
     print(f"Clinical significance counts in the gene panel: {by_sig}")
 
     print("\n--- Deriving a training-label column ---")
-    labeled_ht = streamer.label_training_set(
-        gene_set={"BRCA1", "BRCA2"},
-        label_column="rf_label",
-    )
-    labeled_ht = labeled_ht.filter(hl.is_defined(labeled_ht.rf_label))
-    total_count = labeled_ht.count()
-    tp_count = labeled_ht.filter(labeled_ht.rf_label == "TP").count()
-    tn_count = total_count - tp_count
-    print(f"Labeled training variants: {total_count}")
+    # 1 = pathogenic, 0 = benign: missense SNVs only, with review stars.
+    labeled_ht = streamer.label_training_set()
+    labeled_ht = labeled_ht.filter(labeled_ht.clinvar_review_stars >= 1)
+    counts = labeled_ht.aggregate(hl.agg.counter(labeled_ht.label))
+    total_count = sum(counts.values())
+    print(f"Labeled missense SNVs with >= 1 review star: {total_count}")
     if total_count:
-        print(f"  True Positives: {tp_count} ({tp_count / total_count * 100:.1f}%)")
-        print(f"  True Negatives: {tn_count} ({tn_count / total_count * 100:.1f}%)")
+        for label, name in ((1, "Pathogenic"), (0, "Benign")):
+            n = counts.get(label, 0)
+            print(f"  {name}: {n} ({n / total_count * 100:.1f}%)")
 
     hl.stop()
 
