@@ -234,8 +234,8 @@ def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
     )  # _MATRIX_ID + feature cols
     if entry.key == "gene_id":
         # Atlases often carry versioned Ensembl ids (ENSG...15); the spine does not.
-        df[_MATRIX_ID] = df[_MATRIX_ID].astype(str).str.replace(
-            r"\.\d+$", "", regex=True
+        df[_MATRIX_ID] = (
+            df[_MATRIX_ID].astype(str).str.replace(r"\.\d+$", "", regex=True)
         )
     # A matrix source's column set is decided at RUNTIME by the atlas's groups -- with
     # specificity emit="vector" (the default) there is one column per surviving group,

@@ -22,7 +22,9 @@ def _joined(expr) -> hl.StringExpression:
     (``criteria_provided,_single_submitter``). An empty array or string is missing.
     """
     if isinstance(expr.dtype, hl.tarray):
-        return hl.or_missing(hl.is_defined(expr) & (hl.len(expr) > 0), hl.delimit(expr, ","))
+        return hl.or_missing(
+            hl.is_defined(expr) & (hl.len(expr) > 0), hl.delimit(expr, ",")
+        )
     return hl.or_missing(hl.is_defined(expr) & (expr != ""), expr)
 
 

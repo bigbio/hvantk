@@ -53,7 +53,9 @@ def column_expr(ht: hl.Table, column: VariantColumn) -> hl.Expression:
     """The value of one allele-join column on ``ht``'s rows."""
     if column.fields:
         if column.reduce != "max":
-            raise ValueError(f"column {column.name!r}: unsupported reduce {column.reduce!r}")
+            raise ValueError(
+                f"column {column.name!r}: unsupported reduce {column.reduce!r}"
+            )
         exprs = [_cast(field_expr(ht, f), column.cast) for f in column.fields]
         return hl.max(*exprs, filter_missing=True)
     return _cast(field_expr(ht, column.field), column.cast)
@@ -94,7 +96,9 @@ def codon_sites(
         _pos=hl.if_else(hi - lo == 2, hl.range(lo, hi + 1), hl.array([lo, hi])),
     )
     t = t.explode("_pos")
-    t = t.filter(hl.is_valid_locus(t._contig, t._pos, reference_genome=reference_genome))
+    t = t.filter(
+        hl.is_valid_locus(t._contig, t._pos, reference_genome=reference_genome)
+    )
     t = t.select(locus=hl.locus(t._contig, t._pos, reference_genome=reference_genome))
     return t.key_by("locus").distinct()
 

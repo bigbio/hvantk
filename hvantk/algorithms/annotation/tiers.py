@@ -82,7 +82,9 @@ def resolve_tiers(
             tier = "L4"
         elif item.declared == "L2" or item.column in conflicted:
             tier = "L2"
-        elif item.declared == "L3" or (sources is not None and POPULATION_AF in sources):
+        elif item.declared == "L3" or (
+            sources is not None and POPULATION_AF in sources
+        ):
             tier = "L3"
         elif item.declared == "L1" or sources is not None:
             tier = "L1"

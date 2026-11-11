@@ -338,7 +338,9 @@ def _build_variant_source(raw: dict) -> VariantSource:
         where = f"variant source {source.input!r} column {col.name!r}"
         if source.join == "allele":
             if (col.field is None) == (not col.fields):
-                raise ValueError(f"{where}: an allele join needs exactly one of field/fields")
+                raise ValueError(
+                    f"{where}: an allele join needs exactly one of field/fields"
+                )
         elif col.field is not None or col.fields or col.cast or col.reduce:
             raise ValueError(
                 f"{where}: the {source.join} join yields a flag; field, fields, cast "
@@ -346,6 +348,11 @@ def _build_variant_source(raw: dict) -> VariantSource:
             )
         if bool(col.fields) != (col.reduce is not None):
             raise ValueError(f"{where}: fields needs reduce, and reduce needs fields")
+    if source.join != "allele" and len(columns) != 1:
+        raise ValueError(
+            f"variant source {source.input!r}: the {source.join} join yields one flag; "
+            f"declare exactly one column (got {len(columns)})"
+        )
     if source.gene_field is not None and source.join != "allele":
         raise ValueError(
             f"variant source {source.input!r}: gene_field needs an allele join"
@@ -382,7 +389,9 @@ def _check_training_sections(spec: FeatureSpec) -> None:
         )
     owner: dict[str, str] = {c: "metadata" for c in METADATA_COLUMNS}
     named = [(g.column, "gene_lists") for g in spec.gene_lists]
-    named += [(c.name, f"variant source {v.input!r}") for v in spec.variant for c in v.columns]
+    named += [
+        (c.name, f"variant source {v.input!r}") for v in spec.variant for c in v.columns
+    ]
     if spec.gene is not None:
         named += [(c.name, "gene.spine_columns") for c in spec.gene.spine_columns]
     for column, where in named:
