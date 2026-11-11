@@ -123,6 +123,12 @@ Options and fields that were accepted but did nothing:
 
 ### Fixed
 
+- **`.tsv.gz` export of a hail table.** It read Hail's temporary export back line by line
+  through `hl.hadoop_open`, at about 0.2 MB/s, and could stall for good: a 210,000-row,
+  312-column table had not finished after an hour. It now reads the export from local
+  disk, copied there once when Hail's temporary directory is remote; a 20,000 x 307 table
+  takes 48 s instead of 552 s. The output is byte-for-byte unchanged.
+
 Found by the documentation review. Each fix has a regression test.
 
 - **PS-ROC review stars.** Tables built by `hvantk reprocess clinvar:variants` store
