@@ -43,12 +43,18 @@ class TestClinVarDataset:
         ds = ClinVarDataset.from_date("20260101")
         assert ds.version_date == "20260101"
         assert ds.file_name == "clinvar_20260101.vcf.gz"
-        assert "archive/clinvar_20260101.vcf.gz" in ds.download_url
+        assert ds.download_url.endswith(
+            "vcf_GRCh38/archive_2.0/2026/clinvar_20260101.vcf.gz"
+        )
+        assert [u.rsplit("vcf_GRCh38/", 1)[1] for u in ds.fallback_urls] == [
+            "weekly/clinvar_20260101.vcf.gz",
+            "clinvar_20260101.vcf.gz",
+        ]
 
     def test_from_date_grch37(self):
         """Test from_date with GRCh37 build."""
         ds = ClinVarDataset.from_date("20260101", genome_build="GRCh37")
-        assert "vcf_GRCh37/archive/" in ds.download_url
+        assert "vcf_GRCh37/archive_2.0/2026/" in ds.download_url
 
     def test_from_date_invalid_format(self):
         """Test that non-YYYYMMDD strings are rejected."""
@@ -215,9 +221,13 @@ class TestClinVarDownloaderCLI:
         """Test --version YYYYMMDD works."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch(
-                "hvantk.skills.clinvar.shared.datasets.download_file"
-            ) as mock_dl:
+            with (
+                patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl,
+                patch(
+                    "hvantk.skills.clinvar.shared.datasets.ClinVarDataset._locate",
+                    lambda self: self.download_url,
+                ),
+            ):
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--version", "20260101", "--output-dir", tmpdir],

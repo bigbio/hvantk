@@ -10,8 +10,8 @@ Example usage:
     dataset = ClinVarDataset.latest()
     dataset.download("/data/clinvar")
 
-    # Download a specific archived version
-    dataset = ClinVarDataset.from_date("20260101")
+    # Download a dated weekly release (the date in its file name)
+    dataset = ClinVarDataset.from_date("20260104")
     dataset.download("/data/clinvar")
 
     # Download GRCh37 build
@@ -24,7 +24,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from hvantk.skills.clinvar.shared.constants import (
     CLINVAR_FTP_BASE,
@@ -46,20 +46,24 @@ class ClinVarDataset:
     """
     Represents a ClinVar VCF dataset.
 
-    ClinVar provides a latest VCF (``clinvar.vcf.gz``) and dated archives
-    (``clinvar_YYYYMMDD.vcf.gz``) under an ``archive/`` subdirectory.
+    ClinVar provides a latest VCF (``clinvar.vcf.gz``) and dated weekly releases
+    (``clinvar_YYYYMMDD.vcf.gz``). NCBI keeps a dated release in up to three places:
+    ``archive_2.0/<YYYY>/`` once it is archived, ``weekly/``, and the top level while it
+    is the current release; ``download`` tries them in that order.
 
     Attributes:
         genome_build: Reference genome ("GRCh38" or "GRCh37").
-        version_date: Archive date string (YYYYMMDD), or None for latest.
-        download_url: Full URL to the VCF file.
+        version_date: Release date string (YYYYMMDD), or None for latest.
+        download_url: Full URL to the VCF file (the first place tried).
         file_name: Name of the VCF file.
+        fallback_urls: Further URLs tried, in order, when ``download_url`` fails.
     """
 
     genome_build: str
     version_date: Optional[str]
     download_url: str
     file_name: str
+    fallback_urls: Tuple[str, ...] = ()
 
     @classmethod
     def latest(cls, genome_build: str = "GRCh38") -> "ClinVarDataset":
@@ -90,14 +94,14 @@ class ClinVarDataset:
         cls, version_date: str, genome_build: str = "GRCh38"
     ) -> "ClinVarDataset":
         """
-        Reference an archived ClinVar release by date.
+        Reference a dated ClinVar release (a weekly release, archived or current).
 
         Args:
             version_date: Date string in YYYYMMDD format.
             genome_build: "GRCh38" or "GRCh37".
 
         Returns:
-            ClinVarDataset pointing to the archived VCF.
+            ClinVarDataset pointing to the dated VCF.
 
         Raises:
             ValueError: If version_date format is invalid or genome_build unsupported.
@@ -109,12 +113,12 @@ class ClinVarDataset:
 
         base = _get_base_url(genome_build)
         file_name = f"clinvar_{version_date}.vcf.gz"
-        download_url = f"{base}/archive/{file_name}"
         return cls(
             genome_build=genome_build,
             version_date=version_date,
-            download_url=download_url,
+            download_url=f"{base}/archive_2.0/{version_date[:4]}/{file_name}",
             file_name=file_name,
+            fallback_urls=(f"{base}/weekly/{file_name}", f"{base}/{file_name}"),
         )
 
     def download(
@@ -146,16 +150,15 @@ class ClinVarDataset:
                 f"File already exists: {output_path}. Use overwrite=True to replace."
             )
 
-        logger.info(f"Downloading ClinVar VCF from {self.download_url}")
+        url = self._locate()
+        logger.info(f"Downloading ClinVar VCF from {url}")
         try:
-            download_file(
-                url=self.download_url,
-                out_dir=output_dir,
-                file_name=self.file_name,
-            )
+            download_file(url=url, out_dir=output_dir, file_name=self.file_name)
             logger.info(f"Downloaded ClinVar VCF to {output_path}")
         except Exception as e:
             raise RuntimeError(f"Failed to download ClinVar VCF: {e}") from e
+        # The .md5 and .tbi sit next to the VCF that was found.
+        self.download_url = url
 
         if download_index:
             self._download_index(output_dir, overwrite)
@@ -226,6 +229,35 @@ class ClinVarDataset:
                 "Includes pathogenicity classifications, review status, and disease associations."
             ),
         }
+
+    def _locate(self) -> str:
+        """The first of ``download_url`` and ``fallback_urls`` that NCBI serves.
+
+        Probed with HEAD requests, so a URL that does not exist never reaches
+        ``download_file`` (which logs every failure with a traceback). With no
+        fallbacks there is nothing to choose and nothing is probed.
+        """
+        import urllib.error
+        import urllib.request
+
+        if not self.fallback_urls:
+            return self.download_url
+        tried = []
+        for url in (self.download_url, *self.fallback_urls):
+            req = urllib.request.Request(
+                url, method="HEAD", headers={"User-Agent": "hvantk/1.0"}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=30, context=tls_context()):
+                    return url
+            except urllib.error.HTTPError as e:
+                tried.append(f"{url} ({e.code})")
+            except urllib.error.URLError as e:
+                raise RuntimeError(f"Could not reach {url}: {e.reason}") from e
+        raise RuntimeError(
+            f"ClinVar release {self.version_date} ({self.genome_build}) not found; "
+            "tried " + ", ".join(tried)
+        )
 
     def _download_index(self, output_dir: str, overwrite: bool) -> None:
         """Download the .tbi tabix index file."""
