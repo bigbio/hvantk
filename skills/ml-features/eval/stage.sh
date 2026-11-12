@@ -141,9 +141,11 @@ validate_raw_dir "$STAGE/raw/insider_variants" "*.bed" insider_variants
 # --- small whole-genome inputs, each through its plugin's downloader ---
 stage_download() {
   local dir="$1" pattern="$2" label="$3"; shift 3
-  shopt -s nullglob
-  local -a have=("$dir"/$pattern)
-  shopt -u nullglob
+  # Test each match for existence: nullglob leaves a pattern with no wildcard (a
+  # literal file name) in place even when no such file exists.
+  local -a have=()
+  local f
+  for f in "$dir"/$pattern; do [[ -e "$f" ]] && have+=("$f"); done
   if (( ${#have[@]} > 0 )); then echo "already staged: $dir"; else bash "$RUN_IN_IMAGE" -- "$@"; fi
   validate_raw_dir "$dir" "$pattern" "$label"
 }
