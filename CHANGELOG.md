@@ -135,6 +135,9 @@ Options and fields that were accepted but did nothing:
   file in an `archive/` directory NCBI does not have, so every dated download failed with
   404. It now finds the release where NCBI keeps it (`archive_2.0/<year>/`, `weekly/`, or
   the top level while it is current) and reads its `.md5` and `.tbi` from the same place.
+  A timeout while looking is reported with the URL instead of a traceback.
+- **Training-set provenance.** A training set's `.provenance.json` left `builder_commit`
+  empty; it now records the hvantk commit that built it, as every dataset does.
 - **`.tsv.gz` export of a hail table.** It read Hail's temporary export back line by line
   through `hl.hadoop_open`, at about 0.2 MB/s, and could stall for good: a 210,000-row,
   312-column table had not finished after an hour. It now reads the export from local
