@@ -116,7 +116,9 @@ column(s) [...] that the matrix reducer did not produce; it emitted [...]`.
 
 Every built input carries a `.provenance.json` sidecar. Its `builder_commit` names the
 commit of the checkout a build ran from (when it ran through the `hpc-hail-job`
-templates). Compare it with `git -C "$HVANTK_REPO" rev-parse HEAD` for each input:
+templates and the compute node has `git`; without it the job log says `commit: unknown`
+and the sidecar records `hvantk <version>`, so the commit is only in the run notes).
+Compare it with `git -C "$HVANTK_REPO" rev-parse HEAD` for each input:
 
 ```bash
 for f in OUT/*.provenance.json; do python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(sys.argv[1], d.get('dataset'), d.get('builder_commit'))" "$f"; done

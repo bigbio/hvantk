@@ -70,6 +70,8 @@ other than ClinVar's (unsupported by the command).
    `git -C "$HVANTK_REPO" rev-parse HEAD`, and for dbNSFP the type of its
    `*_rankscore` fields, which must be `float64` (`references/inputs.md` has the
    check). A dbNSFP table with `str` rankscores is rebuilt, never patched with `cast:`.
+   A `builder_commit` of `hvantk <version>` means the job's node had no `git` (its log
+   says `commit: unknown`): the commit is then only in that build's run notes.
 8. The gene index: an `annotate spine` output from the `gene-index` skill, built with the
    same `hgnc:lookup` table the spec's `hgnc` input will name.
 
