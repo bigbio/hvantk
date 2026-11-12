@@ -162,8 +162,11 @@ stage_download "$STAGE/raw/insider_interfaces" "H_sapiens_interfacesALL.txt" ins
 # UniProt PTM's build maps the sites onto the pinned Ensembl GTF and downloads it into
 # the raw dir when it is missing; copy it from the gene-index stage instead, so the job
 # needs no internet and the raw dir holds only what staged.sha256 lists.
-GTF="$(python3 -c 'import runpy, sys; print(runpy.run_path(sys.argv[1])["ENSEMBL_GTF_FILENAME"])' \
-  "$HVANTK_REPO/hvantk/resources/ensembl_release.py")"
+# The name comes from the image's own hvantk (the login node's python3 may be too old to
+# import it).
+GTF="$(bash "$RUN_IN_IMAGE" -- python -c \
+  'from hvantk.resources.ensembl_release import ENSEMBL_GTF_FILENAME as f; print(f)')"
+[[ "$GTF" == *.gtf.gz && "$GTF" != */* ]] || { echo "ERROR: unexpected Ensembl GTF name from the image: '$GTF'" >&2; exit 1; }
 if [[ ! -s "$STAGE/raw/uniprot_ptm/$GTF" ]]; then
   [[ -s "$GI/raw/ensembl-gene/$GTF" ]] || { echo "ERROR: $GI/raw/ensembl-gene/$GTF is missing; run skills/gene-index/eval/stage.sh" >&2; exit 1; }
   cp "$GI/raw/ensembl-gene/$GTF" "$STAGE/raw/uniprot_ptm/$GTF"
