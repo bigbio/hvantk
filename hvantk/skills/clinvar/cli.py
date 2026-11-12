@@ -147,7 +147,6 @@ def clinvar_downloader(
             dataset = ClinVarDataset.from_date(version_date, genome_build=genome_build)
 
         click.echo(f"File: {dataset.file_name}")
-        click.echo(f"URL: {dataset.download_url}")
 
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
@@ -160,6 +159,8 @@ def clinvar_downloader(
             overwrite=overwrite,
             download_index=not no_index,
         )
+        # After the download: a dated release resolves to where NCBI keeps it.
+        click.echo(f"URL: {dataset.download_url}")
         click.echo(f"Downloaded to: {output_path}")
 
     except FileExistsError as e:
