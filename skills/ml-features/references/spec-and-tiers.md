@@ -17,11 +17,12 @@ task asks for.
   rows where the flag is true. The flag is not a training feature (`training_feature =
   no` in the dictionary), and the manifest reports the label balance inside the list and
   every symbol that did not map.
-- **Fewer or other gene axes.** Delete or add `layer1` entries, then rebuild the gene
-  matrix from the edited spec: `training-set build` checks the matrix against the spec
-  and stops with `axis '<axis>' is not in the gene matrix's manifest; was the matrix
-  composed from this spec?` or `gene matrix lacks column(s): ...` when they differ. A
-  matrix composed from the old spec is never reused.
+- **Fewer or other gene axes.** Delete or add `layer1` entries, then prepare and compose
+  the gene matrix again from the edited spec. `training-set build` stops with `axis
+  '<axis>' is not in the gene matrix's manifest; was the matrix composed from this
+  spec?` when an axis is missing, but it does not compare an axis's `columns`,
+  `collapse` or `stats` with the spec: a matrix composed before such an edit passes with
+  the old values. So a matrix composed from the old spec is never reused.
 - **Other variant columns.** `field: <path>` takes one field (dotted paths reach into
   structs, e.g. `gnomAD.gnomAD_exomes_AF`); `fields: [...]` with `reduce: max` takes the
   maximum of several; `cast: float64` parses a field stored as text. A path that does not

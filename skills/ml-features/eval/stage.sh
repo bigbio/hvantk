@@ -4,7 +4,8 @@
 # has none), the three variant-level files are cut to chromosome 22 by slice_text.py as
 # short jobs, the gene index and the HGNC table are copied from the newest gene-index
 # control that fully passed (it has control.passed), and the eval spec and gene list
-# are copied next to them. Writes staged.sha256.
+# are copied next to them. Writes staged.sha256 and leaves raw/ and upstream/ read-only
+# (chmod -R u+w them before deleting the stage; re-running this script does it).
 #
 #   HVANTK_SITE_PROFILE=... DBNSFP_RAW=/abs/path/dbNSFP4.9a_variant... \
 #     [CLINVAR_VERSION=20261108] bash skills/ml-features/eval/stage.sh
@@ -37,6 +38,9 @@ CLINVAR_VERSION="${CLINVAR_VERSION:-20261108}"
 EVAL_ROOT="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}"
 STAGE="$EVAL_ROOT/ml-features"
 GI="$EVAL_ROOT/gene-index"
+# raw/ and upstream/ are left read-only (end of this script), so a run under test cannot
+# write into them; make them writable again for this script (and before an rm -rf).
+[[ -d "$STAGE" ]] && chmod -R u+w "$STAGE/raw" "$STAGE/upstream" 2>/dev/null || true
 mkdir -p "$STAGE/download/clinvar" "$STAGE/download/insider" "$STAGE/upstream"
 for d in clinvar dbnsfp insider_variants insider_interfaces uniprot_ptm gnomad_metrics gevir; do
   mkdir -p "$STAGE/raw/$d"
@@ -66,7 +70,8 @@ validate_raw_dir() {
   fi
 }
 
-# slice IN OUT CONTIG... : run slice_text.py as a short job unless OUT already exists.
+# slice IN OUT NAME TIME CONTIG... : run slice_text.py as a short job named NAME, with
+# TIME as its limit, unless OUT already exists.
 slice() {
   local in="$1" out="$2" name="$3" time="$4"; shift 4
   if [[ -s "$out" ]]; then echo "already staged: $out"; return; fi
@@ -111,16 +116,15 @@ python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['gene_index_cont
   "$PICK/control.passed" > "$STAGE/upstream/gene-index.content_sha256"
 
 # --- ClinVar: the pinned release, cut to chr22 ---
-shopt -s nullglob
-clinvar_dl=("$STAGE"/download/clinvar/*.vcf.gz)
-shopt -u nullglob
-if (( ${#clinvar_dl[@]} == 0 )); then
+# The file of this release only, so a download left by another CLINVAR_VERSION is never
+# sliced under this one's name.
+CLINVAR_VCF="$STAGE/download/clinvar/clinvar_${CLINVAR_VERSION}.vcf.gz"
+if [[ ! -s "$CLINVAR_VCF" ]]; then
   bash "$RUN_IN_IMAGE" -- hvantk download clinvar --version "$CLINVAR_VERSION" \
     --output-dir "$STAGE/download/clinvar"
-  clinvar_dl=("$STAGE"/download/clinvar/*.vcf.gz)
 fi
-(( ${#clinvar_dl[@]} == 1 )) || { echo "ERROR: expected one ClinVar VCF under $STAGE/download/clinvar" >&2; exit 1; }
-slice "${clinvar_dl[0]}" "$STAGE/raw/clinvar/clinvar_${CLINVAR_VERSION}.chr22.vcf.bgz" clinvar 0-00:30:00 22 chr22
+[[ -s "$CLINVAR_VCF" ]] || { echo "ERROR: the ClinVar download did not write $CLINVAR_VCF" >&2; exit 1; }
+slice "$CLINVAR_VCF" "$STAGE/raw/clinvar/clinvar_${CLINVAR_VERSION}.chr22.vcf.bgz" clinvar 0-00:30:00 22 chr22
 validate_raw_dir "$STAGE/raw/clinvar" "*.vcf.bgz" clinvar
 
 # --- dbNSFP: bring-your-own, cut to chr22 (a full pass over the file) ---
@@ -136,7 +140,8 @@ urls = [f.get("url", "") for d in json.load(open(sys.argv[1])) for f in d.get("f
 print(next((u for u in urls if u.endswith(".bed")), ""))
 ' "$HVANTK_REPO/hvantk/skills/insider/catalog/datasets.json")"
   [[ -n "$URL" ]] || { echo "ERROR: no .bed URL in the INSIDER catalog" >&2; exit 1; }
-  curl -fsSL -o "$INSIDER_BED.part" "$URL" && mv "$INSIDER_BED.part" "$INSIDER_BED"
+  curl -fsSL -o "$INSIDER_BED.part" "$URL"
+  mv "$INSIDER_BED.part" "$INSIDER_BED"
 fi
 slice "$INSIDER_BED" "$STAGE/raw/insider_variants/insider.chr22.bed" insider 0-00:30:00 chr22 22
 validate_raw_dir "$STAGE/raw/insider_variants" "*.bed" insider_variants
@@ -157,9 +162,8 @@ stage_download "$STAGE/raw/insider_interfaces" "H_sapiens_interfacesALL.txt" ins
 # UniProt PTM's build maps the sites onto the pinned Ensembl GTF and downloads it into
 # the raw dir when it is missing; copy it from the gene-index stage instead, so the job
 # needs no internet and the raw dir holds only what staged.sha256 lists.
-GTF="$(sed -n 's/^ENSEMBL_RELEASE = "\([0-9]*\)"$/Homo_sapiens.GRCh38.\1.gtf.gz/p' \
+GTF="$(python3 -c 'import runpy, sys; print(runpy.run_path(sys.argv[1])["ENSEMBL_GTF_FILENAME"])' \
   "$HVANTK_REPO/hvantk/resources/ensembl_release.py")"
-[[ -n "$GTF" ]] || { echo "ERROR: cannot read ENSEMBL_RELEASE from hvantk/resources/ensembl_release.py" >&2; exit 1; }
 if [[ ! -s "$STAGE/raw/uniprot_ptm/$GTF" ]]; then
   [[ -s "$GI/raw/ensembl-gene/$GTF" ]] || { echo "ERROR: $GI/raw/ensembl-gene/$GTF is missing; run skills/gene-index/eval/stage.sh" >&2; exit 1; }
   cp "$GI/raw/ensembl-gene/$GTF" "$STAGE/raw/uniprot_ptm/$GTF"
@@ -177,5 +181,6 @@ cp "$HERE/genes.txt" "$STAGE/genes.txt"
 
 ( cd "$STAGE" && sha256sum raw/*/* upstream/gene-index.content_sha256 \
     upstream/hgnc-lookup.ht.provenance.json spec.yaml genes.txt > staged.sha256 )
+chmod -R a-w "$STAGE/raw" "$STAGE/upstream"
 cat "$STAGE/staged.sha256"
 echo "staged under $STAGE (gene index from $PICK)"

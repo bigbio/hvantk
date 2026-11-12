@@ -16,13 +16,14 @@ and a gene-list flag, every feature with a leakage tier.
     the datasets `clinvar:variants`, `dbnsfp:variants`, `insider:variants`,
     `insider:interfaces`, `uniprot-ptm:sites`, `gnomad-metrics:metrics` and
     `gevir:metrics`. The ClinVar, dbNSFP and INSIDER-variants files hold chromosome 22
-    only.
+    only. `raw/uniprot_ptm/` also holds the pinned Ensembl GTF that its build maps the
+    sites onto.
   - `upstream/gene-index.ht` -- the gene index (keyed `gene_id`).
   - `upstream/hgnc-lookup.ht` -- the `hgnc:lookup` dataset the gene index was built
     with.
 - Build each of the seven datasets yourself from its raw file, and the gene matrix the
   spec's `layer1` section declares, on the gene index above. Write every output under
-  `$HVANTK_EVAL_OUT`.
+  `$HVANTK_EVAL_OUT`; `raw/` and `upstream/` are read-only.
 - Write the training set with the output prefix `$HVANTK_EVAL_OUT/clinvar_chr22`, so
   that `clinvar_chr22.ht`, `clinvar_chr22.tsv.gz`, `clinvar_chr22.dictionary.tsv` and
   `clinvar_chr22.manifest.json` exist in `$HVANTK_EVAL_OUT`.

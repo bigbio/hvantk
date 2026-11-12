@@ -9,7 +9,7 @@
 #   `annotate compose` job, the `training-set build` job, then the skill's receipt
 #   template as a job. check.py must pass, proving M1..M5 true (with WRITE_REFERENCE=1,
 #   first write reference.json from this build).
-# Negative: the training set rebuilt from spec_negative.yaml (min_review_stars: 0) on the
+# Negative: the training set rebuilt from the staged spec with min_review_stars: 0 on the
 #   SAME built inputs and gene matrix -- a real, self-consistent build with the wrong
 #   label filter. Graded with --run-id "$RUN_ID-n" so M2/M3 see only its own job.
 #   check.py --expect-fail must pass with M4 true and M5 false because content_ok is
@@ -31,7 +31,6 @@ REL="${HERE#"$R"/}"
 CHECK="$HVANTK_REPO/$REL/check.py"
 REFERENCE="$HVANTK_REPO/$REL/reference.json"
 DESCRIBE="$HVANTK_REPO/${REL%/eval}/templates/describe-training-set.py"
-NEG_SPEC="$HVANTK_REPO/$REL/spec_negative.yaml"
 
 STAGE="${HVANTK_EVAL_DATA:-$HVANTK_WORK/hvantk-eval}/ml-features"
 RAW="$STAGE/raw"
@@ -185,6 +184,11 @@ echo "positive control: PASS (M1..M5 true)"
 # cannot pass by copying a finished dataset); the negative reads the positive's inputs,
 # so copy their sidecars into neg/inputs/ to keep M4 true and fail on content_ok alone.
 cp "$I"/*.provenance.json "$OUT/neg/inputs/"
+# The negative spec is the staged spec with that one line changed, so the two cannot drift.
+[[ "$(grep -c '^  min_review_stars: 1$' "$SPEC" || true)" == 1 ]] \
+  || { echo "ERROR: $SPEC must hold exactly one '  min_review_stars: 1' line for the negative control" >&2; exit 1; }
+NEG_SPEC="$OUT/neg/spec.yaml"
+sed 's/^  min_review_stars: 1$/  min_review_stars: 0/' "$SPEC" > "$NEG_SPEC"
 ts_command "$NEG_SPEC" "$OUT/neg"
 JOB_NEG="$(submit_build "$RUN_NEG-build" "$OUT/neg/build.stderr" "${TS[@]}")"
 read -r NEG_ROWS NEG_POSITIVES <<< "$(manifest_counts "$OUT/neg/clinvar_chr22.manifest.json")"

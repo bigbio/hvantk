@@ -18,7 +18,8 @@ numbers arrives as text without any error.
         --receipt OUT/clinvar_heart.receipt.json
 
 Runs inside the image (needs Hail: it counts the ``.ht``'s rows). Exits 1 when the
-outputs disagree; ``string_features`` alone does not fail it.
+outputs disagree or ``string_features`` is not empty; ``consistent`` in the receipt
+reports the agreement only.
 """
 
 from __future__ import annotations
@@ -189,6 +190,11 @@ def main() -> int:
     print(f"sidecar:     {desc['sidecar_sha256'] or 'MISSING'}")
     for p in problems:
         print(f"PROBLEM: {p}")
+    if desc["string_features"]:
+        print(
+            "PROBLEM: feature column(s) typed str; rebuild the input that supplies "
+            f"them with this checkout: {', '.join(desc['string_features'])}"
+        )
 
     if args.receipt:
         receipt = {
@@ -200,7 +206,7 @@ def main() -> int:
         }
         Path(args.receipt).write_text(json.dumps(receipt, indent=2) + "\n")
         print(f"receipt:     {args.receipt}")
-    return 1 if problems else 0
+    return 1 if problems or desc["string_features"] else 0
 
 
 if __name__ == "__main__":

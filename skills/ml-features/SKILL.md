@@ -1,6 +1,6 @@
 ---
 name: ml-features
-description: 'Use when building a labelled machine-learning training set of ClinVar variants with hvantk training-set build on a Slurm cluster: pathogenic/benign labels with review stars, dbNSFP scores and allele frequencies, protein interface and PTM flags, gene-level features from the annotation matrix, gene-list flags, and a leakage tier (L1-L4) for every feature column. Also when choosing training columns free of label or allele-frequency leakage (circularity, trained_on), when a feature column comes out as text, or when the build stops with "--input does not match the spec", "gene matrix lacks column(s)", "is not in the gene matrix''s manifest" or "is not a field of".'
+description: 'Use when building a labelled machine-learning training set of ClinVar variants with hvantk training-set build on a Slurm cluster: pathogenic/benign labels with review stars, dbNSFP scores and allele frequencies, protein interface and PTM flags, gene-level features from the annotation matrix, gene-list flags, and a leakage tier (L1-L4) for every feature column. Also when choosing training columns free of label or allele-frequency leakage (circularity, trained_on), when a feature column comes out as text, or when the build stops with "--input does not match the spec", "gene matrix lacks column(s)", "is not in the gene matrix''s manifest", "that the matrix reducer did not produce" or "is not a field of".'
 user-invocable: true
 argument-hint: "<spec.yaml> [--gene-list COLUMN=FILE] [--out PREFIX]"
 metadata:
@@ -129,9 +129,12 @@ other than ClinVar's (unsupported by the command).
      python "$HVANTK_REPO/skills/ml-features/templates/describe-training-set.py" \
        --prefix "$OUT/training_set/clinvar_heart" --receipt "$OUT/training_set/clinvar_heart.receipt.json"
    ```
-   It exits 1 when the four outputs disagree.
-7. **Run notes**: `commit:`, `container:`, one `job:` line per job, the ClinVar release,
-   and the manifest's `spec.sha256`.
+   It exits 1 when the four outputs disagree or a feature column is typed `str`.
+7. **Run notes**: `commit:`, `container:`, one `job:` line per job, the manifest's
+   `spec.sha256`, and the ClinVar file itself: its name, its `sha256sum` and its
+   `##fileDate` line (`zcat RAW/clinvar/<file>.vcf.gz | head -50 | grep fileDate`). The
+   dataset does not record which release it read: its `source_fingerprint` is the
+   upstream's state when the build ran (or `probe-unavailable` offline), not the file.
 
 ## 4. Scale-up
 
@@ -145,8 +148,8 @@ an uncompressed export copied to node-local disk (850 MB for that build, 59 MB
 compressed): budget a few GB of node-local scratch.
 
 The cost is in the inputs, not in the build: dbNSFP's academic release is about 50 GB to
-download and a table of about 70 GB once built, built once on a whole node and reused; the expression
-summaries read GB-sized matrices; the rest take minutes. Rebuild the training set when
+download and a table of about 70 GB once built, built once on a whole node and reused;
+the expression summaries read GB-sized matrices; the rest take minutes. Rebuild the training set when
 the ClinVar release, any input, the gene matrix or the spec changes; rebuild the gene
 matrix when the spec's `layer1` or the gene index changes.
 
@@ -160,9 +163,18 @@ matrix when the spec's `layer1` or the gene index changes.
   (or the same for `--gene-list`). Cause: the names on the command line differ from the
   spec's `input:`, `hgnc_input:` and `gene_lists` keys. Fix: pass exactly those names.
 - `axis '<axis>' is not in the gene matrix's manifest; was the matrix composed from this
-  spec?`, or `gene matrix lacks column(s): ...`. Cause: the matrix was composed from
-  another spec, or before the spec was edited, or a matrix axis's summary was grouped on
-  another field. Fix: prepare and compose again from this spec.
+  spec?`. Cause: the matrix was composed from another spec, or before an axis was added.
+  Fix: prepare and compose again from this spec. The build checks only that each axis
+  is there: a matrix composed before an axis's `columns`, `collapse` or `stats` changed
+  passes with the old values, so prepare and compose again after any `layer1` edit.
+- `gene matrix lacks column(s): ...`. Cause: the matrix and its compose manifest
+  disagree (a `--gene-matrix-manifest` from another compose), or the gene index lacks a
+  column the spec's `gene.spine_columns` names. Fix: pass the manifest written next to
+  the matrix; build the gene index with `annotate spine`.
+- `entry '<source>' declares column(s) [...] that the matrix reducer did not produce;
+  it emitted [...]`, from `annotate prepare`. Cause: an expression summary grouped on
+  another field, or an atlas whose group labels differ from the spec's. Fix: summarize
+  again with the `--group-by` fields `references/inputs.md` gives for that axis.
 - `gene-matrix manifest '<path>' not found`. Cause: the compose manifest is not next to
   the matrix. Fix: pass `--gene-matrix-manifest`.
 - `field '<path>': '<segment>' is not a field of ...`. Cause: a spec column, a
@@ -176,8 +188,16 @@ matrix when the spec's `layer1` or the gene index changes.
   raises a tier; the plugin's `trained_on` (ClinVar, HGMD, OMIM, population frequency)
   sets the floor. Fix: none; that column is not clean.
 - Two runs of the same spec giving different datasets. Cause: ClinVar `latest` (or
-  another moving download) changed between them. Fix: pin the release; compare the
-  manifests' `input_provenance`.
+  another moving download) changed between them. Fix: pin the release; compare the run
+  notes' ClinVar file, `sha256sum` and `##fileDate`, and the receipts'
+  `funnel.clinvar_rows`. The manifests' `input_provenance` does not tell releases apart.
+- Variants at the wrong positions, joined to the wrong dbNSFP rows, with no error.
+  Cause: a GRCh37 ClinVar VCF (`hvantk download clinvar --genome-build GRCh37`); the
+  builder reads every VCF as GRCh38 and skips the loci that do not fit. Fix: GRCh38
+  only, for every input.
+- `clinvar_clnsig` and `clinvar_review_status` with commas inside one value. Cause:
+  `import_vcf` splits these INFO fields at commas and the build joins them back, so the
+  value is the one ClinVar released. Fix: none; do not split them again downstream.
 - `gene_id` and `gene_symbol` empty on a few rows (`no_gene_id` in the manifest), or a
   multi-gene variant assigned the second listed gene. Cause: none of the variant's
   ClinVar genes maps to an Ensembl id, or the preferring source (dbNSFP's
@@ -202,11 +222,13 @@ prints the same values):
 - `label_counts`: both `0` and `1` present; their balance, overall and per gene list
   (`label_by_gene_list`), is what the user expects for the gene set.
 - `tier_counts` and `excluded`: for the shipped spec at dbNSFP 4.9a, L1 265, L2 24,
-  L3 8, L4 4, nothing excluded. Anything in `excluded` must be a column the user chose
-  to leave out.
+  L3 8, L4 4, nothing excluded. L1 also depends on the expression summaries' groups
+  (each group is a column), so another atlas build changes it. Anything in `excluded`
+  must be a column the user chose to leave out.
 - `gene_lists`: symbols in, mapped, and genes; `no_gene_id` small (16 of 210,867 rows
   for the shipped spec).
-- `inputs`: each input's `builder_commit` and `source_fingerprint`, matching Preflight.
+- `inputs`: each input's `builder_commit`, matching Preflight. Which ClinVar release
+  was read is in the run notes (step 7), not here.
 - `tsv_sha256` and `sidecar_sha256`: the identity of this dataset; a rebuild from the
   same inputs reproduces `tsv_sha256` exactly.
 

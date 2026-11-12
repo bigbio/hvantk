@@ -26,8 +26,10 @@ through `skills/hpc-hail-job/templates/run-in-image.sh`, builds as jobs through
 
 **ClinVar: always pin `--version`.** `latest` changes every week, and a rebuild from a
 different release is a different dataset (other rows, other labels). Use the dated
-release (`YYYYMMDD`, a weekly archive name) and keep it in your run notes. The sidecar's
-`source_fingerprint` and the manifest's `input_provenance` record which file was read.
+release (`YYYYMMDD`, a weekly archive name) and keep it in your run notes with the
+file's `sha256sum` and its `##fileDate` line: the dataset itself does not record which
+file it read (the sidecar's `source_fingerprint` is the upstream's state at build time,
+or `probe-unavailable` when compute nodes have no internet).
 
 **dbNSFP is bring-your-own.** It has no downloader: the academic release is obtained by
 registration with the dbNSFP maintainers (the plugin's resource spec, `hvantk/skills/dbnsfp/SKILL.md`,
@@ -36,12 +38,19 @@ builder picks the one `*.bgz` it finds). The built table of the full release is 
 70 GB; build it once and reuse it.
 
 The release ships one plain-gzip file per chromosome. `bgzip` may be on neither the
-login node nor the image, so make the one `.bgz` without it: concatenate the files on the
-login node (`cat dbNSFP4.9a_variant.chr*.gz > dbNSFP4.9a_variant.gz`; gzip files
-concatenated are one gzip stream), then convert it as a job, `hvantk utils convert-bgz
-dbNSFP4.9a_variant.gz -o RAW/dbnsfp/dbNSFP4.9a_variant.bgz` (single-threaded without
-`bgzip`; allow several hours). The header line then repeats once per chromosome, which
-the builder skips.
+login node nor the image, so write the one `.bgz` with `pysam` (in the image), as a job:
+it reads tens of GB, which is not login-node work. `DIR` holds the unzipped
+per-chromosome files.
+
+```bash
+source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/submit-hail-job.sh" \
+  --name <run>-dbnsfp-bgz --cpus 2 --mem-gb 8 --time 0-12:00:00 --wait -- \
+  python -c "import glob, gzip, shutil, sys, pysam; out = pysam.BGZFile(sys.argv[1], 'wb'); [shutil.copyfileobj(gzip.open(f, 'rb'), out, 1 << 24) for f in sorted(glob.glob(sys.argv[2]))]; out.close()" \
+  RAW/dbnsfp/dbNSFP4.9a_variant.bgz 'DIR/dbNSFP4.9a_variant.chr*.gz'
+```
+
+It is single-threaded (not measured on the full release; the time above is generous).
+The header line then repeats once per chromosome, which the builder skips.
 
 **dbNSFP rankscores must be numbers.** The current builder parses every `*_rankscore`
 field to `float64`. A table built by an older checkout keeps them as strings, and
@@ -84,8 +93,8 @@ are composed into the gene matrix (the `gene-index` skill's
 
 A `matrix:` axis needs the summary's group labels to produce the spec's column names
 (`<atlas>_<group>_<stat>`, e.g. `heart_bulk_neonate_mean`); a summary grouped on another
-field gives other names, and `compose` or `training-set build` stops with
-`gene matrix lacks column(s): ...`.
+field gives other names, and `annotate prepare` stops with `entry '<source>' declares
+column(s) [...] that the matrix reducer did not produce; it emitted [...]`.
 
 ## Was each input built by this checkout?
 

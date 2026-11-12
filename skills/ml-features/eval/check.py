@@ -228,8 +228,7 @@ def job_known(job_id: str, all_ids: set) -> bool:
     """True if *job_id* (from run-notes) is ``A`` or starts an array task ``A_<i>``
     (an array submission writes one ``job: A`` line; a finished task is only ever
     accounted under ``A_<i>``, never bare ``A`` -- see dataset-build-at-scale's
-    check.py, which this is copied from; the gene-index procedure recommends an array
-    for the two input builds)."""
+    check.py, which this is copied from; an agent may build the inputs as one array)."""
     return job_id in all_ids or any(i.startswith(job_id + "_") for i in all_ids)
 
 
@@ -262,7 +261,7 @@ def grade_slurm(run_id: str, notes: dict, rows: list, profile: Path | None):
     return m2, m3, {"jobs": jobs, "within_budget": within}
 
 
-# --- reading the gene index and grading it against the reference -------------------
+# --- reading the training set and grading it against the reference ------------------
 
 
 def describe_output(out_dir: Path) -> tuple[dict, list]:
