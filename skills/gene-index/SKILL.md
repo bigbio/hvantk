@@ -182,9 +182,9 @@ remove.
   index -- the Ensembl pin is GRCh38 only. Fix: lift the cohort over to GRCh38 before
   joining; never try to build a GRCh37 gene index.
 - A source with versioned Ensembl ids (e.g. `ENSG00000139618.5`) failing to map onto the
-  gene index. Cause: the gene index's `gene_id` carries no version suffix, and nothing in
-  `annotate prepare`'s mapper strips one. Fix: strip the trailing `\.[0-9]+$` from the
-  source's ids before mapping.
+  gene index. Cause: the gene index's `gene_id` carries no version suffix, and
+  `annotate prepare` strips one only for a `matrix:` entry with `key: gene_id`. Fix: for
+  any other source, strip the trailing `\.[0-9]+$` from its ids before mapping.
 - `entry '<source>' needs --hgnc <hgnc:lookup .ht>` from `annotate prepare`. Cause: the
   spec entry's `key` is `hgnc_id`, `symbol` or `uniprot_id` (or a `variant` aggregate not
   targeting `gene_id`), none of which can resolve onto `gene_id` without the HGNC lookup.
