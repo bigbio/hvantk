@@ -32,9 +32,10 @@ def _open_input(path: str):
         compressed = fh.read(2) == b"\x1f\x8b"
     if not compressed:
         return open(path, "rb"), None
-    if shutil.which("gzip"):
-        proc = subprocess.Popen(
-            ["gzip", "-dc", path], stdout=subprocess.PIPE, bufsize=1 << 20
+    gzip_bin = shutil.which("gzip")
+    if gzip_bin:
+        proc = subprocess.Popen(  # noqa: S603 -- a fixed program on a path we were given
+            [gzip_bin, "-dc", path], stdout=subprocess.PIPE, bufsize=1 << 20
         )
         return proc.stdout, proc
     return gzip.open(path, "rb"), None
