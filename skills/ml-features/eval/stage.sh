@@ -13,7 +13,9 @@
 # no download URL), so name a dbNSFP 4.9a variant file you already have, gzipped or
 # block-gzipped: the all-chromosomes file or the chr22 one. Only its chr22 rows are
 # staged. CLINVAR_VERSION pins the ClinVar release (a dated weekly archive); the
-# reference values were produced from the default.
+# reference values were produced from the default. UniProt PTM cannot be pinned (a live
+# endpoint with no archived releases): a stage made on another day differs, and
+# control.sh then asks for a re-baseline (WRITE_REFERENCE=1).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 bash "$HERE/../../_site/check-site-profile.sh" >/dev/null

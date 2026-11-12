@@ -99,6 +99,7 @@ if [[ "${WRITE_REFERENCE:-0}" != "1" && -s "$REFERENCE" ]]; then
   REF_INPUT="$(ref_field input_sha256)"
   if [[ -n "$REF_INPUT" && "$REF_INPUT" != "$INPUT_SHA" ]]; then
     echo "ERROR: the staged inputs ($INPUT_SHA) differ from the ones the reference was produced from ($REF_INPUT)." >&2
+    echo "       UniProt PTM is a live snapshot with no archived releases, so re-staging on a later day changes it." >&2
     echo "       Re-stage (eval/stage.sh) and rerun with WRITE_REFERENCE=1 to re-baseline." >&2
     exit 1
   fi
