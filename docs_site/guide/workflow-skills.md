@@ -47,8 +47,9 @@ delivering a sample subset of a callset, ancestry inference, building many datas
 one array job with their outputs verified, triaging a drift signal (repairing the
 plugin, rebuilding, and recording the fingerprint and the rebuild ledger), building the
 gene index, running a cohort's gene burden and attaching it, ranking a cohort's genes and
-evaluating the ranking against a label set, and the molecular QTL cascade with
-colocalisation; the catalog in `skills/README.md` is the current list. See
+evaluating the ranking against a label set, the molecular QTL cascade with
+colocalisation, and building a labelled ML training set from ClinVar with a leakage tier
+on every feature; the catalog in `skills/README.md` is the current list. See
 [Running on HPC](hpc-migration.md) for the cluster setup those skills assume.
 
 ## The two kinds of skill

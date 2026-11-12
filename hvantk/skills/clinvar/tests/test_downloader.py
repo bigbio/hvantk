@@ -43,12 +43,18 @@ class TestClinVarDataset:
         ds = ClinVarDataset.from_date("20260101")
         assert ds.version_date == "20260101"
         assert ds.file_name == "clinvar_20260101.vcf.gz"
-        assert "archive/clinvar_20260101.vcf.gz" in ds.download_url
+        assert ds.download_url.endswith(
+            "vcf_GRCh38/archive_2.0/2026/clinvar_20260101.vcf.gz"
+        )
+        assert [u.rsplit("vcf_GRCh38/", 1)[1] for u in ds.fallback_urls] == [
+            "weekly/clinvar_20260101.vcf.gz",
+            "clinvar_20260101.vcf.gz",
+        ]
 
     def test_from_date_grch37(self):
         """Test from_date with GRCh37 build."""
         ds = ClinVarDataset.from_date("20260101", genome_build="GRCh37")
-        assert "vcf_GRCh37/archive/" in ds.download_url
+        assert "vcf_GRCh37/archive_2.0/2026/" in ds.download_url
 
     def test_from_date_invalid_format(self):
         """Test that non-YYYYMMDD strings are rejected."""
@@ -212,18 +218,32 @@ class TestClinVarDownloaderCLI:
                 mock_dl.assert_called()
 
     def test_download_specific_version(self):
-        """Test --version YYYYMMDD works."""
+        """--version YYYYMMDD falls through to where NCBI keeps the release (here
+        weekly/, after a 404 in archive_2.0/) and fetches the index from there too."""
+        import urllib.error
+
+        def head(req, **kwargs):
+            if "/archive_2.0/" in req.full_url:
+                raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+            return MagicMock()
+
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch(
-                "hvantk.skills.clinvar.shared.datasets.download_file"
-            ) as mock_dl:
+            with (
+                patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl,
+                patch("urllib.request.urlopen", side_effect=head),
+            ):
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--version", "20260101", "--output-dir", tmpdir],
                 )
-                assert result.exit_code == 0
-                assert "clinvar_20260101" in result.output
+                assert result.exit_code == 0, result.output
+                assert "weekly/clinvar_20260101.vcf.gz" in result.output
+                urls = [c.kwargs["url"] for c in mock_dl.call_args_list]
+                assert [u.rsplit("vcf_GRCh38/", 1)[1] for u in urls] == [
+                    "weekly/clinvar_20260101.vcf.gz",
+                    "weekly/clinvar_20260101.vcf.gz.tbi",
+                ]
 
     def test_download_grch37(self):
         """Test --genome-build GRCh37 works."""

@@ -118,8 +118,8 @@ URL: https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/
 # Download latest ClinVar VCF (GRCh38) with tabix index
 hvantk download clinvar --output-dir data/clinvar
 
-# Download a specific archived version
-hvantk download clinvar --version 20260101 --output-dir data/clinvar
+# Download a dated weekly release (the date in its file name)
+hvantk download clinvar --version 20260104 --output-dir data/clinvar
 
 # Download GRCh37 build, verify checksum
 hvantk download clinvar --genome-build GRCh37 --verify-md5

@@ -338,6 +338,9 @@ def build_training_set(
             for name, p in input_provenance.items()
         },
     }
+    # The code that built it, found the way every plugin build finds it.
+    from hvantk.core.plugin.run_builder import resolve_builder_commit
+
     provenance = Provenance(
         plugin="hvantk",
         dataset=f"training-set:{spec.name}",
@@ -345,7 +348,7 @@ def build_training_set(
         source_fingerprint=f"spec-sha256:{spec_sha256}",
         schema_id=SCHEMA_ID,
         build_timestamp=datetime.now(timezone.utc),
-        builder_commit=None,
+        builder_commit=resolve_builder_commit(),
         parents=tuple(p for p in input_provenance.values() if p is not None),
         build_parameters={"spec": spec.name},
     )

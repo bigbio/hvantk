@@ -25,6 +25,7 @@ There are two kinds of skill in this repository. **Resource specs** under
 | `hvantk:gene-index` | the gene index that gene-level annotations, cohort tables and rankings join onto must be built from the Ensembl gene-structure and HGNC datasets (`hvantk annotate spine`), its gene count and HGNC mapping rate checked, and annotation axes added onto it |
 | `hvantk:cohort-attach-burden` | a case/control cohort must become a gene-level table: the gene burden test on a cleaned MatrixTable, the cohort manifest, validation, and attachment to the gene index or the annotation matrix |
 | `hvantk:rerank-evaluate` | a cohort's genes must be ranked by multi-omic evidence with `hvantk rerank` and evaluated against a label set you choose (ClinGen or GenCC), with the identifiers aligned, paralogue blocks and the case/control audit |
+| `hvantk:ml-features` | a labelled ML training set must be built from ClinVar with `hvantk training-set build` (variant scores and allele frequencies, protein-site flags, gene features from the annotation matrix, gene-list flags) with a leakage tier on every feature, the ClinVar release pinned and a receipt written; or a training set's columns must be chosen free of label or allele-frequency leakage |
 | `hvantk:qtl-cascade` | eQTL and pQTL tables must be built and run through the molecular QTL cascade with colocalisation and its report for one or more tissues, or a GWAS locus colocalised with eQTLs |
 
 ## Install

@@ -33,6 +33,14 @@
 - **Declared training provenance in Python.** `DatasetManifest.score_provenance` carries a
   plugin's `scores: trained_on` block; `PluginRegistry.get_manifest` returns one dataset's
   manifest.
+- **The `ml-features` workflow skill.** A coding agent builds a training set with
+  `hvantk training-set build` on a Slurm cluster: inputs staged and built as jobs with the
+  ClinVar release pinned, the gene matrix composed from the same spec, and a receipt
+  (`skills/ml-features/templates/describe-training-set.py`) that checks the four outputs
+  agree and records the TSV and sidecar digests. Its references say how to adapt the spec,
+  which tier to declare, and how to choose training columns free of label or
+  allele-frequency leakage. Its eval builds a chromosome-22 slice of the ClinVar x heart
+  example.
 
 ### Changed
 
@@ -123,6 +131,13 @@ Options and fields that were accepted but did nothing:
 
 ### Fixed
 
+- **Dated ClinVar downloads.** `hvantk download clinvar --version YYYYMMDD` looked for the
+  file in an `archive/` directory NCBI does not have, so every dated download failed with
+  404. It now finds the release where NCBI keeps it (`archive_2.0/<year>/`, `weekly/`, or
+  the top level while it is current) and reads its `.md5` and `.tbi` from the same place.
+  A timeout while looking is reported with the URL instead of a traceback.
+- **Training-set provenance.** A training set's `.provenance.json` left `builder_commit`
+  empty; it now records the hvantk commit that built it, as every dataset does.
 - **`.tsv.gz` export of a hail table.** It read Hail's temporary export back line by line
   through `hl.hadoop_open`, at about 0.2 MB/s, and could stall for good: a 210,000-row,
   312-column table had not finished after an hour. It now reads the export from local

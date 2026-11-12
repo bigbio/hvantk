@@ -10,8 +10,10 @@ verified against that code, not against `--help` alone.
 
 ## The feature spec
 
-`load_spec` reads exactly two top-level keys into the object the two commands use:
-`name` (a label) and `layer1` (a list of source entries; at least one). Each entry:
+The two commands use two top-level keys: `name` (a label) and `layer1` (a list of source
+entries; at least one). A spec may also carry `label`, `variant`, `gene` and `gene_lists`
+sections for `hvantk training-set build` (the `ml-features` skill); `prepare` and
+`compose` ignore them. Each `layer1` entry:
 
 ```yaml
 name: my-features
@@ -31,8 +33,10 @@ entry's actual mapping rate onto `gene_id` falls below it); `collapse`
 `gene_id`, e.g. `insider:interfaces` or `uniprot-ptm:sites`, otherwise `prepare` raises
 rather than silently picking one); `aggregate` (required when, and only when, `key:
 variant` -- aggregates per-variant scores up to a gene; see below); `matrix` (for a
-`genes x groups` expression or specificity source -- requires `key: symbol`, since the
-reduced table it produces is symbol-keyed); `origin` and `ablate_separately` (parsed
+`genes x groups` expression or specificity source -- requires `key: symbol`, or
+`key: gene_id` for a source keyed by Ensembl id, whose version suffixes are dropped);
+`tier` (`L1` to `L4`, read only by `training-set build`, which leaves an axis without
+one out of a training set); `origin` and `ablate_separately` (parsed
 onto the entry by `load_spec` -- a free-form string and a bool, respectively -- but
 neither is read by `prepare` or `compose` themselves; accepted spec metadata, not a
 lever either command acts on).

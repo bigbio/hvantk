@@ -5,8 +5,8 @@ Examples:
     # Download latest ClinVar VCF (GRCh38)
     hvantk download clinvar --output-dir data/clinvar
 
-    # Download a specific archived version
-    hvantk download clinvar --version 20260101 --output-dir data/clinvar
+    # Download a dated weekly release (the date in its file name)
+    hvantk download clinvar --version 20260104 --output-dir data/clinvar
 
     # Download GRCh37 build without tabix index
     hvantk download clinvar --genome-build GRCh37 --no-index
@@ -130,9 +130,9 @@ def clinvar_downloader(
 
         hvantk download clinvar --output-dir data/clinvar
 
-        # Download a specific archived version
+        # Download a dated weekly release (the date in its file name)
 
-        hvantk download clinvar --version 20260101 --output-dir data/clinvar
+        hvantk download clinvar --version 20260104 --output-dir data/clinvar
 
         # Download GRCh37 build
 
@@ -147,7 +147,6 @@ def clinvar_downloader(
             dataset = ClinVarDataset.from_date(version_date, genome_build=genome_build)
 
         click.echo(f"File: {dataset.file_name}")
-        click.echo(f"URL: {dataset.download_url}")
 
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
@@ -160,6 +159,8 @@ def clinvar_downloader(
             overwrite=overwrite,
             download_index=not no_index,
         )
+        # After the download: a dated release resolves to where NCBI keeps it.
+        click.echo(f"URL: {dataset.download_url}")
         click.echo(f"Downloaded to: {output_path}")
 
     except FileExistsError as e:

@@ -168,3 +168,6 @@ command with a usage error before Hail runs any job.
 
 - [Gene annotation matrix](annotate.md): the gene layer this command joins.
 - [Re-rank](rerank.md): the same `trained_on` declarations drive its clean and all arms.
+- [Workflow skills](../guide/workflow-skills.md): the `ml-features` skill runs this
+  command on a Slurm cluster, from staging the inputs to a receipt that checks the four
+  outputs agree.

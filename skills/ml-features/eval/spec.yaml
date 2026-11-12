@@ -1,0 +1,127 @@
+# Eval spec for the ml-features skill: the shipped ClinVar x heart example
+# (examples/training_sets/clinvar_heart.yaml) without its three expression axes
+# (heart_bulk, farah, hca), with the gene list renamed to is_eval_gene. The eval's
+# inputs are sliced to chromosome 22 by eval/stage.sh. Copied from the example; keep
+# the two in step when the example changes.
+name: clinvar_chr22
+
+layer1:
+  # Gene constraint from population depletion: L3.
+  - axis: gnomad_constraint
+    source: "gnomad-metrics:metrics"
+    key: gene_id
+    columns: [oe_lof_upper, oe_mis_upper, pLI, mis_z]
+    min_mapping_rate: 0.9
+    tier: L3
+  - axis: gevir
+    source: "gevir:metrics"
+    key: gene_id
+    columns: [gevir_pct, virlof_pct]
+    min_mapping_rate: 0.95
+    tier: L3
+  # Interaction partners with a resolved interface, max over the gene's proteins.
+  - axis: insider_interfaces
+    source: "insider:interfaces"
+    key: uniprot_id
+    columns: [n_partners]
+    collapse: max
+    min_mapping_rate: 0.85
+    tier: L1
+
+label:
+  input: clinvar
+  source: "clinvar:variants"
+  provenance: [ClinVar]
+  pathogenic: [Pathogenic, Likely_pathogenic, Pathogenic/Likely_pathogenic]
+  benign: [Benign, Likely_benign, Benign/Likely_benign]
+  min_review_stars: 1
+  consequence: missense_variant
+  snv_only: true
+
+variant:
+  - input: dbnsfp
+    source: "dbnsfp:variants"
+    join: allele
+    # Breaks ties when ClinVar lists several genes for a variant.
+    gene_field: Ensembl_geneid
+    columns:
+      SIFT_converted_rankscore: {field: "SIFT_converted_rankscore", description: "SIFT_converted rankscore (0-1, higher = more damaging)"}
+      SIFT4G_converted_rankscore: {field: "SIFT4G_converted_rankscore", description: "SIFT4G_converted rankscore (0-1, higher = more damaging)"}
+      Polyphen2_HDIV_rankscore: {field: "Polyphen2_HDIV_rankscore", description: "Polyphen2_HDIV rankscore (0-1, higher = more damaging)"}
+      Polyphen2_HVAR_rankscore: {field: "Polyphen2_HVAR_rankscore", description: "Polyphen2_HVAR rankscore (0-1, higher = more damaging)"}
+      LRT_converted_rankscore: {field: "LRT_converted_rankscore", description: "LRT_converted rankscore (0-1, higher = more damaging)"}
+      MutationTaster_converted_rankscore: {field: "MutationTaster_converted_rankscore", description: "MutationTaster_converted rankscore (0-1, higher = more damaging)"}
+      MutationAssessor_rankscore: {field: "MutationAssessor_rankscore", description: "MutationAssessor rankscore (0-1, higher = more damaging)"}
+      FATHMM_converted_rankscore: {field: "FATHMM_converted_rankscore", description: "FATHMM_converted rankscore (0-1, higher = more damaging)"}
+      PROVEAN_converted_rankscore: {field: "PROVEAN_converted_rankscore", description: "PROVEAN_converted rankscore (0-1, higher = more damaging)"}
+      VEST4_rankscore: {field: "VEST4_rankscore", description: "VEST4 rankscore (0-1, higher = more damaging)"}
+      MetaSVM_rankscore: {field: "MetaSVM_rankscore", description: "MetaSVM rankscore (0-1, higher = more damaging)"}
+      MetaLR_rankscore: {field: "MetaLR_rankscore", description: "MetaLR rankscore (0-1, higher = more damaging)"}
+      M_CAP_rankscore: {field: "M-CAP_rankscore", description: "M-CAP rankscore (0-1, higher = more damaging)"}
+      REVEL_rankscore: {field: "REVEL_rankscore", description: "REVEL rankscore (0-1, higher = more damaging)"}
+      MutPred_rankscore: {field: "MutPred_rankscore", description: "MutPred rankscore (0-1, higher = more damaging)"}
+      MVP_rankscore: {field: "MVP_rankscore", description: "MVP rankscore (0-1, higher = more damaging)"}
+      MPC_rankscore: {field: "MPC_rankscore", description: "MPC rankscore (0-1, higher = more damaging)"}
+      PrimateAI_rankscore: {field: "PrimateAI_rankscore", description: "PrimateAI rankscore (0-1, higher = more damaging)"}
+      DEOGEN2_rankscore: {field: "DEOGEN2_rankscore", description: "DEOGEN2 rankscore (0-1, higher = more damaging)"}
+      BayesDel_addAF_rankscore: {field: "BayesDel_addAF_rankscore", tier: L4, description: "BayesDel_addAF rankscore (0-1, higher = more damaging); takes allele frequency as an input"}
+      BayesDel_noAF_rankscore: {field: "BayesDel_noAF_rankscore", description: "BayesDel_noAF rankscore (0-1, higher = more damaging)"}
+      ClinPred_rankscore: {field: "ClinPred_rankscore", description: "ClinPred rankscore (0-1, higher = more damaging)"}
+      LIST_S2_rankscore: {field: "LIST-S2_rankscore", description: "LIST-S2 rankscore (0-1, higher = more damaging)"}
+      CADD_raw_rankscore: {field: "CADD_raw_rankscore", tier: L2, description: "CADD_raw rankscore (0-1, higher = more damaging); simulated vs observed alleles: AF-biased training"}
+      DANN_rankscore: {field: "DANN_rankscore", tier: L2, description: "DANN rankscore (0-1, higher = more damaging); simulated vs observed alleles: AF-biased training"}
+      fathmm_MKL_coding_rankscore: {field: "fathmm-MKL_coding_rankscore", description: "fathmm-MKL_coding rankscore (0-1, higher = more damaging)"}
+      fathmm_XF_coding_rankscore: {field: "fathmm-XF_coding_rankscore", description: "fathmm-XF_coding rankscore (0-1, higher = more damaging)"}
+      GenoCanyon_rankscore: {field: "GenoCanyon_rankscore", description: "GenoCanyon rankscore (0-1, higher = more damaging)"}
+      integrated_fitCons_rankscore: {field: "integrated_fitCons_rankscore", description: "integrated_fitCons rankscore (0-1, higher = more damaging)"}
+      GM12878_fitCons_rankscore: {field: "GM12878_fitCons_rankscore", description: "GM12878_fitCons rankscore (0-1, higher = more damaging)"}
+      H1_hESC_fitCons_rankscore: {field: "H1-hESC_fitCons_rankscore", description: "H1-hESC_fitCons rankscore (0-1, higher = more damaging)"}
+      HUVEC_fitCons_rankscore: {field: "HUVEC_fitCons_rankscore", description: "HUVEC_fitCons rankscore (0-1, higher = more damaging)"}
+      phyloP100way_vertebrate_rankscore: {field: "phyloP100way_vertebrate_rankscore", description: "phyloP100way_vertebrate rankscore (0-1, higher = more damaging)"}
+      phyloP470way_mammalian_rankscore: {field: "phyloP470way_mammalian_rankscore", description: "phyloP470way_mammalian rankscore (0-1, higher = more damaging)"}
+      phastCons100way_vertebrate_rankscore: {field: "phastCons100way_vertebrate_rankscore", description: "phastCons100way_vertebrate rankscore (0-1, higher = more damaging)"}
+      GERP_RS_rankscore: {field: "GERP++_RS_rankscore", description: "GERP++_RS rankscore (0-1, higher = more damaging)"}
+      ESM1b_rankscore: {field: "ESM1b_rankscore", description: "ESM1b rankscore (0-1, higher = more damaging)"}
+      EVE_rankscore: {field: "EVE_rankscore", description: "EVE rankscore (0-1, higher = more damaging)"}
+      AlphaMissense_rankscore: {field: "AlphaMissense_rankscore", description: "AlphaMissense rankscore (0-1, higher = more damaging)"}
+      MetaRNN_rankscore: {field: "MetaRNN_rankscore", description: "MetaRNN rankscore (0-1, higher = more damaging)"}
+      VARITY_R_rankscore: {field: "VARITY_R_rankscore", description: "VARITY_R rankscore (0-1, higher = more damaging)"}
+      VARITY_ER_rankscore: {field: "VARITY_ER_rankscore", description: "VARITY_ER rankscore (0-1, higher = more damaging)"}
+      gMVP_rankscore: {field: "gMVP_rankscore", description: "gMVP rankscore (0-1, higher = more damaging)"}
+      MutScore_rankscore: {field: "MutScore_rankscore", description: "MutScore rankscore (0-1, higher = more damaging)"}
+      gnomad_af_exomes:
+        field: gnomAD.gnomAD_exomes_AF
+        cast: float64
+        tier: L4
+        description: "gnomAD exomes allele frequency as shipped in dbNSFP; missing = not observed or not covered"
+      gnomad_af_genomes:
+        field: gnomAD.gnomAD_genomes_AF
+        cast: float64
+        tier: L4
+        description: "gnomAD genomes allele frequency as shipped in dbNSFP; missing = not observed or not covered"
+      gnomad_af_popmax:
+        fields: [gnomAD.gnomAD_exomes_POPMAX_AF, gnomAD.gnomAD_genomes_POPMAX_AF]
+        cast: float64
+        reduce: max
+        tier: L4
+        description: "Larger of the gnomAD exomes and genomes popmax allele frequencies"
+  - input: insider_variants
+    source: "insider:variants"
+    join: interval
+    columns:
+      ppi_site: {tier: L1, description: "Variant lies in an INSIDER protein-protein interface interval"}
+  - input: ptm
+    source: "uniprot-ptm:sites"
+    join: codon
+    columns:
+      ptm_site: {tier: L1, description: "Variant lies in the codon of a UniProt-annotated PTM site"}
+
+gene:
+  hgnc_input: hgnc
+  spine_columns:
+    cds_length: {tier: L1, description: "CDS length"}
+    n_coding_exons: {tier: L1, description: "Coding exon count"}
+    n_transcripts: {tier: L1, description: "Transcript count"}
+
+gene_lists:
+  is_eval_gene: {description: "Gene in the eval gene list given with --gene-list"}
