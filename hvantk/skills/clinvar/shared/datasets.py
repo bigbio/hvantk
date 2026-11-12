@@ -157,8 +157,6 @@ class ClinVarDataset:
             logger.info(f"Downloaded ClinVar VCF to {output_path}")
         except Exception as e:
             raise RuntimeError(f"Failed to download ClinVar VCF: {e}") from e
-        # The .md5 and .tbi sit next to the VCF that was found.
-        self.download_url = url
 
         if download_index:
             self._download_index(output_dir, overwrite)
@@ -180,7 +178,7 @@ class ClinVarDataset:
         """
         import urllib.request
 
-        md5_url = f"{self.download_url}.md5"
+        md5_url = f"{self._locate()}.md5"
         logger.info(f"Fetching MD5 checksum from {md5_url}")
 
         try:
@@ -234,7 +232,9 @@ class ClinVarDataset:
         """The first of ``download_url`` and ``fallback_urls`` that NCBI serves.
 
         Probed with HEAD requests, so a URL that does not exist never reaches
-        ``download_file`` (which logs every failure with a traceback). With no
+        ``download_file`` (which logs every failure with a traceback). The URL found
+        becomes ``download_url`` (and the fallbacks are dropped), so the ``.md5`` and
+        ``.tbi`` are fetched from the same place and later calls probe nothing. With no
         fallbacks there is nothing to choose and nothing is probed.
         """
         import urllib.error
@@ -249,11 +249,14 @@ class ClinVarDataset:
             )
             try:
                 with urllib.request.urlopen(req, timeout=30, context=tls_context()):
+                    self.download_url, self.fallback_urls = url, ()
                     return url
             except urllib.error.HTTPError as e:
                 tried.append(f"{url} ({e.code})")
-            except urllib.error.URLError as e:
-                raise RuntimeError(f"Could not reach {url}: {e.reason}") from e
+            except OSError as e:
+                # URLError, and a read timeout, which urllib raises unwrapped.
+                reason = getattr(e, "reason", e)
+                raise RuntimeError(f"Could not reach {url}: {reason}") from e
         raise RuntimeError(
             f"ClinVar release {self.version_date} ({self.genome_build}) not found; "
             "tried " + ", ".join(tried)
