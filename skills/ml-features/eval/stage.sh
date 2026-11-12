@@ -79,6 +79,9 @@ slice() {
   bash "$SUBMIT" --name "stage-mlf-$name" --cpus 2 --mem-gb 8 --time "$time" --wait -- \
     python "$SLICE" --input "$in" --output "$tmp" "${contig_args[@]}" >/dev/null
   mv "$tmp" "$out"
+  # Hadoop's local filesystem writes a checksum next to a file Hail writes; it is named
+  # after the temp name, so drop it rather than leave it behind.
+  rm -f "$(dirname "$out")/.$(basename "$tmp").crc"
 }
 
 # --- upstream: the newest gene-index control that fully passed ---
