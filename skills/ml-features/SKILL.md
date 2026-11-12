@@ -76,12 +76,15 @@ other than ClinVar's (unsupported by the command).
 ## 3. Procedure
 
 `RAW` and `OUT` below are absolute directories under `$HVANTK_WORK`; `<run>` is the run id.
+Copy the spec to `$OUT/spec.yaml` and each gene list next to it first; the commands read
+them there.
 
 1. **Stage the raw files on the login node**, through the image, one plugin downloader
-   each, ClinVar at the pinned release:
+   each, ClinVar at the pinned release (`--verify-md5` checks it against NCBI's
+   checksum; keep the VCF, the only lasting record of which release was read):
    ```bash
    source "$HVANTK_SITE_PROFILE" && bash "$HVANTK_REPO/skills/hpc-hail-job/templates/run-in-image.sh" -- \
-     hvantk download clinvar --version YYYYMMDD --output-dir "$RAW/clinvar"
+     hvantk download clinvar --version YYYYMMDD --verify-md5 --output-dir "$RAW/clinvar"
    ```
    `references/inputs.md` lists every input of the shipped spec with its downloader, the
    two that have none (dbNSFP, the INSIDER variants BED) and how to get them.
@@ -132,7 +135,7 @@ other than ClinVar's (unsupported by the command).
    It exits 1 when the four outputs disagree or a feature column is typed `str`.
 7. **Run notes**: `commit:`, `container:`, one `job:` line per job, the manifest's
    `spec.sha256`, and the ClinVar file itself: its name, its `sha256sum` and its
-   `##fileDate` line (`zcat RAW/clinvar/<file>.vcf.gz | head -50 | grep fileDate`). The
+   `##fileDate` line (`zgrep -m1 '^##fileDate=' RAW/clinvar/<file>.vcf.gz`). The
    dataset does not record which release it read: its `source_fingerprint` is the
    upstream's state when the build ran (or `probe-unavailable` offline), not the file.
 
@@ -194,7 +197,8 @@ matrix when the spec's `layer1` or the gene index changes.
 - Variants at the wrong positions, joined to the wrong dbNSFP rows, with no error.
   Cause: a GRCh37 ClinVar VCF (`hvantk download clinvar --genome-build GRCh37`); the
   builder reads every VCF as GRCh38 and skips the loci that do not fit. Fix: GRCh38
-  only, for every input.
+  only, for every input keyed by position (gene-keyed axes such as gnomAD constraint
+  v2.1.1 join on `gene_id` and are unaffected).
 - `clinvar_clnsig` and `clinvar_review_status` with commas inside one value. Cause:
   `import_vcf` splits these INFO fields at commas and the build joins them back, so the
   value is the one ClinVar released. Fix: none; do not split them again downstream.
