@@ -25,3 +25,14 @@ CLINVAR_BENIGN_LABELS = [
     "Likely_benign",
     "Benign",
 ]
+
+# Review stars by CLNREVSTAT (re-joined with ","), as ClinVar documents them. Anything
+# not listed (no assertion criteria, no classification, ...) is 0 stars.
+CLINVAR_REVIEW_STARS = {
+    "practice_guideline": 4,
+    "reviewed_by_expert_panel": 3,
+    "criteria_provided,_multiple_submitters,_no_conflicts": 2,
+    "criteria_provided,_single_submitter": 1,
+    "criteria_provided,_conflicting_classifications": 1,
+    "criteria_provided,_conflicting_interpretations": 1,
+}

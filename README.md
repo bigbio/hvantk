@@ -86,6 +86,7 @@ says how to set up the site profile. They are not the data-source plugins under
 | **HGC** | Joint genotyping: gVCF combining, QC, format conversion | `hvantk hgc` | [HGC](docs_site/tools/hgc.md) |
 | **Ancestry** | Ancestry inference (PCA + Random Forest) | `hvantk ancestry-inference` | [Ancestry](docs_site/tools/ancestry.md) |
 | **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Gene annotation matrix](docs_site/tools/annotate.md) |
+| **Training sets** | Build labelled ClinVar feature datasets with leakage tiers for ML | `hvantk training-set` | [ML training sets](docs_site/tools/training-set.md) |
 | **Cohort** | Validate external cohorts, run a gene burden test, attach them to the matrix | `hvantk cohort` | [External cohorts](docs_site/tools/cohort.md) |
 | **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Re-rank](docs_site/tools/rerank.md) |
 | **EnrichEx** | Gene-set enrichment: overlap tests and rare-variant burden | `hvantk enrichex` | [EnrichEx](docs_site/tools/enrichex.md) |

@@ -37,4 +37,4 @@ argument.
 - Filtering by gene set (`filter_to_genes`) and by clinical significance
   (`filter_by_pathogenicity`)
 - Aggregating clinical-significance counts over a filtered table
-- Deriving a TP/TN training-label column with `label_training_set`
+- Deriving a 1/0 training label with review stars with `label_training_set`

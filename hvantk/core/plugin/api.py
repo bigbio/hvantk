@@ -366,6 +366,12 @@ class DatasetManifest:
     download_ref: tuple[str, str] | None = None
     parse_ref: tuple[str, str] | None = None
     schema_ids: tuple[str, ...] = ()
+    # The dataset's `scores:` block: score field -> the sources it was trained on. An
+    # empty tuple means trained on nothing label-derived; a score that is absent is
+    # undeclared, which consumers must treat conservatively, never as clean.
+    score_provenance: Mapping[str, tuple[str, ...]] = field(
+        default_factory=dict, hash=False
+    )
 
 
 @dataclass(frozen=True)

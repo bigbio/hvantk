@@ -27,19 +27,20 @@ Format
   struct or dict.
 
 Neither backend materialises the table a second time: a hail table is sorted and
-JSON-encoded by Hail into a temporary UTF-8 text file that is streamed back row by
-row, and the output is written to ``<path>.partial`` and renamed into place only once
-complete.
+JSON-encoded by Hail into a temporary UTF-8 text file that is read back row by row from
+local disk (copied there first when Hail's temporary directory is remote), and the
+output is written to ``<path>.partial`` and renamed into place only once complete.
 """
 
 from __future__ import annotations
 
 import gzip
-import io
 import json
 import math
 import numbers
 import os
+import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
@@ -273,15 +274,33 @@ def _hail_export(ann: AnnotationTable) -> tuple[str, list[str], list, list[int]]
     return tmp, fields, kinds, key_pos or [0]
 
 
-def _hail_rows(
-    tmp: str, fields: list[str], kinds: list, key_pos: list[int]
-) -> Iterator[list[str]]:
-    """Stream the JSON-encoded export back as rendered rows, in Hail's order."""
+def _local_export(tmp: str, workdir: str) -> str:
+    """A local path to Hail's export: the file itself when it is local, else a copy.
+
+    The export is read on the local filesystem, never line by line through
+    ``hl.hadoop_open``: each read there crosses into the JVM, which ran at about
+    0.2 MB/s (an hour for a 210,000 x 312 table) and could stall for good.
+    """
+    parsed = urllib.parse.urlparse(tmp)
+    if parsed.scheme == "file":
+        return parsed.path
+    # A path with no scheme is resolved by Hadoop's default filesystem, which is HDFS on
+    # some clusters: it is local only if it is actually on this disk.
+    if parsed.scheme == "" and os.path.exists(tmp):
+        return tmp
     import hail as hl
 
-    # Hail writes the export as UTF-8 but its text mode decodes ISO-8859-1, which
-    # double-encodes every non-ASCII character ("RORα" became "RORÎ±").
-    with io.TextIOWrapper(hl.hadoop_open(tmp, "rb"), encoding="utf-8") as fh:
+    local = os.path.join(workdir, "export.tsv")
+    hl.hadoop_copy(tmp, "file://" + local)
+    return local
+
+
+def _hail_rows(
+    local: str, fields: list[str], kinds: list, key_pos: list[int]
+) -> Iterator[list[str]]:
+    """Stream the JSON-encoded export back as rendered rows, in Hail's order."""
+    # Hail writes the export as UTF-8 ("RORα" must not come back as "RORÎ±").
+    with open(local, encoding="utf-8") as fh:
         for line in fh:
             values = [json.loads(t) for t in line.rstrip("\n").split("\t")]
             for j, kind in enumerate(kinds):
@@ -314,6 +333,8 @@ def save_annotation_table_tsv(ann: AnnotationTable, path: Path) -> None:
 
     tmp, fields, kinds, key_pos = _hail_export(ann)
     try:
-        _write(Path(path), fields, _hail_rows(tmp, fields, kinds, key_pos))
+        with tempfile.TemporaryDirectory(prefix="hvantk-tsv-") as workdir:
+            local = _local_export(tmp, workdir)
+            _write(Path(path), fields, _hail_rows(local, fields, kinds, key_pos))
     finally:
         cleanup_temp_file(tmp)

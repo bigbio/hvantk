@@ -328,19 +328,23 @@ def test_matrix_entry_parses(tmp_path):
     assert e.matrix.specificity.combine == "max"
 
 
-def test_matrix_requires_symbol_key(tmp_path):
+def test_matrix_key_must_be_symbol_or_gene_id(tmp_path):
     from hvantk.algorithms.annotation.spec import load_spec
 
-    doc = (
-        "name: t\n"
-        "layer1:\n"
-        "  - axis: expr\n"
-        "    source: s:a\n"
-        "    key: gene_id\n"
-        "    columns: [asp_cm_spec]\n"
-        "    matrix: {group_axis: celltype, atlas: asp}\n"
-    )
+    def doc(key):
+        return (
+            "name: t\n"
+            "layer1:\n"
+            "  - axis: expr\n"
+            "    source: s:a\n"
+            f"    key: {key}\n"
+            "    columns: [asp_cm_spec]\n"
+            "    matrix: {group_axis: celltype, atlas: asp}\n"
+        )
+
     p = tmp_path / "s.yaml"
-    p.write_text(doc)
+    p.write_text(doc("gene_id"))
+    assert load_spec(p).entry("expr").key == "gene_id"
+    p.write_text(doc("hgnc_id"))
     with pytest.raises(ValueError, match="matrix"):
         load_spec(p)

@@ -125,7 +125,7 @@ def test_a_typo_suggestion_imports_no_subcommand_module():
 def test_listing_commands_imports_no_subcommand_module():
     """``hvantk --help`` renders every short help; it may only read the registry.
 
-    Resolving each command to ask for its help would import all 18 modules --
+    Resolving each command to ask for its help would import all 19 modules --
     ~11 s, including Hail via ``download_cli`` and ``enrichex`` -- which is
     exactly the cost ``_LAZY_COMMANDS`` exists to avoid.
     """
@@ -144,7 +144,7 @@ def test_listing_commands_imports_no_subcommand_module():
 def test_every_command_is_lazy():
     """Both checks above are scoped to `_LAZY_COMMANDS`; this pins that scope.
 
-    Emptying the registry and wiring the 18 commands eagerly with `add_command`
+    Emptying the registry and wiring the 19 commands eagerly with `add_command`
     -- the pattern `architecture.md` warns against -- leaves `hvantk --help`
     byte-identical and costs ~5.6 s, while making every registry-derived
     assertion iterate an empty set. Asserting the two agree is what stops a
@@ -242,7 +242,7 @@ def test_shell_completion_imports_no_subcommand_module():
 
     click's ``Group.shell_complete`` builds each completion from
     ``command.get_short_help_str()``, so the stock implementation calls
-    ``get_command`` for all 18 names. That made completion -- the one place a
+    ``get_command`` for all 19 names. That made completion -- the one place a
     user is guaranteed to be waiting -- cost ~5.9 s and pull Hail, pandas,
     anndata, scipy and matplotlib, while ``--help`` returned in 0.1 s.
     """
@@ -250,7 +250,7 @@ def test_shell_completion_imports_no_subcommand_module():
         "from click.shell_completion import ShellComplete\n"
         "from hvantk.hvantk import cli\n"
         "items = ShellComplete(cli, {}, 'hvantk', '_HVANTK_COMPLETE').get_completions([], '')\n"
-        "assert len(items) == 18, len(items)\n"
+        "assert len(items) == 19, len(items)\n"
     )
     eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
     assert not eager, f"shell completion imported subcommand modules: {eager}"

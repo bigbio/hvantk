@@ -1,1 +1,1 @@
-"""Training-set generation pipelines (compose skill data sources with algorithm annotators)."""
+"""`hvantk training-set build`: labelled, tiered ML training datasets (see build.py)."""

@@ -66,23 +66,20 @@ print(by_sig)
 
 ## Deriving a Training-Label Column
 
-`label_training_set` derives a TP/TN label column (default `rf_label`) from the
-ClinVar pathogenic/benign labels. A pathogenic variant is TP when its gene is in
-`gene_set` (or when no `gene_set` is given); a benign variant is TN. Synonymous variants
-are dropped first.
+`label_training_set` labels missense SNVs 1 (pathogenic) or 0 (benign) from the primary
+ClinVar classification -- the text before the first `|` of `CLNSIG`, so
+`Pathogenic|risk_factor` counts as pathogenic -- and adds the review stars derived from
+`CLNREVSTAT` (0-4). Variants with any other classification are dropped. The library
+function behind it, `label_clinvar_variants`, keeps the unlabelled rows as well and
+takes the label sets, the consequence and the SNV filter as arguments.
 
 ```python
-labeled_ht = streamer.label_training_set(
-    gene_set={"BRCA1", "BRCA2"},
-    label_column="rf_label",
-)
-labeled_ht = labeled_ht.filter(hl.is_defined(labeled_ht.rf_label))
-print(f"Labeled training variants: {labeled_ht.count()}")
+labeled_ht = streamer.label_training_set()
+labeled_ht = labeled_ht.filter(labeled_ht.clinvar_review_stars >= 1)
+print(labeled_ht.aggregate(hl.agg.counter(labeled_ht.label)))
 ```
 
-`disease_terms` also marks a variant TP when one of its ClinVar disease names
-(`CLNDN`, with spaces turned into underscores and lower-cased) equals a term exactly,
-so pass whole names such as `hereditary_breast_ovarian_cancer_syndrome`, not keywords.
+To build a full feature dataset from these labels, see `hvantk training-set build`.
 
 ## Tips
 

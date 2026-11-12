@@ -45,8 +45,10 @@ as a `.parquet`, `.pkl`, `.csv` or `.tsv` file; a `.csv` or `.tsv` may be compre
 
 `annotate` adds only the PTM fields. Add the gene, AF, LOEUF and label columns to the
 variant table yourself and pass their names. `--label-filter` keeps the rows whose label
-is exactly `TN` (benign, the default) or `TP` (pathogenic), the values the ClinVar
-training-set labelling writes to `rf_label`; pass `all` to keep every row.
+is exactly `TN` (benign, the default) or `TP` (pathogenic); pass `all` to keep every row.
+The ClinVar labelling (`label_training_set`, `hvantk training-set build`) writes `label`
+as 1/0, so derive the column first, e.g.
+`ht.annotate(rf_label=hl.if_else(ht.label == 1, "TP", "TN"))`.
 
 ### Expression data
 

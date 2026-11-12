@@ -110,6 +110,11 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
         "tools_group",
         "Inspect the hvantk tool manifest registry.",
     ),
+    "training-set": (
+        "hvantk.tools.training_sets.training_set_cli",
+        "training_set_group",
+        "Build ML training datasets (labelled, tiered feature tables).",
+    ),
     "utils": (
         "hvantk.tools.infra.utils_cli",
         "utils_group",
