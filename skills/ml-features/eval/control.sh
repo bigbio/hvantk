@@ -107,14 +107,15 @@ fi
 
 # --- positive: the seven input datasets, one job each ---
 I="$OUT/pos/inputs"
-build_input() {  # build_input SHORT DATASET RAW_SUBDIR OUTPUT_NAME
+build_input() {  # build_input SHORT DATASET RAW_SUBDIR OUTPUT_NAME [EXTRA_ARG...]
   add_job "$RUN_POS-$1" "$OUT/pos/$1.stderr" \
-    hvantk reprocess "$2" --raw-dir "$RAW/$3" --output "$I/$4" --skip-download --no-check-drift
+    hvantk reprocess "$2" --raw-dir "$RAW/$3" --output "$I/$4" --skip-download --no-check-drift "${@:5}"
 }
 build_input clinvar clinvar:variants clinvar clinvar.ht
 build_input dbnsfp dbnsfp:variants dbnsfp dbnsfp.ht
 build_input insider insider:variants insider_variants insider_variants.ht
-build_input ptm uniprot-ptm:sites uniprot_ptm ptm_sites.ht
+# Its parse stage would otherwise write the intermediate into the staged raw dir.
+build_input ptm uniprot-ptm:sites uniprot_ptm ptm_sites.ht --intermediate "$OUT/pos/ptm_sites.intermediate.tsv.bgz"
 build_input interfaces insider:interfaces insider_interfaces insider_interfaces.ht
 build_input gnomad gnomad-metrics:metrics gnomad_metrics gnomad_metrics.ht
 build_input gevir gevir:metrics gevir gevir.ht

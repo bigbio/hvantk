@@ -44,7 +44,7 @@ done
 
 # Every raw dir must hold exactly one file matching *pattern* and nothing else (copied
 # from rerank-evaluate/eval/stage.sh: a partial download leaves a <name>.<random> temp
-# file behind rather than disappearing).
+# file behind rather than disappearing). ALLOW_EXTRA names one more file the dir may hold.
 validate_raw_dir() {
   local dir="$1" pattern="$2" label="$3"
   local -a matching=() extra=()
@@ -52,6 +52,7 @@ validate_raw_dir() {
   while IFS= read -r -d '' f; do
     case "$(basename "$f")" in
       $pattern) matching+=("$f") ;;
+      "${ALLOW_EXTRA:-}") ;;
       *) extra+=("$f") ;;
     esac
   done < <(find "$dir" -maxdepth 1 -type f ! -name '.*' -print0)
@@ -153,7 +154,17 @@ stage_download() {
 }
 stage_download "$STAGE/raw/insider_interfaces" "H_sapiens_interfacesALL.txt" insider_interfaces \
   hvantk download insider-interfaces --output "$STAGE/raw/insider_interfaces/H_sapiens_interfacesALL.txt"
-stage_download "$STAGE/raw/uniprot_ptm" "*.tsv" uniprot_ptm \
+# UniProt PTM's build maps the sites onto the pinned Ensembl GTF and downloads it into
+# the raw dir when it is missing; copy it from the gene-index stage instead, so the job
+# needs no internet and the raw dir holds only what staged.sha256 lists.
+GTF="$(sed -n 's/^ENSEMBL_RELEASE = "\([0-9]*\)"$/Homo_sapiens.GRCh38.\1.gtf.gz/p' \
+  "$HVANTK_REPO/hvantk/resources/ensembl_release.py")"
+[[ -n "$GTF" ]] || { echo "ERROR: cannot read ENSEMBL_RELEASE from hvantk/resources/ensembl_release.py" >&2; exit 1; }
+if [[ ! -s "$STAGE/raw/uniprot_ptm/$GTF" ]]; then
+  [[ -s "$GI/raw/ensembl-gene/$GTF" ]] || { echo "ERROR: $GI/raw/ensembl-gene/$GTF is missing; run skills/gene-index/eval/stage.sh" >&2; exit 1; }
+  cp "$GI/raw/ensembl-gene/$GTF" "$STAGE/raw/uniprot_ptm/$GTF"
+fi
+ALLOW_EXTRA="$GTF" stage_download "$STAGE/raw/uniprot_ptm" "*.tsv" uniprot_ptm \
   hvantk download uniprot-ptm --output-dir "$STAGE/raw/uniprot_ptm"
 stage_download "$STAGE/raw/gnomad_metrics" "*.bgz" gnomad_metrics \
   hvantk download gnomad-metrics --output "$STAGE/raw/gnomad_metrics/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz"
