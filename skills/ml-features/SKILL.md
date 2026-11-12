@@ -61,7 +61,7 @@ other than ClinVar's (unsupported by the command).
    `HVANTK_BIND` in the profile file).
 5. The spec: the shipped one or an edited copy (`references/spec-and-tiers.md`). Every
    `--input` name it needs:
-   `grep -nE '^\s+(input|hgnc_input):' <spec.yaml>`. Every `gene_lists` column needs a
+   `grep -nE '^\s+(- )?(input|hgnc_input):' <spec.yaml>`. Every `gene_lists` column needs a
    `--gene-list COLUMN=FILE` (symbols separated by whitespace); ask the user for each
    file, never guess one.
 6. The ClinVar release: a dated release (`YYYYMMDD`), decided now and written into the
