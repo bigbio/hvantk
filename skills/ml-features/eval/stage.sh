@@ -129,10 +129,8 @@ INSIDER_BED="$STAGE/download/insider/Whole_Human_Interactome_Interface_hg38.bed"
 if [[ ! -s "$INSIDER_BED" ]]; then
   URL="$(python3 -c '
 import json, sys
-for d in json.load(open(sys.argv[1])):
-    u = d.get("url", "")
-    if u.endswith(".bed"):
-        print(u); break
+urls = [f.get("url", "") for d in json.load(open(sys.argv[1])) for f in d.get("files", [])]
+print(next((u for u in urls if u.endswith(".bed")), ""))
 ' "$HVANTK_REPO/hvantk/skills/insider/catalog/datasets.json")"
   [[ -n "$URL" ]] || { echo "ERROR: no .bed URL in the INSIDER catalog" >&2; exit 1; }
   curl -fsSL -o "$INSIDER_BED.part" "$URL" && mv "$INSIDER_BED.part" "$INSIDER_BED"
