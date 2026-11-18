@@ -66,8 +66,8 @@
     "signal": "schema"
   },
   "uniprot-ptm:sites": {
-    "accepted_in": "PR #370",
-    "last_upstream_change": "2026-09-28T07:21:06+00:00",
+    "accepted_in": "PR #489",
+    "last_upstream_change": "2026-11-18T20:22:06.090804+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   }

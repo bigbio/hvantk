@@ -1,6 +1,6 @@
 {
   "probe_version": 2,
-  "source_version": "2026_03",
+  "source_version": "2026_04",
   "headers": {
     "uniprot-ptm-human.tsv": [
       "accession",
@@ -9,9 +9,11 @@
       "description",
       "amino_acid",
       "ensembl_xrefs",
-      "sequence_length"
+      "sequence_length",
+      "isoform"
     ],
     "uniprot_entry_keys": [
+      "comments",
       "entryType",
       "extraAttributes",
       "features",
@@ -22,13 +24,13 @@
     ]
   },
   "checksums": {
-    "uniprot-ptm-human.tsv": "ffe8f6c4b44fcbefc0302349ce29d93aed6ad472576e8ba5f77cfc9a5831fe2f"
+    "uniprot-ptm-human.tsv": "138a966be3f006474c69b9bd19b2eb4a23930f2d2d8f614bab42e1ba8ddad9ea"
   },
   "extras": {
-    "total_results": 9493
+    "total_results": 9495
   },
   "informational": {
-    "release_date": "02-September-2026"
+    "release_date": "04-November-2026"
   },
-  "fetched_at": "2026-09-28T06:49:21.515034+00:00"
+  "fetched_at": "2026-11-18T20:22:06.085419+00:00"
 }
