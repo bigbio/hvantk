@@ -144,7 +144,7 @@ flags are L1.
 | `--output` | yes | Output prefix |
 
 Name mismatches with the spec, an empty gene list, a missing field path (in a spec column,
-the `gene_field`, a codon source's `chrom`/`codon_start`/`codon_end` or HGNC's
+the `gene_field`, a codon source's `chrom`/`codon_pos1`/`codon_pos2`/`codon_pos3` or HGNC's
 `entrez_id`/`ensembl_gene_id`), or a gene matrix that lacks a declared column all stop the
 command with a usage error before Hail runs any job.
 

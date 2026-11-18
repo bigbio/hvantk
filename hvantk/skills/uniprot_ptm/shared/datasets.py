@@ -31,7 +31,9 @@ from hvantk.skills.uniprot_ptm.shared.constants import (
 
 logger = logging.getLogger(__name__)
 
-# Output TSV column order
+# Output TSV column order. ``isoform`` is empty for a site on the canonical sequence and
+# names the isoform (``P98175-5``) for one UniProt numbers on another isoform;
+# ``ensembl_xrefs`` lists only the transcripts that encode that sequence.
 _TSV_COLUMNS = [
     "accession",
     "gene_symbol",
@@ -40,6 +42,7 @@ _TSV_COLUMNS = [
     "amino_acid",
     "ensembl_xrefs",
     "sequence_length",
+    "isoform",
 ]
 
 
@@ -84,11 +87,35 @@ def _get_next_link(response) -> Optional[str]:
     return None
 
 
+def _canonical_isoform(entry: dict, accession: str) -> str:
+    """The id of the entry's canonical (displayed) isoform; the accession when it has one.
+
+    An entry with one isoform has no ALTERNATIVE PRODUCTS comment, and its Ensembl
+    cross-references carry no ``isoformId``.
+    """
+    for comment in entry.get("comments", []):
+        if comment.get("commentType") != "ALTERNATIVE PRODUCTS":
+            continue
+        for isoform in comment.get("isoforms", []):
+            ids = isoform.get("isoformIds") or []
+            if isoform.get("isoformSequenceStatus") == "Displayed" and ids:
+                return ids[0]
+    return accession
+
+
 def _extract_ptm_records(entry: dict) -> List[dict]:
     """
     Extract PTM records from a single UniProt JSON entry.
 
     Each MOD_RES feature in the entry produces one row in the output TSV.
+
+    A feature is numbered on the canonical sequence unless its ``location.sequence``
+    names another isoform. Each row's ``ensembl_xrefs`` keeps only the transcripts whose
+    cross-reference ``isoformId`` is that sequence, since a position applied to a
+    transcript encoding another isoform lands on the wrong codon (#486). A
+    cross-reference with no ``isoformId`` counts as the canonical isoform's only when
+    the entry describes one isoform. ``amino_acid`` comes from the canonical sequence,
+    so it is left empty for a site numbered on another isoform.
 
     Args:
         entry: A single UniProt result entry (JSON object).
@@ -111,14 +138,15 @@ def _extract_ptm_records(entry: dict) -> List[dict]:
     sequence_value = sequence_obj.get("value", "")
     sequence_length = str(sequence_obj.get("length", len(sequence_value)))
 
-    # Ensembl cross-references
-    ensembl_ids = []
+    # Ensembl cross-references, grouped by the isoform each transcript encodes
+    canonical = _canonical_isoform(entry, accession)
+    xrefs_by_isoform: Dict[str, List[str]] = {}
     for xref in entry.get("uniProtKBCrossReferences", []):
         if xref.get("database") == "Ensembl":
             xref_id = xref.get("id", "")
             if xref_id:
-                ensembl_ids.append(xref_id)
-    ensembl_xrefs = ";".join(ensembl_ids)
+                isoform_id = xref.get("isoformId") or accession
+                xrefs_by_isoform.setdefault(isoform_id, []).append(xref_id)
 
     # MOD_RES features
     records = []
@@ -135,9 +163,18 @@ def _extract_ptm_records(entry: dict) -> List[dict]:
 
         description = feature.get("description", "")
 
-        # Amino acid at the PTM position (1-based index)
+        isoform = location.get("sequence") or ""
+        if isoform == canonical:
+            isoform = ""
+
+        # Amino acid at the PTM position (1-based index) of the canonical sequence
         amino_acid = ""
-        if sequence_value and start_pos >= 1 and start_pos <= len(sequence_value):
+        if (
+            not isoform
+            and sequence_value
+            and start_pos >= 1
+            and start_pos <= len(sequence_value)
+        ):
             amino_acid = sequence_value[start_pos - 1]
 
         records.append(
@@ -147,8 +184,11 @@ def _extract_ptm_records(entry: dict) -> List[dict]:
                 "position": position,
                 "description": description,
                 "amino_acid": amino_acid,
-                "ensembl_xrefs": ensembl_xrefs,
+                "ensembl_xrefs": ";".join(
+                    xrefs_by_isoform.get(isoform or canonical, [])
+                ),
                 "sequence_length": sequence_length,
+                "isoform": isoform,
             }
         )
 
@@ -363,7 +403,8 @@ class UniProtPTMDataset:
                 "Post-translational modification (MOD_RES) annotations for "
                 "reviewed human proteins from UniProt/Swiss-Prot. Each record "
                 "represents a single PTM site with its position, description, "
-                "amino acid, and Ensembl cross-references."
+                "amino acid, the isoform it is numbered on, and the Ensembl "
+                "transcripts that encode that isoform."
             ),
         }
 

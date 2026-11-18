@@ -131,6 +131,27 @@ Options and fields that were accepted but did nothing:
 
 ### Fixed
 
+- **PTM sites on the wrong codon.** `ptm build` and `reprocess uniprot-ptm:sites` placed
+  every UniProt position on one transcript per protein, the MANE Select one when UniProt
+  cross-references it, without regard to the isoform the position is numbered on. When
+  that transcript encodes another isoform, or the site is numbered on a non-canonical
+  isoform, the site landed on the wrong codon with no error: 95 of 1,098 sites in a
+  123-gene sample (#486). The UniProt download now records the isoform a site is numbered on
+  (`isoform`, empty for the canonical sequence) and keeps only the transcripts that encode
+  it, and such a site never falls back to the gene's MANE Select transcript: with no
+  matching transcript it fails as `unresolved`. A site on a non-canonical isoform is
+  written with that isoform as its `uniprot_id` and no `amino_acid`. `build` prints the
+  failed sites per reason. A UniProt TSV downloaded before this change is refused, and
+  sites tables, including training sets with a `ptm_site` column, need rebuilding.
+- **Codons split by an intron.** The three classifiers disagreed on a codon split by an
+  intron, and none used its three bases: `ptm annotate`, `landscape` and `population`
+  took the three bases from `codon_start`, the intronic splice-donor base among them;
+  `annotate_variants_by_symbol` took every base from `codon_start` to `codon_end`, the
+  whole intron included; and a training set's codon join took the two ends only (#487).
+  The sites table now carries the codon's bases (`codon_pos1` to `codon_pos3`, in
+  transcript order), and all three classify on them, with a window measured from the
+  nearest base. A sites table without these fields is refused with a message to rebuild
+  it.
 - **Dated ClinVar downloads.** `hvantk download clinvar --version YYYYMMDD` looked for the
   file in an `archive/` directory NCBI does not have, so every dated download failed with
   404. It now finds the release where NCBI keeps it (`archive_2.0/<year>/`, `weekly/`, or

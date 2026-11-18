@@ -78,6 +78,7 @@ def test_fingerprint_carries_the_release_the_count_and_the_schema():
         "amino_acid",
         "ensembl_xrefs",
         "sequence_length",
+        "isoform",
     ]
     assert fp["headers"]["uniprot_entry_keys"] == [
         "entryType",

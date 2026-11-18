@@ -487,7 +487,7 @@ def _check_variant_sources(spec, inputs) -> None:
                     f"{key}, not one interval field"
                 )
         else:  # codon: the fields codon_sites reads
-            for field in ("chrom", "codon_start", "codon_end"):
+            for field in ("chrom", "codon_pos1", "codon_pos2", "codon_pos3"):
                 field_expr(src, field)
 
 

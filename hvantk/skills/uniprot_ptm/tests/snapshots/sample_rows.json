@@ -7,6 +7,9 @@
       "amino_acid": "Y",
       "chrom": "1",
       "codon_end": 11796323,
+      "codon_pos1": 11796323,
+      "codon_pos2": 11796322,
+      "codon_pos3": 11796321,
       "codon_start": 11796321,
       "evidence_type": "experimental",
       "flanking_interval": {
@@ -32,6 +35,9 @@
       "amino_acid": "S",
       "chrom": "13",
       "codon_end": 32316463,
+      "codon_pos1": 32316461,
+      "codon_pos2": 32316462,
+      "codon_pos3": 32316463,
       "codon_start": 32316461,
       "evidence_type": "experimental",
       "flanking_interval": {
@@ -57,6 +63,9 @@
       "amino_acid": "S",
       "chrom": "17",
       "codon_end": 7675996,
+      "codon_pos1": 7675996,
+      "codon_pos2": 7675995,
+      "codon_pos3": 7675994,
       "codon_start": 7675994,
       "evidence_type": "experimental",
       "flanking_interval": {
@@ -82,6 +91,9 @@
       "amino_acid": "S",
       "chrom": "17",
       "codon_end": 7676274,
+      "codon_pos1": 7676274,
+      "codon_pos2": 7676273,
+      "codon_pos3": 7676272,
       "codon_start": 7676272,
       "evidence_type": "experimental",
       "flanking_interval": {
@@ -107,6 +119,9 @@
       "amino_acid": "S",
       "chrom": "MT",
       "codon_end": 3310,
+      "codon_pos1": 3308,
+      "codon_pos2": 3309,
+      "codon_pos3": 3310,
       "codon_start": 3308,
       "evidence_type": "experimental",
       "flanking_interval": {

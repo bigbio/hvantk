@@ -49,6 +49,9 @@ def build_uniprot_ptm_sites(
         types={
             "codon_start": hl.tstr,
             "codon_end": hl.tstr,
+            "codon_pos1": hl.tstr,
+            "codon_pos2": hl.tstr,
+            "codon_pos3": hl.tstr,
             "residue_pos": hl.tstr,
             "n_observations": hl.tstr,
         },
@@ -73,6 +76,9 @@ def build_uniprot_ptm_sites(
     ht = ht.annotate(
         codon_start=hl.int32(ht.codon_start),
         codon_end=hl.int32(ht.codon_end),
+        codon_pos1=hl.int32(ht.codon_pos1),
+        codon_pos2=hl.int32(ht.codon_pos2),
+        codon_pos3=hl.int32(ht.codon_pos3),
         residue_pos=hl.int32(ht.residue_pos),
         n_observations=hl.int32(ht.n_observations),
     )

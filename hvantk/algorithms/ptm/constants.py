@@ -32,11 +32,16 @@ PTM_TYPE_CATEGORIES = {
 DEFAULT_FLANKING_WINDOWS = [3, 5, 7, 10]
 DEFAULT_FLANKING_CODONS = 5
 
-# Output TSV column names
+# Output TSV column names. codon_pos1..3 are the genomic positions of the codon's first,
+# second and third base in transcript order; codon_start/codon_end are their lowest and
+# highest, which span the intron when an intron splits the codon.
 PTM_OUTPUT_COLUMNS = [
     "chrom",
     "codon_start",
     "codon_end",
+    "codon_pos1",
+    "codon_pos2",
+    "codon_pos3",
     "strand",
     "uniprot_id",
     "gene_symbol",
@@ -59,7 +64,7 @@ RESOLUTION_METHODS = ["xref_mane", "xref_any", "gene_mane"]
 # ---------------------------------------------------------------------------
 
 # Proximal flanking window for gene-symbol variant annotation:
-# 7 codons * 3 bp = 21 bp, applied one-sided to codon_start and codon_end.
+# 7 codons * 3 bp = 21 bp, measured from the nearest of the codon's three bases.
 PROXIMAL_BP = 21
 
 # Default MAF bins (common / rare / ultra-rare) for callers that want a
