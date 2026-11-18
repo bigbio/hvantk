@@ -66,17 +66,19 @@ jobs:
           sudo apt-get install -y libopenblas-dev
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Add conda to system path
+      # ubuntu-26.04 (ubuntu-latest since 2026-10) ships no conda, so $CONDA was unset and
+      # the old `conda env update` step failed with "command not found" (exit 127), and
+      # no drift PR has been opened since. The probes and drift_to_pr.py need nothing
+      # conda provides: install exactly as drift-health.yml does, which runs the same
+      # probes on the same runner.
+      - name: Install dependencies
         run: |
-          echo $CONDA/bin >> $GITHUB_PATH
-
-      - name: Install dependencies via conda env
-        run: |
-          conda env update --file environment.yml --name base
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       # The `ptm` extra, not a bare install. The cptac probe fingerprints the INSTALLED
       # cptac version (importlib.metadata) against PayneLab's latest GitHub release, so

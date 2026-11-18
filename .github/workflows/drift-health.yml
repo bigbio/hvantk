@@ -53,14 +53,20 @@ jobs:
           print('\n'.join(sorted(
               x['dataset_name'] for x in rows if x.get('status') == 'probe_failed')))
           ")
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --label "drift:probe-failed" --limit 1 --json number --jq '.[0].number // empty')
           if [ -z "$failed" ]; then
             echo "all probes healthy"
+            # Most failures are a source host briefly down; without this the issue
+            # stays open, listing probes that have long since recovered.
+            if [ -n "$existing" ]; then
+              gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+                --comment "Every drift probe passed this run."
+            fi
             exit 0
           fi
           echo "probe_failed: $failed"
           body=$(printf 'These drift probes are failing:\n\n```\n%s\n```\n\nA failing probe reports neither clean nor drifted, so upstream changes for these datasets are invisible until it is fixed.' "$failed")
-          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
-            --label "drift:probe-failed" --limit 1 --json number --jq '.[0].number // empty')
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
