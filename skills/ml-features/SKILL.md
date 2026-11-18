@@ -183,7 +183,7 @@ matrix when the spec's `layer1` or the gene index changes.
 - `gene-matrix manifest '<path>' not found`. Cause: the compose manifest is not next to
   the matrix. Fix: pass `--gene-matrix-manifest`.
 - `field '<path>': '<segment>' is not a field of ...`. Cause: a spec column, a
-  `gene_field`, or a codon source's `chrom`/`codon_start`/`codon_end` names a field the
+  `gene_field`, or a codon source's `chrom`/`codon_pos1`/`codon_pos2`/`codon_pos3` names a field the
   input does not have. Fix: correct the spec against the input's schema.
 - A column missing from the dataset and listed under `excluded`. Cause: neither a
   `trained_on` declaration nor a `tier:` (every `layer1` axis needs one; an unregistered

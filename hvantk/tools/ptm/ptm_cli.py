@@ -154,6 +154,8 @@ def ptm_build(
             f"{result.n_failed} failed"
         )
         click.echo(f"Resolution: {result.resolution_counts}")
+        if result.failure_counts:
+            click.echo(f"Failed: {result.failure_counts}")
         click.echo(f"Mapped TSV: {result.mapped_tsv_path}")
         click.echo(f"Hail Table: {result.output_ht}")
 

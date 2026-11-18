@@ -113,7 +113,11 @@ class PTMBuildResult:
         n_total: Total PTM sites processed.
         n_mapped: Number of sites successfully mapped to genomic coordinates.
         n_failed: Number of sites that failed mapping.
-        resolution_counts: Count per transcript resolution method.
+        failure_counts: Failed sites per reason: ``unresolved`` (no transcript; for a
+            UniProt site, none that encodes the isoform the site is numbered on) and
+            ``beyond_cds`` (the position lies past the end of the transcript's CDS).
+        resolution_counts: Count per transcript resolution method, one per protein
+            (per protein and isoform for a UniProt download).
         mapped_tsv_path: Path to the mapped TSV file (the combined TSV when more
             than one source was mapped).
         output_ht: Path to the built Hail Table; empty when none was built (the
@@ -128,6 +132,7 @@ class PTMBuildResult:
     n_total: int = 0
     n_mapped: int = 0
     n_failed: int = 0
+    failure_counts: Dict[str, int] = field(default_factory=dict)
     resolution_counts: Dict[str, int] = field(default_factory=dict)
     mapped_tsv_path: str = ""
     output_ht: str = ""
@@ -216,6 +221,13 @@ def map_ptm_sites(
     layout), resolves transcripts, maps each site to genomic codon
     coordinates, and writes the result to a new TSV.
 
+    A TSV with an ``isoform`` column (a UniProt download) lists, for each site, only
+    the transcripts that encode the sequence the site is numbered on: its sites map
+    through those cross-references alone, never through the gene's MANE Select
+    transcript, which can encode another isoform (#486). Such a site is written with
+    ``uniprot_id`` set to its isoform (``P98175-5``) when it is not on the canonical
+    sequence. A TSV without the column (PeptideAtlas, CPTAC) keeps the full cascade.
+
     Parameters
     ----------
     ptm_tsv : str
@@ -242,11 +254,19 @@ def map_ptm_sites(
     -------
     PTMBuildResult
         Mapping statistics.
+
+    Raises
+    ------
+    ValueError
+        If the TSV is mapped as UniProt (``source_db_default="UniProt"``) but has no
+        ``isoform`` column: it predates isoform-aware mapping, and some of its sites
+        would land on codons of another isoform.
     """
     if transcript_cache is None:
         transcript_cache = {}
 
     resolution_counts: Dict[str, int] = defaultdict(int)
+    failure_counts: Dict[str, int] = defaultdict(int)
     n_mapped = 0
     n_failed = 0
     n_total = 0
@@ -254,6 +274,17 @@ def map_ptm_sites(
     # Write BGZF so Hail can import in parallel across Spark partitions.
     if not output_path.endswith((".bgz", ".gz")):
         output_path += ".bgz"
+
+    # Checked before the output is opened, so a refused TSV leaves no file behind.
+    with open(ptm_tsv, encoding="utf-8") as fin:
+        isoform_aware = "isoform" in fin.readline().rstrip("\r\n").split("\t")
+    if source_db_default == "UniProt" and not isoform_aware:
+        raise ValueError(
+            f"{ptm_tsv} has no 'isoform' column: it was written by an hvantk version "
+            "that did not record which isoform each site is numbered on, so some sites "
+            "would be placed on codons of another isoform. Download it again with "
+            "`hvantk download uniprot-ptm`."
+        )
 
     with open(ptm_tsv, encoding="utf-8") as fin, BgzfWriter(output_path) as fout:
         reader = csv.DictReader(fin, delimiter="\t")
@@ -270,60 +301,76 @@ def map_ptm_sites(
             if not records:
                 return
 
-            xref_str = records[0].get("ensembl_xrefs", "")
-            xrefs = [{"id": xid.strip()} for xid in xref_str.split(";") if xid.strip()]
             gene = records[0].get("gene_symbol", "")
-
-            enst, method = resolve_transcript(xrefs, gene, gtf_data)
-            resolution_counts[method] += 1
-
-            if enst is None:
-                n_failed += len(records)
-                n_total += len(records)
-                return
-
-            positions = [int(r["position"]) for r in records]
-            mappings = map_protein_sites(
-                enst, positions, gtf_data.cds_by_transcript, cache=transcript_cache
-            )
-            pos_to_mapping = dict(mappings)
-
+            # Sites a protein numbers on different isoforms map through different
+            # transcripts, so resolve each isoform (empty = canonical) on its own.
+            groups: Dict[tuple, List[dict]] = defaultdict(list)
             for rec in records:
-                n_total += 1
-                pos = int(rec["position"])
-                m = pos_to_mapping.get(pos)
-                if m is None:
-                    n_failed += 1
+                key = (rec.get("isoform", ""), rec.get("ensembl_xrefs", ""))
+                groups[key].append(rec)
+
+            for (isoform, xref_str), group in groups.items():
+                xrefs = [{"id": x.strip()} for x in xref_str.split(";") if x.strip()]
+                enst, method = resolve_transcript(
+                    xrefs, gene, gtf_data, gene_fallback=not isoform_aware
+                )
+                resolution_counts[method] += 1
+                n_total += len(group)
+
+                if enst is None:
+                    n_failed += len(group)
+                    failure_counts["unresolved"] += len(group)
                     continue
 
-                desc = rec.get("description", "")
-                ptm_category = "other"
-                for prefix, cat in PTM_TYPE_CATEGORIES.items():
-                    if desc.startswith(prefix):
-                        ptm_category = cat
-                        break
-
-                writer.writerow(
-                    {
-                        "chrom": m.chrom,
-                        "codon_start": m.codon_start,
-                        "codon_end": m.codon_end,
-                        "strand": m.strand,
-                        "uniprot_id": rec.get("accession", ""),
-                        "gene_symbol": gene,
-                        "residue_pos": pos,
-                        "amino_acid": rec.get("amino_acid", ""),
-                        "ptm_type": desc,
-                        "ptm_category": ptm_category,
-                        "source_db": rec.get("source_db", source_db_default),
-                        "evidence_type": rec.get(
-                            "evidence_type", evidence_type_default
-                        ),
-                        "n_observations": rec.get("n_observations", "0"),
-                        "tissue_type": rec.get("tissue_type", ""),
-                    }
+                positions = [int(r["position"]) for r in group]
+                pos_to_mapping = dict(
+                    map_protein_sites(
+                        enst,
+                        positions,
+                        gtf_data.cds_by_transcript,
+                        cache=transcript_cache,
+                    )
                 )
-                n_mapped += 1
+
+                for rec in group:
+                    pos = int(rec["position"])
+                    m = pos_to_mapping.get(pos)
+                    if m is None:
+                        n_failed += 1
+                        failure_counts["beyond_cds"] += 1
+                        continue
+
+                    desc = rec.get("description", "")
+                    ptm_category = "other"
+                    for prefix, cat in PTM_TYPE_CATEGORIES.items():
+                        if desc.startswith(prefix):
+                            ptm_category = cat
+                            break
+
+                    writer.writerow(
+                        {
+                            "chrom": m.chrom,
+                            "codon_start": m.codon_start,
+                            "codon_end": m.codon_end,
+                            "codon_pos1": m.bases[0],
+                            "codon_pos2": m.bases[1],
+                            "codon_pos3": m.bases[2],
+                            "strand": m.strand,
+                            "uniprot_id": isoform or rec.get("accession", ""),
+                            "gene_symbol": gene,
+                            "residue_pos": pos,
+                            "amino_acid": rec.get("amino_acid", ""),
+                            "ptm_type": desc,
+                            "ptm_category": ptm_category,
+                            "source_db": rec.get("source_db", source_db_default),
+                            "evidence_type": rec.get(
+                                "evidence_type", evidence_type_default
+                            ),
+                            "n_observations": rec.get("n_observations", "0"),
+                            "tissue_type": rec.get("tissue_type", ""),
+                        }
+                    )
+                    n_mapped += 1
 
         for row in reader:
             acc = row.get("accession", "")
@@ -343,11 +390,14 @@ def map_ptm_sites(
         n_failed,
     )
     logger.info("Resolution: %s", dict(resolution_counts))
+    if failure_counts:
+        logger.info("Failed: %s", dict(failure_counts))
 
     return PTMBuildResult(
         n_total=n_total,
         n_mapped=n_mapped,
         n_failed=n_failed,
+        failure_counts=dict(failure_counts),
         resolution_counts=dict(resolution_counts),
         mapped_tsv_path=output_path,
     )
@@ -482,6 +532,8 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
         result.n_total += source_result.n_total
         result.n_mapped += source_result.n_mapped
         result.n_failed += source_result.n_failed
+        for reason, count in source_result.failure_counts.items():
+            result.failure_counts[reason] = result.failure_counts.get(reason, 0) + count
         for method, count in source_result.resolution_counts.items():
             result.resolution_counts[method] = (
                 result.resolution_counts.get(method, 0) + count

@@ -70,20 +70,18 @@ def codon_sites(
     sites: hl.Table,
     *,
     chrom: str = "chrom",
-    start: str = "codon_start",
-    end: str = "codon_end",
+    bases: Sequence[str] = ("codon_pos1", "codon_pos2", "codon_pos3"),
     reference_genome: str = "GRCh38",
 ) -> hl.Table:
-    """The loci covered by each site's codon, as a distinct ``locus``-keyed table.
+    """The loci of each site's codon bases, as a distinct ``locus``-keyed table.
 
     Contigs are written with a ``chr`` prefix and the mitochondrion (``MT``/``M``) as
-    ``chrM``, as GRCh38 names them. A codon whose ends are two bases apart contributes all
-    three positions; any other span is a codon split by an intron, which contributes its two
-    ends only, never the intron between them. Positions that are not valid loci are dropped.
+    ``chrM``, as GRCh38 names them. ``bases`` name the fields holding the codon's three
+    genomic positions, so a codon split by an intron contributes its three bases and
+    never the intron between them. Missing positions and positions that are not valid
+    loci are dropped.
     """
     t = sites.key_by()
-    lo = hl.min(t[start], t[end])
-    hi = hl.max(t[start], t[end])
     c = t[chrom]
     contig = (
         hl.case()
@@ -91,10 +89,7 @@ def codon_sites(
         .when((c == "MT") | (c == "M"), "chrM")
         .default("chr" + c)
     )
-    t = t.select(
-        _contig=contig,
-        _pos=hl.if_else(hi - lo == 2, hl.range(lo, hi + 1), hl.array([lo, hi])),
-    )
+    t = t.select(_contig=contig, _pos=hl.array([t[b] for b in bases]))
     t = t.explode("_pos")
     t = t.filter(
         hl.is_valid_locus(t._contig, t._pos, reference_genome=reference_genome)

@@ -41,11 +41,13 @@ annotation, the landscape, strata and population analyses, and the report. `test
 `annotate` compares each variant's position with every codon in the sites table.
 `landscape` and `population` run the same step on their input table.
 
-- A site occupies its codon: the three bases from `codon_start`. A codon split by an
-  intron is treated as the three contiguous bases from `codon_start`.
-- The site's window extends `--flanking-codons` × 3 bp (default 5 codons, 15 bp) beyond
-  each end of the codon. It is counted in genomic bases, so it can reach into an intron,
-  and it is clipped at the contig ends.
+- A site occupies its codon's three bases, `codon_pos1` to `codon_pos3`. For a codon
+  split by an intron these lie on either side of it, and the intron is not part of the
+  site.
+- The site's window is every position within `--flanking-codons` × 3 bp (default 5
+  codons, 15 bp) of one of its codon's bases. It is counted in genomic bases, so near an
+  exon junction it reaches into the intron and misses the codons of the next exon, and it
+  is clipped at the contig ends.
 - A variant inside any site's codon is a **site** variant. Otherwise, a variant inside
   any site's window is **proximal**. Every other variant is **non-PTM**. Site takes
   precedence, so the two flags are never both true.
@@ -58,7 +60,7 @@ keeps all its fields and adds:
 | --- | --- | --- |
 | `is_ptm_site` | bool | The variant lies in a PTM codon |
 | `is_ptm_proximal` | bool | The variant lies in a window but in no codon |
-| `ptm_distance` | int32 | Distance to the nearest codon in codons, `ceil(bp / 3)`: 0 in a codon, at most `--flanking-codons` in a window. Counted in genomic bases, so it is not the residue distance when an intron lies between |
+| `ptm_distance` | int32 | Distance to the nearest codon base in codons, `ceil(bp / 3)`: 0 in a codon, at most `--flanking-codons` in a window. Counted in genomic bases, so it is not the residue distance when an intron lies between |
 | `ptm_types` | set\<str\> | The `ptm_category` of every site whose codon or window covers the position, not only the nearest |
 | `ptm_evidence` | array\<struct\> | One struct per row of the nearest site or sites, with `source_db`, `evidence_type`, `n_observations`, `uniprot_id`, `gene_symbol`, `residue_pos`, `amino_acid` and `ptm_type`. Added only when the sites table has at least one of these fields; a table from `build` has all of them |
 
@@ -82,13 +84,14 @@ command that also adds PeptideAtlas and CPTAC sites.
 
 | Source | How `build` gets it | Sites | `n_observations` |
 | --- | --- | --- | --- |
-| UniProt (always) | Downloads `uniprot-ptm-human-<date>.tsv`, or takes `--ptm-tsv` (written by `hvantk download uniprot-ptm`) | `Modified residue` (MOD_RES) features of reviewed (Swiss-Prot) human proteins, on the canonical sequence | 0 |
+| UniProt (always) | Downloads `uniprot-ptm-human-<date>.tsv`, or takes `--ptm-tsv` (written by `hvantk download uniprot-ptm`) | `Modified residue` (MOD_RES) features of reviewed (Swiss-Prot) human proteins, numbered on the canonical sequence or, for some, on another isoform the feature names | 0 |
 | PeptideAtlas | `--peptideatlas-tsv`, written by `hvantk download peptideatlas-phospho` | Phosphorylated S, T and Y observed on canonical proteins in one PeptideAtlas build | Observations summed over the phosphopeptide forms that carry the site |
 | CPTAC | `--cptac-tsv`, written by `hvantk download cptac-phospho` | Phosphorylated S, T and Y quantified in CPTAC tumor and normal samples; `tissue_type` is `tumor` or `normal` | Samples with a measured intensity |
 
 The UniProt search endpoint has no versioned archive, so a later download can give a
 different table. Keep the downloaded TSV and pass it with `--ptm-tsv` to rebuild the same
-table. A file downloaded the same day is reused.
+table. A file downloaded the same day is reused. A TSV downloaded by an hvantk release
+before this column existed has no `isoform` column and is refused: download it again.
 
 PeptideAtlas: `hvantk download peptideatlas-phospho -o data/ptm/` writes
 `peptideatlas-phospho-<build_date>-<build_id>.tsv` and prints its path. A TSV written by
@@ -103,23 +106,32 @@ for the `cptac:phospho` dataset, not for `build`.
 
 ### Mapping sites to codons
 
-Each protein maps through one Ensembl transcript from the pinned GTF
-(`Homo_sapiens.GRCh38.113.gtf.gz`), chosen in this order:
+A UniProt position is a residue of one isoform: the canonical sequence, or another
+isoform the feature names. UniProt records which isoform each of its Ensembl
+cross-references encodes, and the download keeps, for each site, only the transcripts
+that encode the isoform the site is numbered on. The site maps through one of them in
+the pinned GTF (`Homo_sapiens.GRCh38.113.gtf.gz`), chosen in this order:
 
-1. `xref_mane`: a transcript in the protein's UniProt Ensembl cross-references that is
-   MANE Select.
-2. `xref_any`: the first cross-referenced transcript with a CDS.
-3. `gene_mane`: the MANE Select transcript of the protein's gene symbol.
+1. `xref_mane`: one that is MANE Select.
+2. `xref_any`: the first one with a CDS.
 
-A protein with no match is `unresolved`, and its sites fail. PeptideAtlas and CPTAC
-rows carry no cross-references, so they map only through `gene_mane`.
+With neither, the site is `unresolved` and fails. It is never moved to the gene's MANE
+Select transcript, which can encode another isoform, where the position would land on
+the wrong codon. A site numbered on a non-canonical isoform has that isoform as its
+`uniprot_id` (`P98175-5`, not `P98175`) and no `amino_acid`, which the download reads
+from the canonical sequence.
+
+PeptideAtlas and CPTAC rows carry no cross-references, so they map through
+`gene_mane`, the MANE Select transcript of the protein's gene symbol. Their positions
+are on the canonical protein, so they land on the right codon only when that transcript
+encodes the canonical isoform.
 
 Residue *p* maps to bases 3*p* - 2 to 3*p* of the transcript's CDS, on either strand.
-`codon_start` and `codon_end` are the lowest and highest genomic positions of those
-bases, so a codon split by an intron spans the intron. A residue beyond the end of the
-CDS fails. The mapper does not check that the codon encodes the source's amino acid: a
-site lands on the right codon only when the source protein sequence matches the
-transcript.
+`codon_pos1`, `codon_pos2` and `codon_pos3` are their genomic positions, in transcript
+order. `codon_start` and `codon_end` are the lowest and highest of them, so for a codon
+split by an intron they span the intron. A residue beyond the end of the CDS fails
+(`beyond_cds`). The mapper does not check that the codon encodes the site's amino acid:
+it relies on UniProt's record of which isoform each transcript encodes.
 
 ### Categories
 
@@ -151,19 +163,23 @@ position, so these duplicates change only `ptm_evidence`.
 
 The table is keyed by `locus`, the position of `codon_start`. Contigs get a `chr` prefix
 (`MT` becomes `chrM`), rows on contigs outside GRCh38 are dropped, and several rows can
-share a locus. Its fields are `chrom`, `codon_start`, `codon_end`, `strand`,
-`uniprot_id` (the source's protein accession), `gene_symbol`, `residue_pos`,
+share a locus. Its fields are `chrom`, `codon_start`, `codon_end`, `codon_pos1`,
+`codon_pos2`, `codon_pos3`, `strand`, `uniprot_id` (the source's protein accession, or
+the UniProt isoform the site is numbered on), `gene_symbol`, `residue_pos`,
 `amino_acid`, `ptm_type`, `ptm_category`, `source_db`, `evidence_type`,
 `n_observations`, `tissue_type` and `flanking_interval` (the codon extended by
 `--flanking-codons` × 3 bp). No command reads `flanking_interval`: `annotate`,
 `landscape` and `population` apply their own `--flanking-codons`.
 
-`build` prints a summary like this one (`Resolution` counts proteins, not sites):
+`build` prints a summary like this one. `Resolution` counts proteins (for UniProt, each
+isoform a protein's sites are numbered on), not sites; `Failed` counts sites, and is
+printed when a site failed:
 
 ```text
 Sources: UniProt (<n> mapped), PeptideAtlas (<n> mapped)
 Mapping complete: <mapped>/<total> mapped (<percent>%), <failed> failed
 Resolution: {'xref_mane': <n>, 'xref_any': <n>, 'gene_mane': <n>, 'unresolved': <n>}
+Failed: {'unresolved': <n>, 'beyond_cds': <n>}
 Mapped TSV: data/ptm/ptm_sites_combined.tsv.bgz
 Hail Table: data/ptm/ptm_sites.ht
 ```

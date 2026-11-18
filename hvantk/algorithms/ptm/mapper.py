@@ -17,12 +17,19 @@ logger = logging.getLogger(__name__)
 
 
 class CodonMapping(NamedTuple):
-    """Result of mapping a protein residue to genomic coordinates."""
+    """Result of mapping a protein residue to genomic coordinates.
+
+    ``bases`` holds the genomic positions of the codon's first, second and third base,
+    in transcript order. ``codon_start`` and ``codon_end`` are their lowest and highest,
+    so for a codon split by an intron the interval between them spans the intron; only
+    ``bases`` names the codon's bases.
+    """
 
     chrom: str
     codon_start: int
     codon_end: int
     strand: str
+    bases: Tuple[int, int, int]
 
 
 class GTFData(NamedTuple):
@@ -91,6 +98,7 @@ class TranscriptCDS:
             codon_start=min(p0, p1, p2),
             codon_end=max(p0, p1, p2),
             strand=self.strand,
+            bases=(p0, p1, p2),
         )
 
 
@@ -269,13 +277,20 @@ def resolve_transcript(
     ensembl_xrefs: List[Dict],
     gene_symbol: str,
     gtf_data: GTFData,
+    gene_fallback: bool = True,
 ) -> Tuple[Optional[str], str]:
     """Resolve UniProt Ensembl cross-refs to a single transcript ID.
 
     Uses a 3-strategy cascade:
-    1. MANE Select xref (97% of the 100-protein validation set)
-    2. Any Ensembl xref with CDS data (3%)
-    3. Gene name -> MANE Select fallback (0% needed, safety net)
+    1. MANE Select xref
+    2. Any Ensembl xref with CDS data
+    3. Gene name -> MANE Select (only when ``gene_fallback``)
+
+    The cascade picks a transcript, not an isoform: a site lands on the right codon
+    only when the chosen transcript encodes the sequence the site is numbered on. A
+    UniProt download lists, for each site, only the transcripts that encode its
+    isoform, and is mapped with ``gene_fallback=False``, because the gene's MANE
+    Select transcript can encode another isoform.
 
     Parameters
     ----------
@@ -285,6 +300,8 @@ def resolve_transcript(
         Gene symbol for fallback resolution.
     gtf_data : GTFData
         Parsed GTF data.
+    gene_fallback : bool
+        Try strategy 3 when no cross-reference resolves.
 
     Returns
     -------
@@ -307,7 +324,7 @@ def resolve_transcript(
             return candidate, "xref_any"
 
     # Strategy 3: Gene name -> MANE Select fallback
-    if gene_symbol in gtf_data.gene_to_mane:
+    if gene_fallback and gene_symbol in gtf_data.gene_to_mane:
         candidate = gtf_data.gene_to_mane[gene_symbol]
         if candidate in gtf_data.cds_by_transcript:
             return candidate, "gene_mane"

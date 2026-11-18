@@ -3,7 +3,8 @@
 Covers:
 1. Coordinate mapper correctness (TP53 known positions from Ensembl REST lookups)
 2. Transcript resolution cascade (3-strategy)
-3. map_ptm_sites pipeline round-trip (TSV → mapped TSV → verify output)
+3. map_ptm_sites pipeline round-trip (TSV → mapped TSV → verify output), and the
+   isoform guard: a UniProt site maps only through a transcript encoding its isoform
 4. CLI wiring (ptm group registers and renders help)
 5. Build core: records the sources it mapped and needs no output_ht
 """
@@ -23,6 +24,10 @@ from hvantk.algorithms.ptm.mapper import (
 )
 from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, map_ptm_sites
 from hvantk.algorithms.ptm.constants import PTM_OUTPUT_COLUMNS
+from hvantk.skills.uniprot_ptm.shared.datasets import (
+    _TSV_COLUMNS as UNIPROT_TSV_COLUMNS,
+    _extract_ptm_records,
+)
 
 
 # ---------- Fixtures ----------
@@ -146,38 +151,30 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
                 "amino_acid",
                 "ensembl_xrefs",
                 "sequence_length",
+                "isoform",
             ],
             delimiter="\t",
         )
         writer.writeheader()
-        writer.writerow(
-            {
-                "accession": "P04637",
-                "gene_symbol": "TP53",
-                "position": "315",
-                "description": "Phosphoserine",
-                "amino_acid": "S",
-                "ensembl_xrefs": "ENST00000269305.8",
-                "sequence_length": "393",
-            }
-        )
-        writer.writerow(
-            {
-                "accession": "P04637",
-                "gene_symbol": "TP53",
-                "position": "6",
-                "description": "Phosphoserine",
-                "amino_acid": "S",
-                "ensembl_xrefs": "ENST00000269305.8",
-                "sequence_length": "393",
-            }
-        )
+        for position in ("315", "6", "25"):
+            writer.writerow(
+                {
+                    "accession": "P04637",
+                    "gene_symbol": "TP53",
+                    "position": position,
+                    "description": "Phosphoserine",
+                    "amino_acid": "S",
+                    "ensembl_xrefs": "ENST00000269305.8",
+                    "sequence_length": "393",
+                    "isoform": "",
+                }
+            )
 
     output_bgz = tmp_path / "mapped.tsv.bgz"
     result = map_ptm_sites(str(input_tsv), gtf_data, str(output_bgz))
 
-    assert result.n_total == 2
-    assert result.n_mapped == 2
+    assert result.n_total == 3
+    assert result.n_mapped == 3
     assert result.n_failed == 0
     assert result.resolution_counts["xref_mane"] == 1
 
@@ -188,7 +185,7 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
         reader = csv.DictReader(f, delimiter="\t")
         rows = list(reader)
 
-    assert len(rows) == 2
+    assert len(rows) == 3
     # Ser315 row
     ser315 = next(r for r in rows if r["residue_pos"] == "315")
     assert ser315["chrom"] == "17"
@@ -199,9 +196,94 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
     assert ser315["source_db"] == "UniProt"
     assert ser315["evidence_type"] == "curated"
     assert ser315["n_observations"] == "0"
+    assert [ser315[f"codon_pos{i}"] for i in (1, 2, 3)] == [
+        "7673585",
+        "7673584",
+        "7673583",
+    ]
+
+    # Residue 25's codon is split by an intron: two bases end one exon, the third
+    # starts the next. codon_start/codon_end span the intron; the bases do not.
+    split = next(r for r in rows if r["residue_pos"] == "25")
+    assert (split["codon_start"], split["codon_end"]) == ("7676403", "7676522")
+    assert [split[f"codon_pos{i}"] for i in (1, 2, 3)] == [
+        "7676522",
+        "7676521",
+        "7676403",
+    ]
 
     # Check all expected columns are present
     assert set(reader.fieldnames) == set(PTM_OUTPUT_COLUMNS)
+
+
+def test_uniprot_sites_map_only_through_their_isoforms_transcripts(tmp_path):
+    """A UniProt position is a residue of one isoform, so it must be placed on a
+    transcript encoding that isoform (#486). The MANE Select transcript here encodes
+    another isoform, whose residue 20 sits on a different codon: a canonical site placed
+    there would land on the wrong codon without error. A site on an isoform no
+    transcript encodes is dropped, never moved to the gene's MANE transcript.
+    """
+    # Canonical X-1: one exon, residue 20 = bases 1057-1059. X-3 (MANE): an exon of
+    # 10 codons, a 30-base intron, then the rest, so its residue 20 = bases 1087-1089.
+    gtf = GTFData(
+        cds_by_transcript={
+            "ENST_CAN": [("1", 1000, 1299, "+", 0)],
+            "ENST_MANE": [("1", 1000, 1029, "+", 0), ("1", 1060, 1299, "+", 0)],
+        },
+        mane_transcripts={"ENST_MANE"},
+        gene_to_mane={"GENEX": "ENST_MANE"},
+        transcript_to_gene={"ENST_CAN": "GENEX", "ENST_MANE": "GENEX"},
+    )
+
+    def site(position, sequence=None):
+        location = {"start": {"value": position}, "end": {"value": position}}
+        if sequence:
+            location["sequence"] = sequence
+        return {
+            "type": "Modified residue",
+            "location": location,
+            "description": "Phosphoserine",
+        }
+
+    entry = {
+        "primaryAccession": "X",
+        "genes": [{"geneName": {"value": "GENEX"}}],
+        "sequence": {"value": "S" * 100, "length": 100},
+        "comments": [
+            {
+                "commentType": "ALTERNATIVE PRODUCTS",
+                "isoforms": [
+                    {"isoformIds": ["X-1"], "isoformSequenceStatus": "Displayed"},
+                    {"isoformIds": ["X-2"], "isoformSequenceStatus": "Described"},
+                    {"isoformIds": ["X-3"], "isoformSequenceStatus": "Described"},
+                ],
+            }
+        ],
+        "uniProtKBCrossReferences": [
+            {"database": "Ensembl", "id": "ENST_MANE.1", "isoformId": "X-3"},
+            {"database": "Ensembl", "id": "ENST_CAN.1", "isoformId": "X-1"},
+        ],
+        "features": [site(20), site(5, "X-2"), site(20, "X-3")],
+    }
+
+    input_tsv = tmp_path / "uniprot.tsv"
+    with open(input_tsv, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=UNIPROT_TSV_COLUMNS, delimiter="\t")
+        writer.writeheader()
+        writer.writerows(_extract_ptm_records(entry))
+
+    result = map_ptm_sites(str(input_tsv), gtf, str(tmp_path / "mapped.tsv.bgz"))
+
+    import gzip
+
+    with gzip.open(result.mapped_tsv_path, "rt") as f:
+        rows = {r["uniprot_id"]: r for r in csv.DictReader(f, delimiter="\t")}
+
+    assert set(rows) == {"X", "X-3"}
+    assert (rows["X"]["codon_start"], rows["X"]["amino_acid"]) == ("1057", "S")
+    # Numbered on X-3: placed on X-3's transcript; the canonical residue is not its own
+    assert (rows["X-3"]["codon_start"], rows["X-3"]["amino_acid"]) == ("1087", "")
+    assert result.failure_counts == {"unresolved": 1}
 
 
 # ---------- Test 4: CLI registration ----------
@@ -257,6 +339,7 @@ def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatc
         "description": "Phosphoserine",
         "amino_acid": "S",
         "ensembl_xrefs": "ENST00000269305.8",
+        "isoform": "",
     }
     uniprot = tmp_path / "uniprot.tsv"
     peptideatlas = tmp_path / "peptideatlas.tsv"
