@@ -41,6 +41,13 @@
   which tier to declare, and how to choose training columns free of label or
   allele-frequency leakage. Its eval builds a chromosome-22 slice of the ClinVar x heart
   example.
+- **Expression Atlas: one observation per assay group.** `--plugin-arg
+  observations=assay_group` on `reprocess expression-atlas:dataset` builds from the
+  gene-level `<accession>-tpms.tsv` and `<accession>-configuration.xml`: one observation
+  per assay group, valued at the group's median TPM over its runs, with the group's
+  label, runs and the SDRF values its runs share in `obs`. It is for an accession whose
+  per-run file is unusable, such as E-MTAB-6814. Opt-in; the default stays one
+  observation per run.
 
 ### Changed
 
@@ -131,6 +138,18 @@ Options and fields that were accepted but did nothing:
 
 ### Fixed
 
+- **All-zero E-MTAB-6814 expression.** EBI's `E-MTAB-6814-transcripts-tpms.tsv` is all
+  zero upstream (168,009 transcripts x 287 runs, unchanged since 2023-02-16). It is the
+  accession's only TPM file with a column per run, so `reprocess expression-atlas:dataset`
+  built from it and wrote an all-zero `.h5ad` without error, and the ClinVar x heart
+  example's 19 `heart_bulk_*` columns were 0 in every row. A build whose matrix, or
+  any run or group in it, has values that are all zero is now refused, naming the file and
+  `observations=assay_group`.
+  The example builds `heart_bulk` per assay group, so each stage value is the median TPM
+  of the stage's one heart assay group rather than a mean over runs; the catalog's
+  E-MTAB-6814 entry lists the files that route reads, and the other organisms of the
+  series carry their own species. Rebuild any E-MTAB-6814 dataset, heart stage summary,
+  gene matrix or training set built from it.
 - **PTM sites on the wrong codon.** `ptm build` and `reprocess uniprot-ptm:sites` placed
   every UniProt position on one transcript per protein, the MANE Select one when UniProt
   cross-references it, without regard to the isoform the position is numbered on. When

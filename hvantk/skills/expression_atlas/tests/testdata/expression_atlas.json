@@ -28,8 +28,12 @@
         "name": "E-MTAB-6814.condensed-sdrf.tsv"
       },
       {
-        "type": "transcript-tpm",
-        "name": "E-MTAB-6814-transcripts-tpms.tsv"
+        "type": "assay-group-tpm",
+        "name": "E-MTAB-6814-tpms.tsv"
+      },
+      {
+        "type": "configuration",
+        "name": "E-MTAB-6814-configuration.xml"
       }
     ]
   },

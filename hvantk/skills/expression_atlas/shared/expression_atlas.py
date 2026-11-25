@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "convert_sdrf_to_dataframe",
+    "create_anndata_from_assay_groups",
     "create_anndata_from_expression_atlas",
+    "read_assay_groups",
 ]
 
 
@@ -301,13 +303,9 @@ def create_anndata_from_expression_atlas(
     The default, ``level="transcript"``, is unchanged from the behaviour above.
     Any other value raises ``ValueError``.
 
-    ``level="gene"`` does **not** make a build usable by ``hvantk annotate
-    prepare``'s matrix source type: that consumer resolves ``var_names`` as HGNC
-    gene *symbols* (``key: symbol``), not Ensembl gene ids, so an Expression
-    Atlas build -- gene- or transcript-level -- needs a symbol-keyed reduction
-    first regardless of ``level``. It still refuses a transcript-keyed ``var``
-    like the other consumers (defense in depth), just not for a reason
-    ``level="gene"`` alone resolves.
+    ``hvantk annotate prepare``'s matrix source type reads a gene-keyed build with
+    ``key: gene_id`` on the spec entry (version suffixes dropped) and refuses a
+    transcript-keyed ``var`` like the other consumers.
 
     Parameters
     ----------
@@ -524,4 +522,276 @@ def create_anndata_from_expression_atlas(
         for col in metadata_df.columns:
             adata.obs[col] = metadata_df.loc[common, col].reindex(adata.obs.index)
 
+    return adata
+
+
+# --- One observation per assay group -------------------------------------------------
+#
+# A baseline experiment's gene-level ``<accession>-tpms.tsv`` has one column per assay
+# group (``g1`` ... ``gN``), not per run: each cell is ``"min,q1,median,q3,max"`` TPM over
+# the group's runs. ``<accession>-configuration.xml`` says which runs make up each group.
+# Some accessions have no usable per-run TPM file (E-MTAB-6814's transcripts-tpms.tsv is
+# all zero upstream), and this is the route that still builds them.
+
+_QUARTILE_FIELDS = 5  # min, q1, median, q3, max
+_MEDIAN_FIELD = 2
+# The only columns a gene-level assay-group file has before its first group. Anything
+# else there (a `g*` column the configuration does not declare, a new annotation) is a
+# mismatch or a format change, and would otherwise be carried into var silently.
+_GENE_ID_COLUMNS = ("GeneID", "Gene ID")
+_GENE_NAME_COLUMN = "Gene Name"
+
+
+def read_assay_groups(configuration_path: str) -> "dict[str, tuple[str, list[str]]]":
+    """Read the assay groups of an Expression Atlas ``<accession>-configuration.xml``.
+
+    Returns ``{group id: (label, [run ids])}`` in file order. Each
+    ``<assay_group id="gN" label="...">`` lists its runs as ``<assay>`` children; a
+    baseline experiment's label is the group's factor values joined by ``"; "``
+    (E-MTAB-6814: ``"10 week post conception; heart"``).
+
+    Raises
+    ------
+    ValueError
+        If the file declares no assay group, a group has no id or no run, or two
+        groups share an id.
+    """
+    import xml.etree.ElementTree as ET
+
+    # EBI's own file, and Python's bundled expat (>= 2.4.1) refuses entity-expansion
+    # attacks, which is what S314 warns about.
+    root = ET.parse(configuration_path).getroot()  # noqa: S314
+    groups: "dict[str, tuple[str, list[str]]]" = {}
+    for node in root.iter("assay_group"):
+        group_id = (node.get("id") or "").strip()
+        runs = [(a.text or "").strip() for a in node.findall("assay")]
+        runs = [r for r in runs if r]
+        if not group_id or not runs:
+            raise ValueError(
+                f"{configuration_path}: an <assay_group> has no id or no <assay> run "
+                f"(id={group_id!r}, runs={runs})"
+            )
+        if group_id in groups:
+            raise ValueError(
+                f"{configuration_path}: assay group {group_id!r} is declared twice"
+            )
+        groups[group_id] = ((node.get("label") or "").strip(), runs)
+    if not groups:
+        raise ValueError(f"{configuration_path}: declares no <assay_group>")
+    return groups
+
+
+def _assay_group_medians(
+    cells: pd.Series, *, path: str, column: str, single_run: bool
+) -> np.ndarray:
+    """The median TPM in each cell of one assay-group column.
+
+    A cell is ``"min,q1,median,q3,max"`` over the group's runs: all five fields must be
+    finite, non-negative and non-decreasing, and the median (third field) is returned.
+    A bare number is accepted only for a group of one run (``single_run``), where it is
+    that run's value. An empty cell is missing. Anything else raises: a cell this cannot
+    read is a format change, not a value to guess.
+    """
+    text = cells.str.strip()
+    present = (text.notna() & (text != "")).to_numpy()
+    n_fields = (text.str.count(",") + 1).to_numpy()
+    values = np.full(len(text), np.nan)
+    read = np.zeros(len(text), dtype=bool)
+
+    quartiles = np.flatnonzero(present & (n_fields == _QUARTILE_FIELDS))
+    if len(quartiles):
+        fields = text.iloc[quartiles].str.split(",", expand=True)
+        q = fields.apply(pd.to_numeric, errors="coerce").to_numpy(dtype=np.float64)
+        ok = (
+            np.isfinite(q).all(axis=1)
+            & (q >= 0).all(axis=1)
+            & (np.diff(q, axis=1) >= 0).all(axis=1)
+        )
+        values[quartiles[ok]] = q[ok, _MEDIAN_FIELD]
+        read[quartiles[ok]] = True
+    if single_run:
+        bare = np.flatnonzero(present & (n_fields == 1))
+        number = pd.to_numeric(text.iloc[bare], errors="coerce").to_numpy(np.float64)
+        ok = np.isfinite(number) & (number >= 0)
+        values[bare[ok]] = number[ok]
+        read[bare[ok]] = True
+
+    unread = present & ~read
+    if unread.any():
+        row = int(np.flatnonzero(unread)[0])
+        raise ValueError(
+            f"{path}: column {column!r}, data row {row + 1}: cannot read "
+            f"{cells.iloc[row]!r} as a 'min,q1,median,q3,max' TPM string of finite, "
+            "non-negative, non-decreasing numbers (or, for a group of one run, a "
+            f"single such number); {int(unread.sum())} such cell(s) in this column"
+        )
+    return values
+
+
+def _assay_group_obs(groups, group_cols, metadata_df, *, configuration_path):
+    """``(obs, mixed)`` for the assay groups ``group_cols`` (see ``create_anndata_from_assay_groups``).
+
+    ``mixed`` maps an SDRF column to the groups whose runs differ on it; a run without
+    the value counts as differing, since the group's value is then not known.
+    """
+    obs = pd.DataFrame(index=pd.Index(group_cols, name="assay_group"))
+    obs["assay_group_label"] = [groups[g][0] for g in group_cols]
+    obs["n_runs"] = np.array([len(groups[g][1]) for g in group_cols], dtype=np.int64)
+    obs["runs"] = [",".join(groups[g][1]) for g in group_cols]
+
+    mixed: "dict[str, list[str]]" = {}
+    if metadata_df is None:
+        return obs, mixed
+    described = set(map(str, metadata_df.index))
+    undescribed = sorted({r for g in group_cols for r in groups[g][1]} - described)
+    if undescribed:
+        raise ValueError(
+            f"{configuration_path} lists run(s) {undescribed[:5]} "
+            f"({len(undescribed)} in all) that the SDRF does not describe, so "
+            "their groups' shared characteristics cannot be checked. The two "
+            "files are not from the same release of the experiment."
+        )
+    for col in metadata_df.columns:
+        if col in obs.columns:
+            raise ValueError(
+                f"SDRF column {col!r} collides with an assay-group column of obs"
+            )
+        values = []
+        for g in group_cols:
+            distinct = metadata_df.loc[groups[g][1], col].drop_duplicates()
+            if len(distinct) == 1:
+                values.append(distinct.iloc[0])
+            else:
+                values.append(np.nan)
+                mixed.setdefault(str(col), []).append(g)
+        obs[col] = values
+    return obs, mixed
+
+
+def _assay_group_columns(header, groups, *, path, configuration_path):
+    """``(lead, group_cols)``: the gene annotation columns, then the assay-group columns.
+
+    The header must be a gene id column (``GeneID`` or ``Gene ID``), optionally
+    ``Gene Name``, then one column per assay group the configuration declares, each
+    exactly once. Anything else raises naming the mismatch.
+    """
+    group_cols = [c for c in header if c in groups]
+    if not group_cols:
+        raise ValueError(
+            f"{path}: none of its columns is an assay group declared in "
+            f"{configuration_path} (e.g. {list(groups)[:3]}). The two files are not "
+            "for the same experiment, or this is a per-run file."
+        )
+    first = header.index(group_cols[0])
+    lead = header[:first]
+    unknown_lead = [c for c in lead if c not in (*_GENE_ID_COLUMNS, _GENE_NAME_COLUMN)]
+    if not lead or lead[0] not in _GENE_ID_COLUMNS or unknown_lead:
+        raise ValueError(
+            f"{path}: the columns before the first assay group are {lead}; expected a "
+            f"gene id column ({' or '.join(_GENE_ID_COLUMNS)}), optionally "
+            f"{_GENE_NAME_COLUMN!r}. {unknown_lead} may be an assay group that "
+            f"{configuration_path} does not declare, or a format change; refusing to "
+            "guess what it holds."
+        )
+    stray = [c for c in header[first:] if c not in groups]
+    if stray:
+        raise ValueError(
+            f"{path}: column(s) {stray[:5]} follow the first assay-group column but "
+            f"are not assay groups declared in {configuration_path}. Refusing to "
+            "guess what they hold."
+        )
+    absent = [g for g in groups if g not in set(group_cols)]
+    if absent:
+        raise ValueError(
+            f"{configuration_path} declares assay group(s) {absent[:5]} that {path} "
+            "has no column for. The two files are not from the same release of the "
+            "experiment."
+        )
+    return lead, group_cols
+
+
+def create_anndata_from_assay_groups(
+    expression_matrix_path: str,
+    configuration_path: str,
+    metadata_df: "pd.DataFrame | None" = None,
+    *,
+    delimiter: str = "\t",
+) -> "ad.AnnData":
+    """Build an AnnData with one observation per assay group.
+
+    ``expression_matrix_path`` is a gene-level ``<accession>-tpms.tsv``: a gene id
+    column (``GeneID`` in real files), optionally ``Gene Name``, then one column per
+    assay group (``_assay_group_columns``). The gene id keys ``var`` (index name
+    ``"gene_id"``) and ``Gene Name`` becomes a ``var`` column. ``X`` holds each group's
+    median TPM over its runs, the third field of the cell's quartile string
+    (``_assay_group_medians``).
+
+    ``obs`` is indexed by the group id (index name ``"assay_group"``) and carries:
+
+    - ``assay_group_label``: the configuration's label (``"<stage>; <organism part>"``
+      for E-MTAB-6814);
+    - ``n_runs`` and ``runs`` (comma-joined run ids): the group's ``<assay>`` members
+      as the configuration lists them (technical replicates, where an experiment has
+      them, count once each);
+    - one column per SDRF column of ``metadata_df`` (indexed by run id): the value the
+      group's runs share, or missing when they differ (a run without the value counts
+      as differing). Those groups are listed per column in
+      ``uns["expression_atlas"]["mixed_characteristics"]``, so a missing value reads as
+      "mixed", not "not recorded".
+
+    Raises
+    ------
+    ValueError
+        If the header is not a gene id column, optional ``Gene Name`` and the
+        configuration's assay groups (``_assay_group_columns``), the gene id column has
+        a missing or repeated value, a cell cannot be read (``_assay_group_medians``),
+        or ``metadata_df`` does not describe every member run.
+    """
+    groups = read_assay_groups(configuration_path)
+    # Only empty cells are missing: pandas' other NA tokens ("NA", "null", "nan", ...)
+    # must reach the cell reader and raise rather than pass as missing values.
+    df = pd.read_csv(
+        expression_matrix_path,
+        sep=delimiter,
+        dtype=str,
+        keep_default_na=False,
+        na_values=[""],
+    )
+    lead, group_cols = _assay_group_columns(
+        [str(c) for c in df.columns],
+        groups,
+        path=expression_matrix_path,
+        configuration_path=configuration_path,
+    )
+    gene_ids = df[lead[0]]
+    if gene_ids.isna().any() or not gene_ids.is_unique:
+        dups = sorted(map(str, gene_ids[gene_ids.duplicated()].dropna()))[:3]
+        raise ValueError(
+            f"{expression_matrix_path}: gene id column {lead[0]!r} has missing or "
+            f"repeated values (e.g. {dups}); a gene-level file has one row per gene."
+        )
+
+    X = np.empty((len(group_cols), len(df)), dtype=np.float32)
+    for i, group in enumerate(group_cols):
+        X[i] = _assay_group_medians(
+            df[group],
+            path=expression_matrix_path,
+            column=group,
+            single_run=len(groups[group][1]) == 1,
+        )
+
+    var = pd.DataFrame(index=pd.Index(gene_ids.to_numpy(), name="gene_id"))
+    for col in lead[1:]:
+        var[col] = df[col].to_numpy()
+
+    obs, mixed = _assay_group_obs(
+        groups, group_cols, metadata_df, configuration_path=configuration_path
+    )
+    adata = ad.AnnData(X=X, obs=obs, var=var)
+    adata.uns["expression_atlas"] = {
+        "observations": "assay_group",
+        "value": "median TPM over the assay group's runs (third field of "
+        "min,q1,median,q3,max; a bare number only for a group of one run)",
+        "mixed_characteristics": mixed,
+    }
     return adata

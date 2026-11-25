@@ -31,15 +31,20 @@ layer1:
     collapse: max
     min_mapping_rate: 0.85
     tier: L1
-  # Heart expression, per-group mean: bulk developmental heart (E-MTAB-6814 summarised
-  # by stage with `hvantk expression summarize`), fetal heart region x age x cell class
-  # (Farah 2024, groups with >= 10 cells), adult heart cell types (Heart Cell Atlas).
-  # Non-coding genes do not map onto the protein-coding spine, hence the low rates.
+  # Heart expression. Bulk developmental heart: E-MTAB-6814 built with one observation
+  # per assay group (`--plugin-arg observations=assay_group`; its per-run TPM file is all
+  # zero upstream), then summarised by stage with `hvantk expression summarize`. Each
+  # stage has exactly one heart assay group, so a heart_bulk stage value is that group's
+  # median TPM over its runs, not a mean over runs. Single-cell, mean per group: fetal
+  # heart region x age x cell class (Farah 2024, groups with >= 10 cells) and adult heart
+  # cell types (Heart Cell Atlas). Non-coding genes do not map onto the protein-coding
+  # spine, hence the low rates; the bulk file lists all 58,735 Ensembl genes, so only
+  # about a third of its ids map (19,870, 98.8% of a 20,116-gene spine).
   - axis: heart_bulk
-    source: "expression-atlas:dataset (E-MTAB-6814, heart)"
+    source: "expression-atlas:dataset (E-MTAB-6814 heart; one assay group per stage, value = the group's median TPM)"
     key: gene_id
     columns: [heart_bulk_neonate_mean]
-    min_mapping_rate: 0.55
+    min_mapping_rate: 0.33
     tier: L1
     matrix: {group_axis: developmental_stage, atlas: heart_bulk, stats: [mean]}
   - axis: farah

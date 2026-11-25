@@ -37,7 +37,7 @@
     "organism": "Homo sapiens",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
-    "data_level": "transcript",
+    "data_level": "gene",
     "files": [
       {
         "path": "E-MTAB-6814.condensed-sdrf.tsv",
@@ -46,10 +46,16 @@
         "description": "File type: sdrf"
       },
       {
-        "path": "E-MTAB-6814-transcripts-tpms.tsv",
+        "path": "E-MTAB-6814-tpms.tsv",
         "format": "tsv",
         "size_bytes": 0,
-        "description": "File type: transcript-tpm"
+        "description": "File type: assay-group-tpm"
+      },
+      {
+        "path": "E-MTAB-6814-configuration.xml",
+        "format": "xml",
+        "size_bytes": 0,
+        "description": "File type: configuration"
       }
     ]
   },
@@ -61,7 +67,7 @@
     "data_source": "Expression_Atlas",
     "last_updated": "2025-09-23T15:25:47.132344",
     "update_frequency": "static",
-    "organism": "Homo sapiens",
+    "organism": "Gallus gallus",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
     "data_level": "transcript",
@@ -88,7 +94,7 @@
     "data_source": "Expression_Atlas",
     "last_updated": "2025-09-23T15:25:47.136119",
     "update_frequency": "static",
-    "organism": "Homo sapiens",
+    "organism": "Monodelphis domestica",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
     "data_level": "transcript",
@@ -143,7 +149,7 @@
     "data_source": "Expression_Atlas",
     "last_updated": "2025-09-23T15:25:47.143702",
     "update_frequency": "static",
-    "organism": "Homo sapiens",
+    "organism": "Oryctolagus cuniculus",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
     "data_level": "transcript",
@@ -170,7 +176,7 @@
     "data_source": "Expression_Atlas",
     "last_updated": "2025-09-23T15:25:47.147993",
     "update_frequency": "static",
-    "organism": "Homo sapiens",
+    "organism": "Rattus norvegicus",
     "expression_unit": "TPM",
     "platform_type": "RNA-seq",
     "data_level": "transcript",

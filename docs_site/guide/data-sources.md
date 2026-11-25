@@ -290,14 +290,28 @@ per run. It raises when no file has the runs as columns.
 
 A transcript-level build needs `--plugin-arg level=gene` to sum its values per gene and
 key `var` by the gene id instead — before the result can be used with
-`hvantk expression markers`/`summarize` or the PTM constraint expression loader, which
-read `var_names` as the gene id and refuse a transcript-keyed matrix. A gene-level build
-already works there without it. `hvantk annotate prepare`'s
-matrix source type refuses a transcript-keyed matrix too, but needs more than
-`level=gene` either way: it
-resolves `var_names` as HGNC gene symbols, not Ensembl gene ids, so an Expression Atlas
-build (gene- or transcript-level) needs a symbol-keyed summary before it is usable
-there.
+`hvantk expression markers`/`summarize`, the PTM constraint expression loader or
+`hvantk annotate prepare` (a matrix entry with `key: gene_id`), which read `var_names`
+as the gene id and refuse a transcript-keyed matrix. A gene-level build already works
+there without it.
+
+A build whose matrix, or any run or group in it, has values that are all zero is
+refused. EBI's
+`E-MTAB-6814-transcripts-tpms.tsv` is all zero upstream (unchanged since 2023-02-16),
+and it is that accession's only per-run TPM file. For such an accession, build one
+observation per **assay group** instead, from the gene-level `<accession>-tpms.tsv` and
+`<accession>-configuration.xml` (both in the unfiltered download):
+
+```bash
+hvantk reprocess expression-atlas:dataset --raw-dir data/e-mtab-6814 \
+  --output e-mtab-6814.h5ad --skip-download --plugin-arg observations=assay_group
+```
+
+Each value is the group's median TPM over its runs (upstream ships
+`min,q1,median,q3,max` per group). `obs` holds the group's label, run count and runs,
+and the SDRF values its runs share; a value the runs differ on is missing, and
+`uns["expression_atlas"]["mixed_characteristics"]` lists those groups. The route is
+opt-in: without `observations=assay_group`, `reprocess` never builds per group.
 
 ## Manual download sources
 
