@@ -39,12 +39,12 @@ layer1:
   # heart region x age x cell class (Farah 2024, groups with >= 10 cells) and adult heart
   # cell types (Heart Cell Atlas). Non-coding genes do not map onto the protein-coding
   # spine, hence the low rates; the bulk file lists all 58,735 Ensembl genes, so only
-  # about a third of its ids map.
+  # about a third of its ids map (19,870, 98.8% of a 20,116-gene spine).
   - axis: heart_bulk
     source: "expression-atlas:dataset (E-MTAB-6814 heart; one assay group per stage, value = the group's median TPM)"
     key: gene_id
     columns: [heart_bulk_neonate_mean]
-    min_mapping_rate: 0.3
+    min_mapping_rate: 0.33
     tier: L1
     matrix: {group_axis: developmental_stage, atlas: heart_bulk, stats: [mean]}
   - axis: farah
