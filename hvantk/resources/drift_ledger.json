@@ -47,6 +47,12 @@
     "rebuilt_at": null,
     "signal": "schema"
   },
+  "msigdb:genesets": {
+    "accepted_in": "drift/msigdb-genesets",
+    "last_upstream_change": "2026-11-01T12:22:11.957420+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
   "ucsc-cellbrowser:adult-ctx": {
     "accepted_in": "PR #447",
     "last_upstream_change": "2026-10-12T21:43:18+00:00",
