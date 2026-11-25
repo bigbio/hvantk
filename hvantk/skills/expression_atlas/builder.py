@@ -2,7 +2,10 @@
 
 Owns the ``build_expression_atlas`` builder. Turns an Expression
 Atlas baseline bulk-RNA-seq expression TSV plus its SDRF metadata file into
-an ``ExpressionMatrix`` (samples x genes).
+an ``ExpressionMatrix``: one observation per sequencing run (the default), or,
+with ``observations="assay_group"``, one per assay group from the gene-level
+``<accession>-tpms.tsv`` and ``<accession>-configuration.xml``. A matrix with
+no non-zero finite value is refused.
 
 The shared ``annotate_column_summary_ad`` helper lives in
 ``hvantk/core/models/anndata_utils`` and is reused by every anndata
@@ -51,7 +54,9 @@ def _resolve_expression_atlas_inputs(parsed_input):
     directory can hold both ``<accession>-tpms.tsv`` and
     ``<accession>-transcripts-tpms.tsv``. The gene-level file can have one column
     per assay group (E-MTAB-6798's: ``g1`` ... ``g94``, each cell a string of
-    quartiles) rather than per run, and then it cannot be built. So only the
+    quartiles) rather than per run, and then it cannot be built per run (it can per
+    assay group, with ``observations="assay_group"``; see
+    ``_resolve_assay_group_inputs``). So only the
     header line of each candidate is read, and a file is kept when its columns
     include at least one run id from the SDRF. Exactly one kept file is used;
     of several, the gene-level one (``*-tpms.tsv``, NOT
@@ -70,15 +75,7 @@ def _resolve_expression_atlas_inputs(parsed_input):
     )
 
     root = str(parsed_input)
-    sdrf_candidates = sorted(glob.glob(os.path.join(root, "*.condensed-sdrf.tsv")))
-    if len(sdrf_candidates) != 1:
-        raise FileNotFoundError(
-            f"Expression Atlas builder: expected exactly one *.condensed-sdrf.tsv "
-            f"under {root!r}, found {sdrf_candidates}. Point --raw-dir at a single "
-            "accession's download directory."
-        )
-    sdrf_path = sdrf_candidates[0]
-    accession = os.path.basename(sdrf_path)[: -len(".condensed-sdrf.tsv")]
+    sdrf_path, accession = _find_sdrf(root)
 
     all_tpm = sorted(glob.glob(os.path.join(root, "*-tpms.tsv")))
     accession_tpm = [
@@ -102,7 +99,8 @@ def _resolve_expression_atlas_inputs(parsed_input):
             f"a run in {sdrf_path!r}. Their columns are not run ids (e.g. "
             "assay-group summaries g1...gN), so there is no per-run expression "
             "matrix to build from. Add the accession's per-run TPM file (e.g. "
-            f"{accession}-transcripts-tpms.tsv) to --raw-dir."
+            f"{accession}-transcripts-tpms.tsv) to --raw-dir, or build one "
+            "observation per assay group with --plugin-arg observations=assay_group."
         )
 
     gene_tpm = [f for f in per_run if not f.endswith("-transcripts-tpms.tsv")]
@@ -134,6 +132,110 @@ def _resolve_expression_atlas_inputs(parsed_input):
     return tpm_path, sdrf_path
 
 
+def _find_sdrf(root):
+    """``(sdrf_path, accession)`` for the one ``*.condensed-sdrf.tsv`` under *root*."""
+    sdrf_candidates = sorted(glob.glob(os.path.join(root, "*.condensed-sdrf.tsv")))
+    if len(sdrf_candidates) != 1:
+        raise FileNotFoundError(
+            f"Expression Atlas builder: expected exactly one *.condensed-sdrf.tsv "
+            f"under {root!r}, found {sdrf_candidates}. Point --raw-dir at a single "
+            "accession's download directory."
+        )
+    sdrf_path = sdrf_candidates[0]
+    return sdrf_path, _accession_of(sdrf_path)
+
+
+def _accession_of(sdrf_path):
+    """The accession an SDRF's file name (``<accession>.condensed-sdrf.tsv``) names."""
+    name = os.path.basename(str(sdrf_path))
+    suffix = ".condensed-sdrf.tsv"
+    return name[: -len(suffix)] if name.endswith(suffix) else "<accession>"
+
+
+def _resolve_assay_group_inputs(parsed_input):
+    """``(expression_matrix, configuration, sdrf)`` paths for ``observations="assay_group"``.
+
+    A mapping must carry ``expression_matrix``, ``configuration`` and ``sdrf`` keys. A
+    raw dir must hold exactly one ``<accession>.condensed-sdrf.tsv`` and, for that
+    accession, the gene-level ``<accession>-tpms.tsv`` (one column per assay group)
+    and ``<accession>-configuration.xml`` (which runs make up each group); both come
+    with an unfiltered ``hvantk download expression-atlas --accession <accession>``.
+    """
+    if isinstance(parsed_input, dict):
+        missing = [
+            k
+            for k in ("expression_matrix", "configuration", "sdrf")
+            if k not in parsed_input
+        ]
+        if missing:
+            raise KeyError(
+                "observations='assay_group' needs parsed_input keys expression_matrix, "
+                f"configuration and sdrf; missing {missing}"
+            )
+        return (
+            str(parsed_input["expression_matrix"]),
+            str(parsed_input["configuration"]),
+            str(parsed_input["sdrf"]),
+        )
+
+    root = str(parsed_input)
+    sdrf_path, accession = _find_sdrf(root)
+    matrix = os.path.join(root, f"{accession}-tpms.tsv")
+    configuration = os.path.join(root, f"{accession}-configuration.xml")
+    missing = [p for p in (matrix, configuration) if not os.path.isfile(p)]
+    if missing:
+        raise FileNotFoundError(
+            f"Expression Atlas builder (observations=assay_group): {missing} not found "
+            f"under {root!r}. The route reads the gene-level {accession}-tpms.tsv and "
+            f"{accession}-configuration.xml; download them with `hvantk download "
+            f"expression-atlas --accession {accession}` (no --config-path filter)."
+        )
+    logger.info(
+        "Expression Atlas builder: one observation per assay group, from %s "
+        "(groups from %s)",
+        matrix,
+        configuration,
+    )
+    return matrix, configuration, sdrf_path
+
+
+def _has_nonzero_finite(X, block_rows=256):
+    """Whether dense *X* holds any finite non-zero value; scans row blocks, stops early."""
+    import numpy as np
+
+    for start in range(0, X.shape[0], block_rows):
+        block = np.asarray(X[start : start + block_rows])
+        if np.any(np.isfinite(block) & (block != 0)):
+            return True
+    return False
+
+
+def _require_expression(adata, expression_matrix_path, sdrf_path, observations):
+    """Raise when the built matrix has no non-zero finite value.
+
+    EBI's E-MTAB-6814-transcripts-tpms.tsv is all zero upstream (168,009 transcripts x
+    287 runs). It is the accession's only per-run TPM file, so the resolver picks it,
+    and the build wrote an all-zero ``.h5ad`` that read downstream as "not expressed".
+    """
+    if _has_nonzero_finite(adata.X):
+        return
+    hint = ""
+    if observations == "run":
+        accession = _accession_of(sdrf_path)
+        hint = (
+            " Some Expression Atlas per-run files are all zero upstream (E-MTAB-6814's "
+            "transcripts-tpms.tsv, for one). If the raw dir also holds the gene-level "
+            f"{accession}-tpms.tsv (one column per assay group) and "
+            f"{accession}-configuration.xml, build one observation per assay group from "
+            "them instead: --plugin-arg observations=assay_group."
+        )
+    raise ValueError(
+        f"Expression Atlas builder: {expression_matrix_path} has no non-zero finite "
+        f"value ({adata.n_obs} x {adata.n_vars} after parsing); refusing to write an "
+        f"all-zero dataset.{hint}"
+    )
+
+
 def _header_columns(path):
     """The column names on the first line of the tab-separated file *path*."""
     with open(path, newline="", encoding="utf-8") as fh:
@@ -148,6 +250,7 @@ def build_expression_atlas(
     gene_name_column: str = "Gene Name",
     transcript_id_column: str = "GeneID",
     level: str = "transcript",
+    observations: str = "run",
     delimiter: str = "\t",
     extra_annotation_columns: tuple[str, ...] | list[str] | None = None,
     accession: str | None = None,
@@ -176,7 +279,21 @@ def build_expression_atlas(
         usable by the generic gene-level consumers (e.g. `hvantk expression
         markers`/`summarize` or the PTM constraint loader, neither of which
         understands a transcript-keyed `var`). A no-op when the input is
-        already gene-level (see ``_resolve_expression_atlas_inputs``).
+        already gene-level (see ``_resolve_expression_atlas_inputs``), and with
+        ``observations="assay_group"``, whose input is always gene-level.
+    observations : str
+        ``"run"`` (default): one observation per sequencing run, from the TPM file
+        whose columns are the SDRF's runs (``_resolve_expression_atlas_inputs``).
+        ``"assay_group"``: one observation per assay group, from the gene-level
+        ``<accession>-tpms.tsv`` and ``<accession>-configuration.xml``
+        (``_resolve_assay_group_inputs``); ``X`` is the group's median TPM over its
+        runs, and ``obs`` carries the group's label, runs and the SDRF values its
+        runs share (``create_anndata_from_assay_groups``). An explicit opt-in, so a
+        per-run build never silently becomes a per-group one; use it when the
+        accession has no usable per-run file (E-MTAB-6814's is all zero upstream).
+        Set with ``--plugin-arg observations=assay_group``. ``gene_column``,
+        ``gene_name_column``, ``transcript_id_column`` and
+        ``extra_annotation_columns`` apply to the per-run route only.
     accession, config_path : str, optional
         Accepted and otherwise ignored by the build stage. ``hvantk reprocess``
         forwards every ``--plugin-arg`` to all three lifecycle stages (download,
@@ -197,29 +314,63 @@ def build_expression_atlas(
         ``create_anndata_from_expression_atlas``); ``gene_column`` is kept as a
         ``var`` column rather than being dropped. With ``level="gene"``, a
         transcript-level export is summed onto the gene id instead, and
-        ``var`` is keyed by the gene id like a gene-level build.
+        ``var`` is keyed by the gene id like a gene-level build. With
+        ``observations="assay_group"``, ``obs`` has one row per assay group
+        (index name ``"assay_group"``) and ``var`` is keyed by the gene id.
+
+    Raises
+    ------
+    ValueError
+        If ``observations`` is not ``"run"`` or ``"assay_group"``, or the built
+        matrix has no non-zero finite value (``_require_expression``): an all-zero
+        upstream file must not become a dataset that reads as "not expressed".
     """
     from hvantk.core.models import ExpressionMatrix
     from hvantk.core.models.anndata_utils import annotate_column_summary_ad
     from hvantk.skills.expression_atlas.shared.expression_atlas import (
         convert_sdrf_to_dataframe,
+        create_anndata_from_assay_groups,
         create_anndata_from_expression_atlas,
     )
 
-    expression_matrix_path, sdrf_file = _resolve_expression_atlas_inputs(parsed_input)
+    if observations not in ("run", "assay_group"):
+        raise ValueError(
+            f"observations={observations!r} is not supported; use 'run' (default, one "
+            "observation per sequencing run) or 'assay_group' (one per assay group, "
+            "the group's median TPM)."
+        )
 
-    metadata_df = convert_sdrf_to_dataframe(sdrf_file)
-    adata = create_anndata_from_expression_atlas(
-        expression_matrix_path=expression_matrix_path,
-        metadata_df=metadata_df,
-        gene_id_column=gene_column,
-        gene_name_column=gene_name_column,
-        transcript_id_column=transcript_id_column,
-        level=level,
-        delimiter=delimiter,
-        extra_annotation_columns=extra_annotation_columns,
-    )
+    if observations == "assay_group":
+        if level not in ("transcript", "gene"):
+            raise ValueError(
+                f"level={level!r} is not supported; use 'transcript' or 'gene' (a "
+                "no-op with observations='assay_group', whose input is gene-level)."
+            )
+        expression_matrix_path, configuration_file, sdrf_file = (
+            _resolve_assay_group_inputs(parsed_input)
+        )
+        adata = create_anndata_from_assay_groups(
+            expression_matrix_path,
+            configuration_file,
+            metadata_df=convert_sdrf_to_dataframe(sdrf_file),
+            delimiter=delimiter,
+        )
+    else:
+        expression_matrix_path, sdrf_file = _resolve_expression_atlas_inputs(
+            parsed_input
+        )
+        adata = create_anndata_from_expression_atlas(
+            expression_matrix_path=expression_matrix_path,
+            metadata_df=convert_sdrf_to_dataframe(sdrf_file),
+            gene_id_column=gene_column,
+            gene_name_column=gene_name_column,
+            transcript_id_column=transcript_id_column,
+            level=level,
+            delimiter=delimiter,
+            extra_annotation_columns=extra_annotation_columns,
+        )
 
+    _require_expression(adata, expression_matrix_path, sdrf_file, observations)
     annotate_column_summary_ad(adata)
 
     return ExpressionMatrix.from_anndata(

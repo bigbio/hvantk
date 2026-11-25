@@ -535,3 +535,36 @@ def test_sdrf_that_names_no_matrix_column_is_refused(tmp_path):
         create_anndata_from_expression_atlas(
             expression_matrix_path=str(path), metadata_df=sdrf
         )
+
+
+# --- Regression: an all-zero expression matrix is refused --------------------------
+# EBI's E-MTAB-6814-transcripts-tpms.tsv holds 168,009 transcripts x 287 runs, every
+# value 0. The resolver picks it (the only TPM file with per-run columns), and the build
+# used to write an all-zero .h5ad that every downstream feature then read as "not
+# expressed", with no error anywhere.
+
+
+def test_all_zero_expression_matrix_is_refused(tmp_path):
+    """A matrix with no non-zero finite value must raise, naming the file and the way out."""
+    import pandas as pd
+    from hvantk.skills.expression_atlas.builder import build_expression_atlas
+
+    runs = ["ERR2588382", "ERR2588384", "ERR2588383", "ERR2588399"]  # the SDRF's runs
+    path = tmp_path / "E-MTAB-6798-transcripts-tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", "ENSMUSG00000000003"],
+            "Gene Name": ["Gnai3", "Pbsn"],
+            "GeneID": ["ENSMUST00000000001", "ENSMUST00000000003"],
+            **{run: [0, 0] for run in runs},
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    with pytest.raises(ValueError, match="no non-zero finite value") as excinfo:
+        build_expression_atlas(
+            parsed_input={"expression_matrix": str(path), "sdrf": SDRF},
+            ctx=_fake_ctx(),
+            level="gene",
+        )
+    assert str(path) in str(excinfo.value)
+    assert "observations=assay_group" in str(excinfo.value)

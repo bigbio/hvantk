@@ -36,7 +36,15 @@ runs every step below as a job, with the input checks and a receipt.
 ## Build
 
 ```bash
-# 1. Heart expression summaries, one per matrix axis
+# 0. The bulk heart dataset, one observation per assay group. E-MTAB-6814's per-run
+#    TPM file (E-MTAB-6814-transcripts-tpms.tsv) is all zero upstream, so this builds
+#    from the gene-level E-MTAB-6814-tpms.tsv and E-MTAB-6814-configuration.xml.
+hvantk download expression-atlas --accession E-MTAB-6814 --download-path raw/e-mtab-6814
+hvantk reprocess expression-atlas:dataset --raw-dir raw/e-mtab-6814 \
+    --output e-mtab-6814.h5ad --skip-download --plugin-arg observations=assay_group
+
+# 1. Heart expression summaries, one per matrix axis. Each stage has one heart assay
+#    group, so a heart_bulk stage value is that group's median TPM, not a mean over runs.
 hvantk expression summarize -m e-mtab-6814.h5ad \
     --group-by developmental_stage --filter-by organism_part=heart \
     --min-cells 1 -o heart_bulk_stage_summary.h5ad
