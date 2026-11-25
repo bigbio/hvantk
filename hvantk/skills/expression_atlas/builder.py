@@ -5,7 +5,8 @@ Atlas baseline bulk-RNA-seq expression TSV plus its SDRF metadata file into
 an ``ExpressionMatrix``: one observation per sequencing run (the default), or,
 with ``observations="assay_group"``, one per assay group from the gene-level
 ``<accession>-tpms.tsv`` and ``<accession>-configuration.xml``. A matrix with
-no non-zero finite value is refused.
+no non-zero finite value, or with an observation whose values are all zero, is
+refused.
 
 The shared ``annotate_column_summary_ad`` helper lives in
 ``hvantk/core/models/anndata_utils`` and is reused by every anndata
@@ -199,25 +200,38 @@ def _resolve_assay_group_inputs(parsed_input):
     return matrix, configuration, sdrf_path
 
 
-def _has_nonzero_finite(X, block_rows=256):
-    """Whether dense *X* holds any finite non-zero value; scans row blocks, stops early."""
+def _zero_profile(X, block_rows=64):
+    """``(any_nonzero, zero_rows)`` of dense *X*, scanned in row blocks.
+
+    ``any_nonzero``: whether any value is finite and non-zero. ``zero_rows``: the rows
+    that have finite values and every one of them 0. A row with no finite value at all
+    (an all-missing sample) is neither.
+    """
     import numpy as np
 
+    any_nonzero = False
+    zero_rows = []
     for start in range(0, X.shape[0], block_rows):
         block = np.asarray(X[start : start + block_rows])
-        if np.any(np.isfinite(block) & (block != 0)):
-            return True
-    return False
+        finite = np.isfinite(block)
+        has_nonzero = (finite & (block != 0)).any(axis=1)
+        any_nonzero = any_nonzero or bool(has_nonzero.any())
+        zero_rows.extend(start + np.flatnonzero(finite.any(axis=1) & ~has_nonzero))
+    return any_nonzero, zero_rows
 
 
 def _require_expression(adata, expression_matrix_path, sdrf_path, observations):
-    """Raise when the built matrix has no non-zero finite value.
+    """Raise when the matrix, or any observation in it, is all zero.
 
     EBI's E-MTAB-6814-transcripts-tpms.tsv is all zero upstream (168,009 transcripts x
     287 runs). It is the accession's only per-run TPM file, so the resolver picks it,
     and the build wrote an all-zero ``.h5ad`` that read downstream as "not expressed".
+    One all-zero run or group is the same defect on a smaller scale: a real TPM profile
+    is never all zero. An observation with no finite value at all (an all-missing
+    sample) stays allowed; that is "no data", not "not expressed".
     """
-    if _has_nonzero_finite(adata.X):
+    any_nonzero, zero_rows = _zero_profile(adata.X)
+    if any_nonzero and not zero_rows:
         return
     hint = ""
     if observations == "run":
@@ -229,10 +243,18 @@ def _require_expression(adata, expression_matrix_path, sdrf_path, observations):
             f"{accession}-configuration.xml, build one observation per assay group from "
             "them instead: --plugin-arg observations=assay_group."
         )
+    if not any_nonzero:
+        raise ValueError(
+            f"Expression Atlas builder: {expression_matrix_path} has no non-zero finite "
+            f"value ({adata.n_obs} x {adata.n_vars} after parsing); refusing to write "
+            f"an all-zero dataset.{hint}"
+        )
+    names = [str(adata.obs_names[i]) for i in zero_rows[:5]]
     raise ValueError(
-        f"Expression Atlas builder: {expression_matrix_path} has no non-zero finite "
-        f"value ({adata.n_obs} x {adata.n_vars} after parsing); refusing to write an "
-        f"all-zero dataset.{hint}"
+        f"Expression Atlas builder: in {expression_matrix_path}, {len(zero_rows)} of "
+        f"{adata.n_obs} observations have only zero values (e.g. {names}). A real "
+        "expression profile is never all zero, so the file is broken for them; "
+        f"refusing to write a dataset that reads them as 'not expressed'.{hint}"
     )
 
 
@@ -322,8 +344,9 @@ def build_expression_atlas(
     ------
     ValueError
         If ``observations`` is not ``"run"`` or ``"assay_group"``, or the built
-        matrix has no non-zero finite value (``_require_expression``): an all-zero
-        upstream file must not become a dataset that reads as "not expressed".
+        matrix, or any observation in it, has finite values that are all zero
+        (``_require_expression``): an all-zero upstream file must not become a
+        dataset that reads as "not expressed".
     """
     from hvantk.core.models import ExpressionMatrix
     from hvantk.core.models.anndata_utils import annotate_column_summary_ad

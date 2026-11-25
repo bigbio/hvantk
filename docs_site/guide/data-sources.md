@@ -295,7 +295,8 @@ key `var` by the gene id instead — before the result can be used with
 as the gene id and refuse a transcript-keyed matrix. A gene-level build already works
 there without it.
 
-A build whose matrix has no non-zero finite value is refused. EBI's
+A build whose matrix, or any run or group in it, has values that are all zero is
+refused. EBI's
 `E-MTAB-6814-transcripts-tpms.tsv` is all zero upstream (unchanged since 2023-02-16),
 and it is that accession's only per-run TPM file. For such an accession, build one
 observation per **assay group** instead, from the gene-level `<accession>-tpms.tsv` and
@@ -308,7 +309,7 @@ hvantk reprocess expression-atlas:dataset --raw-dir data/e-mtab-6814 \
 
 Each value is the group's median TPM over its runs (upstream ships
 `min,q1,median,q3,max` per group). `obs` holds the group's label, run count and runs,
-and the SDRF values its runs share; a value the runs disagree on is missing, and
+and the SDRF values its runs share; a value the runs differ on is missing, and
 `uns["expression_atlas"]["mixed_characteristics"]` lists those groups. The route is
 opt-in: without `observations=assay_group`, `reprocess` never builds per group.
 

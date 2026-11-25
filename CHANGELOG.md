@@ -142,8 +142,9 @@ Options and fields that were accepted but did nothing:
   zero upstream (168,009 transcripts x 287 runs, unchanged since 2023-02-16). It is the
   accession's only TPM file with a column per run, so `reprocess expression-atlas:dataset`
   built from it and wrote an all-zero `.h5ad` without error, and the ClinVar x heart
-  example's 19 `heart_bulk_*` columns were 0 in every row. A build whose matrix has no
-  non-zero finite value is now refused, naming the file and `observations=assay_group`.
+  example's 19 `heart_bulk_*` columns were 0 in every row. A build whose matrix, or
+  any run or group in it, has values that are all zero is now refused, naming the file and
+  `observations=assay_group`.
   The example builds `heart_bulk` per assay group, so each stage value is the median TPM
   of the stage's one heart assay group rather than a mean over runs; the catalog's
   E-MTAB-6814 entry lists the files that route reads, and the other organisms of the
